@@ -299,6 +299,24 @@ print(f'bgm_volume={data[\"meta\"][\"bgm_volume\"]}')
 ```
 
 > **不要对 `bgm.wav` 做 gain/volume 处理。** 保持原始音量，Stage 6 的 `<audio data-volume>` 控制混音时的衰减。预处理会破坏原始音量参考。
+>
+> **双重衰减防护**：如果 Stage 4 对 bgm.wav 做了音量衰减（如 `-af volume=0.08`），然后 Stage 6 的 `data-volume` 再乘一次，实际音量 = 0.08 × 0.08 = 0.0064（几乎听不到）。这是一个已知的致命 bug。唯一正确的做法是：bgm.wav 保持原始音量，所有音量控制通过 HTML `data-volume` 完成。
+
+### BGM 音量守恒校验（必须执行）
+
+生成 `bgm.wav` 后，确认文件未被意外衰减：
+
+```bash
+# 检查 bgm.wav 音量是否在正常范围（原始 BGM 通常 -15 ~ -30 dB）
+BGM_MEAN=$(ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep mean_volume | grep -oP '[\-\d.]+(?= dB)')
+echo "bgm.wav mean_volume: ${BGM_MEAN} dB"
+
+# 如果 mean_volume < -35 dB，说明 bgm.wav 已被意外衰减，必须重新生成
+if [ "$(echo "$BGM_MEAN < -35" | bc 2>/dev/null)" -eq 1 ]; then
+  echo "ERROR: bgm.wav 音量异常偏低 (${BGM_MEAN} dB)，疑似被预衰减。必须从原始来源重新生成。"
+  echo "正确做法：bgm.wav 保持原始音量，Stage 6 通过 data-volume 控制混音。"
+fi
+```
 
 ### BGM 循环规则（必须执行）
 
