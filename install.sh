@@ -146,32 +146,6 @@ else
   }
 fi
 
-# ── ppt-master（克隆 + 完整依赖） ──
-PPT_MARKER="ppt-master/skills/ppt-master/scripts/image_search.py"
-if [ -f "$PPT_MARKER" ]; then
-  echo "✅ ppt-master 已安装"
-else
-  echo "⏳ ppt-master 未安装，正在安装..."
-
-  echo "  → 克隆仓库..."
-  if git clone https://github.com/hugohe3/ppt-master ppt-master 2>/dev/null; then
-    echo "  ✅ 克隆成功"
-
-    echo "  → 安装完整依赖..."
-    if pip install -r ppt-master/skills/ppt-master/requirements.txt 2>/dev/null; then
-      echo "  ✅ ppt-master 完整依赖安装成功"
-    else
-      echo "  ⚠ 完整依赖安装失败，尝试安装核心依赖..."
-      pip install -q python-pptx PyMuPDF openpyxl requests Pillow numpy svglib reportlab beautifulsoup4 2>/dev/null
-      echo "  ✅ 核心依赖已安装（部分高级功能可能不可用）"
-      WARNINGS+=("ppt-master 部分依赖安装失败，AI 图片生成等功能可能需要额外安装")
-    fi
-  else
-    echo "  ❌ 克隆失败"
-    WARNINGS+=("ppt-master 克隆失败，可手动安装: git clone https://github.com/hugohe3/ppt-master ppt-master")
-  fi
-fi
-
 # ── MusicGen（可选） ──
 if python -c "from transformers import MusicgenForConditionalGeneration" 2>/dev/null; then
   echo "✅ MusicGen (可选，AI 二创配乐)"

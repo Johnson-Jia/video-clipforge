@@ -16,39 +16,6 @@
 3. HTML 文件 → 提取 `<body>` 纯文本，忽略标签和样式
 4. 不明确 → 询问：「请提供视频内容来源——文字、文件、还是目录？」
 
-## 文件内容提取（依赖 ppt-master）
-
-当用户提供的文件不是纯文本格式时，调用 ppt-master 的 `source_to_md` 工具转换：
-
-```bash
-PPT_SCRIPTS="ppt-master/skills/ppt-master/scripts"
-```
-
-| 文件类型 | 转换命令 | 依赖 |
-|---------|---------|------|
-| PDF | `python "$PPT_SCRIPTS/source_to_md/pdf_to_md.py" <file>` | `pip install PyMuPDF` |
-| Word (.docx) | `python "$PPT_SCRIPTS/source_to_md/doc_to_md.py" <file>` | `pip install python-docx` |
-| Excel (.xlsx) | `python "$PPT_SCRIPTS/source_to_md/excel_to_md.py" <file>` | `pip install openpyxl` |
-| PPT (.pptx) | `python "$PPT_SCRIPTS/source_to_md/ppt_to_md.py" <file>` | `pip install python-pptx` |
-| 网页 URL | `python "$PPT_SCRIPTS/source_to_md/web_to_md.py" <url>` | `pip install requests` |
-
-> 转换依赖缺失时，提示安装对应的 pip 包。ppt-master 本体已自动克隆。
-
-## PPT 转视频（特殊场景）
-
-用户已有 PPT 并想转成短视频时，可以直接将幻灯片转成 SVG 再嵌入 HyperFrames：
-
-```bash
-python "$PPT_SCRIPTS/pptx_to_svg.py" <pptx_file> -o <project-dir>/slides/ --embed-images
-```
-
-产出：每张幻灯片一个 SVG 文件，嵌入 HyperFrames HTML 中作为场景画面。
-
-**适用场景：**
-- 用户有现成 PPT 想快速转抖音视频
-- 企业宣传材料已有 PPT 版本
-- 教育课件转短视频
-
 **获取后：** 提炼核心信息点，准备进入 Stage 2 风格推导。
 
 ## 分类数据获取（当有分类配置时）

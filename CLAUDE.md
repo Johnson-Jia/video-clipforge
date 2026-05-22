@@ -47,4 +47,3 @@ When a category is specified, each stage reads `categories/{id}.md` to load cate
 - Video rendering requires [HyperFrames](https://github.com/heygen-com/hyperframes) (installed via `npx skills add`).
 - On conflict with generic coding skills, prioritize `clipforge.md` and this file.
 - `workspace/` is the output directory (gitignored). Project artifacts live there.
-- `ppt-master/` is auto-cloned for visual asset enhancement (gitignored).

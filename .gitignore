@@ -1,9 +1,6 @@
 # 视频生成工作目录（项目文件、渲染产物、音视频素材）
 workspace/
 
-# ppt-master（自动克隆到项目内，不提交）
-ppt-master/
-
 # Node
 node_modules/
 package-lock.json

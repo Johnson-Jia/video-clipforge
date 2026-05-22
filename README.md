@@ -46,7 +46,7 @@ ClipForge 将任意内容 — 文字、URL、PDF、GitHub 数据等 — 转换�
 | Stage 2 | design | 视觉风格推导（情绪 → 配色 → 排版） |
 | Stage 3 | narration | 场景拆解 + 分段旁白文案 |
 | Stage 4 | audio | 分段 TTS 旁白 + 配乐 + BGM 音量分析 |
-| Stage 5 | assets | 视觉素材制备（可选，通过 ppt-master） |
+| Stage 5 | assets | 视觉素材制备（可选，纯 CSS/HTML 渲染） |
 | Stage 6 | video | HTML + `<audio>` 嵌入 → HyperFrames 渲染 |
 | Stage 7 | delivery | 封面帧嵌入 + 3 套抖音文案 |
 | Stage 8 | cleanup | 删除中间产物 |
@@ -67,7 +67,7 @@ claude
 /clipforge 制作一个关于 XXX 的视频
 ```
 
-首次运行自动检测并安装依赖（HyperFrames、ppt-master）。
+首次运行自动检测并安装依赖（HyperFrames）。
 
 **前置依赖：** Node.js >= 22、FFmpeg、edge-tts、yt-dlp。详见 [安装指南](docs/getting-started.md)。
 
@@ -122,7 +122,6 @@ Claude 逐步引导完成每个阶段，每步确认后继续。
 | 依赖 | 用途 |
 |------|------|
 | HyperFrames | HTML 转视频渲染，原生混音封装 |
-| ppt-master | 图片搜索、AI 生成、图表模板、图标库 |
 
 ### 手动安装
 

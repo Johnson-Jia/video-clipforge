@@ -17,7 +17,6 @@
 | Dependency | Purpose |
 |------------|---------|
 | [HyperFrames](https://github.com/heygen-com/hyperframes) | HTML-to-video rendering with native audio mixing |
-| [ppt-master](https://github.com/hugohe3/ppt-master) | Image search, AI generation, chart templates, icon library |
 
 ### Optional
 
