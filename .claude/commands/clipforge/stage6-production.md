@@ -603,6 +603,17 @@ ffprobe -v quiet -show_streams output.mp4 | grep -q "codec_name=aac" || echo "FA
 ffprobe -v quiet -show_streams output_no_bgm.mp4 | grep -q "codec_name=h264" || echo "FAIL: output_no_bgm.mp4 no video"
 ffprobe -v quiet -show_streams output_no_bgm.mp4 | grep -q "codec_name=aac" || echo "FAIL: output_no_bgm.mp4 no audio"
 
+# 检查4: BGM 可感知性验证（双重衰减防护）
+# output.mp4（含BGM）应比 output_no_bgm.mp4（仅旁白）响 0.2-2 dB
+# 如果差异 < 0.1 dB，说明 BGM 未混入或双重衰减导致不可感知
+VOL_WITH=$(ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
+VOL_WITHOUT=$(ffmpeg -i output_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
+echo "BGM check: with=${VOL_WITH} dB, without=${VOL_WITHOUT} dB"
+if [ "$(echo "$VOL_WITH > $VOL_WITHOUT" | bc 2>/dev/null)" -ne 1 ]; then
+  echo "WARN: output.mp4 不比 output_no_bgm.mp4 响，BGM 可能未混入"
+  echo "排查：(1) bgm.wav 是否被预衰减 (2) HTML data-volume 是否正确 (3) bgm.wav 是否存在"
+fi
+
 echo "=== Stage 6 完成门禁通过 ==="
 ```
 
