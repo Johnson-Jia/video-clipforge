@@ -2,6 +2,13 @@
 
 当 `final.mp4` 已存在且项目目录未清理时触发。清理中间产物，保留核心产出。
 
+## 第一原则
+
+> **白名单机制，不是黑名单机制。**
+> 只删除"必删文件"列表中**明确列出**的文件。不在必删列表中的文件，**一律不动**。
+> **严禁使用通配符批量删除保留清单中的文件类型**（如 `rm -f *.md`、`rm -f *.json`）。
+> 保留清单中的每个文件都有不可替代的作用，删除任何一个都会导致后续微调需要重跑整个阶段。
+
 ## 执行时机
 
 - **视频项目**：Stage 7 交付 final.mp4 后
@@ -107,12 +114,33 @@ work-*/                 # HyperFrames 工作临时目录
 
 ## 执行脚本
 
+> **关键约束：只删除"必删文件"列表中明确列出的文件。** 不在必删列表中的文件一律不动。绝不使用通配符批量删除非必删文件。
+
 ```bash
 cd "${PROJECT_DIR}"
 
 echo "=== Stage 8: 项目清理 ==="
 
-# 1. 删除必删文件
+# ──────────────────────────────────────────────
+# 防护 1: 白名单 — 这些文件绝对不可删除
+# ──────────────────────────────────────────────
+RETAIN_FILES=(
+  final.mp4 final_no_bgm.mp4
+  output.mp4 output_no_bgm.mp4
+  cover.html cover.png
+  index.html design.md
+  narration_segments.json narration.txt
+  segment_durations.json
+  douyin.md narration.mp3
+  content.md content_summary.md
+)
+for f in "${RETAIN_FILES[@]}"; do
+  if [ -f "$f" ]; then
+    echo "  [保留] $f"
+  fi
+done
+
+# 1. 仅删除"必删文件"列表中明确列出的文件（逐条 rm，不用通配符删除保留清单中的文件）
 rm -f narration_seg_*.txt narration_seg_*.mp3 narration_seg_*.srt
 rm -f loudnorm_stats.json concat.txt concat_new.txt
 rm -f output_silent.mp4 output_with_audio.mp4
@@ -170,6 +198,22 @@ echo "保留文件："
 ls -1 | head -20
 echo ""
 echo "项目大小：$(du -sh . 2>/dev/null | cut -f1)"
+
+# ──────────────────────────────────────────────
+# 防护 2: 清理后验证 — 确认保留文件未被误删
+# ──────────────────────────────────────────────
+RETAIN_CHECK_FILES=(final.mp4 final_no_bgm.mp4 cover.png douyin.md)
+MISSING=0
+for f in "${RETAIN_CHECK_FILES[@]}"; do
+  if [ ! -f "$f" ]; then
+    echo "  ⚠️ 严重错误：保留文件 $f 被误删！"
+    MISSING=$((MISSING+1))
+  fi
+done
+if [ $MISSING -gt 0 ]; then
+  echo "  ⚠️ 有 $MISSING 个核心文件被误删，请检查！"
+fi
+
 echo "=== 清理完成 ==="
 ```
 
@@ -226,11 +270,17 @@ echo "总月目录：$(ls -d workspace/????/??/ 2>/dev/null | wc -l)"
 | 清理了 `final.mp4` 或 `final_no_bgm.mp4` | 核心产出不可删除，否则视频制作白费 |
 | 清理了 `douyin.md` | 抖音发布文案需要用于发布，删除后需重新生成 |
 | 清理了 `cover.png` | 封面图可能用于发布，不应删除 |
+| 清理了 `cover.html`、`index.html`、`output.mp4` | 封面/视频重渲染必需，删了微调视频就要重跑整个阶段 |
+| 清理了 `design.md`、`narration_segments.json`、`segment_durations.json` | 改风格/改旁白/校音必需，删了就要重跑对应阶段 |
+| 使用 `rm -f *.md` / `rm -f *.json` 等通配符批量删除 | 通配符会误删保留清单中的文件，必须逐条按必删列表删除 |
 
 ## Common Rationalizations（常见借口反驳）
 
 | 借口 | 事实 |
 |------|------|
-| "这个文件很大可以删" | `final.mp4`/`final_no_bgm.mp4`/`douyin.md` 是核心产出，再大也不能删 |
-| "清理完就完了，不用验证" | 必须确认核心文件存在，否则用户无法使用成品 |
-| "中间文件先留着可能有用" | 中间产物（raw_clips、临时 HTML）会持续占空间，目标 < 30 MB |
+| "这个文件很大可以删" | `final.mp4`/`final_no_bgm.mp4`/`output.mp4` 是核心产出或重渲染源，再大也不能删 |
+| "清理完就完了，不用验证" | 必须确认保留清单中的文件仍然存在，否则后续微调需要重跑整个阶段 |
+| "中间文件先留着可能有用" | 中间产物（raw_clips、分段 TTS）会持续占空间，但只删必删列表中的 |
+| "用 rm -f *.xx 一次性删干净" | 通配符会误删保留文件。必须只删除"必删文件"列表中明确列出的文件名模式 |
+| "这些 json/md 文件是中间产物" | `design.md`、`narration_segments.json`、`segment_durations.json` 是重渲染核心输入，不是中间产物 |
+| "反正能重新生成" | 重新生成需要重跑整个 SubAgent 阶段，浪费时间 5-10 分钟，而保留它们只占几 KB |
