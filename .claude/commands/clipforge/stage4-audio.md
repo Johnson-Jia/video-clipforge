@@ -151,13 +151,14 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 
 ### 声音选择
 
-> **如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。** 未指定时按以下表格选择。
+> **如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。** 未指定时按以下规则选择。
+
+> **禁止使用播报腔音色。** 短视频需要"我在跟你聊/分析"的叙事感，不是"我在念稿子"的播报感。`zh-CN-YunyangNeural`（新闻主播风）禁止用于任何短视频项目。
 
 | 场景类型 | 推荐声音 | 特点 |
 |---------|---------|------|
-| **宣传/推广** | `zh-CN-YunjianNeural` | 激昂有力，适合安利种草 |
-| **科普/教程** | `zh-CN-YunxiNeural` | 沉稳温和，适合讲解 |
-| **新闻/正式** | `zh-CN-YunyangNeural` | 主播风格，专业感强 |
+| **默认首选** | `zh-CN-YunjianNeural` | 有叙事张力和穿透力，适合观点输出、安利种草、行业分析 |
+| **科普/教程** | `zh-CN-YunxiNeural` | 沉稳温和，适合纯知识讲解（无观点输出） |
 | **活泼/轻松** | `zh-CN-XiaoxiaoNeural` | 女声活力，适合生活类 |
 
 ### 语速建议
@@ -166,9 +167,9 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 
 | 内容类型 | 建议速率 |
 |---------|---------|
-| 短视频推广 | `+25%` ~ `+30%` |
+| 短视频（25-60s） | `+25%` ~ `+30%` |
+| 深度解读（3-10min） | `+10%` ~ `+15%` |
 | 教程讲解 | `+10%` ~ `+15%` |
-| 正式/企业 | `+5%` ~ `+10%` |
 
 ## 4.2 配乐
 
@@ -272,20 +273,22 @@ ffprobe -v quiet -show_entries format=duration -of csv=p=0 bgm.wav
 ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 ```
 
-根据 BGM 的 `mean_volume` 选择 `<audio data-volume>` 值：
+根据 BGM 的 `mean_volume` 选择混音音量值（Stage 6 ffmpeg `amix` filter 的 `volume` 参数）：
 
-| BGM mean_volume | 推荐 data-volume | 说明 |
-|----------------|----------------|------|
-| > -15 dB（很响） | `0.04`         | 响度高的配乐需大幅衰减 |
-| -15 ~ -20 dB | `0.07`         | 中等偏响 |
-| -20 ~ -25 dB | `0.08`         | 中等音量（最常见） |
-| -25 ~ -30 dB | `0.09`         | 偏安静 |
-| < -30 dB（很安静） | `0.15`         | 需要适度提升存在感 |
+> **混音方式已从 HyperFrames `data-volume` 切换为 ffmpeg `amix` filter。** ffmpeg 的 volume 值需要比旧 HyperFrames 值更高，因为两个引擎对音量的处理方式不同。
+
+| BGM mean_volume | 推荐 volume | 说明 |
+|----------------|------------|------|
+| > -15 dB（很响） | `0.08`     | 响度高的配乐需较大衰减 |
+| -15 ~ -20 dB | `0.10`     | 中等偏响 |
+| -20 ~ -25 dB | `0.15`     | 中等音量（最常见）→ **默认推荐** |
+| -25 ~ -30 dB | `0.18`     | 偏安静 |
+| < -30 dB（很安静） | `0.22`     | 需要较大提升 |
 
 **将推荐 volume 值写入 `segment_durations.json`：**
 
 ```bash
-BGM_VOL=0.06  # 根据上面查表结果替换
+BGM_VOL=0.15  # 根据上面查表结果替换，默认推荐 0.15
 
 python -c "
 import json
