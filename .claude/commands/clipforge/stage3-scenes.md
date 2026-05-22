@@ -1,6 +1,6 @@
 # Stage 3: 场景拆解 + 旁白文案
 
-当 `design.md` 已存在且 `narration_segments.json` 不存在时触发。拆解场景序列并撰写分段旁白文案。
+当 `design.md` 已存在且 `narration_segments.json` 不存在时触发。拆解场景序列、撰写分段旁白文案、注入情感标记和幽默元素。
 
 | 模式 | 场景数 | 目标时长 |
 |------|--------|---------|
@@ -160,24 +160,125 @@ scenes:
 
 旁白按场景分段，每段独立生成 TTS。Stage 4 会为每段测量实际时长，Stage 6 用实际时长设置 `data-duration`。这确保画面与语音精确同步。
 
+`narration_segments.json` 格式：
+
 ```json
-// narration_segments.json
 [
-  {"scene": "hook", "text": "今天涨星最快的项目是...", "estimated_duration": 4},
-  {"scene": "topic1", "text": "第一个值得关注的...", "estimated_duration": 7},
-  {"scene": "topic2", "text": "还有一个也很厉害...", "estimated_duration": 7},
-  {"scene": "cta", "text": "关注我，每天更新...", "estimated_duration": 4}
+  {
+    "scene": "hook",
+    "text": "今天涨星最快的几个项目，直接炸了",
+    "estimated_duration": 4,
+    "emotion": "grab",
+    "emotion_intensity": 0.3,
+    "humor_type": null,
+    "character_expression": null
+  },
+  {
+    "scene": "topic1",
+    "text": "第一个项目，这个框架跑起来比我外卖还快",
+    "estimated_duration": 7,
+    "emotion": "build",
+    "emotion_intensity": 0.5,
+    "humor_type": "analogy",
+    "character_expression": "cool"
+  },
+  {
+    "scene": "topic2",
+    "text": "这个项目一周涨了五千星，比我的发际线退得还快",
+    "estimated_duration": 7,
+    "emotion": "reveal",
+    "emotion_intensity": 0.8,
+    "humor_type": "sarcasm",
+    "character_expression": "tease"
+  },
+  {
+    "scene": "cta",
+    "text": "关注我，每天更新",
+    "estimated_duration": 4,
+    "emotion": "summon",
+    "emotion_intensity": 0.4,
+    "humor_type": null,
+    "character_expression": null
+  }
 ]
 ```
 
+**新增字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `emotion` | string | 6 拍节拍名: grab/build/reveal/climax/settle/summon |
+| `emotion_intensity` | float | 0-1，对应 design.md 的 emotion_curve |
+| `humor_type` | string/null | `analogy`（类比）/ `sarcasm`（反差吐槽）/ `trivia`（冷知识梗）/ null |
+| `character_expression` | string/null | `shock`/`think`/`cool`/`explode`/`tease`/`moved`/null |
+
 同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）：
 ```
-今天涨星最快的项目是...
-第一个值得关注的...
-还有一个也很厉害...
-关注我，每天更新...
+今天涨星最快的几个项目，直接炸了
+第一个项目，这个框架跑起来比我外卖还快
+这个项目一周涨了五千星，比我的发际线退得还快
+关注我，每天更新
 ```
 
+## 双线幽默引擎
+
+读取 `design.md` 的 `storyboard.humor_style` 确定幽默策略。
+
+### 听觉线（旁白文案）
+
+在每个段落的文案生成中，根据 `humor_type` 标记注入幽默：
+
+| humor_type | 注入方法 | 示例 |
+|------------|----------|------|
+| `analogy` | 用生活场景比喻技术概念 | "这个框架跑起来比我外卖还快" |
+| `sarcasm` | 正经话题突然转折 | "这个项目一周涨了五千星，比我的发际线退得还快" |
+| `trivia` | 开发者文化内行梗 | "据说这个 bug 存活时间比实习生试用期还长" |
+
+**注入规则：**
+- 每 3-4 个段落至少 1 个包含 humor_type
+- humor 只在 build/reveal/settle 节拍使用（grab/climax/summon 保持严肃）
+- 幽默不改变核心信息，只是表达方式的调剂
+- 遵守分类配置的 humor_rules（如有）
+
+### 视觉线（画面表现）
+
+`character_expression` 非 null 的段落，Stage 6 会渲染对应表情的码力角色。
+
+**表情触发规则：**
+- `shock`：数据震撼时（Star 暴涨、出乎意料的功能）
+- `think`：分析思考时（原理解释、技术细节）
+- `cool`：展示酷功能时（核心特性、独特能力）
+- `explode`：高潮爆发时（总结震撼点、重大发现）
+- `tease`：幽默调侃时（与 humor_type 同时出现）
+- `moved`：感人/致敬时（开源精神、社区贡献）
+
+## 情感节拍映射
+
+从 `design.md` 的 `storyboard.beat_mapping` 确定每个场景属于哪个节拍，写入 `emotion` 字段：
+
+| 节拍 | 旁白语速建议 | 幽默强度 | 角色出场 |
+|------|-------------|---------|---------|
+| grab | 快（+10%） | 无 | 无 |
+| build | 中（+5%） | 低 | think/cool |
+| reveal | 中快（+10%） | 中 | shock/cool |
+| climax | 快（+15%） | 无 | explode |
+| settle | 慢（-5%） | 高 | tease/moved |
+| summon | 中（默认） | 低 | 无 |
+
+### 情感变速标记
+
+每段的 `emotion` 字段指导 Stage 4 的 TTS 语速：
+
+| emotion | Stage 4 TTS rate 偏移 |
+|---------|----------------------|
+| grab | +10% |
+| build | +5% |
+| reveal | +10% |
+| climax | +15% |
+| settle | -5% |
+| summon | +0%（基准） |
+
+Stage 3 只标记 emotion，不设置具体 rate 值。Stage 4 读取 emotion 字段后在 TTS 命令中应用偏移。
 
 ### 文案要求
 
@@ -203,11 +304,11 @@ scenes:
 
 ### 产出
 
-1. 场景拆解表（YAML，含时间轴 + 每场景旁白段落）
-2. `narration_segments.json`（分段旁白，每段对应一个场景）
+1. 场景拆解表（YAML，含时间轴 + 每场景旁白段落 + 情感标记）
+2. `narration_segments.json`（分段旁白，含 emotion/humor_type/character_expression）
 3. `narration.txt`（完整旁白，一行一段，顺序与场景一致）
 
-**交付物：** 展示场景表和旁白文案，用户确认后进入视频制作。
+**交付物：** 展示场景表和旁白文案（含情感标记和幽默元素），用户确认后进入音频制作。
 
 ---
 
@@ -219,6 +320,9 @@ scenes:
 | hook 包含信息性内容 | 钩子必须是纯钩子（数据震撼/反问/强对比/悬念），不能是项目介绍 |
 | 旁白含广告审查敏感词 | "必装"、"神器"、"最强"等会导致视频审核不通过（§1） |
 | 画面文字包含英文非项目名/缩写 | "TRENDING TODAY"等违反中文为主规范（§2） |
+| narration_segments.json 缺少 emotion 字段 | Stage 4 无法确定 TTS 语速偏移，Stage 6 无法匹配角色表情 |
+| grab/climax 节拍包含 humor_type | 抓取和高潮段保持严肃，幽默只在 build/reveal/settle |
+| character_expression 与 humor_type 不匹配 | tease 表情应搭配 humor_type，无 humor 时不应出 tease 表情 |
 
 ## Common Rationalizations（常见借口反驳）
 
@@ -228,3 +332,5 @@ scenes:
 | "用英文标题更酷" | §2 画面文字必须以中文为主，英文仅限项目名和技术缩写 |
 | "hook 里说'这个项目太强了'" | §1 禁止"太强了"等极限用语，改用数据说话（"33K Star"） |
 | "CTA 说'点赞关注一键三连'" | §1 禁止诱导互动，文案末尾自然提及即可 |
+| "情感标记太麻烦，后面再说" | 没有 emotion 字段，Stage 4 无法变速（全线均匀），Stage 6 无法匹配角色表情和视觉力度 |
+| "每段都加幽默更搞笑" | 幽默过密会削弱节奏感，grab/climax/summon 必须严肃以保持张力 |

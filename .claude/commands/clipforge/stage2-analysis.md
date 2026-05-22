@@ -1,6 +1,6 @@
-# Stage 2: 内容分析与风格推导
+# Stage 2: 内容分析与故事板设计
 
-当内容摘要已整理且 `design.md` 不存在时触发。推导视觉风格方向和配乐风格。
+当内容摘要已整理且 `design.md` 不存在时触发。推导视觉风格方向、规划叙事结构和沉浸模式。
 
 ## 情绪提炼
 
@@ -46,16 +46,73 @@
 | 场景需要氛围感 | 使用 CSS 渐变/光效背景 |
 | 纯文字/概念展示 | 无需额外素材，纯 CSS 渐变即可 |
 
-**交付物：** 展示「视觉风格」、「配乐方向」和「素材需求预判」，确认后**写入 `design.md`** 并进入 Stage 3。
+## 故事板设计
+
+在完成上述分析后，规划视频的叙事结构、情感节奏和沉浸模式。输出到 `design.md` 的 `storyboard` 字段。
+
+### 叙事模板选择
+
+根据内容特征选择叙事结构：
+
+| 模板 | 选择条件 | 情感弧线 |
+|------|----------|----------|
+| `contrast-arc` | 默认/重大更新/突破性项目 | 平淡 → 对比 → 震撼 → 高潮 → 沉淀 |
+| `underdog` | 小众项目爆发/个人开发者作品 | 低谷 → 逆境 → 逆袭 → 胜利 |
+| `showdown` | 竞品对比/同类工具评测 | 紧张 → 交锋 → 揭晓 → 结论 |
+| `mystery-box` | 神秘项目/未公开功能 | 好奇 → 线索 → 揭示 → 惊喜 |
+| `hyper-pace` | AI 爆发/周榜密集更新 | 快速 → 密集 → 爆发 → 呼吸 |
+| `story-time` | 开发者故事/项目历程 | 平静 → 转折 → 深情 → 共鸣 |
+
+**选择逻辑：**
+1. 如果分类配置有 `narrative.default_template`，优先使用
+2. 否则根据内容标签匹配：AI 密集 → `hyper-pace`，含"对比" → `showdown`，单项目深度 → `mystery-box`，项目有感人故事 → `story-time`
+3. 无明确匹配时默认 `contrast-arc`
+
+### 沉浸模式判定
+
+根据分类配置的 `immersion_mapping` 或内容标签自动选择：
+
+| 模式 | 代表色 | 视觉特征 |
+|------|--------|----------|
+| `hyper-pace` | #00D4FF | 快速剪辑 + 密集粒子 + 霓虹 |
+| `hidden-gem` | #FFB800 | 渐进揭示 + 温暖光效 + 复古 |
+| `mega-update` | #7B2FBE | 3D 场景 + 大气粒子 + 暗色 |
+| `versus` | #FF3B30 | 分屏对比 + 脉冲能量 + 硬朗 |
+| `story-time` | #34C759 | 插画风 + 柔和过渡 + 暖色 |
+| `fun-tool` | 彩虹渐变 | 彩色弹跳 + 幽默角色 + 亮色 |
+
+### 6 拍情感节奏
+
+视频按 6 个情感节拍规划时长分配：
+
+| 节拍 | 时长占比 | 情感目标 | 视觉方法 |
+|------|----------|----------|----------|
+| **抓取 (grab)** | 10% | 好奇、紧迫 | 快速切换 + 大字揭示 + 粒子聚集 |
+| **构建 (build)** | 25% | 期待、专注 | 信息渐进 + 数据流动 + 背景渐变 |
+| **揭示 (reveal)** | 20% | 惊喜、震撼 | 爆发效果 + 3D 转场 + 色彩跃升 |
+| **高潮 (climax)** | 15% | 激动、共鸣 | 粒子爆发 + 震屏 + 角色表情 |
+| **沉淀 (settle)** | 20% | 满足、思考 | 缓慢动画 + 柔和色调 + 呼吸帧 |
+| **召唤 (summon)** | 10% | 行动欲、记忆点 | 收束聚焦 + CTA 引导 |
+
+`emotion_curve` 是一个 6 元素数组，值域 [0,1]，表示每个节拍的情感强度。示例：`[0.3, 0.5, 0.8, 1.0, 0.6, 0.4]`。
+
+### 角色出场规划
+
+如果分类配置 `character_presence` 为 true：
+- `character_presence: true` 写入 design.md
+- 记录角色出场时机：高潮段（climax）必出，幽默段（tease）可选
+- 表情规划跟随 storyboard，不在 Stage 2 确定具体表情
+
+**交付物：** 展示「视觉风格」、「配乐方向」、「素材需求预判」和「故事板设计」，确认后**写入 `design.md`** 并进入 Stage 3。
 
 > **design.md 归属：Stage 2 负责写入。** Stage 6 仅读取此文件，不重写。如需调整风格，回退到 Stage 2 重新生成。
 
-## design.md 格式规范
+## design.md 格式规范（扩展）
 
-Stage 2 产出的 `design.md` 是**方向性规范**，定义视觉风格方向和情绪基调。具体配色、字号、间距由 Stage 6 根据场景类型自行决定（Stage 6 已内置场景级配色规则）。
+Stage 2 产出的 `design.md` 是**方向性规范**，定义视觉风格方向、情绪基调和故事板。具体配色、字号、间距由 Stage 6 根据场景类型和组件库自行决定。
 
 ```yaml
-# design.md — 视觉风格方向
+# design.md — 视觉风格方向 + 故事板
 
 ## 风格
 style: 科技赛博        # 风格名称（中文）
@@ -73,9 +130,26 @@ music_mood: 科技/赛博
 
 ## 素材预判（可选）
 assets_needed: []       # 如需外部素材在此列出，否则留空
+
+## 故事板（新增）
+storyboard:
+  narrative_template: "contrast-arc"    # 6 选 1
+  emotion_curve: [0.3, 0.5, 0.8, 1.0, 0.6, 0.4]
+  immersion_mode: "hyper-pace"          # 6 选 1
+  humor_style: "dual-track"             # dual-track / narration-only / visual-only
+  character_presence: true              # 是否启用码力角色
+  beat_mapping:                         # 节拍 → 场景映射（大致分配）
+    grab: "hook"
+    build: "what, how"
+    reveal: "capabilities"
+    climax: "features"
+    settle: "usecases, tech"
+    summon: "CTA"
 ```
 
-> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style` 和 `color_direction` 选择对应的场景配色方案（hook 暖色、features 冷色、CTA 暖色+冷色辅），Stage 7 封面复用同一风格方向。
+> **beat_mapping 说明：** 这是场景到情感节拍的粗映射，帮助 Stage 3 和 Stage 6 理解每个场景应传递的情感。不是严格约束，Stage 3 可以调整。
+
+> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction` 和 `immersion_mode` 选择对应的组件和配色方案（见 `stage6-components.md` 的沉浸模式配色速查），Stage 7 封面复用同一风格方向。
 
 ---
 
@@ -84,6 +158,9 @@ assets_needed: []       # 如需外部素材在此列出，否则留空
 | 信号 | 说明 |
 |------|------|
 | design.md 缺少 style/mood/color_direction | 下游 stage 无法确定视觉方向，会导致配色随意 |
+| design.md 缺少 storyboard 节 | Stage 3 无法确定叙事结构和情感节奏 |
+| emotion_curve 不是 6 元素数组 | 下游 Stage 期望精确 6 个节拍 |
+| immersion_mode 不是 6 种之一 | Stage 6 无法匹配视觉风格 |
 | 风格与内容情绪不匹配 | 科技内容配暖色生活风 → 观感割裂 |
 
 ## Common Rationalizations（常见借口反驳）
@@ -92,3 +169,6 @@ assets_needed: []       # 如需外部素材在此列出，否则留空
 |------|------|
 | "风格随便定一个就行" | 不匹配内容情绪的视觉风格会导致观感割裂，前 3 秒就会让观众划走 |
 | "用默认风格不用分析了" | 没有方向指导的 Stage 6 会随机配色，每期视频风格不一致 |
+| "故事板可以跳过，直接写文案" | 没有故事板，Stage 3 无法规划情感节奏和幽默插入点，视频会回到平铺直叙 |
+| "emotion_curve 随便填" | 错误的情感曲线导致高潮段平淡或结尾过于激动，影响观感节奏 |
+| "immersion_mode 用默认就行" | 不匹配内容的沉浸模式会让视觉风格与内容情绪割裂 |
