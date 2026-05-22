@@ -24,7 +24,6 @@ fi
 | GitHub CLI (`gh`) | 任意 | GitHub 项目实时数据获取 | 推荐 | 提示安装 |
 | jq | 任意 | loudnorm 两遍精确音量标准化 | 推荐 | 提示安装（缺失时降级单遍处理） |
 | HyperFrames Skills | 最新 | 视频编排技能组 | 是 | **自动安装** |
-| ppt-master | 最新 | 图片搜索/生成、图表模板、图标库、文件转换 | 按需 | Stage 0 不安装，使用时按需安装（见下方说明） |
 | Python | >= 3.12 | MusicGen BGM（仅二创时需要） | 否 | 跳过 |
 
 ## 一键检测 + 自动安装
@@ -63,21 +62,6 @@ else
   if [ $? -eq 0 ]; then echo "✅ HyperFrames skills 安装成功"; else echo "❌ 自动安装失败，请手动执行: npx skills add heygen-com/hyperframes"; fi
 fi
 
-# ── ppt-master：按需安装（Stage 0 不自动安装） ──
-# ppt-master 仅在以下场景需要：
-#   - Stage 1: 用户提供了 PDF/Word/Excel/PPT 文件需要格式转换
-#   - Stage 4: 需要图片搜索、AI 生成图、图表模板、图标库
-# 使用时按需执行以下命令安装：
-#   git clone https://github.com/hugohe3/ppt-master ppt-master
-#   pip install -r ppt-master/skills/ppt-master/requirements.txt
-
-if [ -f "ppt-master/skills/ppt-master/scripts/image_search.py" ]; then
-  echo "✅ ppt-master 已安装（按需使用）"
-else
-  echo "ℹ️ ppt-master 未安装（Stage 0 不自动安装，需要时按需克隆）"
-  echo "   安装命令: git clone https://github.com/hugohe3/ppt-master ppt-master && pip install -r ppt-master/skills/ppt-master/requirements.txt"
-fi
-
 # ── 可选依赖 ──
 
 # MusicGen (仅 AI 二创配乐)
@@ -110,8 +94,6 @@ touch "workspace/.env-checked"
 | HyperFrames Skills | `npx skills add heygen-com/hyperframes` | 视频编排技能 |
 | 工具脚本 | `curl` 下载到 `scripts/` | generate_bgm.py + merge_video_audio.sh |
 
-> **ppt-master 不再自动安装。** 仅当用户提供了 PDF/Word/Excel/PPT 文件或需要图片搜索/AI 生成图时按需安装。
-
 以下依赖**无法自动安装**（需系统级权限），仅提示命令：
 
 | 依赖 | 安装命令 |
@@ -130,7 +112,6 @@ touch "workspace/.env-checked"
 - **gh 缺失** → 提示安装命令（推荐但非必须，缺失时 Stage 1 降级到智谱 MCP 或 Web 抓取）
 - **jq 缺失** → 提示安装命令（推荐但非必须，缺失时 Stage 4 loudnorm 降级为单遍处理）
 - **HyperFrames Skills 缺失** → 自动安装，失败则提示手动命令
-- **ppt-master 缺失** → 不自动安装，需要时按需克隆（Stage 1 文件转换或 Stage 4 素材制备时触发）
 - **MusicGen 缺失** → 不影响，使用音乐库 + yt-dlp 下载现成曲目
 
 ---
@@ -152,4 +133,3 @@ touch "workspace/.env-checked"
 | "之前的视频跑过了，不用再检查" | 环境可能被更新或卸载破坏。标记文件不存在 = 必须重新检查 |
 | "跳过环境检测，直接开始制作" | 一个缺失依赖就能导致 30 分钟后的渲染失败，不如现在花 10 秒确认 |
 | "jq 不是必须的，跳过就行" | 缺失时 Stage 4 loudnorm 降级为单遍处理，音量标准化精度下降 |
-| "ppt-master 没装也没关系" | 本阶段不自动安装 ppt-master。但 Stage 5 需要时会报错，不如提前告知用户 |

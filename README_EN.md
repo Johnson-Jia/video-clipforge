@@ -46,7 +46,7 @@ ClipForge converts any content — text, URLs, PDFs, GitHub trending data, and m
 | 2 | design | Visual style derivation (mood → palette → typography) |
 | 3 | narration | Scene breakdown + narration script per segment |
 | 4 | audio | Segmented TTS narration + BGM selection + volume analysis |
-| 5 | assets | Visual asset preparation (optional, via ppt-master) |
+| 5 | assets | Visual asset preparation (optional, pure CSS/HTML) |
 | 6 | video | HTML composition with `<audio>` + HyperFrames rendering |
 | 7 | delivery | Cover generation + Douyin copywriting + final export |
 | 8 | cleanup | Intermediate file removal |
@@ -67,7 +67,7 @@ claude
 /clipforge Make a video about this topic: ...
 ```
 
-First run auto-detects and installs dependencies (HyperFrames, ppt-master).
+First run auto-detects and installs dependencies (HyperFrames).
 
 **Prerequisites:** Node.js >= 22, FFmpeg, edge-tts, yt-dlp. See [Getting Started](docs/getting-started.md) for full setup.
 
@@ -115,7 +115,6 @@ ClipForge is inspired by two open-source projects:
 | Dependency | Purpose |
 |------------|---------|
 | HyperFrames Skills | HTML-to-video rendering with native audio mixing |
-| ppt-master | Image search, AI generation, chart templates, icon library |
 
 ### Manual install
 
