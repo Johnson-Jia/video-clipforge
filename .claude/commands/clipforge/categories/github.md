@@ -200,6 +200,39 @@ true — GitHub 系列视频固定使用 YunjianNeural +25%，不需要查通用
 
 "今日GitHub榜单"
 
+## narrative
+
+### default_template
+
+当未明确匹配时，默认使用 `contrast-arc` 模板。
+
+### humor_rules
+
+- 用生活类比而非直白吐槽（"这个 PR 就像在火锅里加了冰淇淋"）
+- 开发者文化梗优先（"据说这个 bug 的工龄比实习生还长"）
+- 避免低俗、人身攻击、政治敏感
+- 吐槽力度：中等偏轻（"涨星比发际线退得快"可以，"这代码写得像💩"不行）
+- 每期视频至少 30% 的段落包含幽默元素（旁白或视觉）
+
+### character_presence
+
+true — GitHub 系列视频启用码力角色。
+
+### immersion_mapping
+
+根据内容标签自动选择沉浸模式：
+
+| 内容标签 | 沉浸模式 | 视觉风格 |
+|---------|---------|---------|
+| AI / LLM / Agent | `hyper-pace` | 快速剪辑 + 密集粒子 + 霓虹 #00D4FF |
+| 小众宝藏 / 新发现 | `hidden-gem` | 渐进揭示 + 温暖光效 + 复古 #FFB800 |
+| 重大更新 / 里程碑 | `mega-update` | 3D 场景 + 大气粒子 + 暗色 #7B2FBE |
+| 对比 / VS / 评测 | `versus` | 分屏对比 + 脉冲能量 + 硬朗 #FF3B30 |
+| 开发者故事 / 历程 | `story-time` | 插画风 + 柔和过渡 + 暖色 #34C759 |
+| 有趣工具 / 有意思 | `fun-tool` | 彩色弹跳 + 幽默角色 + 亮色 |
+
+匹配规则：按 `content_ready.txt` 中项目的主要分类标签匹配。AI 类项目 >50% 时用 `hyper-pace`；首屏出现"对比"关键词用 `versus`；其余按默认 `contrast-arc`。
+
 ## shared-rules
 
 ### url_validation
