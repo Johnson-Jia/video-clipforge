@@ -1,0 +1,25 @@
+{
+  "name": "video-clipforge",
+  "version": "1.0.0",
+  "description": "AI-powered short video production pipeline for Claude Code. DAG-orchestrated 8-stage pipeline from any content to Douyin-ready vertical video.",
+  "keywords": [
+    "ai",
+    "video",
+    "short-video",
+    "douyin",
+    "claude-code",
+    "tts",
+    "hyperframes",
+    "automation",
+    "github-trending"
+  ],
+  "author": "Johnson Jia",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Johnson-Jia/video-clipforge.git"
+  },
+  "dependencies": {
+    "hyperframes": "^0.6.29"
+  }
+}

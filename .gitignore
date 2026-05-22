@@ -1,0 +1,27 @@
+# 视频生成工作目录（项目文件、渲染产物、音视频素材）
+workspace/
+
+# ppt-master（自动克隆到项目内，不提交）
+ppt-master/
+
+# Node
+node_modules/
+package-lock.json
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 环境变量
+.env
+.env.local
+
+.idea/
+
+.idea/agents/
+.claude/skills/
+skills-lock.json
+.claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock
+
+.agents/

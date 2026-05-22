@@ -1,0 +1,84 @@
+name: clipforge
+version: 1
+description: 通用短视频全流程创作 DAG
+
+artifacts:
+  env-check:
+    generates: "workspace/.env-checked"
+    description: "环境依赖就绪"
+    template: "stage0-env"
+
+  content:
+    generates: "**/content_ready.txt"
+    description: "原始内容获取与整理"
+    template: "stage1-content"
+    requires: [env-check]
+
+  design:
+    generates: "**/design.md"
+    description: "视觉风格方向规范"
+    template: "stage2-analysis"
+    requires: [content]
+
+  narration:
+    generates:
+      - "**/narration_segments.json"
+      - "**/narration.txt"
+    description: "场景拆解与旁白文案"
+    template: "stage3-scenes"
+    requires: [design]
+
+  movie-clips:
+    generates: "**/clip_durations.json"
+    description: "电影片段提取（条件阶段）"
+    template: "_movie-clips"
+    requires: [narration]
+    condition: "narration_segments.json 中包含 video_clip 类型场景"
+
+  audio:
+    generates:
+      - "**/segment_durations.json"
+      - "**/narration.mp3"
+      - "**/narration.srt"
+      - "**/bgm.wav"
+    description: "TTS 旁白 + BGM 配乐"
+    template: "stage4-audio"
+    requires: [narration]
+    requires_any: [movie-clips]
+    requires_any_note: "当 movie-clips 条件触发时，audio 必须等 movie-clips 完成；否则直接依赖 narration"
+
+  assets:
+    generates: "**/assets/manifest.md"
+    description: "视觉素材制备（可选）"
+    template: "stage5-assets"
+    requires: [design]
+    optional: true
+    optional_note: "不执行时 video 不等待，直接继续"
+
+  video:
+    generates:
+      - "**/index.html"
+      - "**/output.mp4"
+      - "**/output_no_bgm.mp4"
+    description: "HTML 编写 + 渲染"
+    template: "stage6-production"
+    requires: [audio]
+    requires_optional: [assets]
+    requires_optional_note: "assets 为 optional，不执行时不阻塞 video"
+
+  delivery:
+    generates:
+      - "**/final.mp4"
+      - "**/final_no_bgm.mp4"
+      - "**/cover.html"
+      - "**/cover.png"
+      - "**/douyin.md"
+    description: "封面 + 交付 + 抖音文案"
+    template: "stage7-delivery"
+    requires: [video]
+
+  cleanup:
+    generates: "**/.cleaned"
+    description: "项目清理"
+    template: "_cleanup-rules"
+    requires: [delivery]
