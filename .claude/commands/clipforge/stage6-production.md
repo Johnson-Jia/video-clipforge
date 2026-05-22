@@ -352,62 +352,105 @@ ffprobe -v quiet -show_streams -select_streams a output.mp4 | grep codec_name
 ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 ```
 
-## 6.7 无 BGM 版本渲染 — 强制，不可跳过
+## 6.7 双次渲染
 
-> 产出 `output.mp4`（含 BGM）和 `output_no_bgm.mp4`（仅旁白）。缺少 `output_no_bgm.mp4` 视为 Stage 6 未完成。
+> **HyperFrames 负责画面 + 旁白 + BGM 的完整混音。** ffmpeg 只负责封面帧拼接，不碰音频。
+
+### 渲染前准备
 
 ```bash
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 
-# 1. 确认 cover.html 已移除
-for f in cover.html index_with_bgm.html cover.html.bak; do
-  [ -f "$f" ] && mv "$f" "$f.renderbak"
-done
-
-# 2. 备份原始 HTML
-cp index.html index_with_bgm.html.bak
-
-# 3. 移除 BGM <audio> 元素（将 data-volume 设为 "0"）
-python -c "
-import re
-with open('index.html', 'r', encoding='utf-8') as f:
-    html = f.read()
-html = re.sub(
-    r'(<audio\s[^>]*data-track-index=[\"'\'']2[\"'\''][^>]*data-volume=[\"\x27])([\\d.]+)([\"\x27])',
-    r'\g<1>0\g<3>',
-    html
-)
-with open('index.html', 'w', encoding='utf-8') as f:
-    f.write(html)
-print('BGM audio muted.')
-"
-
-# 4. 渲染无 BGM 版本
-npx hyperframes render . --output output_no_bgm.mp4 --video-bitrate 5M
-
-# 5. 恢复原始 HTML
-cp index_with_bgm.html.bak index.html
-rm -f index_with_bgm.html.bak
-
-# 6. 恢复文件
-for f in cover.html; do
-  [ -f "$f.renderbak" ] && mv "$f.renderbak" "$f"
-done
+# 从 segment_durations.json 读取 BGM 音量，写入 HTML
+BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json'))['meta'].get('bgm_volume', 0.15))")
+sed -i "s/id=\"bgm\" data-volume=\"[^\"]*\"/id=\"bgm\" data-volume=\"${BGM_VOL}\"/" index.html
+echo "HTML BGM data-volume set to ${BGM_VOL}"
 ```
 
-## 6.8 Stage 6 完成门禁
+### 渲染
 
 ```bash
+# ── 渲染 1: 完整 HTML → output.mp4（旁白 + BGM）──
+npx hyperframes render . --output output.mp4 --video-bitrate 5M
+
+# ── 渲染 2: BGM 静音 → output_no_bgm.mp4（仅旁白）──
+sed -i 's/id="bgm"[^>]*data-volume="[^"]*"/id="bgm" data-volume="0"/' index.html
+npx hyperframes render . --output output_no_bgm.mp4 --video-bitrate 5M
+# 恢复 BGM 音量
+sed -i "s/id=\"bgm\" data-volume=\"0\"/id=\"bgm\" data-volume=\"${BGM_VOL}\"/" index.html
+```
+
+## 6.8 封面帧拼接
+
+> 两条管线操作完全相同：48kHz 封面帧 + TS concat。**ffmpeg 只做容器拼接，不碰音频。**
+
+```bash
+cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
+
+# ── 创建封面帧（1帧 H264 + 48kHz 静音音频）──
+ffmpeg -y -loop 1 -i cover.png -c:v libx264 -frames:v 1 \
+  -pix_fmt yuv420p -r 30 -vf "scale=1080:1920" cover_1frame.mp4
+
+ffmpeg -y -i cover_1frame.mp4 -f lavfi -i "anullsrc=r=48000:cl=stereo" \
+  -c:v copy -c:a aac -shortest cover_1frame_audio.mp4
+
+# ── TS 格式转换 ──
+ffmpeg -y -i cover_1frame_audio.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts cover.ts
+ffmpeg -y -i output.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts output.ts
+ffmpeg -y -i output_no_bgm.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts output_no_bgm.ts
+
+# ── 拼接：封面帧 + 正片 ──
+ffmpeg -y -i "concat:cover.ts|output.ts" -c copy -bsf:a aac_adtstoasc final.mp4
+ffmpeg -y -i "concat:cover.ts|output_no_bgm.ts" -c copy -bsf:a aac_adtstoasc final_no_bgm.mp4
+
+# ── 清理临时文件 ──
+rm -f cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts output_no_bgm.ts
+```
+
+### BGM 音量参考
+
+| BGM 音量值 | 效果 | 适用场景 |
+|-----------|------|---------|
+| `0.10` | 隐约可感 | 非常安静的配音 |
+| `0.15` | 清晰但不抢 | **默认推荐** |
+| `0.20` | 明显存在 | 活泼/节奏感强的内容 |
+| `0.25` | 突出存在 | 音乐驱动的快节奏内容 |
+
+`segment_durations.json` 的 `meta.bgm_volume` 默认为 `0.15`，可在 Stage 4 根据内容调性调整。
+
+### 致命约束
+
+| 约束 | 违反后果 |
+|------|---------|
+| **anullsrc r=48000** | 封面帧 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 |
+| **ffmpeg 不碰音频** | 任何 ffmpeg 音频滤镜都可能改变采样率/音色 |
+| **BGM 音量在渲染前写入 HTML** | 渲染后无法修改 HyperFrames 已混入的 BGM 音量 |
+
+> **封面帧仅增加 1/30 秒（~33ms），对音画同步无感知影响。** `cover.png` 仍作为独立封面图上传平台。
+
+## 6.10 Stage 6 完成门禁
+
+```bash
+# ── 文件存在性 ──
 [ -s index.html ] || echo "FAIL: index.html missing"
 [ -s output.mp4 ] || echo "FAIL: output.mp4 missing"
-ffprobe -v quiet -show_streams output.mp4 | grep -q "codec_name=h264" || echo "FAIL: no video"
-ffprobe -v quiet -show_streams output.mp4 | grep -q "codec_name=aac" || echo "FAIL: no audio"
 [ -s output_no_bgm.mp4 ] || echo "FAIL: output_no_bgm.mp4 missing"
-ffprobe -v quiet -show_streams output_no_bgm.mp4 | grep -q "codec_name=h264" || echo "FAIL: no video (no bgm)"
-ffprobe -v quiet -show_streams output_no_bgm.mp4 | grep -q "codec_name=aac" || echo "FAIL: no audio (no bgm)"
 
-VOL_WITH=$(ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
-VOL_WITHOUT=$(ffmpeg -i output_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
+# ── 视频/音频轨 ──
+for f in output.mp4 output_no_bgm.mp4; do
+  ffprobe -v quiet -show_streams $f | grep -q "codec_name=h264" || echo "FAIL: $f no video"
+  ffprobe -v quiet -show_streams $f | grep -q "codec_name=aac" || echo "FAIL: $f no audio"
+done
+
+# ── 采样率校验 ──
+for f in final.mp4 final_no_bgm.mp4; do
+  SR=$(ffprobe -v quiet -select_streams a -show_entries stream=sample_rate -of csv=p=0 $f)
+  [ "$SR" = "48000" ] || echo "FATAL: $f sample_rate=${SR}, expected 48000"
+done
+
+# ── BGM 可感知性 ──
+VOL_WITH=$(ffmpeg -i final.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
+VOL_WITHOUT=$(ffmpeg -i final_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
 echo "BGM check: with=${VOL_WITH} dB, without=${VOL_WITHOUT} dB"
 
 echo "=== Stage 6 完成门禁通过 ==="
@@ -421,6 +464,7 @@ echo "=== Stage 6 完成门禁通过 ==="
 
 | 信号 | 说明 |
 |------|------|
+| 封面帧 anullsrc 非 48kHz | 事故：封面 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 |
 | 使用 CSS `.anim-in`（§7.1） | 事故：CSS `opacity: 0` 导致 HyperFrames 渲染空白 |
 | 使用 HTML 实体（§7.2） | 事故：`&amp;` 等实体在无头浏览器中不解析 |
 | scene-wrap 无 padding（§7.3） | 事故：内容区域在渲染中塌陷不显示 |
@@ -438,6 +482,7 @@ echo "=== Stage 6 完成门禁通过 ==="
 
 | 借口 | 事实 |
 |------|------|
+| "anullsrc 用 44100 也行" | 事故：封面帧 44.1kHz + 正片 48kHz → TS concat 后播放器异常 |
 | "CSS 动画更简单" | §7.1 事故：CSS `opacity: 0` 入场动画永远不会执行 |
 | "`&amp;` 是标准 HTML" | §7.2 事故：无头浏览器对实体字符解析不可靠 |
 | "不用 padding" | §7.3 事故：缺少 padding 导致内容区域塌陷 |

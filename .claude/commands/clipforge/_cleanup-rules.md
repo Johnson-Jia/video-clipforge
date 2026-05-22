@@ -71,6 +71,12 @@ concat.txt
 concat_new.txt
 silence_*.mp3           # 电影模式静音填充
 
+# ffmpeg 封面帧中间产物（Stage 6 §6.8）
+cover_1frame.mp4        # 1帧封面视频
+cover_1frame_audio.mp4  # 含静音音轨的1帧封面
+cover.ts                # TS 格式封面
+output.ts               # TS 格式输出
+
 # HyperFrames 工作产物
 hyperframes.json
 frame_check.png
@@ -148,6 +154,8 @@ rm -f silence_*.mp3 hyperframes.json frame_check.png
 rm -f verify_*.png scenes.yaml
 rm -f stage-handoff.json skills-lock.json webreader_checklist.json
 rm -f cover_final.png cover_segment.mp4 narration.srt
+# ffmpeg 封面帧中间产物
+rm -f cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts
 # 注意：cover.html 和 output.mp4 不删除 — 封面/BGM 重生成需要
 
 # 2. 删除工作临时目录和技能库副本
