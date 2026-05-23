@@ -1,0 +1,52 @@
+<!--
+  CharOverlay — 码力角色覆盖层
+  用途: 角色表情反应
+  情感目标: 人格化、情感连接
+  适用场景类型: reaction, emotion
+
+  6 种表情 SVG 差异:
+  | 表情   | 眼睛                        | 嘴                        | 头发/配饰       |
+  |--------|-----------------------------|---------------------------|----------------|
+  | shock  | 大圆 O（circle r="10"）     | O 型（ellipse rx="16" ry="18"） | 正常竖起     |
+  | think  | 半闭线（path stroke-width="4"） | 波浪线                    | + 问号气泡   |
+  | cool   | 墨镜（rect rx="6" 黑色填充）   | 微笑弧线                  | 正常         |
+  | explode| 星星（★ text）               | 大张 O                    | 爆炸状       |
+  | tease  | 眯缝线（line stroke-width="3"） | 坏笑弧线                  | 正常         |
+  | moved  | 星光眼（✧ text）             | 小嘴微笑                  | 正常 + 小泪花 |
+
+  用 data-expression 属性标记，根据 narration 的 character_expression 字段选择对应 SVG。
+-->
+<!-- HTML (explode 表情示例) -->
+<div class="char-overlay" data-expression="explode">
+  <svg class="char-svg" viewBox="0 0 200 280" width="180" height="250">
+    <!-- 身体 -->
+    <rect x="60" y="140" width="80" height="100" rx="16" fill="#4a4a6a"/>
+    <!-- 头 -->
+    <circle cx="100" cy="90" r="55" fill="#6a6a8a"/>
+    <!-- 眼睛 — explode: 星星眼 -->
+    <text x="78" y="95" font-size="24" fill="#f0b429">★</text>
+    <text x="112" y="95" font-size="24" fill="#f0b429">★</text>
+    <!-- 嘴 — explode: 大张嘴 -->
+    <ellipse cx="100" cy="120" rx="18" ry="14" fill="#2a2a4a"/>
+    <!-- 头发 — explode: 爆炸发型 -->
+    <path d="M55,55 L40,20 L70,45 L60,10 L90,40 L85,5 L110,38 L120,10 L130,45 L140,20 L145,55"
+          stroke="#f0b429" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<!-- CSS -->
+<style>
+.char-overlay {
+  position: absolute; bottom: 200px; left: 60px;
+  z-index: 10;
+}
+.char-svg { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.char-overlay', {
+  opacity:0, x:-40, duration:0.4,
+  ease:'back.out(1.5)'
+}, startTime);
+</script>

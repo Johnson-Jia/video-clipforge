@@ -113,99 +113,31 @@
 - **原因：** 前 3 秒是钩子生死线，淡入会让观众在最重要的时刻听到渐强的声音而非冲击性的信息，直接削弱 hook 效果
 - 尾巴可以淡出：视频最后 1 秒 BGM 淡出是允许的
 
-## 7. HyperFrames 渲染安全规范
+## 6. 视觉切换频率（跨阶段引用）
 
-> **多次出现过"只有背景没有内容"的线上事故。** 以下规则均为事故复盘总结，必须严格遵守。
+> **适用于所有视频模式。** Stage 3 场景拆解和 Stage 6 HTML 编写时必须遵守。
 
-### 7.1 禁止 CSS `.anim-in` 及任何 CSS `opacity: 0` 入场动画
+**核心原则：人眼在静态画面上的注意力极限约 8-12 秒。超过此阈值不切换视觉内容，观众注意力开始游离。**
 
-- **绝不使用 `.anim-in` CSS 类**或任何在 CSS 中设置 `opacity: 0` 的入场机制
-- HyperFrames 基于 seek 驱动渲染（逐帧推进），**不触发 CSS animation/transition**，CSS 入场动画永远不会执行，导致内容永远 `opacity: 0`
-- **所有内容元素必须默认可见**（`opacity: 1`），不做任何 CSS 入场动画
-- 入场动画由 GSAP timeline 的 `.from({opacity:0})` 实现（见 §7.6），不依赖 CSS
-- HyperFrames clip 切换由 `data-start`/`data-duration` 控制
+| 场景时长 | 视觉切换要求 | 说明 |
+|---------|------------|------|
+| ≤ 10 秒 | 1 个 phase，入场动画 + 静态展示 | 短视频标准场景，一个画面足够 |
+| 10-20 秒 | ≥ 2 个 phase | 必须拆分，每 phase ≤ 12 秒 |
+| 20-40 秒 | ≥ 3 个 phase | 每 phase ≤ 14 秒 |
+| > 40 秒 | ⌈duration / 14⌉ 个 phase | 按此公式计算最少 phase 数 |
 
-### 7.2 禁止 HTML 实体字符
+- **Phase** = clip 内的一次视觉内容切换（不是新 clip，不拆分音频）
+- Phase 间切换由 GSAP timeline 驱动（详见 `_render-safety.md` §1.1a 和 `stage6-production.md` §6.4a）
+- Phase 切换 ≠ 硬切：使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0（完全消失，避免重叠重影），新 phase 从 0 渐显到 1
+- **相邻 phase 的 visual_type 不应重复**（视觉多样性）
+- **Phase 断点必须与旁白话题转换对齐，禁止时间均分**——每个场景逐段分析旁白文本，找到与 visual_phases focus 匹配的话题边界，按字数比例换算为时间戳。详见 `stage6-production.md` §6.4b
 
-- **不在画面文字中使用 HTML 实体**（如 `&#9733;`、`&#10084;`、`&amp;` 等）
-- HyperFrames 无头浏览器对实体字符的解析不可靠，可能导致整段内容不渲染
-- **改用 Unicode 字符直接输入**（如 `★`、`❤`）或纯文本替代
+## 7. 渲染安全 + 三层架构
 
-### 7.3 scene-wrap 必须有 padding
+> **详见 `clipforge/_render-safety.md`。** 此处仅列出核心禁令。
 
-- 每个场景的 `.scene-wrap`（或等效内容容器）**必须显式设置四方向 padding**
-- 推荐值：`padding: 120px 70px`（上下 120px，左右 70px）
-- 水平 padding 确保内容不贴视频边缘，防止手机端文字被裁切
-- 缺少 padding 可能导致内容区域在 HyperFrames 渲染中塌陷不显示
-
-### 7.3.1 水平安全边距规则
-
-- **所有场景内容左右各留 70px 边距**（1080px 宽度的 ~6.5%）
-- `.pfc-main` 等全宽内容行也必须加 `padding: 0 70px`，防止 `.pfc-rank` 和 `.pfc-stars` 贴边
-- **禁止** `width: 100%` 的内容行没有水平 padding
-
-### 7.4 渲染前移除所有非 index.html 的 composition 文件
-
-- **HyperFrames 不允许多个 root composition**（`multiple_root_compositions` 警告）
-- 项目目录中**任何**含 `data-composition-id` 的 HTML 文件（不止 `cover.html`）都会导致渲染冲突
-- 常见冲突文件：`cover.html`、`index_with_bgm.html`（备份）、`cover.html.bak`（未清理的备份）
-- **渲染 index.html 前，移除所有非 index.html 的 HTML 文件：**
-  ```bash
-  for f in cover.html index_with_bgm.html cover.html.bak; do
-    [ -f "$f" ] && mv "$f" "$f.renderbak"
-  done
-  ```
-- **渲染完成后恢复需要的文件：** `mv cover.html.renderbak cover.html`
-- **临时备份文件渲染后必须删除：** `rm -f index_with_bgm.html.renderbak cover.html.bak.renderbak`
-
-### 7.5 音频文件必须在项目目录内
-
-- `<audio src="bgm.mp3">` 引用的文件**必须存在于 index.html 同级目录**
-- HyperFrames 渲染时通过 FileServer 提供文件，路径错误会导致 404 静音
-- **渲染前检查：** `ls -la bgm.mp3 narration.mp3` 确认两个音频文件都存在
-
-### 7.6 GSAP timeline 注册是强制要求
-
-- **`window.__timelines = {};`（空对象）会导致全片空白渲染。** HyperFrames 等待 `window.__timelines["main"]` 被注册，超时后渲染空帧
-- 必须引入 GSAP CDN 并注册 timeline：
-  ```html
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script>
-  window.__timelines = {};
-  const tl = gsap.timeline({paused: true});
-  tl.from('.s-hook .element', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, 0.2);
-  // ... 每个场景的入场动画
-  window.__timelines["main"] = tl;
-  </script>
-  ```
-- GSAP `.from()` 动画是可靠的入场机制：元素 CSS 默认 `opacity:1`，GSAP `.from({opacity:0})` 在 seek 时正确执行
-- 动画 offset 必须与场景 `data-start` 对齐（如 hook 场景从 0 开始，what 场景从 hook 时长开始）
-
-## 8. 三层渲染架构
-
-> **每个场景必须严格分离为三层。** 这是结构规则，不是样式建议。违反会导致特效遮挡内容或背景穿透。
-
-### 8.1 层级定义
-
-| 层级 | z-index | 用途 | 内容 |
-|------|---------|------|------|
-| 底层 `.layer-bg` | 1 | 场景背景 | 渐变色、光晕、网格底纹、纯色填充 |
-| 中间层 `.layer-fx` | 2 | 视觉特效 | 粒子、爆炸、矩阵雨、3D、漂浮物等动态装饰 |
-| 顶层 `.layer-content` | 3 | 可读内容 | 文字、数字、徽章、卡片、标签等所有用户需要阅读的元素 |
-
-### 8.2 CSS 模板
-
-```css
-.scene-wrap { position: relative; overflow: hidden; }
-.layer-bg { position: absolute; inset: 0; z-index: 1; }
-.layer-fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.layer-content { position: relative; z-index: 3; }
-```
-
-### 8.3 规则
-
-- **每个场景必须包含三层**，无例外
-- `.layer-fx` 必须 `pointer-events: none`，防止特效遮挡交互
-- 特效 opacity 建议 0.3-0.6（不遮挡内容但可见）
-- 特效类型不固定，根据场景情绪和内容主题自行推导（见 `stage6-components.md` 情绪映射表）
-- `.layer-bg` 至少包含渐变背景 + 1 个光晕
+- **禁止 `.anim-in` / CSS `opacity:0` 入场**——HyperFrames seek 不执行 CSS animation
+- **禁止 HTML 实体字符**——改用 Unicode 直接输入（`★` 而非 `&#9733;`）
+- **scene-wrap 必须 `padding: 120px 70px`**——缺 padding 会塌陷
+- **渲染前移除非 index.html 的 HTML 文件**——避免 multiple_root_compositions 冲突
+- **每个场景必须三层**：`.layer-bg`(z:1) + `.layer-fx`(z:2) + `.layer-content`(z:3)

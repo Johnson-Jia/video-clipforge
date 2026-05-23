@@ -1,0 +1,41 @@
+<!--
+  SpeechBubble — 角色吐槽气泡
+  用途: 幽默段角色吐槽叠加
+  情感目标: 幽默、亲近感
+  适用场景类型: humor, commentary
+-->
+<!-- HTML -->
+<div class="speech-bubble">
+  <div class="bubble-text">涨星比发际线退得还快</div>
+  <div class="bubble-tail"></div>
+</div>
+
+<!-- CSS -->
+<style>
+.speech-bubble {
+  position: absolute; bottom: 280px; right: 60px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 24px; padding: 24px 36px;
+  max-width: 500px; z-index: 10;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.bubble-text {
+  font-size: 30px; font-weight: 700;
+  color: #1a1a2e; line-height: 1.4;
+}
+.bubble-tail {
+  position: absolute; bottom: -12px; right: 60px;
+  width: 0; height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 16px solid rgba(255,255,255,0.95);
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.speech-bubble', {
+  opacity:0, scale:0.5, y:20,
+  duration:0.3, ease:'back.out(2)'
+}, startTime);
+</script>

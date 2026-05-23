@@ -50,10 +50,10 @@
 |------|------|
 | **黄金 3 秒** | hook 场景（前 3-5s）必须是纯钩子，不含任何信息性内容。正文从第 2 个场景开始 |
 | 钩子句 ≤ 12 字 | 口语化、一击即中（数据震撼/反问/强对比/悬念） |
-| 单个画面元素 ≤3 秒 | 每 2-3 秒必须有新的视觉变化（入场、切换、高亮） |
-| 重点场景 6-8 秒 | 核心内容正常展开（一句话核心 + 一句话亮点 + 数据/细节） |
+| **视觉切换频率** | 遵守 `_shared-rules` §6 的分级规则：≤10s 单 phase，10-20s ≥2 phases，20-40s ≥3 phases，>40s 按 ⌈duration/14⌉ |
+| 重点场景 6-8 秒 | 短视频核心内容（一句话核心 + 一句话亮点 + 数据/细节） |
 | 概括场景 3-4 秒 | 非重点内容快速带过 |
-| 单场景上限 10 秒 | 即使重点介绍也不超过 10 秒 |
+| 长视频场景按 phase 拆分 | 时长 >15 秒的场景必须有 `visual_phases`，不足则 Stage 6 gate 拦截 |
 
 ## 场景模板
 
@@ -210,7 +210,8 @@ scenes:
     "character_expression": null,
     "selling_points": null,
     "commentary": null,
-    "contrarian_angle": null
+    "contrarian_angle": null,
+    "visual_phases": []
   },
   {
     "scene": "topic1",
@@ -222,19 +223,38 @@ scenes:
     "character_expression": "cool",
     "selling_points": "极速响应·本地运行·隐私优先",
     "commentary": "一天涨了三千星，开发者用脚投票",
-    "contrarian_angle": "完全离线运行的大语言模型，不需要显卡"
+    "contrarian_angle": "完全离线运行的大语言模型，不需要显卡",
+    "visual_phases": []
   },
   {
-    "scene": "topic2",
-    "text": "这个项目一周涨了五千星，比我的发际线退得还快",
-    "estimated_duration": 7,
+    "scene": "market",
+    "type": "capabilities",
+    "text": "全球可穿戴AI设备市场正处于高速增长期，2025年市场规模约845亿美元...",
+    "estimated_duration": 38,
     "emotion": "reveal",
-    "emotion_intensity": 0.8,
-    "humor_type": "sarcasm",
-    "character_expression": "tease",
+    "emotion_intensity": 0.6,
+    "humor_type": null,
+    "character_expression": "cool",
     "selling_points": null,
     "commentary": null,
-    "contrarian_angle": null
+    "contrarian_angle": null,
+    "visual_phases": [
+      {
+        "focus": "全球市场规模与增长",
+        "visual_type": "data",
+        "key_data": ["845亿美元(2025)", "1767亿美元(2030)", "年复合增长15.9%"]
+      },
+      {
+        "focus": "中国市场出货量",
+        "visual_type": "data",
+        "key_data": ["腕戴7390万台", "智能手表5061万台", "智能手环2329万台"]
+      },
+      {
+        "focus": "渗透率与确定性",
+        "visual_type": "highlight",
+        "key_data": ["35%成年人已使用", "渗透率快速增长", "确定性极高的赛道"]
+      }
+    ]
   },
   {
     "scene": "cta",
@@ -246,7 +266,8 @@ scenes:
     "character_expression": null,
     "selling_points": null,
     "commentary": null,
-    "contrarian_angle": null
+    "contrarian_angle": null,
+    "visual_phases": []
   }
 ]
 ```
@@ -262,6 +283,26 @@ scenes:
 | `selling_points` | string/null | 三词卖点（仅标准模式项目场景），格式："词1·词2·词3"，每词 ≤6 字 |
 | `commentary` | string/null | 感性评语（仅标准模式项目场景），≤12 字，数据惊叹或场景感慨 |
 | `contrarian_angle` | string/null | 反直觉角度（仅标准模式项目场景），用于旁白钩子和发布文案 |
+| `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)。时长 ≤15s 的场景可传空数组 `[]` |
+
+### visual_phases 类型定义
+
+| visual_type | 画面表现 | 适用时机 |
+|------------|---------|---------|
+| `hero` | 大标题 + 关键数字 + 光晕 | 新概念引入、核心结论 |
+| `list` | 逐条出现的要点卡片 | 功能列表、原因列举、特征描述 |
+| `data` | 数字计数动画 + 进度条/柱状图 | 市场数据、增长率、规模 |
+| `compare` | 双栏对比（左 vs 右） | 方案对比、优劣对比、前后对比 |
+| `timeline` | 步骤节点依次出现 | 路线图、发展流程、时间线 |
+| `highlight` | 核心结论放大 + 强调色背景 | 段落总结、核心观点强调 |
+
+### visual_phases 规则
+
+1. **计数规则**：时长 ≤15s → 可省略（`[]`）；16-25s → ≥2 phases；26-40s → ≥3 phases；>40s → ⌈duration/14⌉ phases
+2. **相邻 phase 的 visual_type 不应重复**（保持视觉多样性）
+3. **key_data 是画面上必须展示的数据/关键词**，Stage 6 根据 visual_type 选择组件模板展示这些数据
+4. **focus 是该 phase 的内容主题**，Stage 6 据此生成画面标题
+5. **Phase 不足视为 Stage 3 未完成**，Stage 6 gate 会拦截
 
 同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）：
 ```

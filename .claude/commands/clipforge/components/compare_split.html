@@ -1,0 +1,52 @@
+<!--
+  CompareSplit — 双栏对比
+  用途: 对比两个项目或功能
+  情感目标: 对抗感、悬念
+  适用场景类型: compare, versus
+-->
+<!-- HTML -->
+<div class="compare-split">
+  <div class="compare-col left">
+    <div class="compare-header">项目 A</div>
+    <div class="compare-items">
+      <div class="compare-item"><span class="label">速度</span><span class="value">快</span></div>
+      <div class="compare-item"><span class="label">内存</span><span class="value">低</span></div>
+    </div>
+  </div>
+  <div class="compare-divider"></div>
+  <div class="compare-col right">
+    <div class="compare-header">项目 B</div>
+    <div class="compare-items">
+      <div class="compare-item"><span class="label">速度</span><span class="value">更快</span></div>
+      <div class="compare-item"><span class="label">内存</span><span class="value">较高</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.compare-split {
+  display: flex; width: 100%; height: 100%;
+  padding: 120px 40px;
+}
+.compare-col {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px;
+}
+.compare-col.left { background: linear-gradient(135deg, rgba(0,229,160,0.08), transparent); }
+.compare-col.right { background: linear-gradient(225deg, rgba(240,180,41,0.08), transparent); }
+.compare-header { font-size: 42px; font-weight: 800; color: #fff; margin-bottom: 40px; }
+.compare-divider {
+  width: 2px; background: linear-gradient(180deg, transparent, #fff, transparent);
+  opacity: 0.3; align-self: stretch; margin: 100px 0;
+}
+.compare-items { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+.compare-item {
+  display: flex; justify-content: space-between;
+  padding: 16px 24px; border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+}
+.compare-item .label { font-size: 28px; color: var(--text-secondary); }
+.compare-item .value { font-size: 28px; font-weight: 700; color: #fff; }
+</style>

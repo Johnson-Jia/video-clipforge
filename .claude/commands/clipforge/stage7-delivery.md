@@ -204,32 +204,13 @@ ffmpeg -y -i output.mp4 -vf "select=eq(n\,0)" -vframes 1 -update 1 cover.png
 > **§7.1 完成后 `cover.png` 必须存在。** 如果首选渲染方案失败，按以下优先级自动降级，不允许跳过封面。
 
 ```bash
-# 检查封面是否已生成
-if [ ! -s cover.png ]; then
-  echo "cover.png 缺失，尝试降级渲染..."
-
-  # 方案 A: HyperFrames 隔离渲染
-  mkdir -p /tmp/cover-render 2>/dev/null || mkdir -p "$TEMP/cover-render"
-  cp cover.html "$TEMP/cover-render/index.html" 2>/dev/null
-  if npx hyperframes render "$TEMP/cover-render" --output "$TEMP/cover-render/cover.mp4" --video-bitrate 5M 2>/dev/null; then
-    ffmpeg -y -i "$TEMP/cover-render/cover.mp4" -vf "select=eq(n\,0),scale=1080:1920:flags=lanczos" -vframes 1 -update 1 cover.png 2>/dev/null
-    rm -rf "$TEMP/cover-render"
-  fi
-
-  # 方案 B: ffmpeg 从视频首帧提取（最后降级）
-  if [ ! -s cover.png ]; then
-    ffmpeg -y -i output.mp4 -vf "select=eq(n\,0)" -vframes 1 -update 1 cover.png 2>/dev/null
-    echo "WARNING: 使用视频首帧作为封面降级方案，建议手动制作正式封面"
-  fi
-
-  [ -s cover.png ] || { echo "FAIL: 所有封面渲染方案失败"; exit 1; }
-  echo "cover.png 已生成（降级方案）"
-fi
+# 封面渲染自动降级（HyperFrames → ffmpeg 首帧）
+bash .claude/commands/clipforge/scripts/render_cover.sh
 ```
 
 ## 7.2 封面嵌入前门禁（必须通过）
 
-> **事故复盘 05-22**：执行时跳过了 §7.1 封面生成，直接从视频提取首帧嵌入，导致无 `cover.html` 和 `cover.png`。以下门禁确保封面不会遗漏。
+> **门禁目的：** 确保 §7.1 封面生成不会遗漏。
 
 ```bash
 # 门禁：cover.html 和 cover.png 必须同时存在
@@ -249,48 +230,11 @@ echo "封面门禁通过：cover.html + cover.png 均存在"
 
 将封面作为视频第一帧嵌入，产出两个版本：`final.mp4`（含 BGM）和 `final_no_bgm.mp4`（仅旁白）。
 
-### 封面片段制备（共用）
+### 封面片段制备 + 双版本输出
 
 ```bash
-# 1. 探测视频帧率，计算 1 帧时长
-FPS=$(ffprobe -v quiet -show_entries stream=r_frame_rate -select_streams v -of csv=p=0 output.mp4 | head -1)
-FPS_NUM=$(echo "$FPS" | cut -d/ -f1)
-FRAME_DUR=$(awk "BEGIN {printf \"%.4f\", 1/$FPS_NUM}")
-
-# 2. 将封面 PNG 转为 1 帧视频片段
-ffmpeg -y -loop 1 -i cover.png -c:v libx264 -b:v 5M -t $FRAME_DUR \
-  -pix_fmt yuv420p -r $FPS_NUM cover_clip.mp4
-```
-
-### 版本一：含 BGM（final.mp4）
-
-```bash
-ffmpeg -y -i cover_clip.mp4 -i output.mp4 \
-  -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[outv]" \
-  -map "[outv]" -map 1:a \
-  -c:v libx264 -b:v 5M -c:a copy \
-  final.mp4
-```
-
-### 版本二：无 BGM（final_no_bgm.mp4）
-
-```bash
-ffmpeg -y -i cover_clip.mp4 -i output_no_bgm.mp4 \
-  -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[outv]" \
-  -map "[outv]" -map 1:a \
-  -c:v libx264 -b:v 5M -c:a copy \
-  final_no_bgm.mp4
-```
-
-### 清理 + 验证
-
-```bash
-rm -f cover_clip.mp4
-
-# 确认两个版本第一帧都是封面
-ffmpeg -y -i final.mp4 -vf "select=eq(n\,0)" -vframes 1 verify_cover.png
-ffmpeg -y -i final_no_bgm.mp4 -vf "select=eq(n\,0)" -vframes 1 verify_no_bgm.png
-rm -f verify_cover.png verify_no_bgm.png
+# 封面嵌入视频第一帧，产出 final.mp4 + final_no_bgm.mp4
+bash .claude/commands/clipforge/scripts/assemble_final.sh
 ```
 
 > **封面仅占 1 帧**，对视频时长影响可忽略。`-b:v 5M` 与 Stage 6 渲染码率一致，避免拼接降质。
