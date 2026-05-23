@@ -31,7 +31,7 @@
   position: relative; width: 100%; height: 100%;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 120px 60px;
+  padding: 120px 70px;
 }
 .hero-glow {
   position: absolute; border-radius: 50%; filter: blur(140px);
@@ -677,7 +677,7 @@ tl.from('.reveal-text', {
   position: relative; width: 100%; height: 100%;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 120px 60px;
+  padding: 120px 70px;
 }
 /* 背景装饰 */
 .pfc-glow {
