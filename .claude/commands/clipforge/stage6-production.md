@@ -121,9 +121,12 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 | what/how | DataViz | CompareSplit | CodeRain(背景) |
 | capabilities | DataViz | TextReveal | ParticleBurst(揭示时) |
 | features | DataViz | CompareSplit | PulseOrb + ParticleBurst |
+| **标准模式项目介绍** | **ProjectFullCard** | **PulseOrb** | — |
 | usecases | TimeLineFlow | DataViz | — |
 | tech | DataViz | CodeRain(背景) | — |
 | CTA | TextReveal | — | ParticleBurst(结尾) |
+
+> **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（§13），一个项目占满一屏，包含 8 层信息。数据来自 `narration_segments.json` 的 `selling_points`、`commentary` 字段和 content 数据。
 
 ### 角色和幽默组件插入
 
@@ -311,7 +314,8 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 - 顶部危险区：上 200px
 - 底部危险区：下 300px
-- 安全内容区：200px ~ 1600px
+- 水平安全边距：左右各 35px（约 3.2%），内容不得贴边
+- 安全内容区：200px ~ 1600px（垂直），30px ~ 1045px（水平）
 
 ## 6.6 渲染
 
@@ -375,6 +379,8 @@ npx hyperframes render . --output output.mp4 --video-bitrate 5M
 
 # ── 渲染 2: BGM 静音 → output_no_bgm.mp4（仅旁白）──
 sed -i 's/id="bgm"[^>]*data-volume="[^"]*"/id="bgm" data-volume="0"/' index.html
+# 确认替换成功（必须看到 data-volume="0"）
+grep 'id="bgm"' index.html
 npx hyperframes render . --output output_no_bgm.mp4 --video-bitrate 5M
 # 恢复 BGM 音量
 sed -i "s/id=\"bgm\" data-volume=\"0\"/id=\"bgm\" data-volume=\"${BGM_VOL}\"/" index.html
@@ -448,10 +454,40 @@ for f in final.mp4 final_no_bgm.mp4; do
   [ "$SR" = "48000" ] || echo "FATAL: $f sample_rate=${SR}, expected 48000"
 done
 
-# ── BGM 可感知性 ──
+# ── BGM 隔离性校验（强制 PASS/FAIL）──
 VOL_WITH=$(ffmpeg -i final.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
 VOL_WITHOUT=$(ffmpeg -i final_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
 echo "BGM check: with=${VOL_WITH} dB, without=${VOL_WITHOUT} dB"
+
+# 断言：no_bgm 必须比含 BGM 版本安静至少 3dB
+DIFF=$(python3 -c "print(abs(float('${VOL_WITHOUT:-0}') - float('${VOL_WITH:-0}')))")
+if [ -z "$VOL_WITH" ] || [ -z "$VOL_WITHOUT" ]; then
+  echo "FAIL: BGM volumedetect 数据缺失"
+  echo "=== Stage 6 完成门禁失败 ==="
+  exit 1
+fi
+
+# 含 BGM 的文件应该更响（数值更大/更接近 0），no_bgm 应更安静
+if python3 -c "exit(0 if float('${VOL_WITHOUT}') < float('${VOL_WITH}') - 2.0 else 1)"; then
+  echo "PASS: BGM 隔离校验通过 (差值 ${DIFF} dB)"
+else
+  echo "FAIL: no_bgm 文件 BGM 未消除（差值仅 ${DIFF} dB，需 >= 3dB）"
+  echo "=== Stage 6 完成门禁失败 ==="
+  exit 1
+fi
+
+# 同理检查 output 文件
+VOL_OUT=$(ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
+VOL_OUT_NB=$(ffmpeg -i output_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
+echo "Output BGM check: with=${VOL_OUT} dB, without=${VOL_OUT_NB} dB"
+
+if python3 -c "exit(0 if float('${VOL_OUT_NB}') < float('${VOL_OUT}') - 2.0 else 1)"; then
+  echo "PASS: output BGM 隔离校验通过"
+else
+  echo "FAIL: output_no_bgm.mp4 BGM 未消除"
+  echo "=== Stage 6 完成门禁失败 ==="
+  exit 1
+fi
 
 echo "=== Stage 6 完成门禁通过 ==="
 ```
@@ -471,6 +507,7 @@ echo "=== Stage 6 完成门禁通过 ==="
 | GSAP timeline 未注册（§7.6） | 事故：空 `__timelines={}` 导致全片空白 |
 | 音频文件不在项目目录内（§7.5） | 事故：渲染引擎只认相对路径，绝对路径 404 静音 |
 | 渲染前未移除 cover.html 等（§7.4） | 事故：多个 root composition 导致渲染冲突 |
+| BGM 泄露到 no_bgm 文件 | volumedetect 差值 < 3dB → sed 替换未生效或渲染顺序错误，必须重做 §6.7 |
 | 缺少 `output_no_bgm.mp4` | 双版本输出不可省略 |
 | 白屏/黑屏渲染结果 | 检查 `window.__hf` 定义和 `data-duration` 值 |
 | Canvas 粒子使用 requestAnimationFrame | HyperFrames seek 驱动，独立 rAF 循环导致画面不一致 |

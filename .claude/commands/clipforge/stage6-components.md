@@ -628,6 +628,164 @@ tl.from('.reveal-text', {
 }, startTime);
 ```
 
+## 13. ProjectFullCard — 标准模式单项目全屏卡片
+
+> **数据来源：** 爆款视频分析（05-19，11万播放）采用一屏一项目布局，每个项目包含 8 层信息，播放量是一屏多项目的 3 倍。
+
+**用途:** 标准模式下每个项目独占一屏的全屏卡片
+**情感目标:** 信息聚焦、记忆点清晰
+**时长:** 6-8 秒/项目
+
+```html
+<div class="project-full-card">
+  <!-- 背景装饰 -->
+  <div class="pfc-glow pfc-glow-warm"></div>
+  <div class="pfc-glow pfc-glow-cool"></div>
+  <div class="pfc-grid"></div>
+
+  <!-- 第1层：类别标签 -->
+  <div class="pfc-category">WiFi 黑科技</div>
+
+  <!-- 核心信息区 -->
+  <div class="pfc-main">
+    <!-- 第2层：排名数字（左侧） -->
+    <div class="pfc-rank">4</div>
+
+    <!-- 中间信息列 -->
+    <div class="pfc-info">
+      <!-- 第3层：项目名 -->
+      <div class="pfc-name">RuView</div>
+      <!-- 第4层：一句话描述 -->
+      <div class="pfc-desc">WiFi 信号空间感知 · 无需摄像头</div>
+      <!-- 第5层：语言标签 -->
+      <div class="pfc-lang">Rust</div>
+    </div>
+
+    <!-- 第6层：星标增量（右侧） -->
+    <div class="pfc-stars">+700 ★</div>
+  </div>
+
+  <!-- 第7层：三词卖点 -->
+  <div class="pfc-selling">射频信号 · 姿态估计 · 体征监测</div>
+  <!-- 第8层：感性评语 -->
+  <div class="pfc-commentary">家用 WiFi 即可实现空间智能</div>
+</div>
+```
+
+```css
+.project-full-card {
+  position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 120px 60px;
+}
+/* 背景装饰 */
+.pfc-glow {
+  position: absolute; border-radius: 50%; filter: blur(140px);
+  pointer-events: none;
+}
+.pfc-glow-warm {
+  width: 500px; height: 500px; opacity: 0.2;
+  background: var(--accent-warm);
+  top: 300px; left: -80px;
+}
+.pfc-glow-cool {
+  width: 400px; height: 400px; opacity: 0.15;
+  background: var(--accent-cool);
+  bottom: 400px; right: -60px;
+}
+.pfc-grid {
+  position: absolute; width: 100%; height: 100%;
+  background-image:
+    linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none;
+}
+/* 第1层：类别标签 */
+.pfc-category {
+  font-size: 28px; font-weight: 600;
+  color: var(--accent-cool);
+  margin-bottom: 60px;
+}
+/* 核心信息区：三栏布局 */
+.pfc-main {
+  display: flex; align-items: center; gap: 40px;
+  width: 100%; margin-bottom: 60px;
+}
+/* 第2层：排名数字 */
+.pfc-rank {
+  font-size: 120px; font-weight: 900;
+  color: var(--accent-warm);
+  text-shadow: 0 0 60px rgba(240,180,41,0.4);
+  flex-shrink: 0; min-width: 140px; text-align: center;
+}
+/* 中间信息列 */
+.pfc-info {
+  flex: 1; display: flex; flex-direction: column; gap: 12px;
+}
+/* 第3层：项目名 */
+.pfc-name {
+  font-size: 56px; font-weight: 800; color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+}
+/* 第4层：一句话描述 */
+.pfc-desc {
+  font-size: 32px; color: var(--text-secondary); line-height: 1.4;
+}
+/* 第5层：语言标签 */
+.pfc-lang {
+  display: inline-block; font-size: 22px; font-weight: 600;
+  color: var(--accent-cool);
+  background: rgba(0,180,255,0.12);
+  padding: 4px 16px; border-radius: 12px;
+  margin-top: 4px; width: fit-content;
+}
+/* 第6层：星标增量 */
+.pfc-stars {
+  font-size: 36px; font-weight: 800;
+  color: var(--accent-warm);
+  text-shadow: 0 0 30px rgba(240,180,41,0.3);
+  flex-shrink: 0; text-align: right; white-space: nowrap;
+}
+/* 第7层：三词卖点 */
+.pfc-selling {
+  font-size: 32px; font-weight: 600;
+  color: var(--accent-cool);
+  margin-bottom: 24px; text-align: center;
+}
+/* 第8层：感性评语 */
+.pfc-commentary {
+  font-size: 28px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+```
+
+```javascript
+// GSAP 入场：分层依次出现
+tl.from('.pfc-category', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, sceneStart + 0.1)
+  .from('.pfc-rank', {opacity:0, scale:0.5, duration:0.4, ease:'back.out(1.5)'}, sceneStart + 0.2)
+  .from('.pfc-name', {opacity:0, x:-20, duration:0.3, ease:'power3.out'}, sceneStart + 0.3)
+  .from('.pfc-desc', {opacity:0, duration:0.3, ease:'power3.out'}, sceneStart + 0.5)
+  .from('.pfc-lang', {opacity:0, scale:0.8, duration:0.2, ease:'back.out(2)'}, sceneStart + 0.7)
+  .from('.pfc-stars', {opacity:0, x:20, duration:0.3, ease:'power3.out'}, sceneStart + 0.3)
+  .from('.pfc-selling', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, sceneStart + 0.8)
+  .from('.pfc-commentary', {opacity:0, duration:0.3, ease:'power3.out'}, sceneStart + 1.0);
+```
+
+**与 narration_segments.json 字段映射：**
+
+| 8 层 | JSON 字段 |
+|------|----------|
+| 类别标签 | 由 Stage 3 根据项目功能提取（非 JSON 字段，Stage 6 自行生成） |
+| 排名数字 | 场景顺序（scene id 中的序号） |
+| 项目名 | content 数据 |
+| 一句话描述 | `narration_segment` 提取的核心卖点 |
+| 语言标签 | content 数据（language 字段） |
+| 星标增量 | content 数据（today_star 字段） |
+| 三词卖点 | `selling_points` |
+| 感性评语 | `commentary` |
+
 ---
 
 ## 呼吸帧模板

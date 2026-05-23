@@ -4,9 +4,45 @@
 
 | 模式 | 场景数 | 目标时长 |
 |------|--------|---------|
-| 标准模式 | 6-8 个 | 35-55 秒 |
+| 标准模式 | 6-8 个 | 45-55 秒 |
 | 单项目深度解析 | 7-8 个 | 45-60 秒 |
 | 电影解读模式 | 不限 | 3-5 分钟 |
+
+## 标准模式 — 单项目全屏结构（8 层信息）
+
+> **数据来源：** 爆款视频分析（05-19，11万播放）采用一屏一项目布局，每项目包含 8 层信息。对比同日另一视频（一屏多项目，5 层信息），播放量差 3 倍。
+
+标准模式下，每个项目独占一个场景（6-8s），画面包含 8 层信息，从理性到感性全覆盖：
+
+| 层级 | 内容 | 字色 | 示例 |
+|------|------|------|------|
+| 1. 类别标签 | 项目所属类别概括 | 浅蓝/辅助色 | "今日之星" / "反检测利器" / "WiFi 黑科技" |
+| 2. 排名数字 | 大号排名编号 | 强调色（橙/金） | "1" / "2" / "3" |
+| 3. 项目名 | 英文原名 | 白色 | "openhuman" / "RuView" |
+| 4. 一句话描述 | 中文翻译 + 核心卖点 | 浅灰 | "个人 AI 超级大脑·完全私有化" |
+| 5. 语言标签 | 技术栈药丸 | 辅助色徽章 | "Rust" / "Python" |
+| 6. 星标增量 | 今日涨星数 | 强调色（橙/金） | "+3941 ★" |
+| 7. 三词卖点 | 3 个关键词用间隔号连接 | 辅助色（蓝/青） | "私有部署·极速响应·本地运行" |
+| 8. 感性评语 | 一句话感性总结 | 浅灰 | "一天涨近四千星，速度惊人" |
+
+**8 层信息的生成规则：**
+- **类别标签**：从项目功能中提取 4 字以内的概括，要有记忆点（不说"工具"，说"反检测利器"；不说"AI 项目"，说"个人大脑"）
+- **三词卖点**：3 个词分别覆盖能力、性能、场景三个维度，用"·"分隔，每词 ≤6 字
+- **感性评语**：用数据或感叹做情绪收尾，不超过 12 字。可以是数据惊叹（"近四千星，速度惊人"）或场景感慨（"家用 WiFi 就能实现"）
+
+### 反直觉角度挖掘（每个项目必须执行）
+
+对每个项目回答以下问题，提取反直觉角度：
+
+1. **非常规手段**：是否用不常见的技术做常见的事？
+2. **离线/本地替代**：是否在本地完成通常需要云端的功能？
+3. **平民化专业能力**：是否让普通人能做专业级的事？
+4. **领域跨界**：是否把 A 领域的技术用在了 B 领域？
+
+挖掘结果写入 `contrarian_angle` 字段。如果项目有反直觉角度，优先用在：
+- 旁白文案中的介绍句
+- 发布文案中的钩子句
+- 类别标签的命名
 
 ## 节奏铁律
 
@@ -171,7 +207,10 @@ scenes:
     "emotion": "grab",
     "emotion_intensity": 0.3,
     "humor_type": null,
-    "character_expression": null
+    "character_expression": null,
+    "selling_points": null,
+    "commentary": null,
+    "contrarian_angle": null
   },
   {
     "scene": "topic1",
@@ -180,7 +219,10 @@ scenes:
     "emotion": "build",
     "emotion_intensity": 0.5,
     "humor_type": "analogy",
-    "character_expression": "cool"
+    "character_expression": "cool",
+    "selling_points": "极速响应·本地运行·隐私优先",
+    "commentary": "一天涨了三千星，开发者用脚投票",
+    "contrarian_angle": "完全离线运行的大语言模型，不需要显卡"
   },
   {
     "scene": "topic2",
@@ -189,7 +231,10 @@ scenes:
     "emotion": "reveal",
     "emotion_intensity": 0.8,
     "humor_type": "sarcasm",
-    "character_expression": "tease"
+    "character_expression": "tease",
+    "selling_points": null,
+    "commentary": null,
+    "contrarian_angle": null
   },
   {
     "scene": "cta",
@@ -198,7 +243,10 @@ scenes:
     "emotion": "summon",
     "emotion_intensity": 0.4,
     "humor_type": null,
-    "character_expression": null
+    "character_expression": null,
+    "selling_points": null,
+    "commentary": null,
+    "contrarian_angle": null
   }
 ]
 ```
@@ -211,6 +259,9 @@ scenes:
 | `emotion_intensity` | float | 0-1，对应 design.md 的 emotion_curve |
 | `humor_type` | string/null | `analogy`（类比）/ `sarcasm`（反差吐槽）/ `trivia`（冷知识梗）/ null |
 | `character_expression` | string/null | `shock`/`think`/`cool`/`explode`/`tease`/`moved`/null |
+| `selling_points` | string/null | 三词卖点（仅标准模式项目场景），格式："词1·词2·词3"，每词 ≤6 字 |
+| `commentary` | string/null | 感性评语（仅标准模式项目场景），≤12 字，数据惊叹或场景感慨 |
+| `contrarian_angle` | string/null | 反直觉角度（仅标准模式项目场景），用于旁白钩子和发布文案 |
 
 同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）：
 ```
@@ -299,7 +350,7 @@ Stage 3 只标记 emotion，不设置具体 rate 值。Stage 4 读取 emotion �
 
 | 模式 | 目标时长   | 建议字数 |
 |------|--------|---------|
-| 标准模式（5-6 个项目） | 25-55s | 200-350 字 |
+| 标准模式（5-6 个项目） | 45-55s | 250-380 字 |
 | 深度解析模式 | 45-60s | 300-450 字 |
 
 ### 产出
