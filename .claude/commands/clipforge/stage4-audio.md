@@ -118,15 +118,69 @@ with open('narration.srt', 'w', encoding='utf-8') as f:
 
 ### 音量标准化
 
-**对合并后的 `narration.mp3` 执行 loudnorm 标准化：**
+**对合并后的 `narration.mp3` 执行 loudnorm 标准化（Python 版，不依赖 jq）：**
 
 ```bash
-# loudnorm 标准化（两遍处理）
-ffmpeg -i narration.mp3 -af "loudnorm=I=-16:TP=-2:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
-ffmpeg -y -i narration.mp3 -af "loudnorm=I=-16:TP=-2:LRA=11:measured_I=$(jq -r '.input_i' loudnorm_stats.json):measured_TP=$(jq -r '.input_tp' loudnorm_stats.json):measured_LRA=$(jq -r '.input_lra' loudnorm_stats.json):measured_thresh=$(jq -r '.input_thresh' loudnorm_stats.json):linear=true" narration_norm.mp3 && mv narration_norm.mp3 narration.mp3
+# loudnorm pass 1：分析响度，提取参数
+ffmpeg -i narration.mp3 -af "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
+
+# loudnorm pass 2：用 Python 提取 JSON 参数并应用（jq 在 Windows 不可用）
+python -c "
+import json, subprocess
+with open('loudnorm_stats.json') as f:
+    # ffmpeg 输出可能混入非 JSON 行，找到第一个 { 开始的行
+    lines = f.readlines()
+    json_str = ''
+    started = False
+    for line in lines:
+        if '{' in line and not started:
+            started = True
+        if started:
+            json_str += line
+    stats = json.loads(json_str)
+    measured_i = stats['input_i']
+    measured_tp = stats['input_tp']
+    measured_lra = stats['input_lra']
+    measured_thresh = stats['input_thresh']
+    offset = stats['target_offset']
+    print(f'measured_I={measured_i}, measured_TP={measured_tp}, measured_LRA={measured_lra}, measured_thresh={measured_thresh}, offset={offset}')
+    # Pass 2
+    cmd = [
+        'ffmpeg', '-y', '-i', 'narration.mp3',
+        '-af', f'loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={measured_i}:measured_TP={measured_tp}:measured_LRA={measured_lra}:measured_thresh={measured_thresh}:offset={offset}:linear=true',
+        '-ar', '48000', '-ac', '1',
+        'narration_norm.mp3'
+    ]
+    subprocess.run(cmd, check=True)
+"
+mv narration_norm.mp3 narration.mp3
 ```
 
 > 标准化后无需重新测量分段时长——loudnorm 只改变响度不改变时长。
+>
+> **严禁使用 jq** — Windows 环境不预装 jq，jq 命令失败会导致 pass 2 静默跳过，narration.mp3 保持未标准化状态（音量极低），最终视频无声音。
+
+### loudnorm 校验（必须执行）
+
+标准化完成后，验证 narration.mp3 音量在合理范围：
+
+```bash
+# 校验标准化后的音量（正常语音 mean -15~-20 dB, max -5~0 dB）
+NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
+echo "narration.mp3 max_volume: ${NARR_MAX} dB"
+
+# max_volume 低于 -10 dB 说明标准化未生效，必须阻断
+python -c "
+vol = float('${NARR_MAX}')
+if vol < -10:
+    print(f'FATAL: narration.mp3 max_volume={vol} dB (< -10 dB), loudnorm 标准化未生效！')
+    print('可能原因：loudnorm pass 2 未执行（jq 不可用或命令报错）')
+    print('修复：检查上方 loudnorm 步骤的 Python 脚本是否正确执行')
+    exit(1)
+else:
+    print(f'OK: narration.mp3 max_volume={vol} dB，标准化正常')
+"
+```
 
 ### 输出文件
 
@@ -279,13 +333,15 @@ ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 
 | BGM mean_volume | 推荐 volume | 说明 |
 |----------------|------------|------|
-| > -5 dB（极端响） | `0.03`     | 电子/摇滚等极端响度，需大幅衰减 |
-| -5 ~ -10 dB（非常响） | `0.04`     | 需要较大衰减 |
-| > -10 ~ -15 dB（很响） | `0.06`     | 响度较高的配乐 |
-| -15 ~ -20 dB | `0.10`     | 中等偏响 |
+| > -5 dB（极端响） | `0.12`     | 电子/摇滚等极端响度 |
+| -5 ~ -10 dB（非常响） | `0.12`     | 需要较大衰减 |
+| > -10 ~ -15 dB（很响） | `0.13`     | 响度较高的配乐 |
+| -15 ~ -20 dB | `0.13`     | 中等偏响 |
 | -20 ~ -25 dB | `0.15`     | 中等音量（最常见）→ **默认推荐** |
-| -25 ~ -30 dB | `0.18`     | 偏安静 |
-| < -30 dB（很安静） | `0.22`     | 需要较大提升 |
+| -25 ~ -30 dB | `0.17`     | 偏安静 |
+| < -30 dB（很安静） | `0.21`     | 需要较大提升 |
+
+> **前提：narration.mp3 已经过 loudnorm I=-16 标准化（峰值约 -1.5 dB）。** 此表基于旁白峰值 -1.5 dB 计算，目标 BGM 峰值比旁白低 17 dB。如果 loudnorm 未生效，此表全部失效。
 
 **将推荐 volume 值写入 `segment_durations.json`：**
 
@@ -325,44 +381,44 @@ fi
 
 ### BGM 峰值间距校验（必须执行）
 
-查表得到推荐 volume 后，验证衰减后的 BGM 峰值不会盖过旁白：
+查表得到推荐 volume 后，验证衰减后的 BGM 峰值在合理范围。**要求：衰减后 BGM 峰值比旁白峰值低 15~20 dB（可感知但不抢戏）。**
 
 ```bash
 # 获取 BGM 峰值（max_volume）
 BGM_MAX=$(ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
 echo "bgm.wav max_volume: ${BGM_MAX} dB"
 
-# 获取旁白峰值
+# 获取旁白峰值（必须用标准化后的 narration.mp3）
 NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
 echo "narration.mp3 max_volume: ${NARR_MAX} dB"
 
-# 计算衰减后 BGM 峰值 = max_volume + 20*log10(volume)
-# 要求：衰减后 BGM 峰值 ≤ 旁白峰值 - 12 dB（至少 12 dB 间距）
-# 如果间距不足，自动降低 volume
+# 双向校验：BGM 不能太响（间距 < 15 dB）也不能太小（间距 > 22 dB）
 python -c "
-import math, sys
+import math
 bgm_max = float('${BGM_MAX}')
 narr_max = float('${NARR_MAX}')
-vol = float('${BGM_VOL}')  # 从查表得到的 volume
+vol = float('${BGM_VOL}')
 
 attenuated = bgm_max + 20 * math.log10(vol)
 gap = narr_max - attenuated
 print(f'BGM 衰减后峰值: {attenuated:.1f} dB')
 print(f'旁白峰值: {narr_max:.1f} dB')
-print(f'间距: {gap:.1f} dB')
+print(f'间距: {gap:.1f} dB (目标 15~20 dB)')
 
-if gap < 12:
-    # 反推满足 12 dB 间距的最小衰减
-    import numpy as np
-    needed_vol = 10 ** ((narr_max - 12 - bgm_max) / 20)
-    # 向下取整到 0.01
+if gap < 15:
+    needed_vol = 10 ** ((narr_max - 17 - bgm_max) / 20)
     needed_vol = math.floor(needed_vol * 100) / 100
-    if needed_vol < 0.01:
-        needed_vol = 0.01
-    print(f'WARNING: 间距仅 {gap:.1f} dB < 12 dB，volume 从 {vol} 降至 {needed_vol}')
+    if needed_vol < 0.01: needed_vol = 0.01
+    print(f'WARNING: BGM 太响（间距 {gap:.1f} dB < 15 dB），volume 从 {vol} 降至 {needed_vol}')
+    print(f'FINAL_VOL={needed_vol}')
+elif gap > 22:
+    needed_vol = 10 ** ((narr_max - 17 - bgm_max) / 20)
+    needed_vol = math.ceil(needed_vol * 100) / 100
+    if needed_vol > 0.50: needed_vol = 0.50
+    print(f'WARNING: BGM 太小听不到（间距 {gap:.1f} dB > 22 dB），volume 从 {vol} 升至 {needed_vol}')
     print(f'FINAL_VOL={needed_vol}')
 else:
-    print(f'间距 OK: {gap:.1f} dB ≥ 12 dB')
+    print(f'间距 OK: {gap:.1f} dB')
     print(f'FINAL_VOL={vol}')
 "
 ```
@@ -425,9 +481,29 @@ echo "file 'silence_huaan_video.mp3'" >> concat_new.txt
 # 合并为完整旁白（含静音填充）
 ffmpeg -y -f concat -safe 0 -i concat_new.txt -c copy narration_new.mp3
 
-# loudnorm 标准化
-ffmpeg -i narration_new.mp3 -af "loudnorm=I=-16:TP=-2:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
-ffmpeg -y -i narration_new.mp3 -af "loudnorm=I=-16:TP=-2:LRA=11:measured_I=$(jq -r '.input_i' loudnorm_stats.json):measured_TP=$(jq -r '.input_tp' loudnorm_stats.json):measured_LRA=$(jq -r '.input_lra' loudnorm_stats.json):measured_thresh=$(jq -r '.input_thresh' loudnorm_stats.json):linear=true" narration_new_norm.mp3 && mv narration_new_norm.mp3 narration_new.mp3
+# loudnorm 标准化（Python 版，不依赖 jq）
+ffmpeg -i narration_new.mp3 -af "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
+python -c "
+import json, subprocess
+with open('loudnorm_stats.json') as f:
+    lines = f.readlines()
+    json_str = ''
+    started = False
+    for line in lines:
+        if '{' in line and not started:
+            started = True
+        if started:
+            json_str += line
+    stats = json.loads(json_str)
+    cmd = [
+        'ffmpeg', '-y', '-i', 'narration_new.mp3',
+        '-af', f\"loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={stats['input_i']}:measured_TP={stats['input_tp']}:measured_LRA={stats['input_lra']}:measured_thresh={stats['input_thresh']}:offset={stats['target_offset']}:linear=true\",
+        '-ar', '48000', '-ac', '1',
+        'narration_new_norm.mp3'
+    ]
+    subprocess.run(cmd, check=True)
+"
+mv narration_new_norm.mp3 narration_new.mp3
 ```
 
 > **电影解读模式下，`narration_new.mp3` 替代 `narration.mp3` 嵌入 HTML `<audio>`。** 标准模式直接使用 `narration.mp3`。
