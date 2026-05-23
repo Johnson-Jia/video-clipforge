@@ -69,7 +69,7 @@ gh api repos/{owner}/{repo}/contributors --paginate --jq '.[].id' | wc -l
 
 **选取流程：**
 
-1. 获取当日 trending 数据（`scripts/github_trending.py` 或 API）
+1. 获取当日 trending 数据（`.claude/commands/clipforge/scripts/github_trending.py` 或 API）
 2. **检查前次视频项目列表**：读取同类型最近一次视频的 `raw_trending.json` 或 `narration_segments.json`，识别哪些项目上次已介绍
 3. **标记三类项目**：新上榜 / 涨星加速 / 连续霸榜
 4. **组合选取 5-6 个**：优先新上榜和涨星加速，补入霸榜项目维持信息连续性
@@ -257,7 +257,7 @@ true — GitHub 系列视频启用码力角色。
 
 - **优先写脚本**：用 Python `requests` 或 `curl` 直接 HTTP 抓取，绕过所有中间层缓存
 - **MCP 做验证**：用 web-reader 等工具作为第二数据源交叉确认
-- **已有脚本的场景**（如 `scripts/github_trending.py`）：直接运行脚本，按脚本输出的校验报告确认数据质量
+- **已有脚本的场景**（如 `.claude/commands/clipforge/scripts/github_trending.py`）：直接运行脚本，按脚本输出的校验报告确认数据质量
 - **无现成脚本的场景**：临场写一个轻量脚本或用 `curl` + `jq` 抓取验证
 
 ### Red Flags（GitHub 特定）

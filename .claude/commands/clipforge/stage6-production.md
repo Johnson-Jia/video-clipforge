@@ -42,10 +42,19 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 }
 ```
 
+**色彩优先级规则（冲突时必须遵守）：**
+
+当 `design.md` 的 `color_direction` 与 `immersion_mode` 配色速查表冲突时：
+- **`color_direction` 优先。** `color_direction` 是 Stage 2 基于内容主题推导的定制配色，比 `immersion_mode` 的通用配色表更精准。
+- `immersion_mode` 配色速查表作为**兜底默认值**，仅在 `color_direction` 未明确指定色值时生效。
+- `immersion_mode` 的**风格方向**（暗度、饱和度、对比度特征）仍然有效，只是具体色值让位于 `color_direction`。
+- 实践：先从 `immersion_mode` 查表获取 `:root` CSS 变量，再用 `color_direction` 中明确的色值覆盖对应变量。
+
 **设计决策链：**
-1. `immersion_mode` → `stage6-components.md` 配色速查 → `:root` CSS 变量
-2. 每个场景的 `emotion` → 视觉力度（粒子密度、光晕强度、动画速度）
-3. `character_presence` + 每段 `character_expression` → CharOverlay 组件选择
+1. `immersion_mode` → `stage6-components.md` 配色速查 → `:root` CSS 变量（兜底）
+2. `color_direction` → 覆盖 `:root` 中冲突的色值（优先）
+3. 每个场景的 `emotion` → 视觉力度（粒子密度、光晕强度、动画速度）
+4. `character_presence` + 每段 `character_expression` → CharOverlay 组件选择
 
 ## 6.3 音频嵌入
 
@@ -110,13 +119,13 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 1. **读取 `narration_segments.json`** — 每段的 `scene`、`emotion`、`character_expression`、`humor_type`
 2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 3. **读取 `stage6-components.md`** — 选择匹配的组件模板
-4. **选择组件** — 每个场景根据 `emotion` 和内容类型选择组件
+4. **填充特效（必须）** — 每个场景根据 `emotion` 从情绪映射表选择特效组件，写入 `.layer-fx`。**空 layer-fx 视为 stage 未完成，stage6_gate.sh 会拦截。**
 5. **装配 HTML** — 按 HyperFrames composition 结构组装
 
 ### 场景 → 组件映射
 
-| 场景类型 | 主组件 | 辅助组件 | 特效 |
-|---------|--------|---------|------|
+| 场景类型 | 主组件 | 辅助组件 | 特效（必选） |
+|---------|--------|---------|------------|
 | hook | HeroCard | StarCounter | PulseOrb |
 | what/how | DataViz | CompareSplit | CodeRain(背景) |
 | capabilities | DataViz | TextReveal | ParticleBurst(揭示时) |
@@ -134,6 +143,186 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 - `humor_type` 非 null 的场景 → 添加 `SpeechBubble` 组件（文案从 narration 提取幽默句）
 - 角色定位：画面左下角，占 15-20%
 - 气泡定位：画面右下角或角色上方
+
+### 特效填充验证（HTML 写完后必须执行）
+
+```bash
+# 检查是否有空的 layer-fx
+EMPTY_FX=$(grep -c '<div class="layer-fx"></div>' index.html 2>/dev/null || echo "0")
+if [ "$EMPTY_FX" -gt 0 ]; then
+  echo "FAIL: 发现 ${EMPTY_FX} 个空 layer-fx，必须填充特效后才能渲染"
+  exit 1
+fi
+echo "PASS: 所有 layer-fx 已填充"
+```
+
+## 6.4a 视觉分镜（Visual Phasing）
+
+> **当场景时长 >15 秒时必须使用。** 将一个 `.clip` 拆分为多个视觉阶段（phase），每 phase 8-15 秒，通过 GSAP timeline 控制渐进揭示。遵守 `_shared-rules` §6 的切换频率规则。
+
+### 核心原理
+
+```
+改造前: 1 段旁白 ──→ 1 个 clip ──→ 1 个静态画面（30-57 秒不动）
+改造后: 1 段旁白 ──→ 1 个 clip ──→ N 个 phase（每 phase 8-15 秒）
+```
+
+- 音频管线不变：旁白仍然是连续的 narration.mp3
+- `.clip` 数量不变：仍然一个 narration segment 对应一个 clip
+- phase 是 `.layer-content` 内的多个子 div，通过 GSAP opacity 控制显示/隐藏
+
+### Phase HTML 结构
+
+```html
+<div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
+  <div class="scene-wrap" style="padding:120px 70px">
+    <!-- 三层架构不变 -->
+    <div class="layer-bg"><!-- 背景渐变 + 光晕 --></div>
+    <div class="layer-fx"><!-- 特效 --></div>
+    <!-- layer-content 内包含多个 phase -->
+    <div class="layer-content">
+      <!-- Phase 1: CSS 默认 opacity:1，GSAP 入场动画 -->
+      <div class="phase phase-1">
+        <div class="phase-title">养老AI手环</div>
+        <div class="feature-list">...</div>
+      </div>
+      <!-- Phase 2-4: CSS 默认 opacity:1，但 GSAP .set() 在 clip 起始时设为 opacity:0 -->
+      <div class="phase phase-2"><!-- 定价数据 --></div>
+      <div class="phase phase-3"><!-- 用户规模 --></div>
+      <div class="phase phase-4"><!-- MVP路线图 --></div>
+    </div>
+  </div>
+</div>
+```
+
+**关键规则：**
+- 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，内容 flex 居中
+- Phase 1 是 CSS 默认可见（opacity:1），遵守 `_render-safety.md` §1.1
+- Phase 2+ **不在 CSS 中设 opacity:0**，由 GSAP `.set()` 在运行时初始化（遵守 §1.1a 豁免）
+- 所有 phase 共享同一个 `.layer-bg` 和 `.layer-fx`（背景和特效不随 phase 切换）
+
+### GSAP Phase 切换机制
+
+```javascript
+const SCENE_START = 394;   // clip 的 data-start
+const PHASE_GAP = 12.5;    // 50.14s / 4 phases ≈ 12.5s per phase
+
+// Phase 1 入场动画（原有机制不变）
+tl.from('.s-biz-elderly .phase-1 .phase-title', {opacity:0, y:20, duration:0.4}, SCENE_START)
+  .from('.s-biz-elderly .phase-1 .feature-card', {opacity:0, y:15, duration:0.3, stagger:0.15}, SCENE_START + 0.5);
+
+// 初始化 Phase 2-4 为不可见（GSAP .set，不是 CSS opacity:0）
+tl.set('.s-biz-elderly .phase-2', {opacity: 0}, SCENE_START)
+  .set('.s-biz-elderly .phase-3', {opacity: 0}, SCENE_START)
+  .set('.s-biz-elderly .phase-4', {opacity: 0}, SCENE_START);
+
+// Phase 1 → 2: 淡出旧 + 淡入新（使用内容对齐断点，禁止 PHASE_GAP 均分）
+tl.to('.s-biz-elderly .phase-1', {opacity: 0, duration: 0.3}, SCENE_START + BP1)
+  .to('.s-biz-elderly .phase-2', {opacity: 1, duration: 0.4}, SCENE_START + BP1 + 0.3);
+
+// Phase 2 → 3
+tl.to('.s-biz-elderly .phase-2', {opacity: 0, duration: 0.3}, SCENE_START + BP2)
+  .to('.s-biz-elderly .phase-3', {opacity: 1, duration: 0.4}, SCENE_START + BP2 + 0.3);
+
+// Phase 3 → 4
+tl.to('.s-biz-elderly .phase-3', {opacity: 0, duration: 0.3}, SCENE_START + BP3)
+  .to('.s-biz-elderly .phase-4', {opacity: 1, duration: 0.4}, SCENE_START + BP3 + 0.3);
+```
+
+**Phase 切换规则：**
+- 上一个 phase 淡化到 `opacity: 0`（完全消失，避免与后续 phase 重叠产生重影）
+- 新 phase 从 `opacity: 0` 渐显到 `opacity: 1`
+- 过渡时长 0.3-0.4 秒
+- **Phase 断点必须与旁白话题转换对齐，禁止均分**（见下方 §6.4b）
+- Phase 间 GSAP 动画offset：`SCENE_START + BP[i][n-1] + offset`（BP 为内容对齐断点数组）
+
+### §6.4b Phase 断点计算方法（内容对齐，禁止均分）
+
+> **事故复盘**：均分 gap 导致旁白与画面严重不同步——观众听到话题 A，画面已显示话题 B，偏差达 5-12 秒。
+
+**禁止**：`const gap = sc.d / sc.p`（时间均分）
+
+**必须**：逐场景分析旁白文本，按话题转换点计算断点。
+
+**计算步骤**：
+
+1. 读取该场景的 `narration_segments.json` 中的 `text` 和 `visual_phases`
+2. 在 `text` 中找到与每个 `visual_phases[n].focus` 对应的文本段落边界
+3. 计算字数比例：`ratio_n = boundary_char_position / total_chars`
+4. 转换为时间戳：`bp_n = ratio_n * actual_duration`
+5. 结果存入 BP 数组
+
+**代码模板**：
+
+```js
+// GSAP timeline 中定义断点数组
+const BP = [
+  [3.21, 16.72],    // 0: scene_name — P1:topic(XX%) P2:topic(XX%) P3:topic(XX%)
+  [15.25, 21.57],   // 1: scene_name — P1:topic(XX%) P2:topic(XX%) P3:topic(XX%)
+  // ... 每个场景一行
+];
+
+S.forEach((sc, i) => {
+  const bp1 = BP[i][0];  // Phase 1→2 断点
+  const bp2 = BP[i][1];  // Phase 2→3 断点
+  // 所有 Phase 切换使用 bp1/bp2 替代 gap/gap*2
+});
+```
+
+**验证标准**：观看视频时，Phase N 的视觉内容与对应时间段内的旁白文本语义匹配，偏差 ≤ 2 秒。
+
+### Phase 内容来源
+
+读取 `narration_segments.json` 的 `visual_phases` 数组：
+
+```json
+"visual_phases": [
+  { "focus": "产品定位与五大核心功能", "visual_type": "list",
+    "key_data": ["跌倒检测>95%", "用药提醒", "一键呼叫", "AI语音", "健康监测"] },
+  { "focus": "定价与收入模型", "visual_type": "data",
+    "key_data": ["硬件599-999元", "月订阅29-49元", "毛利率30-40%"] }
+]
+```
+
+- `focus` → phase 画面标题（`phase-header`）
+- `visual_type` → 选择 `stage6-components.md` 的 Phase 视觉模板
+- `key_data` → 画面上的数据/关键词内容
+
+### Phase 视觉类型 → 模板映射
+
+| visual_type | 画面布局 | 参考组件 |
+|------------|---------|---------|
+| `hero` | 大标题 + 关键数字 + 副标题 | HeroCard 风格 |
+| `list` | 标题 + 带序号的卡片列表 | — |
+| `data` | 标题 + 数据行（label + value） | DataViz 风格 |
+| `compare` | 标题 + 双栏对比 | CompareSplit 风格 |
+| `timeline` | 标题 + 步骤节点 | TimeLineFlow 风格 |
+| `highlight` | 大号结论文字 + 强调色 | TextReveal 风格 |
+
+每种类型的具体 HTML/CSS 骨架见 `stage6-components.md` 的「Phase 视觉模板」章节。
+
+### Phase 完整性验证（HTML 写完后必须执行）
+
+```bash
+# 检查长场景是否有足够的 phase
+python3 -c "
+import json
+dur = json.load(open('segment_durations.json'))['segments']
+phases = json.load(open('narration_segments.json'))
+fail = False
+for seg, narr in zip(dur, phases):
+    d = seg['actual_duration']
+    vp = narr.get('visual_phases', [])
+    if d > 15 and len(vp) < 2:
+        print(f'FAIL: {narr[\"scene\"]} ({d:.1f}s) needs >= 2 visual_phases, got {len(vp)}')
+        fail = True
+    elif d > 25 and len(vp) < 3:
+        print(f'WARN: {narr[\"scene\"]} ({d:.1f}s) has {len(vp)} phases, recommend >= 3')
+if fail:
+    exit(1)
+print('PASS: visual_phases check OK')
+"
+```
 
 ### 呼吸帧插入
 
@@ -176,6 +365,7 @@ Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek
 > **以下全部规则同样适用于 HyperFrames 委托模式产出的 HTML。**
 
 0. **内容安全规范**遵守 `clipforge/_shared-rules` 全部条款。
+0. **渲染安全规范**遵守 `clipforge/_render-safety` 全部条款（Stage 6 必读）。
 
 ### 结构规则
 
@@ -206,8 +396,8 @@ Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek
 ### CSS 规则
 
 8. **`.clip` 只设 `position: absolute` + 尺寸**，不要加 `opacity`
-9. **禁止 `.anim-in` 等 CSS 入场动画类**（事故复盘 §7.1）
-10. **画面文字禁止 HTML 实体**（事故复盘 §7.2）
+9. **禁止 `.anim-in` 等 CSS 入场动画类**
+10. **画面文字禁止 HTML 实体**
 11. **每个 scene-wrap 必须设 padding** `style="padding-top:120px;padding-bottom:120px;"`
 
 ### 视觉设计规则（必须遵守）
@@ -379,9 +569,9 @@ ffprobe -v quiet -show_streams -select_streams a output.mp4 | grep codec_name
 ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 ```
 
-## 6.7 双次渲染
+## 6.7 单次渲染 + ffmpeg 合成
 
-> **HyperFrames 负责画面 + 旁白 + BGM 的完整混音。** ffmpeg 只负责封面帧拼接，不碰音频。
+> **HyperFrames 只渲染一次 output.mp4（旁白 + BGM 混合）。** output_no_bgm.mp4 由 ffmpeg 从 output.mp4 视频轨 + narration.mp3（纯旁白源文件）合成，无需二次渲染。
 
 ### 渲染前准备
 
@@ -394,46 +584,64 @@ sed -i "s/id=\"bgm\" data-volume=\"[^\"]*\"/id=\"bgm\" data-volume=\"${BGM_VOL}\
 echo "HTML BGM data-volume set to ${BGM_VOL}"
 ```
 
-### 渲染
+### 渲染（仅一次）
 
 ```bash
-# ── 渲染 1: 完整 HTML → output.mp4（旁白 + BGM）──
+# ── 渲染: 完整 HTML → output.mp4（旁白 + BGM）──
 npx hyperframes render . --output output.mp4 --video-bitrate 5M
+```
 
-# ── 渲染 2: BGM 静音 → output_no_bgm.mp4（仅旁白）──
-sed -i 's/id="bgm"[^>]*data-volume="[^"]*"/id="bgm" data-volume="0"/' index.html
-# 确认替换成功（必须看到 data-volume="0"）
-grep 'id="bgm"' index.html
-npx hyperframes render . --output output_no_bgm.mp4 --video-bitrate 5M
-# 恢复 BGM 音量
-sed -i "s/id=\"bgm\" data-volume=\"0\"/id=\"bgm\" data-volume=\"${BGM_VOL}\"/" index.html
+### 合成 output_no_bgm.mp4（ffmpeg，不渲染）
+
+> **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
+> **必须**用 narration.mp3（纯旁白源文件）作为音频源。
+
+```bash
+# ── output_no_bgm.mp4 = output.mp4 视频轨 + narration.mp3 音频轨 ──
+ffmpeg -y -i output.mp4 -i narration.mp3 \
+  -map 0:v -map 1:a \
+  -c:v copy -c:a aac -b:a 128k \
+  -shortest \
+  output_no_bgm.mp4
+```
+
+### 文件逻辑
+
+```
+output.mp4      = 视频 + 旁白 + BGM（HyperFrames 渲染）
+output_no_bgm.mp4 = output.mp4 的视频 + narration.mp3 的音频（ffmpeg 合成）
+final.mp4      = cover.png + output.mp4
+final_no_bgm.mp4 = cover.png + output_no_bgm.mp4
 ```
 
 ## 6.8 封面帧拼接
 
-> 两条管线操作完全相同：48kHz 封面帧 + TS concat。**ffmpeg 只做容器拼接，不碰音频。**
+> **ffmpeg concat filter 拼接封面帧 + 正片视频，不碰音频。**
 
 ```bash
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 
-# ── 创建封面帧（1帧 H264 + 48kHz 静音音频）──
-ffmpeg -y -loop 1 -i cover.png -c:v libx264 -frames:v 1 \
-  -pix_fmt yuv420p -r 30 -vf "scale=1080:1920" cover_1frame.mp4
-
-ffmpeg -y -i cover_1frame.mp4 -f lavfi -i "anullsrc=r=48000:cl=stereo" \
-  -c:v copy -c:a aac -shortest cover_1frame_audio.mp4
-
-# ── TS 格式转换 ──
-ffmpeg -y -i cover_1frame_audio.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts cover.ts
-ffmpeg -y -i output.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts output.ts
-ffmpeg -y -i output_no_bgm.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts output_no_bgm.ts
+# ── 创建封面帧（1帧 H264）──
+ffmpeg -y -loop 1 -i cover.png -c:v libx264 -b:v 5M -t 0.0333 \
+  -pix_fmt yuv420p -r 30 cover_clip.mp4
 
 # ── 拼接：封面帧 + 正片 ──
-ffmpeg -y -i "concat:cover.ts|output.ts" -c copy -bsf:a aac_adtstoasc final.mp4
-ffmpeg -y -i "concat:cover.ts|output_no_bgm.ts" -c copy -bsf:a aac_adtstoasc final_no_bgm.mp4
+# final.mp4 = cover + output.mp4（含 BGM）
+ffmpeg -y -i cover_clip.mp4 -i output.mp4 \
+  -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[outv]" \
+  -map "[outv]" -map 1:a \
+  -c:v libx264 -b:v 5M -c:a copy \
+  final.mp4
+
+# final_no_bgm.mp4 = cover + output_no_bgm.mp4（仅旁白）
+ffmpeg -y -i cover_clip.mp4 -i output_no_bgm.mp4 \
+  -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[outv]" \
+  -map "[outv]" -map 1:a \
+  -c:v libx264 -b:v 5M -c:a copy \
+  final_no_bgm.mp4
 
 # ── 清理临时文件 ──
-rm -f cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts output_no_bgm.ts
+rm -f cover_clip.mp4
 ```
 
 ### BGM 音量参考
@@ -451,8 +659,8 @@ rm -f cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts output_no_bgm.t
 
 | 约束 | 违反后果 |
 |------|---------|
-| **anullsrc r=48000** | 封面帧 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 |
-| **ffmpeg 不碰音频** | 任何 ffmpeg 音频滤镜都可能改变采样率/音色 |
+| **output_no_bgm.mp4 必须用 narration.mp3 合成** | 用 `-map 0:a:0` 从 output.mp4 提取只得到混合轨，BGM 无法消除 |
+| **ffmpeg 只做封面帧拼接，不碰 output.mp4/output_no_bgm.mp4 的音频** | concat filter 只拼接视频流，音频从源文件直接 copy |
 | **BGM 音量在渲染前写入 HTML** | 渲染后无法修改 HyperFrames 已混入的 BGM 音量 |
 
 > **封面帧仅增加 1/30 秒（~33ms），对音画同步无感知影响。** `cover.png` 仍作为独立封面图上传平台。
@@ -460,62 +668,21 @@ rm -f cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts output_no_bgm.t
 ## 6.10 Stage 6 完成门禁
 
 ```bash
-# ── 文件存在性 ──
-[ -s index.html ] || echo "FAIL: index.html missing"
-[ -s output.mp4 ] || echo "FAIL: output.mp4 missing"
-[ -s output_no_bgm.mp4 ] || echo "FAIL: output_no_bgm.mp4 missing"
-
-# ── 视频/音频轨 ──
-for f in output.mp4 output_no_bgm.mp4; do
-  ffprobe -v quiet -show_streams $f | grep -q "codec_name=h264" || echo "FAIL: $f no video"
-  ffprobe -v quiet -show_streams $f | grep -q "codec_name=aac" || echo "FAIL: $f no audio"
-done
-
-# ── 采样率校验 ──
-for f in final.mp4 final_no_bgm.mp4; do
-  SR=$(ffprobe -v quiet -select_streams a -show_entries stream=sample_rate -of csv=p=0 $f)
-  [ "$SR" = "48000" ] || echo "FATAL: $f sample_rate=${SR}, expected 48000"
-done
-
-# ── BGM 隔离性校验（强制 PASS/FAIL）──
-VOL_WITH=$(ffmpeg -i final.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
-VOL_WITHOUT=$(ffmpeg -i final_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
-echo "BGM check: with=${VOL_WITH} dB, without=${VOL_WITHOUT} dB"
-
-# 断言：no_bgm 必须比含 BGM 版本安静至少 3dB
-DIFF=$(python3 -c "print(abs(float('${VOL_WITHOUT:-0}') - float('${VOL_WITH:-0}')))")
-if [ -z "$VOL_WITH" ] || [ -z "$VOL_WITHOUT" ]; then
-  echo "FAIL: BGM volumedetect 数据缺失"
-  echo "=== Stage 6 完成门禁失败 ==="
-  exit 1
-fi
-
-# 含 BGM 的文件应该更响（数值更大/更接近 0），no_bgm 应更安静
-if python3 -c "exit(0 if float('${VOL_WITHOUT}') < float('${VOL_WITH}') - 2.0 else 1)"; then
-  echo "PASS: BGM 隔离校验通过 (差值 ${DIFF} dB)"
-else
-  echo "FAIL: no_bgm 文件 BGM 未消除（差值仅 ${DIFF} dB，需 >= 3dB）"
-  echo "=== Stage 6 完成门禁失败 ==="
-  exit 1
-fi
-
-# 同理检查 output 文件
-VOL_OUT=$(ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
-VOL_OUT_NB=$(ffmpeg -i output_no_bgm.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep -oP 'mean_volume: \K[\-\d.]+')
-echo "Output BGM check: with=${VOL_OUT} dB, without=${VOL_OUT_NB} dB"
-
-if python3 -c "exit(0 if float('${VOL_OUT_NB}') < float('${VOL_OUT}') - 2.0 else 1)"; then
-  echo "PASS: output BGM 隔离校验通过"
-else
-  echo "FAIL: output_no_bgm.mp4 BGM 未消除"
-  echo "=== Stage 6 完成门禁失败 ==="
-  exit 1
-fi
-
-echo "=== Stage 6 完成门禁通过 ==="
+# ── Stage 6 完成门禁 ──
+bash .claude/commands/clipforge/scripts/stage6_gate.sh
 ```
 
 **如果任何检查失败，修复问题后重新执行，不得跳过。**
+
+---
+
+## Iron Law
+
+**NO VIDEO OUTPUT WITHOUT RENDER SAFETY CHECKS PASSED.**
+
+渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成 = 双版本输出失败。
+
+**Violating the letter of the rules is violating the spirit of the rules.**
 
 ---
 
@@ -530,7 +697,7 @@ echo "=== Stage 6 完成门禁通过 ==="
 | GSAP timeline 未注册（§7.6） | 事故：空 `__timelines={}` 导致全片空白 |
 | 音频文件不在项目目录内（§7.5） | 事故：渲染引擎只认相对路径，绝对路径 404 静音 |
 | 渲染前未移除 cover.html 等（§7.4） | 事故：多个 root composition 导致渲染冲突 |
-| BGM 泄露到 no_bgm 文件 | volumedetect 差值 < 3dB → sed 替换未生效或渲染顺序错误，必须重做 §6.7 |
+| BGM 泄露到 no_bgm 文件 | volumedetect 差值 < 3dB → output_no_bgm.mp4 未用 narration.mp3 合成，而是错误地从 output.mp4 提取了混合轨，必须重做 §6.7 |
 | 缺少 `output_no_bgm.mp4` | 双版本输出不可省略 |
 | 白屏/黑屏渲染结果 | 检查 `window.__hf` 定义和 `data-duration` 值 |
 | Canvas 粒子使用 requestAnimationFrame | HyperFrames seek 驱动，独立 rAF 循环导致画面不一致 |
@@ -549,6 +716,8 @@ echo "=== Stage 6 完成门禁通过 ==="
 | "GSAP 会自动注册" | §7.6 事故：必须显式 `window.__timelines["main"] = tl` |
 | "绝对路径也能找到" | §7.5 事故：只认项目目录内相对路径 |
 | "cover.html 不影响" | §7.4 事故：含 `data-composition-id` 的 HTML 都会导致冲突 |
+| "用 -map 0:a:0 提取旁白轨" | 05-23 事故：HyperFrames 输出只有 1 条混合音频轨（旁白+BGM），-map 0:a:0 提取的是混合轨而非纯旁白 |
+| "双次渲染更安全" | 单次渲染 + ffmpeg 合成更高效，省掉一次 ~15 分钟的渲染，且避免了 sed 替换 BGM 音量可能失败的风险 |
 | "Canvas 用 rAF 更流畅" | HyperFrames 逐帧 seek 驱动，rAF 与 seek 不同步会导致闪烁 |
 | "Three.js 用 performance.now()" | seek 回放时 `performance.now()` 不回溯，3D 动画不倒放 |
 | "组件太多不需要都读" | `stage6-components.md` 是组件装配的唯一参考，不读就不知道有哪些组件 |

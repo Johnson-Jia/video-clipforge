@@ -5,18 +5,18 @@ description: 通用短视频全流程创作 DAG
 artifacts:
   env-check:
     generates: "workspace/.env-checked"
-    description: "环境依赖就绪"
+    description: "当 workspace/.env-checked 缺失时使用 — 校验 Node.js、FFmpeg、edge-tts、yt-dlp 和 HyperFrames 是否就绪"
     template: "stage0-env"
 
   content:
     generates: "**/content_ready.txt"
-    description: "原始内容获取与整理"
+    description: "当环境已就绪但 content_ready.txt 不存在时使用 — 从 URL、GitHub 或用户输入获取并准备原始内容"
     template: "stage1-content"
     requires: [env-check]
 
   design:
     generates: "**/design.md"
-    description: "视觉风格方向规范"
+    description: "当内容已就绪但 design.md 不存在时使用 — 分析内容，定义视觉风格方向、配色方案和故事板"
     template: "stage2-analysis"
     requires: [content]
 
@@ -24,13 +24,13 @@ artifacts:
     generates:
       - "**/narration_segments.json"
       - "**/narration.txt"
-    description: "场景拆解与旁白文案"
+    description: "当 design.md 已存在但 narration_segments.json 缺失时使用 — 拆解场景，编写含钩子和 CTA 的旁白文案"
     template: "stage3-scenes"
     requires: [design]
 
   movie-clips:
     generates: "**/clip_durations.json"
-    description: "电影片段提取（条件阶段）"
+    description: "当旁白包含 video_clip 场景但 clip_durations.json 缺失时使用 — 提取并拼接电影片段，添加 xfade 转场"
     template: "_movie-clips"
     requires: [narration]
     condition: "narration_segments.json 中包含 video_clip 类型场景"
@@ -41,7 +41,7 @@ artifacts:
       - "**/narration.mp3"
       - "**/narration.srt"
       - "**/bgm.wav"
-    description: "TTS 旁白 + BGM 配乐"
+    description: "当旁白已完成但 segment_durations.json 缺失时使用 — 生成分段 TTS 旁白，执行 loudnorm，选取 BGM，校准音量"
     template: "stage4-audio"
     requires: [narration]
     requires_any: [movie-clips]
@@ -49,7 +49,7 @@ artifacts:
 
   assets:
     generates: "**/assets/manifest.md"
-    description: "视觉素材制备（可选）"
+    description: "当 design.md 已存在但 assets/manifest.md 缺失时使用 — 准备视频所需的视觉素材"
     template: "stage5-assets"
     requires: [design]
     optional: true
@@ -60,7 +60,7 @@ artifacts:
       - "**/index.html"
       - "**/output.mp4"
       - "**/output_no_bgm.mp4"
-    description: "HTML 编写 + 渲染"
+    description: "当音频已完成但 output.mp4 缺失时使用 — 组装 HTML（内嵌音频），通过 HyperFrames 渲染，产出双版本（含/不含 BGM）"
     template: "stage6-production"
     requires: [audio]
     requires_optional: [assets]
@@ -73,12 +73,12 @@ artifacts:
       - "**/cover.html"
       - "**/cover.png"
       - "**/douyin.md"
-    description: "封面 + 交付 + 抖音文案"
+    description: "当 output.mp4 已存在但 final.mp4 缺失时使用 — 拼接封面帧，生成封面图，编写抖音文案和标签"
     template: "stage7-delivery"
     requires: [video]
 
   cleanup:
     generates: "**/.cleaned"
-    description: "项目清理"
+    description: "当交付已完成但 .cleaned 标记缺失时使用 — 按保留策略清理中间产物"
     template: "_cleanup-rules"
     requires: [delivery]

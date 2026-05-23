@@ -9,54 +9,8 @@
 读取 Stage 3 产出的 `narration_segments.json`，逐段生成 TTS：
 
 ```bash
-# 逐段生成 TTS + SRT
-python -c "
-import json, subprocess, os
-
-with open('narration_segments.json', 'r', encoding='utf-8') as f:
-    segments = json.load(f)
-
-# === TTS 参数记录（写入 segment_durations.json 的 meta 字段） ===
-VOICE = '$VOICE'       # 替换为实际声音
-RATE = '$RATE'         # 替换为实际语速
-
-durations = []
-for i, seg in enumerate(segments):
-    text_file = f'narration_seg_{i}.txt'
-    mp3_file = f'narration_seg_{i}.mp3'
-    srt_file = f'narration_seg_{i}.srt'
-
-    with open(text_file, 'w', encoding='utf-8') as f:
-        f.write(seg['text'])
-
-    subprocess.run([
-        'python', '-m', 'edge_tts',
-        '-f', text_file,
-        '-v', VOICE,
-        '--rate', RATE,
-        '--write-media', mp3_file,
-        '--write-subtitles', srt_file
-    ], check=True)
-
-    # 测量实际时长
-    result = subprocess.run([
-        'ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
-        '-of', 'csv=p=0', mp3_file
-    ], capture_output=True, text=True)
-    dur = float(result.stdout.strip())
-    durations.append({'scene': seg['scene'], 'actual_duration': round(dur, 2)})
-    print(f'[Seg {i}] {seg[\"scene\"]}: {dur:.2f}s')
-
-# 输出每段实际时长，供 Stage 6 使用
-output = {
-    'meta': {'voice': VOICE, 'rate': RATE},
-    'segments': durations
-}
-with open('segment_durations.json', 'w', encoding='utf-8') as f:
-    json.dump(output, f, indent=2, ensure_ascii=False)
-print(f'Total: {sum(d[\"actual_duration\"] for d in durations):.2f}s')
-print(f'Voice: {VOICE}, Rate: {RATE}')
-"
+# 执行分段 TTS 脚本（参数：音色 语速）
+python .claude/commands/clipforge/scripts/tts_segments.py "$VOICE" "$RATE"
 ```
 
 > **`segment_durations.json` 格式为 `{meta: {voice, rate}, segments: [...]}`。** Stage 6 读取时长时取 `segments[i].actual_duration`。
@@ -66,54 +20,15 @@ print(f'Voice: {VOICE}, Rate: {RATE}')
 合并后的 `narration.mp3` 将作为 `<audio>` 元素嵌入 HTML，由 HyperFrames 自动混入视频。
 
 ```bash
-# 生成 concat 文件列表
+# 生成 concat 文件列表 + 合并为完整旁白
 echo "" > concat.txt
 for i in $(seq 0 $(($(ls narration_seg_*.mp3 | wc -l) - 1))); do
     echo "file 'narration_seg_${i}.mp3'" >> concat.txt
 done
-
-# 合并所有片段为完整旁白
 ffmpeg -y -f concat -safe 0 -i concat.txt -c copy narration.mp3
 
 # 合并 SRT 字幕（重新编号时间戳）
-python -c "
-import re, glob
-
-srt_files = sorted(glob.glob('narration_seg_*.srt'))
-offset = 0
-all_lines = []
-idx = 1
-
-for sf in srt_files:
-    with open(sf, 'r', encoding='utf-8') as f:
-        content = f.read().strip()
-    if not content:
-        continue
-    blocks = content.split('\n\n')
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if len(lines) >= 3:
-            time_match = re.match(r'(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})', lines[1])
-            if time_match:
-                def add_offset(t):
-                    h, m, s = t.replace(',', '.').split(':')
-                    return offset + int(h)*3600 + int(m)*60 + float(s)
-                start = add_offset(time_match.group(1))
-                end = add_offset(time_match.group(2))
-                def fmt(t):
-                    h = int(t // 3600); m = int((t % 3600) // 60); s = t % 60
-                    return f'{h:02d}:{m:02d}:{int(s):02d},{int((s%1)*1000):03d}'
-                all_lines.append(f'{idx}\n{fmt(start)} --> {fmt(end)}\n' + '\n'.join(lines[2:]))
-                idx += 1
-    # 用 ffprobe 获取本段时长作为偏移
-    import subprocess
-    mp3 = sf.replace('.srt', '.mp3')
-    r = subprocess.run(['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp3], capture_output=True, text=True)
-    offset += float(r.stdout.strip())
-
-with open('narration.srt', 'w', encoding='utf-8') as f:
-    f.write('\n\n'.join(all_lines))
-"
+python .claude/commands/clipforge/scripts/merge_srt.py
 ```
 
 ### 音量标准化
@@ -121,39 +36,8 @@ with open('narration.srt', 'w', encoding='utf-8') as f:
 **对合并后的 `narration.mp3` 执行 loudnorm 标准化（Python 版，不依赖 jq）：**
 
 ```bash
-# loudnorm pass 1：分析响度，提取参数
-ffmpeg -i narration.mp3 -af "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
-
-# loudnorm pass 2：用 Python 提取 JSON 参数并应用（jq 在 Windows 不可用）
-python -c "
-import json, subprocess
-with open('loudnorm_stats.json') as f:
-    # ffmpeg 输出可能混入非 JSON 行，找到第一个 { 开始的行
-    lines = f.readlines()
-    json_str = ''
-    started = False
-    for line in lines:
-        if '{' in line and not started:
-            started = True
-        if started:
-            json_str += line
-    stats = json.loads(json_str)
-    measured_i = stats['input_i']
-    measured_tp = stats['input_tp']
-    measured_lra = stats['input_lra']
-    measured_thresh = stats['input_thresh']
-    offset = stats['target_offset']
-    print(f'measured_I={measured_i}, measured_TP={measured_tp}, measured_LRA={measured_lra}, measured_thresh={measured_thresh}, offset={offset}')
-    # Pass 2
-    cmd = [
-        'ffmpeg', '-y', '-i', 'narration.mp3',
-        '-af', f'loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={measured_i}:measured_TP={measured_tp}:measured_LRA={measured_lra}:measured_thresh={measured_thresh}:offset={offset}:linear=true',
-        '-ar', '48000', '-ac', '1',
-        'narration_norm.mp3'
-    ]
-    subprocess.run(cmd, check=True)
-"
-mv narration_norm.mp3 narration.mp3
+# 两遍 loudnorm 标准化（Python 版，不依赖 jq）
+bash .claude/commands/clipforge/scripts/loudnorm.sh narration.mp3
 ```
 
 > 标准化后无需重新测量分段时长——loudnorm 只改变响度不改变时长。
@@ -165,21 +49,12 @@ mv narration_norm.mp3 narration.mp3
 标准化完成后，验证 narration.mp3 音量在合理范围：
 
 ```bash
-# 校验标准化后的音量（正常语音 mean -15~-20 dB, max -5~0 dB）
+# 校验标准化后的音量
 NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
 echo "narration.mp3 max_volume: ${NARR_MAX} dB"
-
-# max_volume 低于 -10 dB 说明标准化未生效，必须阻断
-python -c "
-vol = float('${NARR_MAX}')
-if vol < -10:
-    print(f'FATAL: narration.mp3 max_volume={vol} dB (< -10 dB), loudnorm 标准化未生效！')
-    print('可能原因：loudnorm pass 2 未执行（jq 不可用或命令报错）')
-    print('修复：检查上方 loudnorm 步骤的 Python 脚本是否正确执行')
-    exit(1)
-else:
-    print(f'OK: narration.mp3 max_volume={vol} dB，标准化正常')
-"
+# max_volume 低于 -10 dB → loudnorm 未生效，必须阻断
+python -c "v=float('${NARR_MAX}'); exit(1 if v < -10 else 0)" || { echo "FATAL: loudnorm 未生效，max_volume=${NARR_MAX} dB < -10 dB"; exit 1; }
+echo "OK: loudnorm 校验通过"
 ```
 
 ### 输出文件
@@ -384,43 +259,12 @@ fi
 查表得到推荐 volume 后，验证衰减后的 BGM 峰值在合理范围。**要求：衰减后 BGM 峰值比旁白峰值低 15~20 dB（可感知但不抢戏）。**
 
 ```bash
-# 获取 BGM 峰值（max_volume）
+# 获取 BGM 峰值和旁白峰值
 BGM_MAX=$(ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
-echo "bgm.wav max_volume: ${BGM_MAX} dB"
-
-# 获取旁白峰值（必须用标准化后的 narration.mp3）
 NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
-echo "narration.mp3 max_volume: ${NARR_MAX} dB"
 
-# 双向校验：BGM 不能太响（间距 < 15 dB）也不能太小（间距 > 22 dB）
-python -c "
-import math
-bgm_max = float('${BGM_MAX}')
-narr_max = float('${NARR_MAX}')
-vol = float('${BGM_VOL}')
-
-attenuated = bgm_max + 20 * math.log10(vol)
-gap = narr_max - attenuated
-print(f'BGM 衰减后峰值: {attenuated:.1f} dB')
-print(f'旁白峰值: {narr_max:.1f} dB')
-print(f'间距: {gap:.1f} dB (目标 15~20 dB)')
-
-if gap < 15:
-    needed_vol = 10 ** ((narr_max - 17 - bgm_max) / 20)
-    needed_vol = math.floor(needed_vol * 100) / 100
-    if needed_vol < 0.01: needed_vol = 0.01
-    print(f'WARNING: BGM 太响（间距 {gap:.1f} dB < 15 dB），volume 从 {vol} 降至 {needed_vol}')
-    print(f'FINAL_VOL={needed_vol}')
-elif gap > 22:
-    needed_vol = 10 ** ((narr_max - 17 - bgm_max) / 20)
-    needed_vol = math.ceil(needed_vol * 100) / 100
-    if needed_vol > 0.50: needed_vol = 0.50
-    print(f'WARNING: BGM 太小听不到（间距 {gap:.1f} dB > 22 dB），volume 从 {vol} 升至 {needed_vol}')
-    print(f'FINAL_VOL={needed_vol}')
-else:
-    print(f'间距 OK: {gap:.1f} dB')
-    print(f'FINAL_VOL={vol}')
-"
+# 双向校验（输出 FINAL_VOL）
+python .claude/commands/clipforge/scripts/bgm_gap_check.py "$BGM_MAX" "$NARR_MAX" "$BGM_VOL"
 ```
 
 如果输出 `FINAL_VOL` 与查表值不同，**用 FINAL_VOL 覆盖**写入 `segment_durations.json` 的 `bgm_volume`。
@@ -466,44 +310,8 @@ fi
 3. loudnorm 标准化
 
 ```bash
-# 为每个 video_clip 场景生成静音文件
-# DURATION 从 clip_durations.json 中对应场景的 actual_duration 读取
-ffmpeg -y -f lavfi -i "anullsrc=r=44100:cl=stereo" -t $DURATION -c:a libmp3lame silence_{scene_id}.mp3
-
-# 按场景顺序生成 concat 文件列表
-echo "file 'narration_seg_0.mp3'"  > concat_new.txt
-echo "file 'narration_seg_1.mp3'" >> concat_new.txt
-echo "file 'silence_wives_video.mp3'" >> concat_new.txt
-echo "file 'narration_seg_2.mp3'" >> concat_new.txt
-echo "file 'silence_huaan_video.mp3'" >> concat_new.txt
-# ...按实际场景顺序排列
-
-# 合并为完整旁白（含静音填充）
-ffmpeg -y -f concat -safe 0 -i concat_new.txt -c copy narration_new.mp3
-
-# loudnorm 标准化（Python 版，不依赖 jq）
-ffmpeg -i narration_new.mp3 -af "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
-python -c "
-import json, subprocess
-with open('loudnorm_stats.json') as f:
-    lines = f.readlines()
-    json_str = ''
-    started = False
-    for line in lines:
-        if '{' in line and not started:
-            started = True
-        if started:
-            json_str += line
-    stats = json.loads(json_str)
-    cmd = [
-        'ffmpeg', '-y', '-i', 'narration_new.mp3',
-        '-af', f\"loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={stats['input_i']}:measured_TP={stats['input_tp']}:measured_LRA={stats['input_lra']}:measured_thresh={stats['input_thresh']}:offset={stats['target_offset']}:linear=true\",
-        '-ar', '48000', '-ac', '1',
-        'narration_new_norm.mp3'
-    ]
-    subprocess.run(cmd, check=True)
-"
-mv narration_new_norm.mp3 narration_new.mp3
+# 自动构建电影模式旁白（静音填充 + 合并 + loudnorm）
+python .claude/commands/clipforge/scripts/movie_narration.py
 ```
 
 > **电影解读模式下，`narration_new.mp3` 替代 `narration.mp3` 嵌入 HTML `<audio>`。** 标准模式直接使用 `narration.mp3`。
@@ -511,6 +319,16 @@ mv narration_new_norm.mp3 narration_new.mp3
 ### movie_audio.wav
 
 **由 `_movie-clips` 阶段产出，本阶段不消费。** Stage 6 处理电影原音的三路混音。
+
+---
+
+## Iron Law
+
+**NO AUDIO COMPLETION WITHOUT loudnorm VERIFICATION + BGM VOLUME CALIBRATION.**
+
+旁白未经 loudnorm 校验通过 = 音频阶段未完成。BGM 音量未写入 `segment_durations.json` = 音频阶段未完成。
+
+**Violating the letter of the rules is violating the spirit of the rules.**
 
 ---
 
@@ -532,3 +350,8 @@ mv narration_new_norm.mp3 narration_new.mp3
 | "BGM 音量后面再调" | `segment_durations.json` 是唯一传递通道，不写入 Stage 6 就无法控制音量 |
 | "听起来差不多就行" | loudnorm 标准化不是"差不多"，是防止部分段过响或过轻影响混音 |
 | "开头加个淡入更自然" | §5.3 前 3 秒禁止淡入。淡入让钩子时刻声音渐强，直接削弱冲击力 |
+| "BGM 听起来不响，加个 volume 滤镜" | 绝对禁止对 bgm.wav 做预衰减。音量表分级控制，不靠主观听觉。预衰减 + data-volume = 双重衰减 = 静音 |
+| "跳过 loudnorm 校验，之前都能过" | BGM 来源响度差异可达 20dB，每次必须校验。narration.mp3 max_volume < -10 dB = loudnorm 未生效 |
+| "用 output.mp4 反向提取音频做 output_no_bgm" | 绝对禁止。output_no_bgm 必须从 narration.mp3 合成，从 output.mp4 提取会带入 BGM |
+| "BGM 不够长，用 HTML loop 属性" | HyperFrames 对 loop 支持不可靠。必须用 FFmpeg -stream_loop 循环扩展 WAV 文件 |
+| "bgm.wav 音量太低，先放大再写入" | bgm.wav 保持原始音量，Stage 6 的 data-volume 负责衰减。改原始文件会破坏音量表校准 |

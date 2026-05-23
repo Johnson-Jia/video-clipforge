@@ -10,781 +10,25 @@
 - 入场动画由 GSAP timeline 控制，CSS 不设 opacity:0
 - Canvas/Three.js 使用 seek 驱动更新，不用 requestAnimationFrame 独立循环
 
-## 1. HeroCard — 项目首屏展示
-
-**用途:** hook 场景或单项目深度解析的开场
-**情感目标:** 震撼、吸引力
-
-```html
-<div class="hero-card">
-  <div class="hero-glow hero-glow-warm"></div>
-  <div class="hero-glow hero-glow-cool"></div>
-  <div class="hero-grid"></div>
-  <div class="hero-badge">今日 GitHub 榜单</div>
-  <div class="hero-title">AI 项目<span class="accent">直接霸榜</span></div>
-  <div class="hero-sub">8 个热门 · 6 个 AI 相关</div>
-</div>
-```
-
-```css
-.hero-card {
-  position: relative; width: 100%; height: 100%;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 120px 70px;
-}
-.hero-glow {
-  position: absolute; border-radius: 50%; filter: blur(140px);
-  pointer-events: none;
-}
-.hero-glow-warm {
-  width: 600px; height: 600px; opacity: 0.25;
-  background: var(--accent-warm);
-  top: 200px; left: -100px;
-}
-.hero-glow-cool {
-  width: 500px; height: 500px; opacity: 0.2;
-  background: var(--accent-cool);
-  bottom: 300px; right: -80px;
-}
-.hero-grid {
-  position: absolute; width: 100%; height: 100%;
-  background-image:
-    linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
-  background-size: 40px 40px; pointer-events: none;
-}
-.hero-badge {
-  font-size: 28px; font-weight: 600;
-  color: var(--accent-warm);
-  background: rgba(240,180,41,0.15);
-  padding: 8px 24px; border-radius: 20px;
-  margin-bottom: 40px;
-}
-.hero-title {
-  font-size: 120px; font-weight: 900; color: #fff;
-  letter-spacing: -2px; line-height: 1.15;
-  text-shadow: 0 0 60px rgba(240,180,41,0.5);
-  text-align: center;
-}
-.hero-title .accent { color: var(--accent-warm); }
-.hero-sub {
-  font-size: 48px; font-weight: 600;
-  color: var(--accent-cool); margin-top: 48px;
-}
-```
-
-```javascript
-// GSAP 入场
-tl.from('.hero-badge', {opacity:0, y:30, duration:0.3, ease:'power3.out'}, 0.1)
-  .from('.hero-title', {opacity:0, scale:0.8, duration:0.4, ease:'back.out(1.2)'}, 0.2)
-  .from('.hero-sub', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, 0.5);
-```
-
-## 2. StarCounter — Star 数动态计数
-
-**用途:** 展示项目 Star 数增长
-**情感目标:** 兴奋、增长感
-
-```html
-<div class="star-counter">
-  <div class="star-label">今日涨星</div>
-  <div class="star-number" data-target="5123">0</div>
-  <div class="star-unit">★</div>
-</div>
-```
-
-```css
-.star-counter {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 16px;
-}
-.star-label { font-size: 32px; color: var(--text-secondary); }
-.star-number {
-  font-size: 140px; font-weight: 900;
-  color: var(--accent-warm);
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 40px rgba(240,180,41,0.4);
-}
-.star-unit { font-size: 48px; color: var(--accent-warm); opacity: 0.7; }
-```
-
-```javascript
-// GSAP 计数动画
-const counter = { val: 0 };
-tl.to(counter, {
-  val: 5123, duration: 1.5, ease: 'power2.out',
-  onUpdate: () => {
-    document.querySelector('.star-number').textContent = Math.floor(counter.val).toLocaleString();
-  }
-}, startTime);
-```
-
-## 3. CodeRain — 代码雨背景
-
-**用途:** 科技感场景背景
-**情感目标:** 科技感、紧迫感
-
-```html
-<canvas class="code-rain-canvas" width="1080" height="1920"></canvas>
-```
-
-```css
-.code-rain-canvas {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
-  opacity: 0.15; pointer-events: none;
-}
-```
-
-```javascript
-// Canvas 代码雨 — seek 驱动
-const rainCanvas = document.querySelector('.code-rain-canvas');
-const rainCtx = rainCanvas.getContext('2d');
-const rainCols = Math.floor(1080 / 20);
-const rainDrops = Array(rainCols).fill(0);
-const rainChars = '01{}[]<>/=;:fnvarletconstreturnifelse'.split('');
-
-function drawRain(progress) {
-  rainCtx.fillStyle = 'rgba(8,8,24,0.1)';
-  rainCtx.fillRect(0, 0, 1080, 1920);
-  rainCtx.fillStyle = '#00e5a0';
-  rainCtx.font = '14px monospace';
-  const step = Math.floor(progress * 200);
-  for (let i = 0; i < step % 50; i++) {
-    const char = rainChars[Math.floor(Math.random() * rainChars.length)];
-    const x = Math.floor(Math.random() * rainCols) * 20;
-    const y = (rainDrops[i] * 20) % 1920;
-    rainCtx.fillText(char, x, y);
-    rainDrops[i] = (rainDrops[i] + 1) % 96;
-  }
-}
-
-// 注册到 GSAP timeline
-const rainProgress = { val: 0 };
-tl.to(rainProgress, {
-  val: 1, duration: sceneDuration,
-  onUpdate: () => drawRain(rainProgress.val)
-}, sceneStart);
-```
-
-## 4. PulseOrb — 脉冲光球
-
-**用途:** 能量感装饰，配合数据展示
-**情感目标:** 能量感、聚焦
-
-```html
-<div class="pulse-orb">
-  <div class="orb-core"></div>
-  <div class="orb-ring ring-1"></div>
-  <div class="orb-ring ring-2"></div>
-  <div class="orb-ring ring-3"></div>
-</div>
-```
-
-```css
-.pulse-orb {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 400px; height: 400px;
-}
-.orb-core {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px; height: 80px; border-radius: 50%;
-  background: var(--accent-cool);
-  box-shadow: 0 0 60px var(--accent-cool), 0 0 120px rgba(0,229,160,0.3);
-}
-.orb-ring {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 2px solid var(--accent-cool);
-  opacity: 0.3;
-}
-.ring-1 { width: 160px; height: 160px; }
-.ring-2 { width: 280px; height: 280px; opacity: 0.2; }
-.ring-3 { width: 400px; height: 400px; opacity: 0.1; }
-```
-
-```javascript
-tl.from('.orb-core', {scale:0, duration:0.5, ease:'elastic.out(1, 0.5)'}, startTime)
-  .from('.ring-1', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.2)
-  .from('.ring-2', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.3)
-  .from('.ring-3', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.4);
-```
-
-## 5. CompareSplit — 双栏对比
-
-**用途:** 对比两个项目或功能
-**情感目标:** 对抗感、悬念
-
-```html
-<div class="compare-split">
-  <div class="compare-col left">
-    <div class="compare-header">项目 A</div>
-    <div class="compare-items">
-      <div class="compare-item"><span class="label">速度</span><span class="value">快</span></div>
-      <div class="compare-item"><span class="label">内存</span><span class="value">低</span></div>
-    </div>
-  </div>
-  <div class="compare-divider"></div>
-  <div class="compare-col right">
-    <div class="compare-header">项目 B</div>
-    <div class="compare-items">
-      <div class="compare-item"><span class="label">速度</span><span class="value">更快</span></div>
-      <div class="compare-item"><span class="label">内存</span><span class="value">较高</span></div>
-    </div>
-  </div>
-</div>
-```
-
-```css
-.compare-split {
-  display: flex; width: 100%; height: 100%;
-  padding: 120px 40px;
-}
-.compare-col {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 40px;
-}
-.compare-col.left { background: linear-gradient(135deg, rgba(0,229,160,0.08), transparent); }
-.compare-col.right { background: linear-gradient(225deg, rgba(240,180,41,0.08), transparent); }
-.compare-header { font-size: 42px; font-weight: 800; color: #fff; margin-bottom: 40px; }
-.compare-divider {
-  width: 2px; background: linear-gradient(180deg, transparent, #fff, transparent);
-  opacity: 0.3; align-self: stretch; margin: 100px 0;
-}
-.compare-items { display: flex; flex-direction: column; gap: 20px; width: 100%; }
-.compare-item {
-  display: flex; justify-content: space-between;
-  padding: 16px 24px; border-radius: 12px;
-  background: rgba(255,255,255,0.05);
-}
-.compare-item .label { font-size: 28px; color: var(--text-secondary); }
-.compare-item .value { font-size: 28px; font-weight: 700; color: #fff; }
-```
-
-## 6. TimeLineFlow — 时间线叙事
-
-**用途:** 项目发展历程、版本迭代
-**情感目标:** 故事感、推进感
-
-```html
-<div class="timeline-flow">
-  <div class="timeline-line"></div>
-  <div class="timeline-node" data-index="0">
-    <div class="node-dot"></div>
-    <div class="node-content">
-      <div class="node-date">2024.01</div>
-      <div class="node-text">项目启动</div>
-    </div>
-  </div>
-  <!-- 更多节点... -->
-</div>
-```
-
-```css
-.timeline-flow {
-  position: relative; width: 100%;
-  padding: 120px 80px;
-  display: flex; flex-direction: column; gap: 60px;
-}
-.timeline-line {
-  position: absolute; left: 140px; top: 120px; bottom: 120px;
-  width: 3px;
-  background: linear-gradient(180deg, var(--accent-cool), var(--accent-warm));
-  opacity: 0.5;
-}
-.timeline-node {
-  display: flex; align-items: center; gap: 40px;
-  padding-left: 100px;
-}
-.node-dot {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent-cool);
-  box-shadow: 0 0 20px var(--accent-cool);
-  flex-shrink: 0;
-}
-.node-date { font-size: 24px; color: var(--accent-warm); font-weight: 700; }
-.node-text { font-size: 32px; color: #fff; margin-top: 8px; }
-```
-
-```javascript
-tl.from('.timeline-node', {
-  opacity:0, x:-30, duration:0.3,
-  ease:'power3.out', stagger:0.2
-}, startTime);
-```
-
-## 7. ParticleBurst — 粒子爆发庆祝
-
-**用途:** 高潮段庆祝效果
-**情感目标:** 激动、高潮
-
-```html
-<canvas class="particle-canvas" width="1080" height="1920"></canvas>
-```
-
-```css
-.particle-canvas {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-}
-```
-
-```javascript
-// 粒子爆发系统 — seek 驱动
-const pCanvas = document.querySelector('.particle-canvas');
-const pCtx = pCanvas.getContext('2d');
-const PARTICLE_COUNT = 80;
-let particles = [];
-
-function initParticles() {
-  particles = [];
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const angle = (Math.PI * 2 * i) / PARTICLE_COUNT + Math.random() * 0.5;
-    const speed = 3 + Math.random() * 8;
-    particles.push({
-      x: 540, y: 960,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size: 3 + Math.random() * 5,
-      color: ['#f0b429','#00e5a0','#fff','#ff6b6b','#4ecdc4'][Math.floor(Math.random()*5)],
-      life: 1
-    });
-  }
-}
-
-function drawParticles(progress) {
-  pCtx.clearRect(0, 0, 1080, 1920);
-  if (progress < 0.1) return;
-  const t = (progress - 0.1) / 0.9;
-  particles.forEach(p => {
-    p.life = Math.max(0, 1 - t);
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.15;
-    if (p.life > 0) {
-      pCtx.globalAlpha = p.life;
-      pCtx.fillStyle = p.color;
-      pCtx.beginPath();
-      pCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-      pCtx.fill();
-    }
-  });
-  pCtx.globalAlpha = 1;
-}
-
-initParticles();
-const burstProgress = { val: 0 };
-tl.to(burstProgress, {
-  val: 1, duration: 2,
-  onUpdate: () => drawParticles(burstProgress.val)
-}, startTime);
-```
-
-## 8. ThreeScene — 3D 场景容器
-
-**用途:** 需要空间感的沉浸场景
-**情感目标:** 沉浸感、空间感
-
-```html
-<canvas class="three-canvas" width="1080" height="1920"></canvas>
-```
-
-```css
-.three-canvas {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none; opacity: 0.6;
-}
-```
-
-```javascript
-// Three.js 3D 场景 — 使用 __hfThreeTime
-// 引入: <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-const threeCanvas = document.querySelector('.three-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true });
-renderer.setSize(1080, 1920);
-renderer.setPixelRatio(1);
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, 1080/1920, 0.1, 1000);
-camera.position.z = 5;
-
-const cubes = [];
-for (let i = 0; i < 20; i++) {
-  const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-  const mat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color().setHSL(i/20, 0.8, 0.6),
-    transparent: true, opacity: 0.7
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(
-    (Math.random() - 0.5) * 8,
-    (Math.random() - 0.5) * 12,
-    (Math.random() - 0.5) * 4
-  );
-  scene.add(mesh);
-  cubes.push(mesh);
-}
-
-const light = new THREE.PointLight(0x00e5a0, 2, 20);
-light.position.set(0, 0, 5);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-
-function updateThree(progress) {
-  const t = window.__hfThreeTime || progress * sceneDuration;
-  cubes.forEach((cube, i) => {
-    cube.rotation.x = t * 0.3 + i;
-    cube.rotation.y = t * 0.5 + i * 0.5;
-  });
-  renderer.render(scene, camera);
-}
-
-const threeProgress = { val: 0 };
-tl.to(threeProgress, {
-  val: 1, duration: sceneDuration,
-  onUpdate: () => updateThree(threeProgress.val)
-}, sceneStart);
-```
-
-## 9. SpeechBubble — 角色吐槽气泡
-
-**用途:** 幽默段角色吐槽叠加
-**情感目标:** 幽默、亲近感
-
-```html
-<div class="speech-bubble">
-  <div class="bubble-text">涨星比发际线退得还快</div>
-  <div class="bubble-tail"></div>
-</div>
-```
-
-```css
-.speech-bubble {
-  position: absolute; bottom: 280px; right: 60px;
-  background: rgba(255,255,255,0.95);
-  border-radius: 24px; padding: 24px 36px;
-  max-width: 500px; z-index: 10;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-}
-.bubble-text {
-  font-size: 30px; font-weight: 700;
-  color: #1a1a2e; line-height: 1.4;
-}
-.bubble-tail {
-  position: absolute; bottom: -12px; right: 60px;
-  width: 0; height: 0;
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-top: 16px solid rgba(255,255,255,0.95);
-}
-```
-
-```javascript
-tl.from('.speech-bubble', {
-  opacity:0, scale:0.5, y:20,
-  duration:0.3, ease:'back.out(2)'
-}, startTime);
-```
-
-## 10. CharOverlay — 码力角色覆盖层
-
-**用途:** 角色表情反应
-**情感目标:** 人格化、情感连接
-
-```html
-<div class="char-overlay" data-expression="explode">
-  <svg class="char-svg" viewBox="0 0 200 280" width="180" height="250">
-    <!-- 身体 -->
-    <rect x="60" y="140" width="80" height="100" rx="16" fill="#4a4a6a"/>
-    <!-- 头 -->
-    <circle cx="100" cy="90" r="55" fill="#6a6a8a"/>
-    <!-- 眼睛 — explode: 星星眼 -->
-    <text x="78" y="95" font-size="24" fill="#f0b429">★</text>
-    <text x="112" y="95" font-size="24" fill="#f0b429">★</text>
-    <!-- 嘴 — explode: 大张嘴 -->
-    <ellipse cx="100" cy="120" rx="18" ry="14" fill="#2a2a4a"/>
-    <!-- 头发 — explode: 爆炸发型 -->
-    <path d="M55,55 L40,20 L70,45 L60,10 L90,40 L85,5 L110,38 L120,10 L130,45 L140,20 L145,55"
-          stroke="#f0b429" stroke-width="4" fill="none" stroke-linecap="round"/>
-  </svg>
-</div>
-```
-
-```css
-.char-overlay {
-  position: absolute; bottom: 200px; left: 60px;
-  z-index: 10;
-}
-.char-svg { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); }
-```
-
-**6 种表情 SVG 差异:**
-
-| 表情 | 眼睛 | 嘴 | 头发/配饰 |
-|------|------|-----|----------|
-| shock | 大圆 O（circle r="10"） | O 型（ellipse rx="16" ry="18"） | 正常竖起 |
-| think | 半闭线（path stroke-width="4"） | 波浪线 | + 问号气泡 |
-| cool | 墨镜（rect rx="6" 黑色填充） | 微笑弧线 | 正常 |
-| explode | 星星（★ text） | 大张 O | 爆炸状 |
-| tease | 眯缝线（line stroke-width="3"） | 坏笑弧线 | 正常 |
-| moved | 星光眼（✧ text） | 小嘴微笑 | 正常 + 小泪花 |
-
-每种表情用 `data-expression` 属性标记，Stage 6 编写时根据 narration 的 `character_expression` 字段选择对应 SVG。
-
-```javascript
-tl.from('.char-overlay', {
-  opacity:0, x:-40, duration:0.4,
-  ease:'back.out(1.5)'
-}, startTime);
-```
-
-## 11. DataViz — 数据可视化卡片
-
-**用途:** 展示 Star 数、语言占比等数据
-**情感目标:** 信服力、专业感
-
-```html
-<div class="data-viz">
-  <div class="data-title">语言分布</div>
-  <div class="data-bars">
-    <div class="data-bar">
-      <div class="bar-label">Python</div>
-      <div class="bar-track"><div class="bar-fill" style="width:45%"></div></div>
-      <div class="bar-value">45%</div>
-    </div>
-    <!-- 更多条目... -->
-  </div>
-</div>
-```
-
-```css
-.data-viz {
-  background: rgba(255,255,255,0.05);
-  border-radius: 20px; padding: 40px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-.data-title { font-size: 36px; font-weight: 700; color: #fff; margin-bottom: 32px; }
-.data-bar {
-  display: flex; align-items: center; gap: 20px;
-  margin-bottom: 20px;
-}
-.bar-label { font-size: 28px; color: var(--text-secondary); width: 160px; }
-.bar-track {
-  flex: 1; height: 12px; border-radius: 6px;
-  background: rgba(255,255,255,0.1);
-  overflow: hidden;
-}
-.bar-fill {
-  height: 100%; border-radius: 6px;
-  background: linear-gradient(90deg, var(--accent-cool), var(--accent-warm));
-}
-.bar-value { font-size: 28px; font-weight: 700; color: var(--accent-warm); width: 80px; text-align: right; }
-```
-
-```javascript
-tl.from('.bar-fill', {
-  scaleX:0, duration:0.6, ease:'power2.out',
-  stagger:0.1, transformOrigin:'left center'
-}, startTime);
-```
-
-## 12. TextReveal — 文字揭示动画
-
-**用途:** 悬念揭示、关键信息展示
-**情感目标:** 悬念、惊喜
-
-```html
-<div class="text-reveal">
-  <div class="reveal-mask">
-    <div class="reveal-text">58K Star</div>
-  </div>
-</div>
-```
-
-```css
-.text-reveal {
-  display: flex; align-items: center; justify-content: center;
-}
-.reveal-mask {
-  overflow: hidden;
-}
-.reveal-text {
-  font-size: 140px; font-weight: 900;
-  color: var(--accent-warm);
-  text-shadow: 0 0 80px rgba(240,180,41,0.6);
-}
-```
-
-```javascript
-tl.from('.reveal-text', {
-  y:'100%', duration:0.6, ease:'power4.out'
-}, startTime);
-```
-
-## 13. ProjectFullCard — 标准模式单项目全屏卡片
-
-> **数据来源：** 爆款视频分析（05-19，11万播放）采用一屏一项目布局，每个项目包含 8 层信息，播放量是一屏多项目的 3 倍。
-
-**用途:** 标准模式下每个项目独占一屏的全屏卡片
-**情感目标:** 信息聚焦、记忆点清晰
-**时长:** 6-8 秒/项目
-
-```html
-<div class="project-full-card">
-  <!-- 背景装饰 -->
-  <div class="pfc-glow pfc-glow-warm"></div>
-  <div class="pfc-glow pfc-glow-cool"></div>
-  <div class="pfc-grid"></div>
-
-  <!-- 第1层：类别标签 -->
-  <div class="pfc-category">WiFi 黑科技</div>
-
-  <!-- 核心信息区 -->
-  <div class="pfc-main">
-    <!-- 第2层：排名数字（左侧） -->
-    <div class="pfc-rank">4</div>
-
-    <!-- 中间信息列 -->
-    <div class="pfc-info">
-      <!-- 第3层：项目名 -->
-      <div class="pfc-name">RuView</div>
-      <!-- 第4层：一句话描述 -->
-      <div class="pfc-desc">WiFi 信号空间感知 · 无需摄像头</div>
-      <!-- 第5层：语言标签 -->
-      <div class="pfc-lang">Rust</div>
-    </div>
-
-    <!-- 第6层：星标增量（右侧） -->
-    <div class="pfc-stars">+700 ★</div>
-  </div>
-
-  <!-- 第7层：三词卖点 -->
-  <div class="pfc-selling">射频信号 · 姿态估计 · 体征监测</div>
-  <!-- 第8层：感性评语 -->
-  <div class="pfc-commentary">家用 WiFi 即可实现空间智能</div>
-</div>
-```
-
-```css
-.project-full-card {
-  position: relative; width: 100%; height: 100%;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 120px 70px;
-}
-/* 背景装饰 */
-.pfc-glow {
-  position: absolute; border-radius: 50%; filter: blur(140px);
-  pointer-events: none;
-}
-.pfc-glow-warm {
-  width: 500px; height: 500px; opacity: 0.2;
-  background: var(--accent-warm);
-  top: 300px; left: -80px;
-}
-.pfc-glow-cool {
-  width: 400px; height: 400px; opacity: 0.15;
-  background: var(--accent-cool);
-  bottom: 400px; right: -60px;
-}
-.pfc-grid {
-  position: absolute; width: 100%; height: 100%;
-  background-image:
-    linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
-  background-size: 40px 40px; pointer-events: none;
-}
-/* 第1层：类别标签 */
-.pfc-category {
-  font-size: 28px; font-weight: 600;
-  color: var(--accent-cool);
-  margin-bottom: 60px;
-}
-/* 核心信息区：三栏布局 */
-.pfc-main {
-  display: flex; align-items: center; gap: 40px;
-  width: 100%; margin-bottom: 60px;
-}
-/* 第2层：排名数字 */
-.pfc-rank {
-  font-size: 120px; font-weight: 900;
-  color: var(--accent-warm);
-  text-shadow: 0 0 60px rgba(240,180,41,0.4);
-  flex-shrink: 0; min-width: 140px; text-align: center;
-}
-/* 中间信息列 */
-.pfc-info {
-  flex: 1; display: flex; flex-direction: column; gap: 12px;
-}
-/* 第3层：项目名 */
-.pfc-name {
-  font-size: 56px; font-weight: 800; color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-}
-/* 第4层：一句话描述 */
-.pfc-desc {
-  font-size: 32px; color: var(--text-secondary); line-height: 1.4;
-}
-/* 第5层：语言标签 */
-.pfc-lang {
-  display: inline-block; font-size: 22px; font-weight: 600;
-  color: var(--accent-cool);
-  background: rgba(0,180,255,0.12);
-  padding: 4px 16px; border-radius: 12px;
-  margin-top: 4px; width: fit-content;
-}
-/* 第6层：星标增量 */
-.pfc-stars {
-  font-size: 36px; font-weight: 800;
-  color: var(--accent-warm);
-  text-shadow: 0 0 30px rgba(240,180,41,0.3);
-  flex-shrink: 0; text-align: right; white-space: nowrap;
-}
-/* 第7层：三词卖点 */
-.pfc-selling {
-  font-size: 32px; font-weight: 600;
-  color: var(--accent-cool);
-  margin-bottom: 24px; text-align: center;
-}
-/* 第8层：感性评语 */
-.pfc-commentary {
-  font-size: 28px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-```
-
-```javascript
-// GSAP 入场：分层依次出现
-tl.from('.pfc-category', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, sceneStart + 0.1)
-  .from('.pfc-rank', {opacity:0, scale:0.5, duration:0.4, ease:'back.out(1.5)'}, sceneStart + 0.2)
-  .from('.pfc-name', {opacity:0, x:-20, duration:0.3, ease:'power3.out'}, sceneStart + 0.3)
-  .from('.pfc-desc', {opacity:0, duration:0.3, ease:'power3.out'}, sceneStart + 0.5)
-  .from('.pfc-lang', {opacity:0, scale:0.8, duration:0.2, ease:'back.out(2)'}, sceneStart + 0.7)
-  .from('.pfc-stars', {opacity:0, x:20, duration:0.3, ease:'power3.out'}, sceneStart + 0.3)
-  .from('.pfc-selling', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, sceneStart + 0.8)
-  .from('.pfc-commentary', {opacity:0, duration:0.3, ease:'power3.out'}, sceneStart + 1.0);
-```
-
-**与 narration_segments.json 字段映射：**
-
-| 8 层 | JSON 字段 |
-|------|----------|
-| 类别标签 | 由 Stage 3 根据项目功能提取（非 JSON 字段，Stage 6 自行生成） |
-| 排名数字 | 场景顺序（scene id 中的序号） |
-| 项目名 | content 数据 |
-| 一句话描述 | `narration_segment` 提取的核心卖点 |
-| 语言标签 | content 数据（language 字段） |
-| 星标增量 | content 数据（today_star 字段） |
-| 三词卖点 | `selling_points` |
-| 感性评语 | `commentary` |
+## 组件索引
+
+> **按需加载：** 只在需要某个组件时，用 Read 工具读取对应文件。不要一次性加载全部组件。
+
+| # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
+|---|--------|-----------|-------------|---------|
+| 1 | HeroCard | 项目首屏展示，震撼开场 | hook, intro | `.claude/commands/clipforge/components/hero_card.html` |
+| 2 | StarCounter | Star 数动态计数动画 | stats, reveal | `.claude/commands/clipforge/components/star_counter.html` |
+| 3 | CodeRain | 代码雨背景（Canvas seek 驱动） | tech, coding | `.claude/commands/clipforge/components/code_rain.html` |
+| 4 | PulseOrb | 脉冲光球能量装饰 | data, focus | `.claude/commands/clipforge/components/pulse_orb.html` |
+| 5 | CompareSplit | 双栏对比布局 | compare, versus | `.claude/commands/clipforge/components/compare_split.html` |
+| 6 | TimeLineFlow | 时间线叙事（节点依次出现） | timeline, history | `.claude/commands/clipforge/components/timeline_flow.html` |
+| 7 | ParticleBurst | 粒子爆发庆祝效果 | climax, celebration | `.claude/commands/clipforge/components/particle_burst.html` |
+| 8 | ThreeScene | 3D 场景容器（需引入 Three.js） | immersive, spatial | `.claude/commands/clipforge/components/three_scene.html` |
+| 9 | SpeechBubble | 角色吐槽气泡 | humor, commentary | `.claude/commands/clipforge/components/speech_bubble.html` |
+| 10 | CharOverlay | 码力角色覆盖层（6 种表情） | reaction, emotion | `.claude/commands/clipforge/components/char_overlay.html` |
+| 11 | DataViz | 数据可视化柱状图卡片 | data, stats | `.claude/commands/clipforge/components/data_viz.html` |
+| 12 | TextReveal | 文字揭示动画（悬念展示） | reveal, surprise | `.claude/commands/clipforge/components/text_reveal.html` |
+| 13 | ProjectFullCard | 标准模式单项目全屏 8 层卡片 | project-card, listing | `.claude/commands/clipforge/components/project_full_card.html` |
 
 ---
 
@@ -805,22 +49,24 @@ tl.add('breath-start')
 
 ### 情绪 → 特效类型映射
 
-| 情绪（emotion） | 特效类型方向 | 推荐组件 | 视觉特征 |
-|-----------------|-------------|---------|---------|
-| `grab`（钩子） | 高能量、爆炸型 | FX-1 纸屑 / FX-2 粒子爆炸 / PT-1 漂浮粒子 | 快速扩散、高亮度、短时爆发 |
-| `build`（铺垫） | 持续流动型 | PT-1 漂浮粒子 / PT-4 星云旋转 / 3D-4 视差层叠 | 缓慢运动、低密度、持续可见 |
-| `reveal`（揭示） | 突出强调型 | FX-3 星光绽放 / PT-2 矩阵雨 | 从中心扩散或从上到下流动 |
-| `climax`（高潮） | 爆发 + 强化 | FX-2 粒子爆炸 / FX-4 彩带飘落 / 3D-2 轨道旋转 | 全屏覆盖、高密度、强烈视觉冲击 |
-| `settle`（收束） | 温和收敛型 | PT-1 漂浮粒子（低密度） / FX-3 星光（低 opacity） | 极缓慢、低密度、淡雅 |
-| `summon`（号召） | 温暖引导型 | PT-1 漂浮粒子（暖色调） / FX-1 纸屑（少量） | 轻快、愉悦、不抢内容 |
+| 情绪（emotion） | 特效类型方向 | 必选特效 | 最小实现 | 视觉特征 |
+|-----------------|-------------|---------|---------|---------|
+| `grab`（钩子） | 高能量、爆炸型 | FX-1 纸屑 / FX-2 粒子爆炸 / PT-1 漂浮粒子 | Canvas 粒子 或 ≥5 个 CSS 动画元素 | 快速扩散、高亮度、短时爆发 |
+| `build`（铺垫） | 持续流动型 | PT-1 漂浮粒子 / PT-4 星云旋转 / 3D-4 视差层叠 | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 缓慢运动、低密度、持续可见 |
+| `reveal`（揭示） | 突出强调型 | FX-3 星光绽放 / PT-2 矩阵雨 | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 从中心扩散或从上到下流动 |
+| `climax`（高潮） | 爆发 + 强化 | FX-2 粒子爆炸 / FX-4 彩带飘落 / 3D-2 轨道旋转 | Canvas 粒子 或 ≥5 个 CSS 动画元素 | 全屏覆盖、高密度、强烈视觉冲击 |
+| `settle`（收束） | 温和收敛型 | PT-1 漂浮粒子（低密度） / FX-3 星光（低 opacity） | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 极缓慢、低密度、淡雅 |
+| `summon`（号召） | 温暖引导型 | PT-1 漂浮粒子（暖色调） / FX-1 纸屑（少量） | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 轻快、愉悦、不抢内容 |
+
+> **"最小实现"是硬性门槛，不是建议值。** 低于最小实现的 layer-fx 视为空层，stage6_gate.sh 会拦截。特效数量统计的是 `.layer-fx` 内的子元素数（CSS div 或 Canvas 容器），不统计伪元素。
 
 ### 特效选择原则
 
 1. **内容优先**：特效类型应与内容主题协调（科技→矩阵雨/粒子，金融→数据流，生活→纸屑/彩带）
-2. **情绪匹配**：每个场景的 `emotion` 字段决定特效的能量级别
+2. **情绪匹配**：每个场景的 `emotion` 字段决定特效的能量级别和最小实现门槛
 3. **多样性**：相邻场景避免重复使用同一种特效，交替使用不同类型
 4. **不遮挡**：特效 opacity 保持 0.3-0.6，确保 `.layer-content` 始终清晰可读
-5. **不固定**：上述推荐仅为参考，可根据视频整体风格和内容灵活调整
+5. **必选不可跳过**：每个场景的 `.layer-fx` 必须达到最小实现标准，空 layer-fx 会导致 stage6_gate.sh 拦截
 
 ### 角色选择原则
 
@@ -841,3 +87,110 @@ tl.add('breath-start')
 | versus | #1a0808 → #120404 | #FF3B30 | #CC2020 |
 | story-time | #081a0e → #041208 | #34C759 | #228B22 |
 | fun-tool | #1a1a1a → #0d0d0d | #FF6B9D | #C084FC |
+
+---
+
+## Phase 视觉模板
+
+> **长视频（场景时长 >15s）必用。** 每个 `.clip` 内按 `visual_phases` 数组创建多个 `.phase` div，通过 GSAP timeline 控制渐进揭示。
+
+### Phase 通用 CSS
+
+```css
+.phase { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 0 70px; }
+.phase-header { font-size: 48px; font-weight: 700; color: var(--accent-warm);
+  margin-bottom: 40px; letter-spacing: 2px; }
+```
+
+### hero 类型
+
+```html
+<div class="phase phase-1">
+  <div class="phase-hero-title">养老AI手环</div>
+  <div class="phase-hero-num">599-999元</div>
+  <div class="phase-hero-sub">面向60岁以上老人 · 子女付费</div>
+</div>
+```
+- 标题 ≥80px，数字 ≥120px，副标题 36px
+- 适合场景开篇或核心结论 phase
+
+### list 类型
+
+```html
+<div class="phase phase-2">
+  <div class="phase-header">核心功能</div>
+  <div class="phase-items">
+    <div class="phase-item"><span class="item-num">01</span><span class="item-text">跌倒检测 &gt;95%</span></div>
+    <div class="phase-item"><span class="item-num">02</span><span class="item-text">用药提醒</span></div>
+    <div class="phase-item"><span class="item-num">03</span><span class="item-text">一键紧急呼叫</span></div>
+  </div>
+</div>
+```
+- 每项带序号 + 文字，垂直排列，间距 24px
+- 序号用强调色，文字用白色
+
+### data 类型
+
+```html
+<div class="phase phase-3">
+  <div class="phase-header">市场规模</div>
+  <div class="phase-data">
+    <div class="data-row"><span class="data-label">2025年</span><span class="data-value">845亿美元</span></div>
+    <div class="data-row"><span class="data-label">2030年</span><span class="data-value">1767亿美元</span></div>
+    <div class="data-row"><span class="data-label">年复合增长</span><span class="data-value">15.9%</span></div>
+  </div>
+</div>
+```
+- 数据行用 label + value 布局，value 字号 ≥48px
+- 大数字可用 JetBrains Mono 等宽字体
+
+### compare 类型
+
+```html
+<div class="phase phase-4">
+  <div class="phase-header">红海 vs 蓝海</div>
+  <div class="phase-compare">
+    <div class="compare-col compare-left">
+      <div class="compare-title">消费级</div>
+      <div class="compare-item">大厂红海</div>
+      <div class="compare-item">胜率极低</div>
+    </div>
+    <div class="compare-divider"></div>
+    <div class="compare-col compare-right">
+      <div class="compare-title">养老级</div>
+      <div class="compare-item">蓝海空白</div>
+      <div class="compare-item">窗口期2-3年</div>
+    </div>
+  </div>
+</div>
+```
+- 双栏等宽，中间分隔线
+- 左栏用冷色调，右栏用暖色调
+
+### timeline 类型
+
+```html
+<div class="phase phase-5">
+  <div class="phase-header">MVP路线图</div>
+  <div class="phase-timeline">
+    <div class="tl-step"><span class="tl-week">1-2周</span><span class="tl-text">ESP32原型搭建</span></div>
+    <div class="tl-step"><span class="tl-week">3-4周</span><span class="tl-text">跌倒检测算法训练</span></div>
+    <div class="tl-step"><span class="tl-week">5-8周</span><span class="tl-text">硬件原型+社区试点</span></div>
+    <div class="tl-step"><span class="tl-week">9-12周</span><span class="tl-text">迭代优化产品</span></div>
+  </div>
+</div>
+```
+- 步骤垂直排列，左侧时间标签，右侧内容
+- 用圆点或连接线串联
+
+### highlight 类型
+
+```html
+<div class="phase phase-6">
+  <div class="phase-highlight-text">养老AI硬件需求最硬、竞争最小、窗口期最明确</div>
+  <div class="phase-highlight-badge">核心结论</div>
+</div>
+```
+- 文字 ≥56px，居中，用强调色
+- 可加装饰性徽章或底线

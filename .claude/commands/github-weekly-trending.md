@@ -27,7 +27,7 @@ DATE_DIR="$(date +%Y)/$(date +%m)/$(date +%d)"
 PROJECT_DIR="workspace/${DATE_DIR}/github-trending-weekly"
 mkdir -p "${PROJECT_DIR}"
 
-python scripts/github_trending.py \
+python .claude/commands/clipforge/scripts/github_trending.py \
   --output-dir "${PROJECT_DIR}" \
   --date "${TODAY}" \
   --since weekly
@@ -78,142 +78,41 @@ no_cache: true
 
 ### 3.1 SubAgent-1: content → design → narration
 
-**SubAgent-1 prompt 核心内容：**
+读取 `.claude/commands/clipforge/templates/subagent-1-content.md`，替换插槽后作为 SubAgent prompt：
+- `{{PROJECT_DIR}}` → `${PROJECT_DIR}`
+- `{{VIDEO_MODE}}` → 标准模式（6-7 场景，45-60s）
+- `{{CONTENT_TYPE}}` → GitHub 每周热门汇总（按领域分类）
+- `{{CATEGORY}}` → github
+- `{{CONTENT_SOURCE}}` → 项目目录下的 raw_trending.json（数据已准备好）
 
-```
-你是 ClipForge 短视频制作流程的阶段执行者。按顺序完成以下四个阶段。
-
-## 项目上下文
-- 项目目录: ${PROJECT_DIR}（cd 到此目录后再执行所有操作）
-- **技能库符号链接**：cd 到项目目录后立即执行 `ln -sf "$(git rev-parse --show-toplevel)/.agents" .agents`
-- 视频模式: 标准模式（6-7 场景，45-60s）
-- 内容类型: GitHub 每周热门汇总（按领域分类）
-- 视频内不放 URL，项目名称用英文展示
-- 不涉及 _movie-clips（电影片段）
-
-## 执行步骤
-
-### 1. env-check
-用 Read 工具读取 .claude/commands/clipforge/stage0-env.md，按指引执行。环境通常已就绪。
-
-### 2. content
-1. 读取 .claude/commands/clipforge/categories/github.md（GitHub 分类配置，含数据获取策略、选取规则）
-2. 读取 .claude/commands/clipforge/stage1-content.md，按指引执行
-3. 内容来源: 项目目录下的 raw_trending.json（数据已准备好）
-4. 选取 12-15 个项目，按领域/语言分组
-
-### 3. design
-读取 .claude/commands/clipforge/stage2-analysis.md，按指引执行。
-不同分类可使用不同色彩区分（如 AI 组用冷色系、前端组用暖色系），整体保持协调统一。写入 design.md。
-
-### 4. narration
-1. 读取 .claude/commands/clipforge/_shared-rules.md（§1 措辞规范、§5 黄金3秒法则）
-2. 读取 .claude/commands/clipforge/stage3-scenes.md，按指引执行
-3. 读取 design.md 获取风格方向
-4. 场景数 6-7 个（hook → 分类1 → 分类2 → 分类3 → 分类4 → 趋势总结 → CTA）
-5. 目标字数: 300-450 字，目标时长: 45-60 秒
-6. 产出 narration_segments.json + narration.txt
-
-## 完成后
-确认以下文件存在: design.md, narration_segments.json, narration.txt
-报告状态: DONE / DONE_WITH_CONCERNS / BLOCKED
-```
+额外指令（追加到模板 prompt 末尾）：
+- content 步骤: 选取 12-15 个项目，按领域/语言分组
+- design 步骤: 不同分类可使用不同色彩区分（如 AI 组用冷色系、前端组用暖色系），整体保持协调统一
+- narration 步骤: 场景数 6-7 个（hook → 分类1 → 分类2 → 分类3 → 分类4 → 趋势总结 → CTA），目标字数 300-450 字，目标时长 45-60 秒
 
 **验证：** `ls -la ${PROJECT_DIR}/design.md ${PROJECT_DIR}/narration_segments.json ${PROJECT_DIR}/narration.txt`
 
 ### 3.2 SubAgent-2: audio
 
-**SubAgent-2 prompt 核心内容：**
-
-```
-你是 ClipForge 短视频制作流程的阶段执行者。
-
-## 项目上下文
-- 项目目录: ${PROJECT_DIR}（cd 到此目录后再执行所有操作）
-- **技能库符号链接**：cd 到项目目录后立即执行 `ln -sf "$(git rev-parse --show-toplevel)/.agents" .agents`
-
-## 执行步骤
-
-1. 读取 .claude/commands/clipforge/stage4-audio.md，按指引执行
-2. 读取 .claude/commands/clipforge/categories/github.md（audio 配置：固定音色 YunjianNeural +25%）
-3. 读取 narration_segments.json（narration artifact 产出）
-4. TTS: 按 categories/github.md 的 audio.default_voice 和 audio.default_rate 设置
-5. 分段 TTS 输出 segment_durations.json
-5. 配乐从 workspace/bgm/ 选取或 yt-dlp 下载
-6. BGM 音量写入 segment_durations.json
-
-## 完成后
-确认文件: segment_durations.json, narration.mp3, bgm.wav
-报告状态: DONE / DONE_WITH_CONCERNS / BLOCKED
-```
+读取 `.claude/commands/clipforge/templates/subagent-2-audio.md`，替换插槽后作为 SubAgent prompt：
+- `{{PROJECT_DIR}}` → `${PROJECT_DIR}`
+- `{{CATEGORY}}` → github
 
 **验证：** `ls -la ${PROJECT_DIR}/segment_durations.json ${PROJECT_DIR}/narration.mp3 ${PROJECT_DIR}/bgm.wav`
 
 ### 3.3 SubAgent-3: video
 
-**SubAgent-3 prompt 核心内容：**
-
-```
-你是 ClipForge 短视频制作流程的阶段执行者。
-
-## 项目上下文
-- 项目目录: ${PROJECT_DIR}（cd 到此目录后再执行所有操作）
-- **技能库符号链接**：cd 到项目目录后立即执行 `ln -sf "$(git rev-parse --show-toplevel)/.agents" .agents`
-- 输出尺寸: 竖屏 1080×1920
-- 视频内不放 URL，项目名称用英文展示
-- 时长可延长至 45-60 秒，每个分类场景 6-10 秒
-
-## 执行步骤
-
-1. 读取 .claude/commands/clipforge/_shared-rules.md（§2 画面文字语言规范、§7 渲染安全规范）
-2. 读取 .claude/commands/clipforge/stage6-production.md，按指引执行
-3. 读取 design.md（视觉风格方向）
-4. 读取 segment_durations.json（实际时长，设置 data-duration）
-5. 读取 narration_segments.json（场景定义）
-6. 编写 HTML + 嵌入 <audio>（narration.mp3 + bgm.wav）
-7. BGM data-volume 从 segment_durations.json 的 meta.bgm_volume 读取
-8. 渲染 output.mp4 + output_no_bgm.mp4
-
-## 完成后
-确认文件: index.html, output.mp4, output_no_bgm.mp4
-报告状态: DONE / DONE_WITH_CONCERNS / BLOCKED
-```
+读取 `.claude/commands/clipforge/templates/subagent-3-video.md`，替换插槽后作为 SubAgent prompt：
+- `{{PROJECT_DIR}}` → `${PROJECT_DIR}`
+- `{{EXTRA_CONTEXT}}` → - 时长可延长至 45-60 秒，每个分类场景 6-10 秒
 
 **验证：** `ls -la ${PROJECT_DIR}/output.mp4 ${PROJECT_DIR}/output_no_bgm.mp4`
 
 ### 3.4 SubAgent-4: delivery → cleanup
 
-**SubAgent-4 prompt 核心内容：**
-
-```
-你是 ClipForge 短视频制作流程的阶段执行者。
-
-## 项目上下文
-- 项目目录: ${PROJECT_DIR}（cd 到此目录后再执行所有操作）
-- **技能库符号链接**：cd 到项目目录后立即执行 `ln -sf "$(git rev-parse --show-toplevel)/.agents" .agents`
-- 视频内不放 URL，项目名称用英文展示
-
-## Part A: delivery — 封面 + 交付 + 抖音文案
-
-1. 读取 .claude/commands/clipforge/_shared-rules.md（§1 措辞规范、§2 画面文字语言规范）
-2. 读取 .claude/commands/clipforge/stage7-delivery.md，按指引执行
-3. 读取 .claude/commands/clipforge/categories/github.md（delivery 配置：标签、评论区模板、封面徽章）
-4. 读取 design.md 获取风格方向（封面复用视频风格）
-5. 封面: 6 层模板 + 双色光晕 + 渐变背景，2x 超采样 → 缩放
-6. 封面嵌入第一帧: final.mp4 + final_no_bgm.mp4
-7. 生成 3 套抖音文案，标签使用 categories/github.md 的 delivery.hashtags
-
-确认文件: cover.png, final.mp4, final_no_bgm.mp4, douyin.md
-
-## Part B: cleanup — 项目清理
-
-1. 读取 .claude/commands/clipforge/_cleanup-rules.md，按指引执行完整清理
-2. bgm.wav 如来自 workspace/bgm/ 素材库，删除项目副本
-3. 报告清理前后磁盘占用
-
-确认项目目录仅含保留文件，磁盘占用 < 30 MB。
-报告状态: DONE / DONE_WITH_CONCERNS / BLOCKED
-```
+读取 `.claude/commands/clipforge/templates/subagent-4-delivery.md`，替换插槽后作为 SubAgent prompt：
+- `{{PROJECT_DIR}}` → `${PROJECT_DIR}`
+- `{{CATEGORY}}` → github
 
 **验证：** `ls ${PROJECT_DIR}/` 确认中间文件已清理，`du -sh ${PROJECT_DIR}` 确认 < 30 MB。
 

@@ -29,60 +29,8 @@ fi
 ## 一键检测 + 自动安装
 
 ```bash
-echo "=== 环境检测 ==="
-
-# ── 必须依赖 ──
-
-# Node.js
-NODE_VER=$(node -v 2>/dev/null | sed 's/v//' | cut -d. -f1)
-[ -n "$NODE_VER" ] && [ "$NODE_VER" -ge 22 ] && echo "✅ Node.js $(node -v)" || echo "❌ Node.js >= 22 required — winget install OpenJS.NodeJS.LTS"
-
-# FFmpeg
-command -v ffmpeg &>/dev/null && echo "✅ FFmpeg" || echo "❌ FFmpeg not found — winget install Gyan.FFmpeg"
-
-# edge-tts
-python -m edge_tts --version &>/dev/null && echo "✅ edge-tts" || echo "❌ edge-tts not found — pip install edge-tts"
-
-# yt-dlp
-command -v yt-dlp &>/dev/null && echo "✅ yt-dlp $(yt-dlp --version 2>/dev/null)" || echo "❌ yt-dlp not found — pip install yt-dlp"
-
-# GitHub CLI
-command -v gh &>/dev/null && echo "✅ GitHub CLI (gh)" || echo "⚠ gh not found — winget install GitHub.cli (Win) / brew install gh (Mac) — 用于获取 GitHub 项目实时数据"
-
-# jq（音量精确处理）
-command -v jq &>/dev/null && echo "✅ jq" || echo "⚠ jq not found — winget install jqlang.jq (Win) / brew install jq (Mac) — 缺失时 loudnorm 降级单遍处理"
-
-# ── 自动安装：HyperFrames Skills ──
-
-if [ -f ".agents/skills/hyperframes/SKILL.md" ]; then
-  echo "✅ HyperFrames skills"
-else
-  echo "⏳ HyperFrames skills 未安装，正在自动安装..."
-  npx skills add heygen-com/hyperframes
-  if [ $? -eq 0 ]; then echo "✅ HyperFrames skills 安装成功"; else echo "❌ 自动安装失败，请手动执行: npx skills add heygen-com/hyperframes"; fi
-fi
-
-# ── 可选依赖 ──
-
-# MusicGen (仅 AI 二创配乐)
-python -c "from transformers import MusicgenForConditionalGeneration; print('✅ MusicGen (可选，仅 AI 二创配乐)')" 2>/dev/null || echo "⚠ MusicGen not installed (可选，仅 AI 二创配乐时需要)"
-
-# 工具脚本
-mkdir -p scripts
-if [ ! -f "scripts/generate_bgm.py" ] || [ ! -f "scripts/merge_video_audio.sh" ]; then
-  echo "⏳ 下载工具脚本..."
-  REPO="https://raw.githubusercontent.com/Johnson-Jia/video-clipforge/main/scripts"
-  curl -sL "$REPO/generate_bgm.py" -o scripts/generate_bgm.py 2>/dev/null
-  curl -sL "$REPO/merge_video_audio.sh" -o scripts/merge_video_audio.sh 2>/dev/null
-  chmod +x scripts/merge_video_audio.sh 2>/dev/null
-  echo "✅ 工具脚本就绪"
-fi
-
-echo ""
-echo "=== 检测完成 ==="
-
-# 全部通过，创建标记文件
-touch "workspace/.env-checked"
+# 一键环境检测 + 自动安装
+bash .claude/commands/clipforge/scripts/env_check.sh
 ```
 
 ## 自动安装行为
@@ -92,7 +40,7 @@ touch "workspace/.env-checked"
 | 依赖 | 自动安装命令 | 说明 |
 |------|------------|------|
 | HyperFrames Skills | `npx skills add heygen-com/hyperframes` | 视频编排技能 |
-| 工具脚本 | `curl` 下载到 `scripts/` | generate_bgm.py + merge_video_audio.sh |
+| 工具脚本 | `curl` 下载到 `.claude/commands/clipforge/scripts/` | generate_bgm.py + merge_video_audio.sh |
 
 以下依赖**无法自动安装**（需系统级权限），仅提示命令：
 

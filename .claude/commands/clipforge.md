@@ -85,7 +85,8 @@ clipforge/categories/
 
 | 共享文件 | 内容 | 引用阶段 |
 |---------|------|---------|
-| `clipforge/_shared-rules` | 措辞规范、画面文字语言规范、CTA 时间规范、URL 禁止、渲染安全 | Stage 1/3/6/7 |
+| `clipforge/_shared-rules` | 措辞规范、画面文字语言规范、CTA 时间规范、URL 禁止、黄金 3 秒 | Stage 1/3/6/7 |
+| `clipforge/_render-safety` | HyperFrames 渲染安全规范 + 三层架构（重型参考） | Stage 6 |
 | `clipforge/_cron-renew` | 定时任务自续期模式与参数 | 所有自动编排文件 |
 | `clipforge/_cleanup-rules` | 项目完成后的文件保留/清理规则 | cleanup |
 | `clipforge/_movie-clips` | 电影片段提取与拼接（仅电影解读模式） | narration → audio 之间 |
@@ -93,7 +94,7 @@ clipforge/categories/
 | `clipforge/_viral-cases/{file}` | 爆款视频案例库（多维度分析 + 可提取模式） | Stage 2/3/7 按需参考 |
 | `clipforge/categories/{id}` | 分类配置（数据获取、风格、音色、标签等覆盖规则） | 各 stage 按需读取 |
 
-**Stage 1/3/6/7 执行前，必须先读取 `clipforge/_shared-rules` 获取内容规范。所有阶段均须遵守共享规范，但上述四个阶段需显式读取。**
+**Stage 1/3/6/7 执行前，必须先读取 `clipforge/_shared-rules` 获取内容规范。Stage 6 额外读取 `clipforge/_render-safety` 获取渲染安全和三层架构规范。**
 
 **有分类配置时，各 stage 还需读取 `clipforge/categories/{id}.md` 获取分类特定的覆盖规则。分类配置优先于通用 stage 文件中的默认值。**
 

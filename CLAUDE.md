@@ -1,49 +1,51 @@
 # CLAUDE.md
 
-This file is the project entry point for Claude Code.
+本文件是 Claude Code 的项目入口。
 
-Before any video production task, **read [`.claude/commands/clipforge.md`](.claude/commands/clipforge.md)** — the authoritative workflow for the 8-stage video pipeline, DAG orchestration, and mode selection.
+任何视频制作任务前，**必须先阅读 [`.claude/commands/clipforge.md`](.claude/commands/clipforge.md)** — 8 阶段视频管线、DAG 编排和模式选择的权威工作流定义。
 
-## What is ClipForge
+## 什么是 ClipForge
 
-ClipForge is an AI-driven general-purpose short video production system. A DAG-orchestrated pipeline converts any content (text, URLs, PDFs, GitHub data, and more) into Douyin-ready vertical videos with narration, BGM, and covers. Content categories (GitHub, comics, novels, etc.) are defined via category profiles in `clipforge/categories/`.
+ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线，将任意内容（文本、URL、PDF、GitHub 数据等）转化为抖音就绪的竖屏视频，含旁白、BGM 和封面。内容分类（GitHub、漫画、小说等）通过 `clipforge/categories/` 中的分类配置定义。
 
-**Core Pipeline**: `Content → Design → Narration → Audio → Video → Delivery → Cleanup`
+**核心管线**：`内容 → 设计 → 旁白 → 音频 → 视频 → 交付 → 清理`
 
-## Architecture
+## 架构
 
-- `.claude/commands/clipforge.md` — Main controller: DAG semantics, mode selection, error recovery
-- `.claude/commands/clipforge/schema.yaml` — Artifact DAG definition (single source of truth)
-- `.claude/commands/clipforge/stage*.md` — Stage skill files (generic, self-contained execution guides)
-- `.claude/commands/clipforge/categories/` — Category profiles (per-category overrides for data, style, audio, delivery)
-- `.claude/commands/clipforge/_*.md` — Shared rules (content norms, cleanup, cron renewal)
-- `.claude/commands/github-*.md` — Cron orchestration files (fully automated SubAgent dispatch)
-- `scripts/` — Utility scripts (trending fetcher, BGM generator, quality gate)
+- `.claude/commands/clipforge.md` — 主控制器：DAG 语义、模式选择、错误恢复
+- `.claude/commands/clipforge/schema.yaml` — Artifact DAG 定义（唯一真相源）
+- `.claude/commands/clipforge/stage*.md` — 阶段技能文件（通用、自包含的执行指南）
+- `.claude/commands/clipforge/categories/` — 分类配置（按分类覆盖数据、风格、音频、交付等规则）
+- `.claude/commands/clipforge/_*.md` — 共享规范（内容规范、渲染安全、清理规则、定时续期）
+- `.claude/commands/github-*.md` — 定时编排文件（全自动 SubAgent 调度）
+- `.claude/commands/clipforge/scripts/` — 工具脚本（趋势抓取、BGM 生成、质量门禁）
+- `.claude/commands/clipforge/components/` — 视觉组件库（HTML+CSS+JS 模板）
 
-## Key Principles
+## 核心原则
 
-1. **Schema is truth.** All artifact dependencies, outputs, and completion states are defined in `schema.yaml`. Nothing else.
-2. **State = File.** An artifact is complete when its `generates` files exist on disk. No status database. To resume an interrupted run, just re-run `/clipforge` — completed stages are skipped automatically.
-3. **Delegate, don't rewrite.** HTML composition and rendering are delegated to HyperFrames skills.
-4. **Audio embedded.** Narration and BGM are embedded via `<audio>` elements in HTML. HyperFrames handles mixing natively.
-5. **Cleanup is mandatory.** After delivery, `_cleanup-rules` must run. No exceptions.
+1. **Schema 即真相。** 所有 artifact 依赖、产出和完成状态定义在 `schema.yaml` 中，不接受其他来源。
+2. **状态即文件。** `generates` 声明的文件存在于磁盘即代表 artifact 完成。无状态数据库。中断后重新运行 `/clipforge` 即自动跳过已完成阶段。
+3. **委托，不重写。** HTML 组合和渲染委托给 HyperFrames 技能。
+4. **音频内嵌。** 旁白和 BGM 通过 `<audio>` 元素嵌入 HTML，由 HyperFrames 原生混音。
+5. **清理不可跳过。** delivery 完成后必须执行 `_cleanup-rules`，无例外。
+6. **Stage 文档职责分离。** 操作指令（"做什么"）和事故复盘（"为什么这样做"）严格分离。操作指令只写步骤和命令，事故复盘统一放在 Red Flags 和 Common Rationalizations 部分，不内联在操作步骤中。
 
-## Category Integration
+## 分类集成
 
-When a category is specified, each stage reads `categories/{id}.md` to load category-specific overrides (data source, voice, hashtags, etc.). Generic stage files provide defaults; categories declare only what's different. Without a category, all stages use their built-in defaults.
+指定分类时，各阶段读取 `categories/{id}.md` 加载分类特定的覆盖规则（数据源、音色、标签等）。通用 stage 文件提供默认值，分类配置只声明差异项。未指定分类时，所有阶段使用内置默认值。
 
-## Commands
+## 命令
 
-| Command | Purpose |
-|---------|---------|
-| `/clipforge` | Interactive video production (manual mode) |
-| `/github-daily-trending` | Daily GitHub trending video (cron, fully automated) |
-| `/github-weekly-trending` | Weekly GitHub trending summary (cron, fully automated) |
-| `/github-weekly-zhihu` | Weekly GitHub article for Zhihu (cron, fully automated) |
+| 命令 | 用途 |
+|------|------|
+| `/clipforge` | 交互式视频制作（手动模式） |
+| `/github-daily-trending` | 每日 GitHub 趋势视频（定时任务，全自动） |
+| `/github-weekly-trending` | 每周 GitHub 趋势汇总（定时任务，全自动） |
+| `/github-weekly-zhihu` | 每周 GitHub 知乎文章（定时任务，全自动） |
 
-## Compatibility
+## 兼容性
 
-- This is a skill/workflow package for Claude Code, not a standalone app or API.
-- Video rendering requires [HyperFrames](https://github.com/heygen-com/hyperframes) (installed via `npx skills add`).
-- On conflict with generic coding skills, prioritize `clipforge.md` and this file.
-- `workspace/` is the output directory (gitignored). Project artifacts live there.
+- 本项目是 Claude Code 的技能/工作流包，不是独立应用或 API。
+- 视频渲染依赖 [HyperFrames](https://github.com/heygen-com/hyperframes)（通过 `npx skills add` 安装）。
+- 与通用编码技能冲突时，以 `clipforge.md` 和本文件为准。
+- `workspace/` 是输出目录（已 gitignore），项目产出物存放于此。

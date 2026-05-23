@@ -1,0 +1,71 @@
+<!--
+  HeroCard — 项目首屏展示
+  用途: hook 场景或单项目深度解析的开场
+  情感目标: 震撼、吸引力
+  适用场景类型: hook, intro
+-->
+<!-- HTML -->
+<div class="hero-card">
+  <div class="hero-glow hero-glow-warm"></div>
+  <div class="hero-glow hero-glow-cool"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-badge">今日 GitHub 榜单</div>
+  <div class="hero-title">AI 项目<span class="accent">直接霸榜</span></div>
+  <div class="hero-sub">8 个热门 · 6 个 AI 相关</div>
+</div>
+
+<!-- CSS -->
+<style>
+.hero-card {
+  position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 120px 70px;
+}
+.hero-glow {
+  position: absolute; border-radius: 50%; filter: blur(140px);
+  pointer-events: none;
+}
+.hero-glow-warm {
+  width: 600px; height: 600px; opacity: 0.25;
+  background: var(--accent-warm);
+  top: 200px; left: -100px;
+}
+.hero-glow-cool {
+  width: 500px; height: 500px; opacity: 0.2;
+  background: var(--accent-cool);
+  bottom: 300px; right: -80px;
+}
+.hero-grid {
+  position: absolute; width: 100%; height: 100%;
+  background-image:
+    linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none;
+}
+.hero-badge {
+  font-size: 28px; font-weight: 600;
+  color: var(--accent-warm);
+  background: rgba(240,180,41,0.15);
+  padding: 8px 24px; border-radius: 20px;
+  margin-bottom: 40px;
+}
+.hero-title {
+  font-size: 120px; font-weight: 900; color: #fff;
+  letter-spacing: -2px; line-height: 1.15;
+  text-shadow: 0 0 60px rgba(240,180,41,0.5);
+  text-align: center;
+}
+.hero-title .accent { color: var(--accent-warm); }
+.hero-sub {
+  font-size: 48px; font-weight: 600;
+  color: var(--accent-cool); margin-top: 48px;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.hero-badge', {opacity:0, y:30, duration:0.3, ease:'power3.out'}, 0.1)
+  .from('.hero-title', {opacity:0, scale:0.8, duration:0.4, ease:'back.out(1.2)'}, 0.2)
+  .from('.hero-sub', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, 0.5);
+</script>

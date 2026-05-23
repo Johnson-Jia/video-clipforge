@@ -162,11 +162,14 @@ clipforge/
 │       ├── _cron-renew.md                 # Cron self-renewal
 │       ├── _movie-clips.md                # Movie clip extraction (conditional)
 │       └── _bgm-pixabay.md                # BGM download helper
-├── scripts/
-│   ├── github_trending.py                 # GitHub Trending scraper
-│   ├── generate_bgm.py                    # MusicGen BGM generator
-│   ├── merge_video_audio.sh               # Audio/video merge utility
-│   └── quality_gate.sh                    # Video quality gate
+│       ├── scripts/                       # Tool scripts
+│       │   ├── github_trending.py         # GitHub Trending scraper
+│       │   ├── generate_bgm.py            # MusicGen BGM generator
+│       │   ├── merge_video_audio.sh       # Audio/video merge utility
+│       │   └── quality_gate.sh            # Video quality gate
+│       └── components/                    # Visual component library
+│           ├── hero_card.html             # Hero card
+│           └── ... (13 components total)
 ├── install.sh                             # One-shot dependency installer
 └── workspace/                             # Output (gitignored)
 ```

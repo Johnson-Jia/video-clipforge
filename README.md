@@ -169,11 +169,14 @@ clipforge/
 │       ├── _cron-renew.md                 # 定时任务续期
 │       ├── _movie-clips.md                # 电影片段提取（条件阶段）
 │       └── _bgm-pixabay.md                # BGM 下载工具
-├── scripts/
-│   ├── github_trending.py                 # GitHub Trending 抓取
-│   ├── generate_bgm.py                    # MusicGen BGM 生成
-│   ├── merge_video_audio.sh               # 音视频合并工具
-│   └── quality_gate.sh                    # 视频质量门禁
+│       ├── scripts/                       # 工具脚本
+│       │   ├── github_trending.py         # GitHub Trending 抓取
+│       │   ├── generate_bgm.py            # MusicGen BGM 生成
+│       │   ├── merge_video_audio.sh       # 音视频合并工具
+│       │   └── quality_gate.sh            # 视频质量门禁
+│       └── components/                    # 视觉组件库
+│           ├── hero_card.html             # 首屏展示
+│           └── ...（共 13 个组件）
 ├── install.sh                             # 一键依赖安装
 └── workspace/                             # 输出目录（gitignored）
 ```

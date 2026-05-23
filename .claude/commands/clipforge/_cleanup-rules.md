@@ -78,6 +78,7 @@ cover.ts                # TS 格式封面
 output.ts               # TS 格式输出
 
 # HyperFrames 工作产物
+.hyperframes/
 hyperframes.json
 frame_check.png
 
@@ -123,106 +124,8 @@ work-*/                 # HyperFrames 工作临时目录
 > **关键约束：只删除"必删文件"列表中明确列出的文件。** 不在必删列表中的文件一律不动。绝不使用通配符批量删除非必删文件。
 
 ```bash
-cd "${PROJECT_DIR}"
-
-echo "=== Stage 8: 项目清理 ==="
-
-# ──────────────────────────────────────────────
-# 防护 1: 白名单 — 这些文件绝对不可删除
-# ──────────────────────────────────────────────
-RETAIN_FILES=(
-  final.mp4 final_no_bgm.mp4
-  output.mp4 output_no_bgm.mp4
-  cover.html cover.png
-  index.html design.md
-  narration_segments.json narration.txt
-  segment_durations.json
-  douyin.md narration.mp3
-  content.md content_summary.md
-)
-for f in "${RETAIN_FILES[@]}"; do
-  if [ -f "$f" ]; then
-    echo "  [保留] $f"
-  fi
-done
-
-# 1. 仅删除"必删文件"列表中明确列出的文件（逐条 rm，不用通配符删除保留清单中的文件）
-rm -f narration_seg_*.txt narration_seg_*.mp3 narration_seg_*.srt
-rm -f loudnorm_stats.json concat.txt concat_new.txt
-rm -f output_silent.mp4 output_with_audio.mp4
-rm -f silence_*.mp3 hyperframes.json frame_check.png
-rm -f verify_*.png scenes.yaml
-rm -f stage-handoff.json skills-lock.json webreader_checklist.json
-rm -f cover_final.png cover_segment.mp4 narration.srt
-# ffmpeg 封面帧中间产物
-rm -f cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts
-# 注意：cover.html 和 output.mp4 不删除 — 封面/BGM 重生成需要
-
-# 2. 删除工作临时目录和技能库副本
-rm -rf work-*/
-rm -rf .agents/
-
-# 3. 按条件删除 BGM 副本
-# 策略：检查 segment_durations.json 或 index.html 中的 BGM 来源，
-# 如果能追溯到 workspace/bgm/ 中的原始文件则删除项目副本
-if [ -f bgm.wav ]; then
-  BGM_FOUND_IN_LIB=false
-  # 方法1: 检查 segment_durations.json 中记录的 bgm_source
-  BGM_SOURCE=$(python3 -c "import json; d=json.load(open('segment_durations.json')); print(d.get('meta',{}).get('bgm_source',''))" 2>/dev/null)
-  if [ -n "$BGM_SOURCE" ] && [ -f "../../workspace/bgm/${BGM_SOURCE}" ]; then
-    BGM_FOUND_IN_LIB=true
-  fi
-  # 方法2: 检查素材库中是否有同名文件（按项目目录名反推）
-  if [ "$BGM_FOUND_IN_LIB" = false ]; then
-    # 检查素材库中是否有任何匹配的 mp3/wav 文件
-    BGM_DURATION=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 bgm.wav 2>/dev/null | cut -d. -f1)
-    for f in ../../workspace/bgm/*.mp3 ../../workspace/bgm/*.wav; do
-      if [ -f "$f" ]; then
-        LIB_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null | cut -d. -f1)
-        if [ "$BGM_DURATION" = "$LIB_DUR" ]; then
-          BGM_FOUND_IN_LIB=true
-          break
-        fi
-      fi
-    done
-  fi
-  if [ "$BGM_FOUND_IN_LIB" = true ]; then
-    rm -f bgm.wav
-    echo "  已删除 bgm.wav（素材库已有原始文件）"
-  else
-    echo "  保留 bgm.wav（无法确认素材库来源）"
-  fi
-fi
-
-# 4. 清理电影片段临时目录（仅电影解读模式）
-if [ -d clips_16x9 ]; then
-  rm -rf clips_16x9/
-  echo "  已删除 clips_16x9/"
-fi
-
-# 5. 报告清理结果
-echo ""
-echo "保留文件："
-ls -1 | head -20
-echo ""
-echo "项目大小：$(du -sh . 2>/dev/null | cut -f1)"
-
-# ──────────────────────────────────────────────
-# 防护 2: 清理后验证 — 确认保留文件未被误删
-# ──────────────────────────────────────────────
-RETAIN_CHECK_FILES=(final.mp4 final_no_bgm.mp4 cover.png douyin.md)
-MISSING=0
-for f in "${RETAIN_CHECK_FILES[@]}"; do
-  if [ ! -f "$f" ]; then
-    echo "  ⚠️ 严重错误：保留文件 $f 被误删！"
-    MISSING=$((MISSING+1))
-  fi
-done
-if [ $MISSING -gt 0 ]; then
-  echo "  ⚠️ 有 $MISSING 个核心文件被误删，请检查！"
-fi
-
-echo "=== 清理完成 ==="
+# 执行项目清理（白名单保护 + 清理后验证）
+bash .claude/commands/clipforge/scripts/cleanup_project.sh "$PROJECT_DIR"
 ```
 
 ## 清理后项目目录结构

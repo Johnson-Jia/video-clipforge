@@ -30,63 +30,22 @@ ffmpeg -y -i "video/SOURCE_FILE.mp4" -ss START -to END \
 ffprobe -v quiet -show_entries format=duration -of csv=p=0 "clips_16x9/clip_{scene_id}_seg_{N}.mp4"
 ```
 
+**提取后测量每段实际时长：**
+
+```bash
+ffprobe -v quiet -show_entries format=duration -of csv=p=0 "clips_16x9/clip_{scene_id}_seg_{N}.mp4"
+```
+
 ## 2. 转场拼接（xfade）
 
-多个片段用 ffmpeg `xfade` + `acrossfade` 拼接，添加交叉溶解转场消除硬切。
-
-### 单段（无需拼接）
+多个片段用 ffmpeg `xfade` + `acrossfade` 拼接，添加交叉溶解转场消除硬切。脚本自动检测片段数量（1段→复制，2段→两路xfade，3+段→链式xfade）。
 
 ```bash
-cp clips_16x9/clip_{scene_id}_seg_0.mp4 clips_16x9/clip_{scene_id}_xfade.mp4
+# 自动拼接（参数：场景ID，转场时长默认0.5s）
+bash .claude/commands/clipforge/scripts/movie_xfade.sh <scene_id> [xfade_duration]
 ```
 
-### 两段拼接
-
-```bash
-XF=0.5
-D0=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 clips_16x9/clip_{scene_id}_seg_0.mp4)
-OFFSET=$(awk "BEGIN {printf \"%.2f\", $D0 - $XF}")
-
-ffmpeg -y \
-  -i clips_16x9/clip_{scene_id}_seg_0.mp4 \
-  -i clips_16x9/clip_{scene_id}_seg_1.mp4 \
-  -filter_complex \
-    "[0:v][1:v]xfade=transition=fade:duration=$XF:offset=$OFFSET[vout];\
-     [0:a][1:a]acrossfade=d=$XF[aout]" \
-  -map "[vout]" -map "[aout]" \
-  -c:v libx264 -b:v 5M -c:a aac -b:a 192k \
-  clips_16x9/clip_{scene_id}_xfade.mp4
-```
-
-### 多段链式拼接（3 段及以上）
-
-offset 递推计算：`offset_N = sum(D_1..D_N) - N * xfade_duration`
-
-```bash
-XF=0.5
-# offset 递推：O0=D0-XF, O1=D0+D1-2*XF, O2=D0+D1+D2-3*XF ...
-
-ffmpeg -y \
-  -i clips_16x9/clip_{scene_id}_seg_0.mp4 \
-  -i clips_16x9/clip_{scene_id}_seg_1.mp4 \
-  -i clips_16x9/clip_{scene_id}_seg_2.mp4 \
-  -i clips_16x9/clip_{scene_id}_seg_3.mp4 \
-  -i clips_16x9/clip_{scene_id}_seg_4.mp4 \
-  -filter_complex \
-    "[0:v][1:v]xfade=transition=fade:duration=$XF:offset=$O0[v01];\
-     [v01][2:v]xfade=transition=fade:duration=$XF:offset=$O1[v02];\
-     [v02][3:v]xfade=transition=fade:duration=$XF:offset=$O2[v03];\
-     [v03][4:v]xfade=transition=fade:duration=$XF:offset=$O3[vout];\
-     [0:a][1:a]acrossfade=d=$XF[a01];\
-     [a01][2:a]acrossfade=d=$XF[a02];\
-     [a02][3:a]acrossfade=d=$XF[a03];\
-     [a03][4:a]acrossfade=d=$XF[aout]" \
-  -map "[vout]" -map "[aout]" \
-  -c:v libx264 -b:v 5M -c:a aac -b:a 192k \
-  clips_16x9/clip_{scene_id}_xfade.mp4
-```
-
-> **xfade 转场类型：** `fade`（交叉溶解，默认推荐）、`fadeblack`（通过黑场过渡）、`slidelr`（左滑）。`fade` 最通用。
+> **xfade 转场类型：** 脚本默认使用 `fade`（交叉溶解）。如需 `fadeblack`（通过黑场过渡）或 `slidelr`（左滑），修改脚本中的 `transition=fade` 参数。
 
 ### 拼接后测量实际时长
 

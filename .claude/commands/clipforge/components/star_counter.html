@@ -1,0 +1,39 @@
+<!--
+  StarCounter — Star 数动态计数
+  用途: 展示项目 Star 数增长
+  情感目标: 兴奋、增长感
+  适用场景类型: stats, reveal
+-->
+<!-- HTML -->
+<div class="star-counter">
+  <div class="star-label">今日涨星</div>
+  <div class="star-number" data-target="5123">0</div>
+  <div class="star-unit">★</div>
+</div>
+
+<!-- CSS -->
+<style>
+.star-counter {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 16px;
+}
+.star-label { font-size: 32px; color: var(--text-secondary); }
+.star-number {
+  font-size: 140px; font-weight: 900;
+  color: var(--accent-warm);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 40px rgba(240,180,41,0.4);
+}
+.star-unit { font-size: 48px; color: var(--accent-warm); opacity: 0.7; }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+const counter = { val: 0 };
+tl.to(counter, {
+  val: 5123, duration: 1.5, ease: 'power2.out',
+  onUpdate: () => {
+    document.querySelector('.star-number').textContent = Math.floor(counter.val).toLocaleString();
+  }
+}, startTime);
+</script>

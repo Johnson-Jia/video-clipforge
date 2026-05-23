@@ -32,7 +32,7 @@ DATE_DIR="$(date +%Y)/$(date +%m)/$(date +%d)"
 VERIFY_DIR="workspace/${DATE_DIR}/github-weekly-verify"
 mkdir -p "${VERIFY_DIR}"
 
-python scripts/github_trending.py \
+python .claude/commands/clipforge/scripts/github_trending.py \
   --output-dir "${VERIFY_DIR}" \
   --date "${TODAY}" \
   --since weekly

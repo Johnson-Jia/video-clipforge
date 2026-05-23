@@ -1,0 +1,47 @@
+<!--
+  PulseOrb — 脉冲光球
+  用途: 能量感装饰，配合数据展示
+  情感目标: 能量感、聚焦
+  适用场景类型: data, focus, energy
+-->
+<!-- HTML -->
+<div class="pulse-orb">
+  <div class="orb-core"></div>
+  <div class="orb-ring ring-1"></div>
+  <div class="orb-ring ring-2"></div>
+  <div class="orb-ring ring-3"></div>
+</div>
+
+<!-- CSS -->
+<style>
+.pulse-orb {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px; height: 400px;
+}
+.orb-core {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--accent-cool);
+  box-shadow: 0 0 60px var(--accent-cool), 0 0 120px rgba(0,229,160,0.3);
+}
+.orb-ring {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid var(--accent-cool);
+  opacity: 0.3;
+}
+.ring-1 { width: 160px; height: 160px; }
+.ring-2 { width: 280px; height: 280px; opacity: 0.2; }
+.ring-3 { width: 400px; height: 400px; opacity: 0.1; }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.orb-core', {scale:0, duration:0.5, ease:'elastic.out(1, 0.5)'}, startTime)
+  .from('.ring-1', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.2)
+  .from('.ring-2', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.3)
+  .from('.ring-3', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.4);
+</script>
