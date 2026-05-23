@@ -279,7 +279,9 @@ ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 
 | BGM mean_volume | 推荐 volume | 说明 |
 |----------------|------------|------|
-| > -15 dB（很响） | `0.08`     | 响度高的配乐需较大衰减 |
+| > -5 dB（极端响） | `0.03`     | 电子/摇滚等极端响度，需大幅衰减 |
+| -5 ~ -10 dB（非常响） | `0.04`     | 需要较大衰减 |
+| > -10 ~ -15 dB（很响） | `0.06`     | 响度较高的配乐 |
 | -15 ~ -20 dB | `0.10`     | 中等偏响 |
 | -20 ~ -25 dB | `0.15`     | 中等音量（最常见）→ **默认推荐** |
 | -25 ~ -30 dB | `0.18`     | 偏安静 |
@@ -320,6 +322,52 @@ if [ "$(echo "$BGM_MEAN < -35" | bc 2>/dev/null)" -eq 1 ]; then
   echo "正确做法：bgm.wav 保持原始音量，Stage 6 通过 data-volume 控制混音。"
 fi
 ```
+
+### BGM 峰值间距校验（必须执行）
+
+查表得到推荐 volume 后，验证衰减后的 BGM 峰值不会盖过旁白：
+
+```bash
+# 获取 BGM 峰值（max_volume）
+BGM_MAX=$(ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
+echo "bgm.wav max_volume: ${BGM_MAX} dB"
+
+# 获取旁白峰值
+NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
+echo "narration.mp3 max_volume: ${NARR_MAX} dB"
+
+# 计算衰减后 BGM 峰值 = max_volume + 20*log10(volume)
+# 要求：衰减后 BGM 峰值 ≤ 旁白峰值 - 12 dB（至少 12 dB 间距）
+# 如果间距不足，自动降低 volume
+python -c "
+import math, sys
+bgm_max = float('${BGM_MAX}')
+narr_max = float('${NARR_MAX}')
+vol = float('${BGM_VOL}')  # 从查表得到的 volume
+
+attenuated = bgm_max + 20 * math.log10(vol)
+gap = narr_max - attenuated
+print(f'BGM 衰减后峰值: {attenuated:.1f} dB')
+print(f'旁白峰值: {narr_max:.1f} dB')
+print(f'间距: {gap:.1f} dB')
+
+if gap < 12:
+    # 反推满足 12 dB 间距的最小衰减
+    import numpy as np
+    needed_vol = 10 ** ((narr_max - 12 - bgm_max) / 20)
+    # 向下取整到 0.01
+    needed_vol = math.floor(needed_vol * 100) / 100
+    if needed_vol < 0.01:
+        needed_vol = 0.01
+    print(f'WARNING: 间距仅 {gap:.1f} dB < 12 dB，volume 从 {vol} 降至 {needed_vol}')
+    print(f'FINAL_VOL={needed_vol}')
+else:
+    print(f'间距 OK: {gap:.1f} dB ≥ 12 dB')
+    print(f'FINAL_VOL={vol}')
+"
+```
+
+如果输出 `FINAL_VOL` 与查表值不同，**用 FINAL_VOL 覆盖**写入 `segment_durations.json` 的 `bgm_volume`。
 
 ### BGM 循环规则（必须执行）
 
