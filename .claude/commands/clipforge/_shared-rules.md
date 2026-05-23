@@ -134,15 +134,15 @@
 ### 7.3 scene-wrap 必须有 padding
 
 - 每个场景的 `.scene-wrap`（或等效内容容器）**必须显式设置四方向 padding**
-- 推荐值：`padding: 120px 35px`（上下 120px，左右 35px）
-- 水平 padding 确保内容不贴视频边缘，防止裁切和显示不全
+- 推荐值：`padding: 120px 95px`（上下 120px，左右 95px）
+- 水平 padding 确保内容不贴视频边缘，防止手机端文字被裁切
 - 缺少 padding 可能导致内容区域在 HyperFrames 渲染中塌陷不显示
 
 ### 7.3.1 水平安全边距规则
 
-- **所有场景内容左右各留 35px 边距**（1080px 宽度的 ~3.2%）
-- `.pfc-main` 等全宽内容行也必须加 `padding: 0 30px`，防止 `.pfc-rank` 和 `.pfc-stars` 贴边
-- `.project-card` / `.hero-card` 等卡片容器加 `padding: 0 20px`
+- **所有场景内容左右各留 95px 边距**（1080px 宽度的 ~8.8%）
+- `.pfc-main` 等全宽内容行也必须加 `padding: 0 80px`，防止 `.pfc-rank` 和 `.pfc-stars` 贴边
+- `.project-card` / `.hero-card` 等卡片容器加 `padding: 0 60px`
 - **禁止** `width: 100%` 的内容行没有水平 padding
 
 ### 7.4 渲染前移除所有非 index.html 的 composition 文件
