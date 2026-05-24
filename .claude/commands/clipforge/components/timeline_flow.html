@@ -3,6 +3,7 @@
   用途: 项目发展历程、版本迭代
   情感目标: 故事感、推进感
   适用场景类型: timeline, history, evolution
+  padding: 无 — 嵌入 .layer-content，padding 由 .scene-wrap 统一管理
 -->
 <!-- HTML -->
 <div class="timeline-flow">
@@ -21,18 +22,17 @@
 <style>
 .timeline-flow {
   position: relative; width: 100%;
-  padding: 120px 80px;
   display: flex; flex-direction: column; gap: 60px;
 }
 .timeline-line {
-  position: absolute; left: 140px; top: 120px; bottom: 120px;
+  position: absolute; left: 60px; top: 0; bottom: 0;
   width: 3px;
   background: linear-gradient(180deg, var(--accent-cool), var(--accent-warm));
   opacity: 0.5;
 }
 .timeline-node {
   display: flex; align-items: center; gap: 40px;
-  padding-left: 100px;
+  margin-left: 60px;
 }
 .node-dot {
   width: 24px; height: 24px; border-radius: 50%;

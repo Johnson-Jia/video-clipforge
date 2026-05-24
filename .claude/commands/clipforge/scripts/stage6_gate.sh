@@ -50,6 +50,30 @@ if [ -f "index.html" ]; then
   fi
 
   echo "HTML 结构: ${CLIP_COUNT} scenes, ${LAYER_FX_COUNT} fx layers, ${EMPTY_FX:-0} empty"
+
+  # ── Padding 完整性检查 ──
+  # 1. 每个 scene-wrap 必须有 padding
+  SCENE_WRAPS=$(grep -c 'scene-wrap\|class="pfc\|class="hero-card\|class="project-full-card' index.html 2>/dev/null || echo "0")
+  # 统计含 padding 声明的 scene-wrap（含内联 style 和 CSS 规则）
+  PADDED_WRAPS=$(grep -E '(scene-wrap|class="(pfc|hero-card|project-full-card))' index.html 2>/dev/null | grep -ci 'padding' || echo "0")
+  # 也检查内联 style padding
+  INLINE_PAD=$(grep -c 'style="[^"]*padding' index.html 2>/dev/null || echo "0")
+  # 检查 CSS 块中的 scene-wrap padding
+  CSS_PAD=$(grep -A5 '\.scene-wrap' index.html 2>/dev/null | grep -c 'padding' || echo "0")
+
+  if [ "$SCENE_WRAPS" -gt 0 ] && [ "$PADDED_WRAPS" -eq 0 ] && [ "$INLINE_PAD" -eq 0 ] && [ "$CSS_PAD" -eq 0 ]; then
+    echo "FAIL: scene-wrap 存在但无 padding 声明（内容将塌陷）"
+    FAIL=1
+  fi
+
+  # 2. 检测内层多重 padding（.phase/.layer-content/.pfc-main 有水平 padding）
+  MULTI_PAD=$(grep -E '\.(phase|layer-content|pfc-main)' index.html 2>/dev/null | grep -cE 'padding-[left-right]|padding:\s*\d+.*\d+' || echo "0")
+  if [ "$MULTI_PAD" -gt 0 ]; then
+    echo "FAIL: 内层元素（.phase/.layer-content/.pfc-main）包含水平 padding（违反单层 padding 原则，会导致双重 padding）"
+    FAIL=1
+  fi
+
+  echo "Padding 检查: scene-wraps=${SCENE_WRAPS}, padded=${PADDED_WRAPS}, inline=${INLINE_PAD}, multi-pad=${MULTI_PAD}"
 fi
 
 # ── 视觉分镜完整性（Phase 检查）──

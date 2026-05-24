@@ -3,6 +3,7 @@
   用途: 对比两个项目或功能
   情感目标: 对抗感、悬念
   适用场景类型: compare, versus
+  padding: 无 — 嵌入 .layer-content，padding 由 .scene-wrap 统一管理
 -->
 <!-- HTML -->
 <div class="compare-split">
@@ -27,12 +28,11 @@
 <style>
 .compare-split {
   display: flex; width: 100%; height: 100%;
-  padding: 120px 40px;
 }
 .compare-col {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 40px;
+  padding: 40px 0;
 }
 .compare-col.left { background: linear-gradient(135deg, rgba(0,229,160,0.08), transparent); }
 .compare-col.right { background: linear-gradient(225deg, rgba(240,180,41,0.08), transparent); }
