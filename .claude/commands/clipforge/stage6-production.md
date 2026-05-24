@@ -175,12 +175,12 @@ echo "PASS: 所有 layer-fx 已填充"
 
 ```html
 <div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
-  <div class="scene-wrap" style="padding:120px 60px 260px 40px">
+  <div class="scene-wrap" style="padding:140px 90px 260px 70px">
     <!-- 三层架构不变 -->
     <div class="layer-bg"><!-- 背景渐变 + 光晕 --></div>
     <div class="layer-fx"><!-- 特效 --></div>
-    <!-- layer-content 内包含多个 phase -->
-    <div class="layer-content">
+    <!-- layer-content 内包含多个 phase（height:100% 必须有，否则 Phase 塌陷到顶部） -->
+    <div class="layer-content" style="height:100%">
       <!-- Phase 1: CSS 默认 opacity:1，GSAP 入场动画 -->
       <div class="phase phase-1">
         <div class="phase-title">养老AI手环</div>
@@ -398,7 +398,7 @@ Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek
 8. **`.clip` 只设 `position: absolute` + 尺寸**，不要加 `opacity`
 9. **禁止 `.anim-in` 等 CSS 入场动画类**
 10. **画面文字禁止 HTML 实体**
-11. **每个 scene-wrap 必须设 padding** `style="padding:120px 60px 260px 40px"`（上120 / 右60 / 下260 / 左40）
+11. **每个 scene-wrap 必须设 padding** `style="padding:140px 90px 260px 70px"`（上140 / 右90 / 下260 / 左70）
 
 ### 视觉设计规则（必须遵守）
 
@@ -502,6 +502,7 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
 }
+.layer-content { position: relative; z-index: 3; height: 100%; }
 ```
 
 **禁止紧贴顶部**：不能用 `top: 80px` 等小值。场景内容容器禁止 `position: absolute` + 小 top 值。
@@ -527,8 +528,8 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 - 顶部危险区：上 200px
 - 底部危险区：下 300px
-- 水平安全边距：左 40px / 右 60px（兼容抖音/小红书/微信视频号三平台）
-- 安全内容区：120px ~ 1660px（垂直），40px ~ 1020px（水平）
+- 水平安全边距：左 70px / 右 90px（兼容抖音/小红书/微信视频号三平台）
+- 安全内容区：140px ~ 1660px（垂直），70px ~ 990px（水平）
 
 ## 6.6 渲染
 

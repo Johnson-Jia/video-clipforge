@@ -24,6 +24,15 @@
 - Phase 间切换使用 `.to({opacity: 0})` 淡化旧阶段（完全消失，避免重叠重影）+ `.to({opacity: 1})` 显示新阶段
 - **Phase 断点计算禁止均分**——`gap = duration / phase_count` 会导致旁白与画面严重不同步（偏差 5-12 秒）。必须逐场景分析旁白文本话题转换点，按字数比例换算时间戳。方法见 `stage6-production.md` §6.4b
 
+### 1.8 特效元素默认可见规则
+
+- §1.1 的规则不仅适用于 `.layer-content`，也适用于 `.layer-fx` 和 `.layer-bg` 的所有元素
+- **任何 HTML 元素的静态 CSS 状态（无 animation 属性时）必须视觉正确**
+- CSS `animation:` 在 HyperFrames 中不执行，元素以静态状态呈现
+- **允许**的 CSS animation：可见位置之间的移动（如 `driftOuter`、`orbDrift`，0% 状态本身在画面内且可见）
+- **禁止**的 CSS animation：从不可见到可见的过渡（如 `scaleY(0)→1`、`opacity:0→1`、`translateY(-100%)→0`）
+- "从无到有"的动画必须使用 GSAP `.from()` 实现
+
 ### 1.2 禁止 HTML 实体字符
 
 - **不在画面文字中使用 HTML 实体**（如 `&#9733;`、`&#10084;`、`&amp;` 等）
@@ -33,13 +42,13 @@
 ### 1.3 scene-wrap 必须有 padding
 
 - 每个场景的 `.scene-wrap`（或等效内容容器）**必须显式设置四方向 padding**
-- 推荐值：`padding: 120px 60px 260px 40px`（上 120px，右 60px，下 260px，左 40px——多平台兼容安全区）
+- 推荐值：`padding: 140px 90px 260px 70px`（上 140px，右 90px，下 260px，左 70px——多平台兼容安全区）
 - 水平 padding 确保内容不贴视频边缘，防止手机端文字被裁切
 - 缺少 padding 可能导致内容区域在 HyperFrames 渲染中塌陷不显示
 
 ### 1.4 水平安全边距规则（抖音竖屏非对称）
 
-- **左 40px / 右 60px** 非对称边距（兼容抖音/小红书/微信视频号三平台）
+- **左 80px / 右 100px** 非对称边距（兼容抖音/小红书/微信视频号三平台）
 - 水平 padding 只在 `.scene-wrap` 一层设置，内层元素不再重复
 - **禁止** `width: 100%` 的内容行没有水平 padding
 
@@ -55,7 +64,7 @@
 所有组件分为两类，由组件文件头部注释标注：
 
 **自带 padding 组件（full-page 型）**：`hero_card`、`project_full_card`
-- 这些组件自带 `padding: 120px 60px 260px 40px`，一个组件占满一屏
+- 这些组件自带 `padding: 140px 90px 260px 70px`，一个组件占满一屏
 - 直接作为 `.layer-content` 的唯一子元素
 - 外层 `.scene-wrap` **不再加 padding**，避免双重叠加
 - 结构：`.scene-wrap(无padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(自带padding)
@@ -63,7 +72,7 @@
 **无 padding 组件（嵌入型）**：其余所有组件
 - 这些组件无外层 padding
 - 嵌入 `.layer-content` 或 `.layer-fx` 内，padding 由 `.scene-wrap` 提供
-- 结构：`.scene-wrap(padding:120px 60px 260px 40px)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
+- 结构：`.scene-wrap(padding:140px 90px 260px 70px)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
 
 ### 1.5 渲染前移除所有非 index.html 的 composition 文件
 
@@ -117,10 +126,10 @@
 ### 2.2 CSS 模板
 
 ```css
-.scene-wrap { position: relative; overflow: hidden; }
+.scene-wrap { position: relative; width: 100%; height: 100%; overflow: hidden; }
 .layer-bg { position: absolute; inset: 0; z-index: 1; }
 .layer-fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.layer-content { position: relative; z-index: 3; }
+.layer-content { position: relative; z-index: 3; height: 100%; }
 ```
 
 ### 2.3 规则
@@ -135,14 +144,16 @@
 ### 2.4 特效层非空规则
 
 - `.layer-fx` **禁止为空 div**（即不允许 `<div class="layer-fx"></div>`）
-- 每个 `.layer-fx` 必须包含至少 1 个特效子元素（Canvas 粒子容器、CSS 漂浮元素、SVG 装饰、脉冲光球等）
-- 特效类型由 `stage6-components.md` 的情绪映射表决定，不固定但不可缺
+- 每个 `.layer-fx` 必须包含至少 1 个特效子元素（CSS 光球、射线、渐变带、矩阵雨竖线、双轨道粒子等）
+- 特效类型由 `stage6-components.md` 的情绪映射表和 CSS 特效库决定，不再统一使用粒子
 - **空 layer-fx 等同于缺少该层，视为三层架构违规，stage6_gate.sh 会拦截**
-- 最小实现标准（按情绪）：
-  - grab/climax：Canvas 粒子 或 ≥5 个 CSS 动画元素
-  - build/reveal：Canvas 粒子 或 ≥3 个 CSS 动画元素
-  - settle/summon：Canvas 粒子 或 ≥3 个 CSS 动画元素
-- 特效 opacity 保持 0.3-0.6，确保 `.layer-content` 始终清晰可读
+- 最小实现标准（按特效类型，详见 `stage6-components.md`）：
+  - StarBurst（grab/climax）：≥6 条射线 + ≥4 闪烁点
+  - LightOrbs（build/summon）：≥3 个光球
+  - MatrixRain（build）：≥8 条竖线
+  - DualOrbit 粒子（reveal）：≥8 个双层嵌套粒子
+  - GradientWave（settle）：≥2 条渐变带
+- 特效整体保持低调（光球 opacity 0.05-0.12，粒子 opacity 0.2-0.35，射线 opacity 0.3-0.5），确保 `.layer-content` 始终清晰可读
 
 ## Red Flags（停止信号）
 
@@ -157,4 +168,6 @@
 | 音频文件不在项目目录内 | 404 静音 |
 | 场景只有两层（缺少 .layer-fx） | 特效会遮挡内容或背景穿透 |
 | 空的 layer-fx（`<div class="layer-fx"></div>`） | §2.4 违规：空层等同于缺少该层，stage6_gate.sh 会拦截 |
+| `.layer-content` 缺少 `height:100%` | Phase 内容塌陷到顶部（§2.2）：绝对定位的 phase 无法解析 inset:0 |
+| 特效元素 CSS animation 从不可见状态开始（scaleY:0 / translateY(-100%) / opacity:0） | HyperFrames 不执行 CSS animation，特效永远不可见（§1.8） |
 | Phase 断点使用 `gap = duration / phase_count` 均分 | 旁白与画面内容严重不同步，偏差 5-12 秒 |

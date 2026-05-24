@@ -49,24 +49,44 @@ tl.add('breath-start')
 
 ### 情绪 → 特效类型映射
 
-| 情绪（emotion） | 特效类型方向 | 必选特效 | 最小实现 | 视觉特征 |
-|-----------------|-------------|---------|---------|---------|
-| `grab`（钩子） | 高能量、爆炸型 | FX-1 纸屑 / FX-2 粒子爆炸 / PT-1 漂浮粒子 | Canvas 粒子 或 ≥5 个 CSS 动画元素 | 快速扩散、高亮度、短时爆发 |
-| `build`（铺垫） | 持续流动型 | PT-1 漂浮粒子 / PT-4 星云旋转 / 3D-4 视差层叠 | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 缓慢运动、低密度、持续可见 |
-| `reveal`（揭示） | 突出强调型 | FX-3 星光绽放 / PT-2 矩阵雨 | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 从中心扩散或从上到下流动 |
-| `climax`（高潮） | 爆发 + 强化 | FX-2 粒子爆炸 / FX-4 彩带飘落 / 3D-2 轨道旋转 | Canvas 粒子 或 ≥5 个 CSS 动画元素 | 全屏覆盖、高密度、强烈视觉冲击 |
-| `settle`（收束） | 温和收敛型 | PT-1 漂浮粒子（低密度） / FX-3 星光（低 opacity） | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 极缓慢、低密度、淡雅 |
-| `summon`（号召） | 温暖引导型 | PT-1 漂浮粒子（暖色调） / FX-1 纸屑（少量） | Canvas 粒子 或 ≥3 个 CSS 动画元素 | 轻快、愉悦、不抢内容 |
+> **特效选择由场景情绪驱动，但不再统一使用粒子。** 5 种 CSS 特效类型按情绪分配。
 
-> **"最小实现"是硬性门槛，不是建议值。** 低于最小实现的 layer-fx 视为空层，stage6_gate.sh 会拦截。特效数量统计的是 `.layer-fx` 内的子元素数（CSS div 或 Canvas 容器），不统计伪元素。
+| 情绪（emotion） | 主特效 | 备选特效 | 最小实现 | 视觉特征 |
+|-----------------|--------|---------|---------|---------|
+| `grab`（钩子） | **星光绽放 (StarBurst)** | 双轨道粒子 (DualOrbit) | ≥6 条射线 + ≥4 闪烁点 | 从中心扩散、高亮度、爆发感 |
+| `build`（铺垫） | **光球漂浮 (LightOrbs)** 或 **矩阵雨 (MatrixRain)** | 双轨道粒子 (DualOrbit) | 光球≥3个 / 矩阵雨≥8条 | 持续氛围、不抢内容 |
+| `reveal`（揭示） | **双轨道粒子 (DualOrbit)** | 光球漂浮 (LightOrbs) | ≥8 个粒子（双层嵌套） | 缓慢漂移、精致点缀 |
+| `climax`（高潮） | **星光绽放 (StarBurst)** | 双轨道粒子 (DualOrbit) | ≥8 条射线 + ≥6 闪烁点 | 全屏爆发、高密度 |
+| `settle`（收束） | **渐变波 (GradientWave)** | 光球漂浮 (LightOrbs) | ≥2 条渐变带 | 沉静流动、极淡雅 |
+| `summon`（号召） | **光球漂浮 (LightOrbs)** | 双轨道粒子 (DualOrbit) | 光球≥3个 / 粒子≥6个 | 温暖引导、轻快愉悦 |
 
-### 特效选择原则
+> **"最小实现"是硬性门槛，不是建议值。** 低于最小实现的 layer-fx 视为空层，stage6_gate.sh 会拦截。
 
-1. **内容优先**：特效类型应与内容主题协调（科技→矩阵雨/粒子，金融→数据流，生活→纸屑/彩带）
-2. **情绪匹配**：每个场景的 `emotion` 字段决定特效的能量级别和最小实现门槛
-3. **多样性**：相邻场景避免重复使用同一种特效，交替使用不同类型
-4. **不遮挡**：特效 opacity 保持 0.3-0.6，确保 `.layer-content` 始终清晰可读
-5. **必选不可跳过**：每个场景的 `.layer-fx` 必须达到最小实现标准，空 layer-fx 会导致 stage6_gate.sh 拦截
+### 特效多样性规则（强制）
+
+> **事故复盘：9 个场景全部使用同一种 CSS 粒子，视觉单调且像"晃荡"。** 以下规则强制特效类型多样化。
+
+1. **连续禁止**：相邻场景不得使用同一特效类型超过 2 次。即任意连续 3 个场景中，至少有一种不同特效
+2. **类型覆盖**：一个视频内至少使用 3 种不同特效类型（如 StarBurst + LightOrbs + MatrixRain）
+3. **内容优先**：特效类型与内容主题协调（科技→MatrixRain，数据→LightOrbs，揭示→DualOrbit，沉静→GradientWave，爆发→StarBurst）
+4. **不遮挡**：特效整体保持低调（LightOrbs opacity 0.05-0.12，粒子 opacity 0.2-0.35，射线 opacity 0.3-0.5），确保 `.layer-content` 始终清晰可读
+5. **必选不可跳过**：每个场景的 `.layer-fx` 必须达到最小实现标准
+
+### 场景特效分配建议表
+
+> 按常见叙事结构给出推荐分配，具体视频可根据内容主题微调。
+
+| 场景 | 情绪 | 推荐特效 | 理由 |
+|------|------|---------|------|
+| hook | grab | **StarBurst** | 爆发感开场 |
+| 痛点/背景 | build | **LightOrbs** | 严肃话题，光球提供氛围不花哨 |
+| 数据/规模 | build | **MatrixRain** | 数据流科技感 |
+| 竞争/对比 | reveal | **DualOrbit** | 精致粒子点缀揭示 |
+| 技术/方案 | build | **MatrixRain** | 代码/技术氛围 |
+| 商业路径 | reveal | **LightOrbs** | 商业分析，沉稳大气 |
+| 风险 | settle | **GradientWave** | 沉静收敛 |
+| 总结 | summon | **LightOrbs** + 少量 DualOrbit | 暖色引导 |
+| CTA | summon | **StarBurst**（少量） | 号召行动收尾 |
 
 ### 角色选择原则
 
@@ -74,6 +94,227 @@ tl.add('breath-start')
 - 一个视频内使用**同一个角色**（保持一致性）
 - 角色大小约 120-150px，放在不遮挡核心内容的位置
 - 角色带 idle 动画（idleBounce/idleSway/idleBreathe），保持画面活力
+
+### 双轨道粒子规范 (DualOrbit)
+
+> **事故复盘：** 单层粒子 ±30px / 3s 周期导致视觉"晃荡"；全部场景用粒子导致单调。改为双轨道嵌套结构，外层大范围慢漂（20-30s）+ 内层小范围微漂（8-12s），两条不同轨迹叠加产生流畅非重复运动。
+
+**CSS keyframes（全局固定，所有场景共享）：**
+
+```css
+@keyframes driftOuter {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(180px, -120px); }
+  66% { transform: translate(-150px, 100px); }
+}
+@keyframes driftInner {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, -80px) scale(1.1); }
+}
+```
+
+**HTML 结构（每个粒子 2 层嵌套）：**
+
+```html
+<div style="position:absolute;top:25%;left:65%;animation:driftOuter 28s ease-in-out infinite 3s">
+  <div style="width:16px;height:16px;border-radius:50%;background:hsl(210,80%,55%);
+    opacity:0.3;filter:blur(3px);animation:driftInner 10s ease-in-out infinite 1s"></div>
+</div>
+```
+
+**参数规范：**
+
+| 参数 | 范围 | 说明 |
+|------|------|------|
+| 粒子尺寸 | 9-24px | `size = 9 + Math.random() * 15` |
+| 数量 | 8-12 | `count = 8 + Math.floor(Math.random() * 5)` |
+| 外层周期 | 20-30s | `outerDur = 20 + Math.random() * 10` |
+| 内层周期 | 8-12s | `innerDur = 8 + Math.random() * 4` |
+| 外层 delay | 0-8s | `outerDelay = Math.random() * 8` |
+| 内层 delay | 0-5s | `innerDelay = Math.random() * 5` |
+| opacity | 0.2-0.35 | `0.2 + Math.random() * 0.15` |
+| blur | 2-4px | `2 + Math.random() * 2` |
+
+**颜色生成规则（按情绪选择 HSL 色调范围）：**
+
+| 情绪 | H 范围 | S 范围 | L 范围 |
+|------|--------|--------|--------|
+| grab/climax | 0-360（全色相） | 70-100% | 50-75% |
+| build | 180-260（蓝-青） | 60-90% | 45-65% |
+| reveal | 30-60（金-琥珀） | 80-100% | 55-70% |
+| settle | 200-280（蓝-紫） | 40-70% | 40-60% |
+| summon | 0-40（红-橙） | 70-95% | 55-70% |
+
+**JS 生成代码模板（嵌入 `<script>` 标签）：**
+
+```javascript
+const LAYER_FX_SELECTOR = '.s-your-scene .layer-fx';
+const H_RANGE = [180, 260]; // 按情绪修改：build=[180,260] reveal=[30,60] 等
+const count = 8 + Math.floor(Math.random() * 5); // 8-12
+const fxEl = document.querySelector(LAYER_FX_SELECTOR);
+for (let i = 0; i < count; i++) {
+  const h = H_RANGE[0] + Math.random() * (H_RANGE[1] - H_RANGE[0]);
+  const s = 70 + Math.random() * 30;
+  const l = 50 + Math.random() * 25;
+  const size = 9 + Math.random() * 15;  // 9-24px
+  const top = 5 + Math.random() * 90;
+  const left = 5 + Math.random() * 90;
+  const outerDur = 20 + Math.random() * 10; // 20-30s
+  const innerDur = 8 + Math.random() * 4;   // 8-12s
+  const outerDelay = Math.random() * 8;
+  const innerDelay = Math.random() * 5;
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `position:absolute;top:${top}%;left:${left}%;animation:driftOuter ${outerDur}s ease-in-out infinite ${outerDelay}s`;
+  const dot = document.createElement('div');
+  dot.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:hsl(${h},${s}%,${l}%);opacity:${0.2+Math.random()*0.15};filter:blur(${2+Math.random()*2}px);animation:driftInner ${innerDur}s ease-in-out infinite ${innerDelay}s`;
+  wrapper.appendChild(dot);
+  fxEl.appendChild(wrapper);
+}
+```
+
+> **规则：** 固定颜色 class 的粒子、单层结构粒子、尺寸 >24px 的粒子，均视为未达标。
+
+---
+
+## CSS 特效库（4 种特效模板）
+
+> **按情绪和内容选择特效类型，不再全部使用粒子。** 每种特效包含 CSS keyframes + HTML 结构模板。
+
+### StarBurst（星光绽放）— 用于 grab/climax
+
+从画面中心向外的装饰射线 + 闪烁点。射线默认 scaleY(1) 始终可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes rayPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.15; }
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.7; transform: scale(1.2); }
+  50% { opacity: 0.3; transform: scale(0.8); }
+}
+```
+
+**HTML 模板（6-8 条射线 + 4-6 个闪烁点）：**
+
+```html
+<div class="layer-fx">
+  <!-- 射线（6-8 条，不同角度，默认 scaleY(1) 始终可见） -->
+  <div style="position:absolute;top:50%;left:50%;width:2px;height:600px;
+    background:linear-gradient(transparent,hsla(45,90%,60%,0.5),transparent);
+    transform-origin:top center;transform:rotate(0deg) scaleY(1);
+    opacity:0.35;animation:rayPulse 4s ease-in-out infinite 0.3s"></div>
+  <div style="position:absolute;top:50%;left:50%;width:2px;height:600px;
+    background:linear-gradient(transparent,hsla(45,90%,60%,0.4),transparent);
+    transform-origin:top center;transform:rotate(60deg) scaleY(1);
+    opacity:0.35;animation:rayPulse 4s ease-in-out infinite 0.6s"></div>
+  <!-- ... 重复至 6-8 条，rotate 递增 360/(n) 度 -->
+  <!-- 闪烁点（4-6 个，随机位置，默认亮状态） -->
+  <div style="position:absolute;top:35%;left:60%;width:8px;height:8px;
+    border-radius:50%;background:hsl(45,95%,70%);opacity:0.7;
+    animation:starTwinkle 2.5s ease-in-out infinite 0s"></div>
+  <!-- ... 重复至 4-6 个 -->
+</div>
+```
+
+**参数：** 射线默认 opacity 0.3-0.5 / 闪烁点 6-10px 默认 opacity 0.7 / 射线长度 500-800px
+
+---
+
+### LightOrbs（光球漂浮）— 用于 build/settle/summon
+
+3-5 个大尺寸高斯模糊光球缓慢漂移，提供氛围感但不抢内容。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes orbDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(100px, -80px) scale(1.1); }
+  66% { transform: translate(-120px, 60px) scale(0.9); }
+}
+```
+
+**HTML 模板（3-5 个光球）：**
+
+```html
+<div class="layer-fx">
+  <div style="position:absolute;top:20%;left:30%;width:180px;height:180px;
+    border-radius:50%;background:hsl(210,80%,50%);opacity:0.08;filter:blur(80px);
+    animation:orbDrift 25s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:60%;left:65%;width:120px;height:120px;
+    border-radius:50%;background:hsl(200,75%,45%);opacity:0.06;filter:blur(60px);
+    animation:orbDrift 30s ease-in-out infinite 4s"></div>
+  <div style="position:absolute;top:80%;left:15%;width:150px;height:150px;
+    border-radius:50%;background:hsl(230,70%,55%);opacity:0.07;filter:blur(70px);
+    animation:orbDrift 22s ease-in-out infinite 8s"></div>
+</div>
+```
+
+**参数：** 尺寸 100-200px / blur 60-100px / opacity 0.05-0.12 / 周期 20-35s
+
+---
+
+### GradientWave（渐变波）— 用于 settle
+
+2-3 条半透明渐变色带，缓慢旋转摇摆。色带默认居中可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes waveSway {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+```
+
+**HTML 模板（2-3 条渐变带）：**
+
+```html
+<div class="layer-fx">
+  <div style="position:absolute;top:20%;left:0;width:100%;height:300px;
+    background:linear-gradient(90deg,transparent,hsla(220,60%,40%,0.06),transparent);
+    transform:rotate(-8deg);animation:waveSway 20s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:55%;left:0;width:100%;height:250px;
+    background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.05),transparent);
+    transform:rotate(5deg);animation:waveSway 25s ease-in-out infinite 5s"></div>
+</div>
+```
+
+**参数：** 色带高度 200-350px / opacity 0.04-0.08 / 周期 18-30s
+
+---
+
+### MatrixRain（矩阵雨）— 用于 build（科技场景）
+
+竖向半透明细线，营造数据流感觉。线条默认在画面内可见位置。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes rainSway {
+  0%, 100% { transform: translateY(0); opacity: 0.3; }
+  50% { transform: translateY(40px); opacity: 0.15; }
+}
+```
+
+**HTML 模板（8-12 条竖线）：**
+
+```html
+<div class="layer-fx">
+  <div style="position:absolute;top:15%;left:22%;width:1px;height:250px;
+    background:linear-gradient(transparent,hsla(200,80%,55%,0.3),transparent);
+    opacity:0.3;animation:rainSway 14s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:40%;left:55%;width:1px;height:300px;
+    background:linear-gradient(transparent,hsla(210,75%,50%,0.25),transparent);
+    opacity:0.25;animation:rainSway 18s ease-in-out infinite 3s"></div>
+  <!-- ... 重复至 8-12 条，top 10%-70% 范围内随机 -->
+</div>
+```
+
+**参数：** 竖线宽度 1-2px / 长度 150-400px / 默认 opacity 0.15-0.35 / 周期 12-20s
 
 ---
 
