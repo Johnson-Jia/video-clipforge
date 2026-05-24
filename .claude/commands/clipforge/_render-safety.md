@@ -33,15 +33,22 @@
 ### 1.3 scene-wrap 必须有 padding
 
 - 每个场景的 `.scene-wrap`（或等效内容容器）**必须显式设置四方向 padding**
-- 推荐值：`padding: 120px 70px`（上下 120px，左右 70px）
+- 推荐值：`padding: 120px 90px 240px 36px`（上 120px，右 90px，下 240px，左 36px——多平台兼容安全区）
 - 水平 padding 确保内容不贴视频边缘，防止手机端文字被裁切
 - 缺少 padding 可能导致内容区域在 HyperFrames 渲染中塌陷不显示
 
-### 1.4 水平安全边距规则
+### 1.4 水平安全边距规则（抖音竖屏非对称）
 
-- **所有场景内容左右各留 70px 边距**（1080px 宽度的 ~6.5%）
-- `.pfc-main` 等全宽内容行也必须加 `padding: 0 70px`，防止 `.pfc-rank` 和 `.pfc-stars` 贴边
+- **左 36px / 右 90px** 非对称边距（兼容抖音/小红书/微信视频号三平台）
+- 水平 padding 只在 `.scene-wrap` 一层设置，内层元素不再重复
 - **禁止** `width: 100%` 的内容行没有水平 padding
+
+### 1.4a 单层 padding 原则
+
+- 水平 padding **只在 `.scene-wrap` 设置**
+- `.phase`、`.layer-content`、`.pfc-main` 等内层元素**禁止添加水平 padding**
+- 违反会导致双重/三重 padding，内容被压缩到 70% 以下
+- 历史事故：`.scene-wrap`(70px) + `.phase`(70px) = 累计 140px/侧，内容仅 800px (74%)
 
 ### 1.5 渲染前移除所有非 index.html 的 composition 文件
 
@@ -129,6 +136,7 @@
 | 使用 `.anim-in` CSS 类 | HyperFrames 不执行 CSS animation，导致内容永远不可见 |
 | HTML 实体字符（`&#9733;`） | 无头浏览器解析不可靠，可能导致整段不渲染 |
 | scene-wrap 无 padding | 内容区域可能塌陷不显示 |
+| 内层元素（.phase/.pfc-main）添加水平 padding | 双重/三重 padding 导致内容宽度不足 80%（§1.4a） |
 | 多个含 `data-composition-id` 的 HTML 文件 | 渲染冲突，multiple_root_compositions 警告 |
 | `window.__timelines = {};` 空对象未注册 | 全片空白渲染 |
 | 音频文件不在项目目录内 | 404 静音 |

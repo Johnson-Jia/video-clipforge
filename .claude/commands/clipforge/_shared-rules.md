@@ -138,6 +138,6 @@
 
 - **禁止 `.anim-in` / CSS `opacity:0` 入场**——HyperFrames seek 不执行 CSS animation
 - **禁止 HTML 实体字符**——改用 Unicode 直接输入（`★` 而非 `&#9733;`）
-- **scene-wrap 必须 `padding: 120px 70px`**——缺 padding 会塌陷
+- **scene-wrap 必须 `padding: 120px 90px 240px 36px`**（多平台兼容安全区）——缺 padding 会塌陷
 - **渲染前移除非 index.html 的 HTML 文件**——避免 multiple_root_compositions 冲突
 - **每个场景必须三层**：`.layer-bg`(z:1) + `.layer-fx`(z:2) + `.layer-content`(z:3)
