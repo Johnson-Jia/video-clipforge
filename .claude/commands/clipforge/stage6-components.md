@@ -98,7 +98,7 @@ tl.add('breath-start')
 
 ```css
 .phase { position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: 0 70px; }
+  align-items: center; justify-content: center; }
 .phase-header { font-size: 48px; font-weight: 700; color: var(--accent-warm);
   margin-bottom: 40px; letter-spacing: 2px; }
 ```

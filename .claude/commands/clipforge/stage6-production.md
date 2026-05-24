@@ -175,7 +175,7 @@ echo "PASS: 所有 layer-fx 已填充"
 
 ```html
 <div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
-  <div class="scene-wrap" style="padding:120px 70px">
+  <div class="scene-wrap" style="padding:120px 90px 240px 36px">
     <!-- 三层架构不变 -->
     <div class="layer-bg"><!-- 背景渐变 + 光晕 --></div>
     <div class="layer-fx"><!-- 特效 --></div>
@@ -527,8 +527,8 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 - 顶部危险区：上 200px
 - 底部危险区：下 300px
-- 水平安全边距：左右各 70px（约 6.5%），内容不得贴边
-- 安全内容区：200px ~ 1600px（垂直），70px ~ 1010px（水平）
+- 水平安全边距：左 36px / 右 90px（兼容抖音/小红书/微信视频号三平台）
+- 安全内容区：120px ~ 1680px（垂直），36px ~ 990px（水平）
 
 ## 6.6 渲染
 
