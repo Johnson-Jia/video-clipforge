@@ -33,13 +33,13 @@
 ### 1.3 scene-wrap 必须有 padding
 
 - 每个场景的 `.scene-wrap`（或等效内容容器）**必须显式设置四方向 padding**
-- 推荐值：`padding: 120px 90px 240px 36px`（上 120px，右 90px，下 240px，左 36px——多平台兼容安全区）
+- 推荐值：`padding: 120px 60px 260px 40px`（上 120px，右 60px，下 260px，左 40px——多平台兼容安全区）
 - 水平 padding 确保内容不贴视频边缘，防止手机端文字被裁切
 - 缺少 padding 可能导致内容区域在 HyperFrames 渲染中塌陷不显示
 
 ### 1.4 水平安全边距规则（抖音竖屏非对称）
 
-- **左 36px / 右 90px** 非对称边距（兼容抖音/小红书/微信视频号三平台）
+- **左 40px / 右 60px** 非对称边距（兼容抖音/小红书/微信视频号三平台）
 - 水平 padding 只在 `.scene-wrap` 一层设置，内层元素不再重复
 - **禁止** `width: 100%` 的内容行没有水平 padding
 
@@ -49,6 +49,21 @@
 - `.phase`、`.layer-content`、`.pfc-main` 等内层元素**禁止添加水平 padding**
 - 违反会导致双重/三重 padding，内容被压缩到 70% 以下
 - 历史事故：`.scene-wrap`(70px) + `.phase`(70px) = 累计 140px/侧，内容仅 800px (74%)
+
+### 1.4b 组件 padding 分类
+
+所有组件分为两类，由组件文件头部注释标注：
+
+**自带 padding 组件（full-page 型）**：`hero_card`、`project_full_card`
+- 这些组件自带 `padding: 120px 60px 260px 40px`，一个组件占满一屏
+- 直接作为 `.layer-content` 的唯一子元素
+- 外层 `.scene-wrap` **不再加 padding**，避免双重叠加
+- 结构：`.scene-wrap(无padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(自带padding)
+
+**无 padding 组件（嵌入型）**：其余所有组件
+- 这些组件无外层 padding
+- 嵌入 `.layer-content` 或 `.layer-fx` 内，padding 由 `.scene-wrap` 提供
+- 结构：`.scene-wrap(padding:120px 60px 260px 40px)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
 
 ### 1.5 渲染前移除所有非 index.html 的 composition 文件
 
