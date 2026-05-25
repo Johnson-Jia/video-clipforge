@@ -2,6 +2,8 @@
 
 当 `design.md` 已存在且 `narration_segments.json` 不存在时触发。拆解场景序列、撰写分段旁白文案、注入情感标记和幽默元素。
 
+> **导演思维驱动。** 执行前读取 `_director-toolkit`，每个场景用"导演的 5 个必答题"驱动视觉描述。用"视觉词汇表"写出具体的视觉指令，让 Stage 6 能直接理解和实现。
+
 | 模式 | 场景数 | 目标时长 |
 |------|--------|---------|
 | 标准模式 | 6-8 个 | 45-55 秒 |
@@ -89,19 +91,21 @@ scenes:
 
 ## 场景类型
 
-| 类型 | 用途 | 典型时长 |
-|------|------|---------|
-| **hook** | 开场钩子（痛点/反问/强对比） | 3-5s |
-| **solution** | 引出产品/方案，核心卖点 | 5-7s |
-| **features** | 功能展示、输入输出演示（内部元素快速切换） | 8-14s |
-| **cta** | 号召行动，开源信息，地址 | 4-7s |
-| **video_clip** | 电影片段播放（电影解读模式） | 10s-3min |
-| **what** | 项目是什么，一句话核心定义（深度解析） | 5-7s |
-| **how** | 原理解释，技术工作流程（深度解析） | 6-10s |
-| **capabilities** | 核心能力/性能数据展示（深度解析） | 8-12s |
-| **usecases** | 应用场景卡片展示（深度解析） | 7-10s |
-| **tech** | 技术栈/硬件/架构（深度解析） | 5-8s |
-| **privacy** | 隐私/安全/合规优势（深度解析，可选） | 5-7s |
+场景类型定义了每个场景的叙事用途，时长由内容密度决定，不套固定值：
+
+| 类型 | 用途 |
+|------|------|
+| **hook** | 开场钩子（痛点/反问/强对比） |
+| **solution** | 引出产品/方案，核心卖点 |
+| **features** | 功能展示、输入输出演示 |
+| **cta** | 号召行动，开源信息 |
+| **video_clip** | 电影片段播放（电影解读模式） |
+| **what** | 项目是什么，一句话核心定义（深度解析） |
+| **how** | 原理解释，技术工作流程（深度解析） |
+| **capabilities** | 核心能力/性能数据展示（深度解析） |
+| **usecases** | 应用场景卡片展示（深度解析） |
+| **tech** | 技术栈/硬件/架构（深度解析） |
+| **privacy** | 隐私/安全/合规优势（深度解析，可选） |
 
 ### 单项目深度解析 — 8 场景模板
 
@@ -242,7 +246,8 @@ scenes:
       {
         "focus": "全球市场规模与增长",
         "visual_type": "data",
-        "key_data": ["845亿美元(2025)", "1767亿美元(2030)", "年复合增长15.9%"]
+        "key_data": ["845亿美元(2025)", "1767亿美元(2030)", "年复合增长15.9%"],
+        "layout_hint": { "density": "compact" }
       },
       {
         "focus": "中国市场出货量",
@@ -252,7 +257,8 @@ scenes:
       {
         "focus": "渗透率与确定性",
         "visual_type": "highlight",
-        "key_data": ["35%成年人已使用", "渗透率快速增长", "确定性极高的赛道"]
+        "key_data": ["35%成年人已使用", "渗透率快速增长", "确定性极高的赛道"],
+        "layout_hint": { "density": "generous" }
       }
     ]
   },
@@ -283,7 +289,7 @@ scenes:
 | `selling_points` | string/null | 三词卖点（仅标准模式项目场景），格式："词1·词2·词3"，每词 ≤6 字 |
 | `commentary` | string/null | 感性评语（仅标准模式项目场景），≤12 字，数据惊叹或场景感慨 |
 | `contrarian_angle` | string/null | 反直觉角度（仅标准模式项目场景），用于旁白钩子和发布文案 |
-| `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)。时长 ≤15s 的场景可传空数组 `[]` |
+| `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)、`layout_hint`(可选，布局微调)。时长 ≤15s 的场景可传空数组 `[]` |
 
 ### visual_phases 类型定义
 
@@ -303,6 +309,7 @@ scenes:
 3. **key_data 是画面上必须展示的数据/关键词**，Stage 6 根据 visual_type 选择组件模板展示这些数据
 4. **focus 是该 phase 的内容主题**，Stage 6 据此生成画面标题
 5. **Phase 不足视为 Stage 3 未完成**，Stage 6 gate 会拦截
+6. **layout_hint.density** 可选，控制元素间距密度：`compact`（条目多/时间紧）、`standard`（默认）、`generous`（元素少/强调留白）。不指定时 Stage 6 从 visual_type 自动推导
 
 同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）：
 ```
@@ -316,33 +323,16 @@ scenes:
 
 读取 `design.md` 的 `storyboard.humor_style` 确定幽默策略。
 
-### 听觉线（旁白文案）
+### 幽默原则
 
-在每个段落的文案生成中，根据 `humor_type` 标记注入幽默：
-
-| humor_type | 注入方法 | 示例 |
-|------------|----------|------|
-| `analogy` | 用生活场景比喻技术概念 | "这个框架跑起来比我外卖还快" |
-| `sarcasm` | 正经话题突然转折 | "这个项目一周涨了五千星，比我的发际线退得还快" |
-| `trivia` | 开发者文化内行梗 | "据说这个 bug 存活时间比实习生试用期还长" |
-
-**注入规则：**
-- 每 3-4 个段落至少 1 个包含 humor_type
-- humor 只在 build/reveal/settle 节拍使用（grab/climax/summon 保持严肃）
+- 每 3-4 个段落至少注入 1 次幽默（analogy 类比 / sarcasm 反差吐槽 / trivia 冷知识梗）
+- 幽默只在 build/reveal/settle 节拍使用，grab/climax/summon 保持严肃
 - 幽默不改变核心信息，只是表达方式的调剂
 - 遵守分类配置的 humor_rules（如有）
 
-### 视觉线（画面表现）
+### 角色表情
 
-`character_expression` 非 null 的段落，Stage 6 会渲染对应表情的码力角色。
-
-**表情触发规则：**
-- `shock`：数据震撼时（Star 暴涨、出乎意料的功能）
-- `think`：分析思考时（原理解释、技术细节）
-- `cool`：展示酷功能时（核心特性、独特能力）
-- `explode`：高潮爆发时（总结震撼点、重大发现）
-- `tease`：幽默调侃时（与 humor_type 同时出现）
-- `moved`：感人/致敬时（开源精神、社区贡献）
+`character_expression` 非 null 的段落，Stage 6 会渲染对应表情的码力角色。表情跟随情感自然匹配，不需要查表——数据震撼用 shock、分析思考用 think、展示酷功能用 cool、高潮爆发用 explode、调侃用 tease、感人用 moved。
 
 ## 情感节拍映射
 
@@ -359,18 +349,7 @@ scenes:
 
 ### 情感变速标记
 
-每段的 `emotion` 字段指导 Stage 4 的 TTS 语速：
-
-| emotion | Stage 4 TTS rate 偏移 |
-|---------|----------------------|
-| grab | +10% |
-| build | +5% |
-| reveal | +10% |
-| climax | +15% |
-| settle | -5% |
-| summon | +0%（基准） |
-
-Stage 3 只标记 emotion，不设置具体 rate 值。Stage 4 读取 emotion 字段后在 TTS 命令中应用偏移。
+每段的 `emotion` 字段指导 Stage 4 的 TTS 语速偏移（grab/climax 偏快，settle 偏慢，build/reveal/summon 基准）。Stage 3 只标记 emotion，不设置具体 rate 值。Stage 4 读取 emotion 字段后应用偏移。
 
 ### 文案要求
 

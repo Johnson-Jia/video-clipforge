@@ -1,0 +1,298 @@
+#!/usr/bin/env python3
+"""
+导演门禁 — HTML 设计意图验证（渲染前运行）
+
+用法: python scripts/director_gate.py [项目目录]
+  项目目录默认为当前目录
+
+检查项:
+  1. 字号层级（冲击层 ≥ 2× 标签层）
+  2. 光晕存在性 + opacity 范围（0.15~0.6）
+  3. 关键文字 text-shadow
+  4. 相邻场景背景差异（防止视觉单调）
+  5. CSS 变量实际使用
+  6. layer-fx 内容非空
+
+退出码: 0=通过, 1=有设计问题需要修复
+
+依赖: 无外部依赖，纯 Python 标准库
+"""
+
+import re
+import sys
+import os
+
+
+def main():
+    project_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+    html_path = os.path.join(project_dir, "index.html")
+
+    if not os.path.exists(html_path):
+        print(f"ERROR: {html_path} 不存在")
+        sys.exit(1)
+
+    with open(html_path, "r", encoding="utf-8", errors="ignore") as f:
+        html = f.read()
+
+    PASS = 0
+    FAIL = 0
+    WARN = 0
+
+    def ok(msg):
+        nonlocal PASS
+        PASS += 1
+        print(f"  \033[32m✓ {msg}\033[0m")
+
+    def fail(msg):
+        nonlocal FAIL
+        FAIL += 1
+        print(f"  \033[31m✗ {msg}\033[0m")
+
+    def warn(msg):
+        nonlocal WARN
+        WARN += 1
+        print(f"  \033[33m⚠ {msg}\033[0m")
+
+    print("=" * 50)
+    print("  导演门禁 — HTML 设计意图验证")
+    print("=" * 50)
+
+    # ── 1. 字号层级 ──
+    print("\n── 1. 字号层级 ──")
+    font_sizes = [int(x) for x in re.findall(r'font-size:\s*(\d+)px', html)]
+    if font_sizes:
+        max_fs = max(font_sizes)
+        min_fs = min(font_sizes)
+        ratio = max_fs / min_fs if min_fs > 0 else 0
+        if ratio < 2:
+            fail(f"字号层级不足: 最大 {max_fs}px / 最小 {min_fs}px = {ratio:.1f}x（应 ≥ 2x）")
+        elif ratio < 2.5:
+            warn(f"字号层级偏弱: {max_fs}px / {min_fs}px = {ratio:.1f}x（建议 ≥ 3x）")
+        else:
+            ok(f"字号层级: {max_fs}px / {min_fs}px = {ratio:.1f}x")
+
+        # 检查是否有冲击层（≥ 80px）
+        impact_sizes = [s for s in font_sizes if s >= 80]
+        if impact_sizes:
+            ok(f"冲击层字号存在: {sorted(set(impact_sizes), reverse=True)}px")
+        else:
+            warn("无冲击层字号（≥ 80px），hook/climax 可能缺乏冲击力")
+    else:
+        fail("未找到 font-size 声明")
+
+    # ── 2. 光晕存在性 + opacity 范围 ──
+    print("\n── 2. 光晕系统 ──")
+    # 查找有 blur 的圆形元素（光晕）
+    glow_blocks = re.findall(
+        r'([.#][\w-]+)\s*\{[^}]*filter:\s*blur\(\d+px\)[^}]*\}',
+        html, re.DOTALL
+    )
+    if glow_blocks:
+        ok(f"光晕元素: {len(set(glow_blocks))} 种")
+
+        # 检查这些光晕的 opacity
+        glow_opacities = []
+        for block_match in re.finditer(
+            r'([.#][\w-]+)\s*\{([^}]*filter:\s*blur\(\d+px\)[^}]*)\}',
+            html, re.DOTALL
+        ):
+            op_match = re.search(r'opacity:\s*([\d.]+)', block_match.group(2))
+            if op_match:
+                glow_opacities.append(float(op_match.group(1)))
+
+        if glow_opacities:
+            low_opacity = [o for o in glow_opacities if o < 0.15]
+            high_opacity = [o for o in glow_opacities if o > 0.6]
+            if low_opacity:
+                fail(f"光晕 opacity < 0.15: {low_opacity}（H.264 编码后不可见）")
+            if high_opacity:
+                fail(f"光晕 opacity > 0.6: {high_opacity}（抢内容视觉权重）")
+            if not low_opacity and not high_opacity:
+                ok(f"光晕 opacity 范围: {min(glow_opacities):.2f} ~ {max(glow_opacities):.2f}")
+
+            # 检查是否有暖冷双光晕
+            warm_colors = re.findall(r'(?:#f0b429|#f5a623|#ff6b35|240\s*,\s*180\s*,\s*41|255\s*,\s*107\s*,\s*53)', html)
+            cool_colors = re.findall(r'(?:#00e5a0|#00b4d8|#6c63ff|0\s*,\s*229\s*,\s*160|0\s*,\s*180\s*,\s*216)', html)
+            if warm_colors and cool_colors:
+                ok("暖冷双光晕存在")
+            elif warm_colors or cool_colors:
+                warn("只有单色调光晕，缺少暖冷对比")
+            else:
+                warn("未检测到标准暖/冷光晕颜色")
+    else:
+        warn("未检测到 filter:blur 光晕元素")
+
+    # ── 3. text-shadow ──
+    print("\n── 3. 文字可读性 ──")
+    text_shadow_count = len(re.findall(r'text-shadow:', html))
+    if text_shadow_count >= 3:
+        ok(f"text-shadow 使用: {text_shadow_count} 处")
+    elif text_shadow_count > 0:
+        warn(f"text-shadow 偏少: {text_shadow_count} 处（建议关键文字都加）")
+    else:
+        fail("无 text-shadow — 深色背景上文字浮不起来")
+
+    # ── 4. 相邻场景背景差异 ──
+    print("\n── 4. 场景视觉反差 ──")
+    # 提取场景类名
+    scene_classes = re.findall(r'\.s-(\w+)\s*\{', html)
+    if len(scene_classes) >= 2:
+        # 提取每个场景的 background/gradient
+        scene_gradients = {}
+        for sc in scene_classes:
+            pattern = rf'\.s-{sc}\s*\{{([^}}]*)\}}'
+            match = re.search(pattern, html)
+            if match:
+                bg = match.group(1)
+                gradients = re.findall(r'gradient\([^)]+\)', bg)
+                bg_colors = re.findall(r'#[0-9a-fA-F]{6}', bg)
+                scene_gradients[sc] = {
+                    'gradients': gradients,
+                    'colors': bg_colors,
+                }
+
+        # 比较相邻场景
+        scene_names = list(scene_gradients.keys())
+        identical_pairs = []
+        for i in range(len(scene_names) - 1):
+            s1 = scene_gradients[scene_names[i]]
+            s2 = scene_gradients[scene_names[i + 1]]
+            g1 = s1['gradients'][0] if s1['gradients'] else ''
+            g2 = s2['gradients'][0] if s2['gradients'] else ''
+            if g1 and g2 and g1 == g2:
+                identical_pairs.append((scene_names[i], scene_names[i + 1]))
+
+        if identical_pairs:
+            fail(f"相邻场景背景相同: {identical_pairs}（观众会觉得没换画面）")
+        else:
+            ok(f"相邻场景背景均有差异（{len(scene_names)} 个场景）")
+    else:
+        warn(f"场景数不足（{len(scene_classes)}），跳过反差检查")
+
+    # ── 5. CSS 变量实际使用 ──
+    print("\n── 5. CSS 变量使用 ──")
+    var_declarations = re.findall(r'--([\w-]+)\s*:', html)
+    if var_declarations:
+        for var in set(var_declarations):
+            usage_count = len(re.findall(rf'var\(--{re.escape(var)}\)', html))
+            if usage_count == 0:
+                warn(f"--{var}: 声明了但未使用")
+            elif usage_count == 1:
+                ok(f"--{var}: 使用 {usage_count} 次")
+            else:
+                ok(f"--{var}: 使用 {usage_count} 次")
+    else:
+        warn("无 CSS 变量声明")
+
+    # ── 6. layer-fx 内容检查 ──
+    print("\n── 6. 三层架构完整性 ──")
+    layer_fx_blocks = re.findall(r'class="layer-fx"', html)
+    layer_bg_blocks = re.findall(r'class="layer-bg"', html)
+    layer_content_blocks = re.findall(r'class="layer-content"', html)
+
+    ok(f"layer-bg: {len(layer_bg_blocks)} 个") if layer_bg_blocks else warn("layer-bg 缺失")
+    ok(f"layer-fx: {len(layer_fx_blocks)} 个") if layer_fx_blocks else warn("layer-fx 缺失")
+    ok(f"layer-content: {len(layer_content_blocks)} 个") if layer_content_blocks else warn("layer-content 缺失")
+
+    # 检查 layer-fx 是否有实际内容（不只是空 div）
+    fx_with_content = 0
+    fx_empty = 0
+    for fx_match in re.finditer(r'class="layer-fx"([^>]*>)((?:(?!</div>).)*?)</div>', html, re.DOTALL):
+        content = fx_match.group(2).strip()
+        # 去掉空白后还有内容
+        content_clean = re.sub(r'\s+', '', content)
+        if content_clean:
+            fx_with_content += 1
+        else:
+            fx_empty += 1
+
+    if fx_empty > 0:
+        warn(f"layer-fx 有 {fx_empty} 个空容器（特效层没内容）")
+    if fx_with_content > 0:
+        ok(f"layer-fx 有 {fx_with_content} 个含内容的层")
+
+    # ── 7. HyperFrames 结构完整性 ──
+    print("\n── 7. HyperFrames 结构完整性 ──")
+
+    # __timelines 必须是 {} 不是 []
+    if re.search(r'window\.__timelines\s*=\s*\[\]', html):
+        fail("__timelines 是 []（应为 {}）")
+    elif re.search(r'window\.__timelines\s*=\s*\{', html):
+        ok("__timelines 是 {} 对象")
+    else:
+        fail("__timelines 未定义或格式异常")
+
+    # timeline paused: true
+    if re.search(r'paused:\s*true', html):
+        ok("timeline 设置了 paused: true")
+    else:
+        fail("timeline 未设置 paused: true（渲染会立即播放，导致时间线错误）")
+
+    # data-composition-id 在根元素上
+    if re.search(r'data-composition-id', html):
+        ok("有 data-composition-id")
+    else:
+        fail("缺少 data-composition-id（HyperFrames 无法识别 composition）")
+
+    # 内容元素 opacity:0 检查
+    all_opacity_zero = len(re.findall(r'opacity:\s*0\s*;', html))
+    bg_glow_opacity = len(re.findall(
+        r'(?:glow-orb|grid-overlay|layer-bg)[^}]*opacity:\s*0\s*;', html, re.DOTALL
+    ))
+    anim_opacity = len(re.findall(
+        r'\.anim-in[^}]*opacity:\s*0\s*;', html, re.DOTALL
+    ))
+    content_opacity_zero = max(0, all_opacity_zero - bg_glow_opacity - anim_opacity)
+
+    if content_opacity_zero > 5:
+        fail(f"内容元素有 {content_opacity_zero} 处 opacity:0（会导致黑屏，应删除或改用 GSAP fromTo）")
+    elif content_opacity_zero > 0:
+        warn(f"内容元素有 {content_opacity_zero} 处 opacity:0（确认不是初始隐藏状态）")
+    else:
+        ok("内容元素无多余 opacity:0")
+
+    # gsap.from() 应改为 fromTo
+    from_count = len(re.findall(r'tl\.from\(', html))
+    if from_count > 0:
+        fail(f"使用了 {from_count} 处 gsap.from()（应改为 fromTo 防止黑屏）")
+    else:
+        ok("未使用 gsap.from()")
+
+    # ── 8. 单层 padding 检查 ──
+    print("\n── 8. 单层 padding 原则 ──")
+    # 检测 scene-wrap 和 .phase 是否同时有 padding
+    scene_wrap_padded = bool(re.search(
+        r'\.scene-wrap[^{]*\{[^}]*padding\s*:\s*\d+', html, re.DOTALL
+    )) or bool(re.search(
+        r'class="scene-wrap"[^>]*style="[^"]*padding', html
+    ))
+    phase_padded = bool(re.search(
+        r'\.phase\s*\{[^}]*padding\s*:\s*\d+', html, re.DOTALL
+    ))
+
+    if scene_wrap_padded and phase_padded:
+        fail("scene-wrap 和 .phase 同时有 padding（双重 padding 导致内容偏左上，可用宽度仅 74%）— 删掉其中一层")
+    elif not scene_wrap_padded and not phase_padded:
+        warn("scene-wrap 和 .phase 均无 padding（内容可能贴边缘或塌陷）")
+    else:
+        which = ".scene-wrap" if scene_wrap_padded else ".phase"
+        ok(f"安全区 padding 只在 {which} 一层设置（单层 padding 原则通过）")
+
+    # ── 汇总 ──
+    print("\n" + "=" * 50)
+    print(f"  导演门禁: {PASS} 通过  {FAIL} 失败  {WARN} 警告")
+    print("=" * 50)
+
+    if FAIL > 0:
+        print(f"\n\033[31m  导演门禁未通过 — 修复上述 ✗ 项后再渲染\033[0m")
+        sys.exit(1)
+    elif WARN > 3:
+        print(f"\n\033[33m  警告较多（{WARN}），建议检查后再渲染\033[0m")
+        sys.exit(0)
+    else:
+        print(f"\n\033[32m  导演门禁通过\033[0m")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

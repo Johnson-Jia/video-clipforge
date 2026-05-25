@@ -4,58 +4,38 @@
 
 ## 4.1 旁白 TTS（分段模式）
 
-### 分段生成流程
-
-读取 Stage 3 产出的 `narration_segments.json`，逐段生成 TTS：
+### 一键执行（推荐）
 
 ```bash
-# 执行分段 TTS 脚本（参数：音色 语速）
-python .claude/commands/clipforge/scripts/tts_segments.py "$VOICE" "$RATE"
+# TTS 管线：分段生成 → 合并 → loudnorm → 校验（全自动）
+bash .claude/commands/clipforge/scripts/tts_pipeline.sh "$VOICE" "$RATE"
 ```
+
+> 如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。未指定时默认 `zh-CN-YunjianNeural` +25%。
+>
+> **禁止使用播报腔音色。** `zh-CN-YunyangNeural`（新闻主播风）禁止用于任何短视频项目。
+
+### 产出文件
+
+| 文件 | 用途 |
+|------|------|
+| `narration_seg_0.mp3` ~ `narration_seg_N.mp3` | 分段旁白音频（中间产物） |
+| `segment_durations.json` | **每段实际时长**（Stage 6 用此设置 `data-duration`） |
+| `narration.mp3` | 合并后的完整旁白（**Stage 6 嵌入 HTML `<audio>`**） |
+| `narration.srt` | 合并后的完整字幕 |
 
 > **`segment_durations.json` 格式为 `{meta: {voice, rate}, segments: [...]}`。** Stage 6 读取时长时取 `segments[i].actual_duration`。
 
-### 合并为完整旁白（HTML 音频源）
+### 手动步骤参考
 
-合并后的 `narration.mp3` 将作为 `<audio>` 元素嵌入 HTML，由 HyperFrames 自动混入视频。
+> 管线脚本已包含以下所有步骤。仅在脚本失败需要逐步排查时参考。
 
-```bash
-# 生成 concat 文件列表 + 合并为完整旁白
-echo "" > concat.txt
-for i in $(seq 0 $(($(ls narration_seg_*.mp3 | wc -l) - 1))); do
-    echo "file 'narration_seg_${i}.mp3'" >> concat.txt
-done
-ffmpeg -y -f concat -safe 0 -i concat.txt -c copy narration.mp3
-
-# 合并 SRT 字幕（重新编号时间戳）
-python .claude/commands/clipforge/scripts/merge_srt.py
-```
-
-### 音量标准化
-
-**对合并后的 `narration.mp3` 执行 loudnorm 标准化（Python 版，不依赖 jq）：**
-
-```bash
-# 两遍 loudnorm 标准化（Python 版，不依赖 jq）
-bash .claude/commands/clipforge/scripts/loudnorm.sh narration.mp3
-```
-
-> 标准化后无需重新测量分段时长——loudnorm 只改变响度不改变时长。
->
-> **严禁使用 jq** — Windows 环境不预装 jq，jq 命令失败会导致 pass 2 静默跳过，narration.mp3 保持未标准化状态（音量极低），最终视频无声音。
-
-### loudnorm 校验（必须执行）
-
-标准化完成后，验证 narration.mp3 音量在合理范围：
-
-```bash
-# 校验标准化后的音量
-NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
-echo "narration.mp3 max_volume: ${NARR_MAX} dB"
-# max_volume 低于 -10 dB → loudnorm 未生效，必须阻断
-python -c "v=float('${NARR_MAX}'); exit(1 if v < -10 else 0)" || { echo "FATAL: loudnorm 未生效，max_volume=${NARR_MAX} dB < -10 dB"; exit 1; }
-echo "OK: loudnorm 校验通过"
-```
+1. **分段 TTS**: `python .claude/commands/clipforge/scripts/tts_segments.py "$VOICE" "$RATE"`
+2. **合并**: `ffmpeg -y -f concat -safe 0 -i concat.txt -c copy narration.mp3`
+3. **合并 SRT**: `python .claude/commands/clipforge/scripts/merge_srt.py`
+4. **loudnorm 标准化**: `bash .claude/commands/clipforge/scripts/loudnorm.sh narration.mp3`
+   > 严禁使用 jq — Windows 环境不预装，jq 失败会导致 pass 2 静默跳过
+5. **loudnorm 校验**: max_volume 必须 >= -10 dB
 
 ### 输出文件
 
@@ -80,27 +60,28 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 
 ### 声音选择
 
-> **如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。** 未指定时按以下规则选择。
+> **如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。** 未指定时默认 `zh-CN-YunjianNeural` +25%。
 
 > **禁止使用播报腔音色。** 短视频需要"我在跟你聊/分析"的叙事感，不是"我在念稿子"的播报感。`zh-CN-YunyangNeural`（新闻主播风）禁止用于任何短视频项目。
 
-| 场景类型 | 推荐声音 | 特点 |
-|---------|---------|------|
-| **默认首选** | `zh-CN-YunjianNeural` | 有叙事张力和穿透力，适合观点输出、安利种草、行业分析 |
-| **科普/教程** | `zh-CN-YunxiNeural` | 沉稳温和，适合纯知识讲解（无观点输出） |
-| **活泼/轻松** | `zh-CN-XiaoxiaoNeural` | 女声活力，适合生活类 |
-
-### 语速建议
-
-> **如果分类配置中指定了 `audio.default_rate`，优先使用分类配置。** 未指定时按以下表格选择。
-
-| 内容类型 | 建议速率 |
-|---------|---------|
-| 短视频（25-60s） | `+25%` ~ `+30%` |
-| 深度解读（3-10min） | `+10%` ~ `+15%` |
-| 教程讲解 | `+10%` ~ `+15%` |
-
 ## 4.2 配乐
+
+### AI 选曲 + BGM 管线（两阶段）
+
+**阶段 A — AI 选曲**（需人工决策）：
+
+1. 根据 `design.md` 的 `music_mood` 推导搜索策略
+2. 从来源优先级获取 BGM 文件，保存为 `bgm.wav` 到项目目录
+3. 截取精华片段（跳过前奏，取有节奏的段落）
+
+**阶段 B — BGM 管线**（选曲完成后全自动）：
+
+```bash
+# BGM 管线：音量校验 → 查表校准 → 峰值间距 → 循环扩展（全自动）
+bash .claude/commands/clipforge/scripts/bgm_pipeline.sh
+```
+
+> `bgm_pipeline.sh` 自动执行：音量守恒校验 → 查表获取推荐 volume → 峰值间距双向校验 → 写入 `segment_durations.json` → BGM 循环扩展。无需手动查表或写 JSON。
 
 ### 来源优先级（唯一权威）
 
@@ -114,18 +95,9 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 
 > **BGM 素材库**（`workspace/bgm/`）集中管理所有已下载的 BGM。下载新 BGM 时同步存入此目录，方便后续项目复用。
 
-### 情绪→搜索关键词映射
+### BGM 搜索策略
 
-| 情绪 | YouTube 搜索词 | Pixabay 搜索词 |
-|------|---------------|---------------|
-| 科技/赛博 | `royalty free cyberpunk music` | `cyberpunk`, `synthwave` |
-| 激励/振奋 | `royalty free upbeat corporate` | `upbeat technology` |
-| 神秘/悬疑 | `royalty free dark ambient` | `mysterious`, `suspense` |
-| 温暖/治愈 | `royalty free warm piano` | `warm`, `acoustic` |
-| 史诗/震撼 | `royalty free epic orchestral` | `epic`, `cinematic` |
-| 欢快/轻松 | `royalty free happy pop` | `happy`, `fun` |
-| 国风/传统 | `royalty free chinese traditional music` | `chinese`, `traditional`, `guzheng` |
-| 玄幻/神秘 | `royalty free ethereal ambient` | `ethereal`, `fantasy`, `mystical` |
+根据 `design.md` 的 `music_mood` 生成英文搜索词——风格描述 + royalty free + music（如"cyberpunk royalty free music"、"warm acoustic royalty free"）。AI 自主推导搜索词，不查表。
 
 ### 推荐无版权音乐频道（YouTube）
 
@@ -169,17 +141,7 @@ curl -sL -o workspace/bgm/<主题名>-1.mp3 \
   "https://cdn.pixabay.com/audio/YYYY/MM/DD/audio_xxxxxx.mp3"
 ```
 
-**主题→搜索词映射（对应 HyperFrames 视觉主题）：**
-
-| 主题名 | 搜索词 | 主题名 | 搜索词 |
-|--------|--------|--------|--------|
-| `bold-energetic` | `energetic upbeat` | `monochrome` | `minimal ambient piano` |
-| `clean-corporate` | `corporate clean business` | `nature-earth` | `nature acoustic folk` |
-| `dark-premium` | `dark cinematic dramatic` | `neon-electric` | `synthwave electronic neon` |
-| `jewel-rich` | `luxury elegant cinematic` | `pastel-soft` | `soft gentle ambient calm` |
-| — | — | `warm-editorial` | `warm acoustic cozy` |
-
-> **批量补全：** 对每个主题执行「导航→提取→下载」三步，每个主题 5 首。详见 `clipforge/_bgm-pixabay`。
+> **批量补全：** 对每个需要的风格执行「导航→提取→下载」三步，每个风格 5 首。详见 `clipforge/_bgm-pixabay`。
 
 ### 方法 C：其他音乐库
 
@@ -190,107 +152,13 @@ Mixkit / 爱给网等浏览试听后手动下载。
 ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3" bgm.wav
 ```
 
-### BGM 预处理 + 音量分析（必须执行）
+### BGM 预处理注意
 
-**核心原则：旁白清晰度 > 一切。** BGM 宁可偏小不可偏大。
-
-```bash
-# 检查时长和格式
-ffprobe -v quiet -show_entries format=duration -of csv=p=0 bgm.wav
-
-# 分析 BGM 原始音量（必须执行，结果写入 segment_durations.json）
-ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep volume
-```
-
-根据 BGM 的 `mean_volume` 选择混音音量值（Stage 6 ffmpeg `amix` filter 的 `volume` 参数）：
-
-> **混音方式已从 HyperFrames `data-volume` 切换为 ffmpeg `amix` filter。** ffmpeg 的 volume 值需要比旧 HyperFrames 值更高，因为两个引擎对音量的处理方式不同。
-
-| BGM mean_volume | 推荐 volume | 说明 |
-|----------------|------------|------|
-| > -5 dB（极端响） | `0.12`     | 电子/摇滚等极端响度 |
-| -5 ~ -10 dB（非常响） | `0.12`     | 需要较大衰减 |
-| > -10 ~ -15 dB（很响） | `0.13`     | 响度较高的配乐 |
-| -15 ~ -20 dB | `0.13`     | 中等偏响 |
-| -20 ~ -25 dB | `0.15`     | 中等音量（最常见）→ **默认推荐** |
-| -25 ~ -30 dB | `0.17`     | 偏安静 |
-| < -30 dB（很安静） | `0.21`     | 需要较大提升 |
-
-> **前提：narration.mp3 已经过 loudnorm I=-16 标准化（峰值约 -1.5 dB）。** 此表基于旁白峰值 -1.5 dB 计算，目标 BGM 峰值比旁白低 17 dB。如果 loudnorm 未生效，此表全部失效。
-
-**将推荐 volume 值写入 `segment_durations.json`：**
-
-```bash
-BGM_VOL=0.15  # 根据上面查表结果替换，默认推荐 0.15
-
-python -c "
-import json
-with open('segment_durations.json', 'r') as f:
-    data = json.load(f)
-data['meta']['bgm_volume'] = $BGM_VOL
-with open('segment_durations.json', 'w') as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-print(f'bgm_volume={data[\"meta\"][\"bgm_volume\"]}')
-"
-```
-
+> **核心原则：旁白清晰度 > 一切。** `bgm_pipeline.sh` 自动处理音量校准和循环扩展。
+>
 > **不要对 `bgm.wav` 做 gain/volume 处理。** 保持原始音量，Stage 6 的 `<audio data-volume>` 控制混音时的衰减。预处理会破坏原始音量参考。
 >
-> **双重衰减防护**：如果 Stage 4 对 bgm.wav 做了音量衰减（如 `-af volume=0.08`），然后 Stage 6 的 `data-volume` 再乘一次，实际音量 = 0.08 × 0.08 = 0.0064（几乎听不到）。这是一个已知的致命 bug。唯一正确的做法是：bgm.wav 保持原始音量，所有音量控制通过 HTML `data-volume` 完成。
-
-### BGM 音量守恒校验（必须执行）
-
-生成 `bgm.wav` 后，确认文件未被意外衰减：
-
-```bash
-# 检查 bgm.wav 音量是否在正常范围（原始 BGM 通常 -15 ~ -30 dB）
-BGM_MEAN=$(ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep mean_volume | grep -oP '[\-\d.]+(?= dB)')
-echo "bgm.wav mean_volume: ${BGM_MEAN} dB"
-
-# 如果 mean_volume < -35 dB，说明 bgm.wav 已被意外衰减，必须重新生成
-if [ "$(echo "$BGM_MEAN < -35" | bc 2>/dev/null)" -eq 1 ]; then
-  echo "ERROR: bgm.wav 音量异常偏低 (${BGM_MEAN} dB)，疑似被预衰减。必须从原始来源重新生成。"
-  echo "正确做法：bgm.wav 保持原始音量，Stage 6 通过 data-volume 控制混音。"
-fi
-```
-
-### BGM 峰值间距校验（必须执行）
-
-查表得到推荐 volume 后，验证衰减后的 BGM 峰值在合理范围。**要求：衰减后 BGM 峰值比旁白峰值低 15~20 dB（可感知但不抢戏）。**
-
-```bash
-# 获取 BGM 峰值和旁白峰值
-BGM_MAX=$(ffmpeg -i bgm.wav -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
-NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
-
-# 双向校验（输出 FINAL_VOL）
-python .claude/commands/clipforge/scripts/bgm_gap_check.py "$BGM_MAX" "$NARR_MAX" "$BGM_VOL"
-```
-
-如果输出 `FINAL_VOL` 与查表值不同，**用 FINAL_VOL 覆盖**写入 `segment_durations.json` 的 `bgm_volume`。
-
-### BGM 循环规则（必须执行）
-
-**当 BGM 时长 < 视频时长时，必须用 FFmpeg 将 BGM 循环扩展至覆盖完整视频时长。** 不要依赖 HTML `<audio loop>` 属性——HyperFrames 对 `loop` 属性的支持不可靠。
-
-```bash
-# 获取旁白总时长（即视频时长）
-NARRATION_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 narration.mp3)
-
-# 获取 BGM 时长
-BGM_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 bgm.wav)
-
-# 如果 BGM 短于旁白，循环扩展（+1 秒余量用于淡出）
-if [ "$(echo "$BGM_DUR < $NARRATION_DUR" | bc)" -eq 1 ]; then
-  TARGET_DUR=$(echo "$NARRATION_DUR + 1" | bc)
-  ffmpeg -y -stream_loop -1 -i bgm.wav -t "$TARGET_DUR" -c:a pcm_s16le -ar 48000 bgm_looped.wav
-  mv bgm.wav bgm_orig.wav
-  mv bgm_looped.wav bgm.wav
-  echo "BGM 已循环: ${BGM_DUR}s → ${TARGET_DUR}s"
-fi
-```
-
-> **原理：** `-stream_loop -1` 无限循环输入流，`-t` 限制输出时长到目标值。循环后的 BGM 是一个完整的 WAV 文件，HyperFrames 渲染时无需任何循环支持。
+> **双重衰减防护**：bgm.wav 保持原始音量，所有音量控制通过 HTML `data-volume` 完成。预衰减 + data-volume = 几乎静音。
 
 ## 4.3 电影音频处理（电影解读模式）
 
