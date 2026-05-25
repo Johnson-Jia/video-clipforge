@@ -43,50 +43,44 @@ tl.add('breath-start')
   .add('breath-end');
 ```
 
-## 特效情绪映射表
+## 视觉设计：格言 + 反面清单
 
-> **特效选择不由固定编号决定，而是由场景情绪驱动。** 从 `char-effect-library.html` 中选择与情绪匹配的特效类型。
+> **你是导演，不是操作员。** 读内容，想画面，用工具箱实现，不碰红线。不查表、不套公式、每个场景独立思考。
+> 执行前读取 `_director-toolkit` 获取导演思维工具——5 个必答题帮你从内容推导视觉，视觉词汇表是你的工具箱，导演笔记校准直觉。
 
-### 情绪 → 特效类型映射
+### 设计格言（5 条正面引导）
 
-> **特效选择由场景情绪驱动，但不再统一使用粒子。** 5 种 CSS 特效类型按情绪分配。
+① **内容为王**：特效是舞台灯光，不是演员。观众要看的是内容，特效让观众看得更舒服。
+② **暗底亮光**：深色背景上，用光晕和辉度制造视觉焦点，不要大面积浅色块。
+③ **层次分明**：背景沉下去，特效浮起来，内容站最前面。三层之间的亮度差就是深度感。
+④ **克制即美学**：一个场景用 1-2 种特效就够了。堆砌不等于丰富，留白不等于空旷。
+⑤ **每屏独一**：相邻场景的视觉风格必须有明显差异。观众不应该看到两个"差不多的画面"。
 
-| 情绪（emotion） | 主特效 | 备选特效 | 最小实现 | 视觉特征 |
-|-----------------|--------|---------|---------|---------|
-| `grab`（钩子） | **星光绽放 (StarBurst)** | 双轨道粒子 (DualOrbit) | ≥6 条射线 + ≥4 闪烁点 | 从中心扩散、高亮度、爆发感 |
-| `build`（铺垫） | **光球漂浮 (LightOrbs)** 或 **矩阵雨 (MatrixRain)** | 双轨道粒子 (DualOrbit) | 光球≥3个 / 矩阵雨≥8条 | 持续氛围、不抢内容 |
-| `reveal`（揭示） | **双轨道粒子 (DualOrbit)** | 光球漂浮 (LightOrbs) | ≥8 个粒子（双层嵌套） | 缓慢漂移、精致点缀 |
-| `climax`（高潮） | **星光绽放 (StarBurst)** | 双轨道粒子 (DualOrbit) | ≥8 条射线 + ≥6 闪烁点 | 全屏爆发、高密度 |
-| `settle`（收束） | **渐变波 (GradientWave)** | 光球漂浮 (LightOrbs) | ≥2 条渐变带 | 沉静流动、极淡雅 |
-| `summon`（号召） | **光球漂浮 (LightOrbs)** | 双轨道粒子 (DualOrbit) | 光球≥3个 / 粒子≥6个 | 温暖引导、轻快愉悦 |
+### 反面清单（10 条红线，全部来自真实事故）
 
-> **"最小实现"是硬性门槛，不是建议值。** 低于最小实现的 layer-fx 视为空层，stage6_gate.sh 会拦截。
+✗ **背景光晕 opacity < 0.15** — H.264 编码后完全消失，白做了
+✗ **特效覆盖在内容文字上方** — 观众看不清内容，特效毫无意义
+✗ **连续两个场景用同一种特效** — 视觉疲劳，观众觉得在看同一个画面
+✗ **整个视频只用一种配色** — 像没调过色的监控画面
+✗ **场景无 padding** — 内容贴边，手机端文字被裁切
+✗ **layer-fx 为空** — 三层架构缺一层，等于没做特效
+✗ **内容元素 CSS opacity: 0 入场** — HyperFrames 不执行 CSS animation，内容永远不可见
+✗ **文字无 text-shadow** — 深色背景上文字浮不起来，像贴了一张纸
+✗ **特效元素 opacity > 0.6** — 抢了内容的视觉权重，主次颠倒
+✗ **一个场景堆 3+ 种特效** — 像 PowerPoint 动画集锦，不是专业视频
 
-### 特效多样性规则（强制）
+### CSS 特效参考库
 
-> **事故复盘：9 个场景全部使用同一种 CSS 粒子，视觉单调且像"晃荡"。** 以下规则强制特效类型多样化。
+> 已验证可在 HyperFrames + H.264 中正确渲染的特效模板。直接用、改参数、组合、变体、或自创——都可以，只要不触碰反面清单和渲染安全约束。
 
-1. **连续禁止**：相邻场景不得使用同一特效类型超过 2 次。即任意连续 3 个场景中，至少有一种不同特效
-2. **类型覆盖**：一个视频内至少使用 3 种不同特效类型（如 StarBurst + LightOrbs + MatrixRain）
-3. **内容优先**：特效类型与内容主题协调（科技→MatrixRain，数据→LightOrbs，揭示→DualOrbit，沉静→GradientWave，爆发→StarBurst）
-4. **不遮挡**：特效整体保持低调（LightOrbs opacity 0.05-0.12，粒子 opacity 0.2-0.35，射线 opacity 0.3-0.5），确保 `.layer-content` 始终清晰可读
-5. **必选不可跳过**：每个场景的 `.layer-fx` 必须达到最小实现标准
+### 渲染安全约束（所有特效必须遵守）
 
-### 场景特效分配建议表
-
-> 按常见叙事结构给出推荐分配，具体视频可根据内容主题微调。
-
-| 场景 | 情绪 | 推荐特效 | 理由 |
-|------|------|---------|------|
-| hook | grab | **StarBurst** | 爆发感开场 |
-| 痛点/背景 | build | **LightOrbs** | 严肃话题，光球提供氛围不花哨 |
-| 数据/规模 | build | **MatrixRain** | 数据流科技感 |
-| 竞争/对比 | reveal | **DualOrbit** | 精致粒子点缀揭示 |
-| 技术/方案 | build | **MatrixRain** | 代码/技术氛围 |
-| 商业路径 | reveal | **LightOrbs** | 商业分析，沉稳大气 |
-| 风险 | settle | **GradientWave** | 沉静收敛 |
-| 总结 | summon | **LightOrbs** + 少量 DualOrbit | 暖色引导 |
-| CTA | summon | **StarBurst**（少量） | 号召行动收尾 |
+1. **CSS animation 0% 状态必须可见** — 不允许 `scaleY(0)`、`translateY(-100%)`、`opacity:0` 等不可见的初始状态
+2. **静态 CSS 状态（无 animation 时）必须视觉正确** — HyperFrames seek 时不执行 CSS animation
+3. **opacity ≥ 0.15** — 低于 0.15 在 H.264 视频编码中完全不可见
+4. **允许的 CSS animation**：可见位置之间的移动（如漂移、摇摆、脉冲），动画的 0% 状态本身在画面内且可见
+5. **禁止的 CSS animation**：从不可见到可见的过渡（如 `scaleY(0)→1`、`opacity:0→1`）
+6. **入场动画用 GSAP** — `.from({opacity:0})` 是唯一可靠的入场机制
 
 ### 角色选择原则
 
@@ -118,7 +112,7 @@ tl.add('breath-start')
 ```html
 <div style="position:absolute;top:25%;left:65%;animation:driftOuter 28s ease-in-out infinite 3s">
   <div style="width:16px;height:16px;border-radius:50%;background:hsl(210,80%,55%);
-    opacity:0.3;filter:blur(3px);animation:driftInner 10s ease-in-out infinite 1s"></div>
+    opacity:0.5;filter:blur(2px);animation:driftInner 10s ease-in-out infinite 1s"></div>
 </div>
 ```
 
@@ -132,24 +126,16 @@ tl.add('breath-start')
 | 内层周期 | 8-12s | `innerDur = 8 + Math.random() * 4` |
 | 外层 delay | 0-8s | `outerDelay = Math.random() * 8` |
 | 内层 delay | 0-5s | `innerDelay = Math.random() * 5` |
-| opacity | 0.2-0.35 | `0.2 + Math.random() * 0.15` |
-| blur | 2-4px | `2 + Math.random() * 2` |
+| opacity | 0.4-0.6 | `0.4 + Math.random() * 0.2` |
+| blur | 1-3px | `1 + Math.random() * 2` |
 
-**颜色生成规则（按情绪选择 HSL 色调范围）：**
-
-| 情绪 | H 范围 | S 范围 | L 范围 |
-|------|--------|--------|--------|
-| grab/climax | 0-360（全色相） | 70-100% | 50-75% |
-| build | 180-260（蓝-青） | 60-90% | 45-65% |
-| reveal | 30-60（金-琥珀） | 80-100% | 55-70% |
-| settle | 200-280（蓝-紫） | 40-70% | 40-60% |
-| summon | 0-40（红-橙） | 70-95% | 55-70% |
+**颜色选择：** 根据场景内容选色，不查表。想想这段内容在传达什么——科技用蓝、活力用暖色、增长用绿色、风险用冷紫——你的直觉比查表准。
 
 **JS 生成代码模板（嵌入 `<script>` 标签）：**
 
 ```javascript
 const LAYER_FX_SELECTOR = '.s-your-scene .layer-fx';
-const H_RANGE = [180, 260]; // 按情绪修改：build=[180,260] reveal=[30,60] 等
+const H_RANGE = [180, 260]; // 根据场景内容选色，不是查表
 const count = 8 + Math.floor(Math.random() * 5); // 8-12
 const fxEl = document.querySelector(LAYER_FX_SELECTOR);
 for (let i = 0; i < count; i++) {
@@ -166,7 +152,7 @@ for (let i = 0; i < count; i++) {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = `position:absolute;top:${top}%;left:${left}%;animation:driftOuter ${outerDur}s ease-in-out infinite ${outerDelay}s`;
   const dot = document.createElement('div');
-  dot.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:hsl(${h},${s}%,${l}%);opacity:${0.2+Math.random()*0.15};filter:blur(${2+Math.random()*2}px);animation:driftInner ${innerDur}s ease-in-out infinite ${innerDelay}s`;
+  dot.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:hsl(${h},${s}%,${l}%);opacity:${0.4+Math.random()*0.2};filter:blur(${1+Math.random()*2}px);animation:driftInner ${innerDur}s ease-in-out infinite ${innerDelay}s`;
   wrapper.appendChild(dot);
   fxEl.appendChild(wrapper);
 }
@@ -176,11 +162,11 @@ for (let i = 0; i < count; i++) {
 
 ---
 
-## CSS 特效库（4 种特效模板）
+## CSS 特效参考库（5 种已验证模板）
 
-> **按情绪和内容选择特效类型，不再全部使用粒子。** 每种特效包含 CSS keyframes + HTML 结构模板。
+> **这些是已验证的实现模板，不是分配表。** 选择哪种、如何组合、如何变体，由「视觉推导系统」决定。
 
-### StarBurst（星光绽放）— 用于 grab/climax
+### StarBurst（星光绽放）
 
 从画面中心向外的装饰射线 + 闪烁点。射线默认 scaleY(1) 始终可见。
 
@@ -188,12 +174,12 @@ for (let i = 0; i < count; i++) {
 
 ```css
 @keyframes rayPulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.15; }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.3; }
 }
 @keyframes starTwinkle {
-  0%, 100% { opacity: 0.7; transform: scale(1.2); }
-  50% { opacity: 0.3; transform: scale(0.8); }
+  0%, 100% { opacity: 0.9; transform: scale(1.3); }
+  50% { opacity: 0.5; transform: scale(0.8); }
 }
 ```
 
@@ -202,28 +188,29 @@ for (let i = 0; i < count; i++) {
 ```html
 <div class="layer-fx">
   <!-- 射线（6-8 条，不同角度，默认 scaleY(1) 始终可见） -->
-  <div style="position:absolute;top:50%;left:50%;width:2px;height:600px;
-    background:linear-gradient(transparent,hsla(45,90%,60%,0.5),transparent);
+  <div style="position:absolute;top:50%;left:50%;width:3px;height:600px;
+    background:linear-gradient(transparent,hsla(45,90%,60%,0.7),transparent);
     transform-origin:top center;transform:rotate(0deg) scaleY(1);
-    opacity:0.35;animation:rayPulse 4s ease-in-out infinite 0.3s"></div>
-  <div style="position:absolute;top:50%;left:50%;width:2px;height:600px;
-    background:linear-gradient(transparent,hsla(45,90%,60%,0.4),transparent);
+    opacity:0.6;animation:rayPulse 4s ease-in-out infinite 0.3s"></div>
+  <div style="position:absolute;top:50%;left:50%;width:3px;height:600px;
+    background:linear-gradient(transparent,hsla(45,90%,60%,0.6),transparent);
     transform-origin:top center;transform:rotate(60deg) scaleY(1);
-    opacity:0.35;animation:rayPulse 4s ease-in-out infinite 0.6s"></div>
+    opacity:0.6;animation:rayPulse 4s ease-in-out infinite 0.6s"></div>
   <!-- ... 重复至 6-8 条，rotate 递增 360/(n) 度 -->
   <!-- 闪烁点（4-6 个，随机位置，默认亮状态） -->
-  <div style="position:absolute;top:35%;left:60%;width:8px;height:8px;
-    border-radius:50%;background:hsl(45,95%,70%);opacity:0.7;
+  <div style="position:absolute;top:35%;left:60%;width:10px;height:10px;
+    border-radius:50%;background:hsl(45,95%,75%);opacity:0.9;
+    box-shadow:0 0 8px hsla(45,95%,70%,0.6);
     animation:starTwinkle 2.5s ease-in-out infinite 0s"></div>
   <!-- ... 重复至 4-6 个 -->
 </div>
 ```
 
-**参数：** 射线默认 opacity 0.3-0.5 / 闪烁点 6-10px 默认 opacity 0.7 / 射线长度 500-800px
+**参数：** 射线默认 opacity 0.5-0.7 / 宽度 3px / 闪烁点 8-12px 默认 opacity 0.8-0.9 / 射线长度 500-800px
 
 ---
 
-### LightOrbs（光球漂浮）— 用于 build/settle/summon
+### LightOrbs（光球漂浮）
 
 3-5 个大尺寸高斯模糊光球缓慢漂移，提供氛围感但不抢内容。
 
@@ -241,23 +228,23 @@ for (let i = 0; i < count; i++) {
 
 ```html
 <div class="layer-fx">
-  <div style="position:absolute;top:20%;left:30%;width:180px;height:180px;
-    border-radius:50%;background:hsl(210,80%,50%);opacity:0.08;filter:blur(80px);
+  <div style="position:absolute;top:20%;left:30%;width:200px;height:200px;
+    border-radius:50%;background:hsl(210,80%,50%);opacity:0.18;filter:blur(50px);
     animation:orbDrift 25s ease-in-out infinite 0s"></div>
-  <div style="position:absolute;top:60%;left:65%;width:120px;height:120px;
-    border-radius:50%;background:hsl(200,75%,45%);opacity:0.06;filter:blur(60px);
+  <div style="position:absolute;top:60%;left:65%;width:160px;height:160px;
+    border-radius:50%;background:hsl(200,75%,45%);opacity:0.15;filter:blur(45px);
     animation:orbDrift 30s ease-in-out infinite 4s"></div>
-  <div style="position:absolute;top:80%;left:15%;width:150px;height:150px;
-    border-radius:50%;background:hsl(230,70%,55%);opacity:0.07;filter:blur(70px);
+  <div style="position:absolute;top:80%;left:15%;width:180px;height:180px;
+    border-radius:50%;background:hsl(230,70%,55%);opacity:0.20;filter:blur(55px);
     animation:orbDrift 22s ease-in-out infinite 8s"></div>
 </div>
 ```
 
-**参数：** 尺寸 100-200px / blur 60-100px / opacity 0.05-0.12 / 周期 20-35s
+**参数：** 尺寸 150-250px / blur 40-60px / opacity 0.15-0.25 / 周期 20-35s
 
 ---
 
-### GradientWave（渐变波）— 用于 settle
+### GradientWave（渐变波）
 
 2-3 条半透明渐变色带，缓慢旋转摇摆。色带默认居中可见。
 
@@ -275,19 +262,19 @@ for (let i = 0; i < count; i++) {
 ```html
 <div class="layer-fx">
   <div style="position:absolute;top:20%;left:0;width:100%;height:300px;
-    background:linear-gradient(90deg,transparent,hsla(220,60%,40%,0.06),transparent);
+    background:linear-gradient(90deg,transparent,hsla(220,60%,40%,0.15),transparent);
     transform:rotate(-8deg);animation:waveSway 20s ease-in-out infinite 0s"></div>
   <div style="position:absolute;top:55%;left:0;width:100%;height:250px;
-    background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.05),transparent);
+    background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.12),transparent);
     transform:rotate(5deg);animation:waveSway 25s ease-in-out infinite 5s"></div>
 </div>
 ```
 
-**参数：** 色带高度 200-350px / opacity 0.04-0.08 / 周期 18-30s
+**参数：** 色带高度 200-350px / opacity 0.10-0.20 / 周期 18-30s
 
 ---
 
-### MatrixRain（矩阵雨）— 用于 build（科技场景）
+### MatrixRain（矩阵雨）
 
 竖向半透明细线，营造数据流感觉。线条默认在画面内可见位置。
 
@@ -295,8 +282,8 @@ for (let i = 0; i < count; i++) {
 
 ```css
 @keyframes rainSway {
-  0%, 100% { transform: translateY(0); opacity: 0.3; }
-  50% { transform: translateY(40px); opacity: 0.15; }
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(40px); opacity: 0.3; }
 }
 ```
 
@@ -304,17 +291,19 @@ for (let i = 0; i < count; i++) {
 
 ```html
 <div class="layer-fx">
-  <div style="position:absolute;top:15%;left:22%;width:1px;height:250px;
-    background:linear-gradient(transparent,hsla(200,80%,55%,0.3),transparent);
-    opacity:0.3;animation:rainSway 14s ease-in-out infinite 0s"></div>
-  <div style="position:absolute;top:40%;left:55%;width:1px;height:300px;
-    background:linear-gradient(transparent,hsla(210,75%,50%,0.25),transparent);
-    opacity:0.25;animation:rainSway 18s ease-in-out infinite 3s"></div>
+  <div style="position:absolute;top:15%;left:22%;width:2px;height:250px;
+    background:linear-gradient(transparent,hsla(200,80%,55%,0.5),transparent);
+    opacity:0.5;box-shadow:0 0 6px hsla(200,80%,55%,0.3);
+    animation:rainSway 14s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:40%;left:55%;width:2px;height:300px;
+    background:linear-gradient(transparent,hsla(210,75%,50%,0.45),transparent);
+    opacity:0.45;box-shadow:0 0 6px hsla(210,75%,50%,0.25);
+    animation:rainSway 18s ease-in-out infinite 3s"></div>
   <!-- ... 重复至 8-12 条，top 10%-70% 范围内随机 -->
 </div>
 ```
 
-**参数：** 竖线宽度 1-2px / 长度 150-400px / 默认 opacity 0.15-0.35 / 周期 12-20s
+**参数：** 竖线宽度 2-3px / 长度 150-400px / 默认 opacity 0.40-0.60 / box-shadow 发光 / 周期 12-20s
 
 ---
 
@@ -435,3 +424,135 @@ for (let i = 0; i < count; i++) {
 ```
 - 文字 ≥56px，居中，用强调色
 - 可加装饰性徽章或底线
+
+---
+
+## 布局推导体系（两级）
+
+> **解决"每个场景画面都一样"的问题。** 特效、配色有推导机制，但布局缺少推导——同一个 flex 居中容器装不同内容，视觉差异全靠内容本身。布局推导让每个 phase 有自己的空间性格。
+
+### 设计原则
+
+1. **visual_type 决定大框架**：hero 一眼震撼、data 数字驱动、list 逐条展开、compare 双栏对峙、timeline 步骤递进、highlight 一锤定音
+2. **内容长度微调元素尺寸**：同一框架下，4 字标题和 20 字标题用不同字号
+3. **密度控制间距**：layout_hint.density 或 visual_type 自带密度决定元素间距
+4. **`.phase` flex 居中是安全网**：即使布局推导失败，flex 居中保证内容不偏移
+
+### Level 1: visual_type → 布局规格
+
+每种 visual_type 的完整布局规格。HTML 骨架见上方「Phase 视觉模板」。
+
+#### hero 布局
+
+| 属性 | 规则 |
+|------|------|
+| 元素数 | 2-3（标题 + 数字/副标题 + 可选第三行） |
+| 间距 | 40-60px（元素间） |
+| primary 字号 | 基准 100px（见 Level 2 缩放） |
+| primary 颜色 | 白色 900 + text-shadow |
+| secondary 字号 | 数字类 120px / 副标题类 36px |
+| secondary 颜色 | accent-warm（数字）或 text-secondary（副标题） |
+| 水平对齐 | 全部居中 |
+| 视觉重量 | 画面最重（字号最大、间距最宽、留白最多） |
+
+#### list 布局
+
+| 属性 | 规则 |
+|------|------|
+| 元素数 | 标题 + 2-6 条目 |
+| 间距 | 标题→列表 24-32px，条目间 12-20px |
+| 标题字号 | 44px, accent 色, 700 |
+| 序号字号 | 28px, accent 色, 700 |
+| 条目文字 | 32px, 白色, 400 |
+| 水平对齐 | 标题居中；条目区 `width:85%` 居中、内部左对齐 |
+| 视觉重量 | 中等（信息密度较高，需要扫描） |
+
+#### data 布局
+
+| 属性 | 规则 |
+|------|------|
+| 元素数 | 标题 + 2-6 数据行 |
+| 间距 | 标题→数据 28-36px，行间 16-24px |
+| 标题字号 | 44px, accent 色 |
+| 数值字号 | 基准 56px, JetBrains Mono, accent-warm |
+| 标签字号 | 26px, text-secondary |
+| 水平对齐 | 居中；数据行 `width:85%` 居中 |
+| 视觉重量 | 中高（数字即视觉焦点） |
+
+#### compare 布局
+
+| 属性 | 规则 |
+|------|------|
+| 元素数 | 标题 + 2 栏 × 2-4 项 |
+| 间距 | 栏间 40-60px（含分隔线），项间 12-16px |
+| 标题字号 | 44px |
+| 栏标题 | 34px |
+| 栏项 | 26px |
+| 颜色分配 | 左栏 accent-cool, 右栏 accent-warm |
+| 水平对齐 | phase 改为 `flex-direction:row`，2 栏各 `flex:1` |
+| 视觉重量 | 高（对比产生视觉张力） |
+
+> **compare 是唯一使用 `flex-direction:row` 的布局类型。** 其余类型都是默认的 column。
+
+#### timeline 布局
+
+| 属性 | 规则 |
+|------|------|
+| 元素数 | 标题 + 3-5 步骤 |
+| 间距 | 标题→步骤 24-32px，步骤间 16-24px |
+| 标题字号 | 44px, accent 色 |
+| 时间标签 | 26px, accent 色 |
+| 步骤文字 | 30px, 白色 |
+| 水平对齐 | 标题居中；步骤区 `width:85%` 居中、内部左对齐 |
+| 视觉重量 | 中等（线性流动感） |
+
+#### highlight 布局
+
+| 属性 | 规则 |
+|------|------|
+| 元素数 | 1-2（大文字 + 可选徽章/标签） |
+| 间距 | 16-24px |
+| 文字字号 | 基准 56px（见 Level 2 缩放） |
+| 颜色 | accent-warm 或 accent-cool（取场景强调色） |
+| 水平对齐 | 居中 |
+| 视觉重量 | 极简但极强（元素少、字号大、颜色突出） |
+
+### Level 2: 内容长度 → 元素尺寸缩放
+
+**适用于所有布局的 primary/标题元素。** 字数 = 该元素文本的汉字数（英文按 `词数 × 1.5` 折算）。
+
+| 字数范围 | 倍率 | hero 基准 100px | data 基准 56px | highlight 基准 56px |
+|---------|------|----------------|----------------|-------------------|
+| ≤4 字 | 1.0× | 100px | 56px | 56px |
+| 5-8 字 | 0.85× | 85px | 48px | 48px |
+| 9-14 字 | 0.7× | 70px | 39px | 39px |
+| 15-24 字 | 0.55× | 55px | 31px | 31px |
+| ≥25 字 | 0.45× | 45px | 25px | 25px |
+
+**使用方法**：先确定 visual_type 的基准字号（上方各表），再根据 primary 元素字数查倍率。结果低于该层级下限（primary ≥ 44px, secondary ≥ 24px）时使用下限值。
+
+### layout_hint 微调（可选，来自 Stage 3）
+
+Stage 3 可在 visual_phases 中添加 `layout_hint` 提供额外微调：
+
+```json
+{
+  "focus": "核心功能",
+  "visual_type": "list",
+  "key_data": ["功能1", "功能2", "功能3"],
+  "layout_hint": {
+    "density": "compact"
+  }
+}
+```
+
+| density | 间距倍率 | 适用时机 |
+|---------|---------|---------|
+| compact | × 0.7 | 内容条目多（≥5 条）、时间紧 |
+| standard | × 1.0 | 大多数场景（默认） |
+| generous | × 1.3 | 元素少（≤3）、强调留白和冲击力 |
+
+**density 不指定时**从 visual_type 自动推导：
+- hero、highlight → generous
+- list、timeline → standard
+- data、compare → compact

@@ -39,40 +39,43 @@
 - HyperFrames 无头浏览器对实体字符的解析不可靠，可能导致整段内容不渲染
 - **改用 Unicode 字符直接输入**（如 `★`、`❤`）或纯文本替代
 
-### 1.3 scene-wrap 必须有 padding
+### 1.3 安全区 padding 必须存在且只设一次
 
-- 每个场景的 `.scene-wrap`（或等效内容容器）**必须显式设置四方向 padding**
-- 推荐值：`padding: 140px 90px 260px 70px`（上 140px，右 90px，下 260px，左 70px——多平台兼容安全区）
-- 水平 padding 确保内容不贴视频边缘，防止手机端文字被裁切
-- 缺少 padding 可能导致内容区域在 HyperFrames 渲染中塌陷不显示
+- 每个场景**必须有四方向安全区 padding**，推荐值：`padding: 180px 80px 220px 80px`（上 180px，右 80px，下 220px，左 80px）
+- **padding 只设在一层**，由场景使用的模式决定（见 §1.4b 分类）
+- 缺少 padding 会导致内容贴边缘或渲染塌陷；双重 padding 会导致内容偏左上、可用宽度仅 74%
 
-### 1.4 水平安全边距规则（抖音竖屏非对称）
+### 1.4 水平安全边距规则（抖音竖屏）
 
-- **左 80px / 右 100px** 非对称边距（兼容抖音/小红书/微信视频号三平台）
-- 水平 padding 只在 `.scene-wrap` 一层设置，内层元素不再重复
+- **左 80px / 右 80px** 对称边距（兼容抖音/小红书/微信视频号三平台）
 - **禁止** `width: 100%` 的内容行没有水平 padding
 
-### 1.4a 单层 padding 原则
+### 1.4a 单层 padding 原则（铁律）
 
-- 水平 padding **只在 `.scene-wrap` 设置**
-- `.phase`、`.layer-content`、`.pfc-main` 等内层元素**禁止添加水平 padding**
-- 违反会导致双重/三重 padding，内容被压缩到 70% 以下
+- **全项目只允许一个层级设置安全区 padding（180px 80px 220px 80px）**
+- 禁止 `.scene-wrap` 和 `.phase`（或任何内层元素）同时设置 padding
+- 违反会导致双重/三重 padding，内容被压缩到 70% 以下，视觉重心偏移
 - 历史事故：`.scene-wrap`(70px) + `.phase`(70px) = 累计 140px/侧，内容仅 800px (74%)
+- **director_gate.py 会自动检测双重 padding，渲染前必须通过**
 
 ### 1.4b 组件 padding 分类
 
-所有组件分为两类，由组件文件头部注释标注：
+所有场景分为三类，padding 落在不同层级：
+
+**Phase 模式**（多视觉阶段场景，最常见）
+- `.scene-wrap` **不设 padding**
+- `.phase` 设置 `padding: 180px 80px 220px 80px; display:flex; flex-direction:column; justify-content:center`
+- 结构：`.scene-wrap(无padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → `.phase(padding+flex居中)`
 
 **自带 padding 组件（full-page 型）**：`hero_card`、`project_full_card`
-- 这些组件自带 `padding: 140px 90px 260px 70px`，一个组件占满一屏
-- 直接作为 `.layer-content` 的唯一子元素
-- 外层 `.scene-wrap` **不再加 padding**，避免双重叠加
+- 组件自带 `padding: 180px 80px 220px 80px`
+- 外层 `.scene-wrap` **不设 padding**
 - 结构：`.scene-wrap(无padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(自带padding)
 
 **无 padding 组件（嵌入型）**：其余所有组件
-- 这些组件无外层 padding
-- 嵌入 `.layer-content` 或 `.layer-fx` 内，padding 由 `.scene-wrap` 提供
-- 结构：`.scene-wrap(padding:140px 90px 260px 70px)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
+- 组件无外层 padding
+- `.scene-wrap` 设置 `padding: 180px 80px 220px 80px`
+- 结构：`.scene-wrap(padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
 
 ### 1.5 渲染前移除所有非 index.html 的 composition 文件
 
@@ -161,8 +164,8 @@
 |------|------|
 | 使用 `.anim-in` CSS 类 | HyperFrames 不执行 CSS animation，导致内容永远不可见 |
 | HTML 实体字符（`&#9733;`） | 无头浏览器解析不可靠，可能导致整段不渲染 |
-| scene-wrap 无 padding | 内容区域可能塌陷不显示 |
-| 内层元素（.phase/.pfc-main）添加水平 padding | 双重/三重 padding 导致内容宽度不足 80%（§1.4a） |
+| scene-wrap 和 .phase 同时有 padding | 双重 padding 导致内容偏左上、可用宽度仅 74%（§1.4a 单层 padding 铁律） |
+| 任何层级缺少安全区 padding | 内容贴边缘或渲染塌陷（§1.3） |
 | 多个含 `data-composition-id` 的 HTML 文件 | 渲染冲突，multiple_root_compositions 警告 |
 | `window.__timelines = {};` 空对象未注册 | 全片空白渲染 |
 | 音频文件不在项目目录内 | 404 静音 |

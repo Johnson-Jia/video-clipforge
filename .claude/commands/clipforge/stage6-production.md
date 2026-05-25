@@ -53,7 +53,7 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 **设计决策链：**
 1. `immersion_mode` → `stage6-components.md` 配色速查 → `:root` CSS 变量（兜底）
 2. `color_direction` → 覆盖 `:root` 中冲突的色值（优先）
-3. 每个场景的 `emotion` → 视觉力度（粒子密度、光晕强度、动画速度）
+3. 每个场景的**具体内容** → 读内容想画面（格言引导 + 反面清单兜底） → 背景层 + 特效层 + 内容层的视觉方案
 4. `character_presence` + 每段 `character_expression` → CharOverlay 组件选择
 
 ## 6.3 音频嵌入
@@ -116,24 +116,30 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 ### 组件装配流程
 
-1. **读取 `narration_segments.json`** — 每段的 `scene`、`emotion`、`character_expression`、`humor_type`
+1. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
-3. **读取 `stage6-components.md`** — 选择匹配的组件模板
-4. **填充特效（必须）** — 每个场景根据 `emotion` 从情绪映射表选择特效组件，写入 `.layer-fx`。**空 layer-fx 视为 stage 未完成，stage6_gate.sh 会拦截。**
+3. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
+4. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
+   - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
+   - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
+   - 对照反面清单（10 条红线），确保不踩雷
+   - 用 CSS 特效参考库的工具实现你的构思
+   - **不查表、不套公式、每个场景独立思考**
 5. **装配 HTML** — 按 HyperFrames composition 结构组装
 
-### 场景 → 组件映射
+### 场景 → 组件参考
 
-| 场景类型 | 主组件 | 辅助组件 | 特效（必选） |
-|---------|--------|---------|------------|
-| hook | HeroCard | StarCounter | PulseOrb |
-| what/how | DataViz | CompareSplit | CodeRain(背景) |
-| capabilities | DataViz | TextReveal | ParticleBurst(揭示时) |
-| features | DataViz | CompareSplit | PulseOrb + ParticleBurst |
-| **标准模式项目介绍** | **ProjectFullCard** | **PulseOrb** | — |
-| usecases | TimeLineFlow | DataViz | — |
-| tech | DataViz | CodeRain(背景) | — |
-| CTA | TextReveal | — | ParticleBurst(结尾) |
+> **这是参考映射，不是固定分配。** 根据场景内容选择最合适的组件组合，允许跨场景复用和变体。
+
+| 场景类型 | 常用组件 | 视觉方向参考 |
+|---------|---------|------------|
+| hook | HeroCard | 震撼开场：高力度视觉、聚焦元素 |
+| 数据/规模 | DataViz, CompareSplit | 数据呈现：结构化、清晰、有科技感 |
+| 对比/竞争 | CompareSplit | 双视角：冷暖分割、对冲视觉 |
+| 时间线/路径 | TimeLineFlow | 叙事推进：轨道感、节点连线 |
+| 突出/揭示 | TextReveal | 悬念展示：渐进揭示、聚光灯效果 |
+| 标准模式项目介绍 | ProjectFullCard | 单项目全屏 8 层信息 |
+| CTA | TextReveal | 收束聚焦：温暖引导、行动号召 |
 
 > **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（§13），一个项目占满一屏，包含 8 层信息。数据来自 `narration_segments.json` 的 `selling_points`、`commentary` 字段和 content 数据。
 
@@ -144,17 +150,36 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 - 角色定位：画面左下角，占 15-20%
 - 气泡定位：画面右下角或角色上方
 
-### 特效填充验证（HTML 写完后必须执行）
+### 特效填充验证
 
-```bash
-# 检查是否有空的 layer-fx
-EMPTY_FX=$(grep -c '<div class="layer-fx"></div>' index.html 2>/dev/null || echo "0")
-if [ "$EMPTY_FX" -gt 0 ]; then
-  echo "FAIL: 发现 ${EMPTY_FX} 个空 layer-fx，必须填充特效后才能渲染"
-  exit 1
-fi
-echo "PASS: 所有 layer-fx 已填充"
-```
+> `director_gate.py` §6 检查 layer-fx 内容非空，`stage6_gate.sh` 检查空 layer-fx 数量。HTML 写完后直接运行门禁脚本即可。
+
+### 视觉检查（对照反面清单）
+
+> HTML 写完后，快速扫一遍 `stage6-components.md` 的 10 条反面清单，确保没有踩雷。无需额外检查流程——反面清单已经编码了所有已知的视觉质量问题。
+
+### 导演自审（Layer 3 — HTML 写完后、渲染前必须执行）
+
+> **目的**：像导演审看每日样片，逐场景检查 HTML 是否实现了导演决策。这是最后一道"导演看监视器"关卡。
+
+读取 `_director-toolkit.md` 的"导演 5 个必答题"，逐 `.clip` 场景自审：
+
+| # | 必答题 | 检查点 |
+|---|--------|--------|
+| Q1 | 核心情绪是什么？ | 旁白文本 → 情绪词 → HTML 配色/光晕是否匹配 |
+| Q2 | 观众该感受到什么？ | `narration_segments.json` 情感标记 → 视觉力度是否对等 |
+| Q3 | 什么视觉能放大？ | 情绪 → 视觉词汇（暖冷/明暗/动静）→ HTML 是否实现 |
+| Q4 | 相邻场景反差够不够？ | 上下 `.clip` 的背景渐变/配色是否不同 |
+| Q5 | 眼睛该被引导到哪里？ | 字号最大/颜色最亮的元素 = 旁白的信息重点？ |
+
+**对标 `narration_segments.json`**：
+
+- `visual_phases[n].focus` → HTML 有对应内容元素？
+- `visual_phases[n].key_data` → 画面数据完整呈现？
+- 相邻场景配色雷同 → 调整背景渐变
+- hook 缺乏冲击力 → 加强光晕/字号/对比度
+
+**发现偏差立即修复。自审不通过的禁止渲染。**
 
 ## 6.4a 视觉分镜（Visual Phasing）
 
@@ -175,13 +200,14 @@ echo "PASS: 所有 layer-fx 已填充"
 
 ```html
 <div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
-  <div class="scene-wrap" style="padding:140px 90px 260px 70px">
+  <!-- scene-wrap 不设 padding — padding 由 .phase 统一管理（单层 padding 原则，见 _render-safety §1.4a） -->
+  <div class="scene-wrap">
     <!-- 三层架构不变 -->
     <div class="layer-bg"><!-- 背景渐变 + 光晕 --></div>
     <div class="layer-fx"><!-- 特效 --></div>
     <!-- layer-content 内包含多个 phase（height:100% 必须有，否则 Phase 塌陷到顶部） -->
     <div class="layer-content" style="height:100%">
-      <!-- Phase 1: CSS 默认 opacity:1，GSAP 入场动画 -->
+      <!-- Phase 1: CSS 默认 opacity:1，GSAP 入场动画。注意 padding 在 .phase 上 -->
       <div class="phase phase-1">
         <div class="phase-title">养老AI手环</div>
         <div class="feature-list">...</div>
@@ -196,7 +222,9 @@ echo "PASS: 所有 layer-fx 已填充"
 ```
 
 **关键规则：**
-- 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，内容 flex 居中
+- 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，自带 `padding: 180px 80px 220px 80px; display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中（不需要手动加 inline flex）
+- **scene-wrap 不设 padding** — padding 统一由 `.phase` 提供（单层 padding 原则）
+- **禁止** scene-wrap 和 .phase 同时设置 padding（双重 padding 事故：内容偏左上，可用宽度仅 74%）
 - Phase 1 是 CSS 默认可见（opacity:1），遵守 `_render-safety.md` §1.1
 - Phase 2+ **不在 CSS 中设 opacity:0**，由 GSAP `.set()` 在运行时初始化（遵守 §1.1a 豁免）
 - 所有 phase 共享同一个 `.layer-bg` 和 `.layer-fx`（背景和特效不随 phase 切换）
@@ -301,28 +329,9 @@ S.forEach((sc, i) => {
 
 每种类型的具体 HTML/CSS 骨架见 `stage6-components.md` 的「Phase 视觉模板」章节。
 
-### Phase 完整性验证（HTML 写完后必须执行）
+### Phase 完整性验证
 
-```bash
-# 检查长场景是否有足够的 phase
-python3 -c "
-import json
-dur = json.load(open('segment_durations.json'))['segments']
-phases = json.load(open('narration_segments.json'))
-fail = False
-for seg, narr in zip(dur, phases):
-    d = seg['actual_duration']
-    vp = narr.get('visual_phases', [])
-    if d > 15 and len(vp) < 2:
-        print(f'FAIL: {narr[\"scene\"]} ({d:.1f}s) needs >= 2 visual_phases, got {len(vp)}')
-        fail = True
-    elif d > 25 and len(vp) < 3:
-        print(f'WARN: {narr[\"scene\"]} ({d:.1f}s) has {len(vp)} phases, recommend >= 3')
-if fail:
-    exit(1)
-print('PASS: visual_phases check OK')
-"
-```
+> `stage6_gate.sh` 的视觉分镜完整性检查会验证长场景的 phase 数量。HTML 写完后运行门禁即可。
 
 ### 呼吸帧插入
 
@@ -395,10 +404,9 @@ Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek
 
 ### CSS 规则
 
-8. **`.clip` 只设 `position: absolute` + 尺寸**，不要加 `opacity`
-9. **禁止 `.anim-in` 等 CSS 入场动画类**
-10. **画面文字禁止 HTML 实体**
-11. **每个 scene-wrap 必须设 padding** `style="padding:140px 90px 260px 70px"`（上140 / 右90 / 下260 / 左70）
+> **CSS 渲染安全规则全部在 `_render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
+
+8. **`.clip` 只设 `position: absolute` + 尺寸**，不要加其他样式（上140 / 右90 / 下260 / 左70）
 
 ### 视觉设计规则（必须遵守）
 
@@ -458,30 +466,7 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 14. 渲染传目录路径（`.`），不传文件路径
 15. 渲染前确保 `lint` 通过
-16. **渲染后白屏/空白检查（必须执行）**：
-    ```bash
-    for ts in 1 5 15 30; do
-      ffmpeg -y -i output.mp4 -ss $ts -vframes 1 -f image2 -update 1 "check_${ts}.png" 2>/dev/null
-    done
-    python -c "
-    from PIL import Image
-    for ts in [1, 5, 15, 30]:
-        try:
-            img = Image.open(f'check_{ts}.png')
-            pixels = list(img.getdata())[:200]
-            avg = [sum(c[i] for c in pixels)//len(pixels) for i in range(min(3, len(pixels[0])))]
-            if all(v > 250 for v in avg):
-                print(f'ERROR @{ts}s: WHITE SCREEN!')
-                exit(1)
-            if all(v < 30 for v in avg):
-                print(f'ERROR @{ts}s: BLACK SCREEN!')
-                exit(1)
-            print(f'Frame @{ts}s OK')
-        except Exception as e:
-            print(f'Frame @{ts}s check failed: {e}')
-    "
-    rm -f check_*.png
-    ```
+16. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
 ## 6.5 默认竖屏
 
@@ -495,41 +480,52 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 ### 竖屏垂直居中规则
 
-**首选：flexbox 自动居中**
-```css
-.scene-wrap {
-  position: absolute; width: 1080px; height: 1920px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-}
-.layer-content { position: relative; z-index: 3; height: 100%; }
-```
+> **居中已内置到 `.phase` CSS 中**：`.phase` 统一使用 `display:flex;flex-direction:column;justify-content:center`，所有 phase 内容自动垂直居中。不需要在 `.scene-wrap` 或 inline style 上手动添加 flex 居中。
+
+**禁止在 `.scene-wrap` 上加 flex 居中**：Phase 模式下 `.phase` 是 `position:absolute`，不参与 `.scene-wrap` 的 flex 布局，在 scene-wrap 上加 flex 无效。
 
 **禁止紧贴顶部**：不能用 `top: 80px` 等小值。场景内容容器禁止 `position: absolute` + 小 top 值。
 
-### 水平排版规则
+### 布局推导（两级体系）
 
-**垂直方向强制居中**（上方），水平方向**不限制为居中**，根据内容推导最精美的布局：
+**垂直方向强制居中**（`.phase` flex 内置），水平方向由布局推导决定：
 
-#### 推荐布局模式（按场景类型选择）
+#### Level 1：visual_type → 布局框架
 
-| 布局模式 | 适用场景 | 特点 |
-|---------|---------|------|
-| **居中卡片** | Hook、CTA、单项目展示 | 所有元素水平居中，上下堆叠 |
-| **左对齐列表** | 多项目并排、数据条目 | 左对齐文字，右侧放数据/标签 |
-| **三栏卡片** | 标准模式项目介绍 | 排名(左) + 信息(中) + 数据(右) |
+每个 phase 的布局从 `narration_segments.json` 的 `visual_phases[].visual_type` 推导，不套固定模板。完整规格表见 `stage6-components.md` 的「布局推导体系」章节。
 
-**渲染顺序原则：**
+**水平对齐推导规则：**
+
+| visual_type | 水平对齐 | 说明 |
+|------------|---------|------|
+| hero | 全部居中 | 标题 + 数字 + 副标题，间距 generous |
+| list | 标题居中，条目区 width:85% 内部左对齐 | 序号 + 文字条目 |
+| data | 标题居中，数据行 width:85% | label-value 行 |
+| compare | flex-direction:row，双栏各 flex:1 | 左冷右暖对比色 |
+| timeline | 标题居中，步骤区 width:85% 内部左对齐 | 时间标签 + 文字 |
+| highlight | 全部居中 | 大号文字 + 可选徽章 |
+
+#### Level 2：内容字数 → 元素尺寸
+
+primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85×，9-14 字 = 0.7×，15-24 字 = 0.55×，≥25 字 = 0.45×。具体基准字号见 `stage6-components.md`。
+
+#### 密度控制
+
+- `visual_phases[].layout_hint.density` 可微调间距（compact ×0.7 / standard ×1.0 / generous ×1.3）
+- 不指定时从 visual_type 自动推导：hero/highlight → generous，list/timeline → standard，data/compare → compact
+
+#### 渲染顺序原则
+
 - 水平：从左到右（排名 → 名称 → 数据）
 - 垂直：从上到下（标签 → 标题 → 描述 → 卖点）
-- 不强制所有元素居中，让内容自然流动形成美观布局
+- 不强制所有元素居中，让内容和 visual_type 决定最美观的布局
 
 ### 平台安全区域
 
 - 顶部危险区：上 200px
 - 底部危险区：下 300px
-- 水平安全边距：左 70px / 右 90px（兼容抖音/小红书/微信视频号三平台）
-- 安全内容区：140px ~ 1660px（垂直），70px ~ 990px（水平）
+- 水平安全边距：左 80px / 右 80px（兼容抖音/小红书/微信视频号三平台）
+- 安全内容区：180px ~ 1700px（垂直），80px ~ 1000px（水平）
 
 ## 6.6 渲染
 
@@ -541,7 +537,11 @@ cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 # 1. 确认音频文件存在
 ls -la narration.mp3 bgm.mp3
 
-# 2. 移除所有非 index.html 的 composition 文件
+# 2. 导演门禁 — HTML 设计意图验证（Layer 1）
+python3 .claude/commands/clipforge/scripts/director_gate.py .
+# 未通过则修复 HTML 后重新执行，不得跳过
+
+# 3. 移除所有非 index.html 的 composition 文件
 for f in cover.html index_with_bgm.html cover.html.bak; do
   [ -f "$f" ] && mv "$f" "$f.renderbak"
 done
@@ -645,16 +645,9 @@ ffmpeg -y -i cover_clip.mp4 -i output_no_bgm.mp4 \
 rm -f cover_clip.mp4
 ```
 
-### BGM 音量参考
+### BGM 音量
 
-| BGM 音量值 | 效果 | 适用场景 |
-|-----------|------|---------|
-| `0.10` | 隐约可感 | 非常安静的配音 |
-| `0.15` | 清晰但不抢 | **默认推荐** |
-| `0.20` | 明显存在 | 活泼/节奏感强的内容 |
-| `0.25` | 突出存在 | 音乐驱动的快节奏内容 |
-
-`segment_durations.json` 的 `meta.bgm_volume` 默认为 `0.15`，可在 Stage 4 根据内容调性调整。
+> BGM 音量由 Stage 4 的 `bgm_gap_check.py` 自动查表校准，值存储在 `segment_durations.json` 的 `meta.bgm_volume`。渲染前从该文件读取并写入 HTML `data-volume`。
 
 ### 致命约束
 
@@ -671,6 +664,9 @@ rm -f cover_clip.mp4
 ```bash
 # ── Stage 6 完成门禁 ──
 bash .claude/commands/clipforge/scripts/stage6_gate.sh
+
+# ── 渲染帧视觉分析（Layer 2）──
+python3 .claude/commands/clipforge/scripts/frame_analysis.py .
 ```
 
 **如果任何检查失败，修复问题后重新执行，不得跳过。**

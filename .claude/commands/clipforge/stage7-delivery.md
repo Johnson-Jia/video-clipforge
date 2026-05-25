@@ -46,7 +46,7 @@ echo "Stage 7 前置检查通过"
 
 ### 封面 HTML 模板
 
-> **模板严格对应 7 层视觉层次。** 替换占位符即可使用，不要删除任何层。所有封面参照 `workspace/covers/cover-test.jpg` 布局。
+> **模板使用 CSS 变量控制配色，从 `design.md` 的 `color_direction` 读取色值填入 `:root`。** 7 层结构和布局可由 AI 根据内容适当调整（如主标题单色/三色、数据卡片 1-3 个），但所有 7 层必须存在。
 
 ```html
 <!DOCTYPE html>
@@ -56,66 +56,81 @@ echo "Stage 7 前置检查通过"
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ── 从 design.md color_direction 读取色值 ── */
+:root {
+  --accent-warm: #FF8C32;      /* 主强调色（橙/金），来自 design.md */
+  --accent-warm-soft: #FFA040; /* 主强调色柔化版 */
+  --accent-cool: #6CB4EE;     /* 辅助色（蓝/青），来自 design.md */
+  --accent-cool-mid: #4DA8DA; /* 辅助色中间色 */
+  --bg-dark: #080820;         /* 深色背景，来自 design.md */
+  --text-white: #FFFFFF;
+  --text-muted: #8899BB;
+  --card-bg: rgba(20,20,50,0.85);
+  --glow-warm-opacity: 0.18;  /* 光晕强度可调 */
+  --glow-cool-opacity: 0.10;
+}
+
 body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 
 .cover {
   position: relative; width: 2160px; height: 3840px;
-  background: linear-gradient(180deg, #080820 0%, #0d0d2a 40%, #080818 100%);
+  background: linear-gradient(180deg, var(--bg-dark) 0%, #0d0d2a 40%, #080818 100%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   overflow: hidden;
 }
 .glow-warm {
   position: absolute; width: 1400px; height: 1400px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,140,50,0.18), transparent 70%);
+  background: radial-gradient(circle, rgba(255,140,50,var(--glow-warm-opacity)), transparent 70%);
   filter: blur(200px); top: -200px; left: -400px; pointer-events: none;
 }
 .glow-cool {
   position: absolute; width: 1200px; height: 1200px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,180,255,0.1), transparent 70%);
+  background: radial-gradient(circle, rgba(0,180,255,var(--glow-cool-opacity)), transparent 70%);
   filter: blur(200px); bottom: -200px; right: -400px; pointer-events: none;
 }
 
 /* 第1层：中文日期 */
 .date { position: relative; font-size: 80px; font-weight: 800;
-  color: #FF8C32; letter-spacing: 8px; margin-bottom: 40px; }
+  color: var(--accent-warm); letter-spacing: 8px; margin-bottom: 40px; }
 
 /* 第2层：场景标签 */
 .scene-label { position: relative; font-size: 64px; font-weight: 600;
-  color: #6CB4EE; letter-spacing: 6px; margin-bottom: 80px; }
+  color: var(--accent-cool); letter-spacing: 6px; margin-bottom: 80px; }
 
 /* 第3层：胶囊徽章 */
 .badge { position: relative; display: inline-block;
   background: linear-gradient(135deg, rgba(255,140,50,0.15), rgba(255,107,53,0.25));
   border: 2px solid rgba(255,140,50,0.4); border-radius: 100px;
   padding: 28px 100px; font-size: 64px; font-weight: 700;
-  color: #FFA040; letter-spacing: 8px; margin-bottom: 120px;
+  color: var(--accent-warm-soft); letter-spacing: 8px; margin-bottom: 120px;
   box-shadow: 0 0 60px rgba(255,140,50,0.1);
 }
 
 /* 第4层：主标题（双色） */
 .main-title { position: relative; text-align: center; line-height: 1.2; margin-bottom: 64px; }
-.main-title .white { font-size: 220px; font-weight: 900; color: #FFFFFF; letter-spacing: -4px; }
-.main-title .orange { font-size: 220px; font-weight: 900; color: #FF8C32; letter-spacing: -4px;
+.main-title .white { font-size: 220px; font-weight: 900; color: var(--text-white); letter-spacing: -4px; }
+.main-title .accent { font-size: 220px; font-weight: 900; color: var(--accent-warm); letter-spacing: -4px;
   text-shadow: 0 0 80px rgba(255,140,50,0.4), 0 0 160px rgba(255,140,50,0.15); }
 
 /* 第5层：渐变分隔线 */
 .divider { position: relative; width: 900px; height: 10px; border-radius: 5px;
-  background: linear-gradient(90deg, #FF8C32, #4DA8DA); margin-bottom: 80px; }
+  background: linear-gradient(90deg, var(--accent-warm), var(--accent-cool-mid)); margin-bottom: 80px; }
 
 /* 第6层：数据说明 */
 .data-subtitle { position: relative; font-size: 88px; font-weight: 600;
-  color: #6CB4EE; letter-spacing: 4px; margin-bottom: 100px; }
+  color: var(--accent-cool); letter-spacing: 4px; margin-bottom: 100px; }
 
-/* 第7层：双数据卡片 */
+/* 第7层：数据卡片 */
 .cards { position: relative; display: flex; gap: 80px; }
-.card { background: rgba(20,20,50,0.85);
+.card { background: var(--card-bg);
   border: 2px solid rgba(255,140,50,0.2); border-radius: 48px;
   padding: 64px 100px; text-align: center; min-width: 480px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.3);
 }
 .card .num { font-family: 'JetBrains Mono', monospace; font-size: 120px;
-  font-weight: 700; color: #FFA040; line-height: 1; }
-.card .label { font-size: 52px; color: #8899BB; margin-top: 24px; letter-spacing: 2px; }
+  font-weight: 700; color: var(--accent-warm-soft); line-height: 1; }
+.card .label { font-size: 52px; color: var(--text-muted); margin-top: 24px; letter-spacing: 2px; }
 </style>
 </head>
 <body>
@@ -131,16 +146,16 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
   <div class="scene-label">{{场景标签}}</div>
   <!-- 第3层：胶囊徽章 -->
   <div class="badge">{{徽章文案}}</div>
-  <!-- 第4层：主标题（双色） -->
+  <!-- 第4层：主标题 — 可单色/双色/三色，AI根据内容决定 -->
   <div class="main-title">
     <span class="white">{{白色标题}}</span><br>
-    <span class="orange">{{强调色标题}}</span>
+    <span class="accent">{{强调色标题}}</span>
   </div>
   <!-- 第5层：渐变分隔线 -->
   <div class="divider"></div>
   <!-- 第6层：数据说明 -->
   <div class="data-subtitle">{{数据说明}}</div>
-  <!-- 第7层：双数据卡片 -->
+  <!-- 第7层：数据卡片 — 数量可变(1-3)，AI根据内容决定 -->
   <div class="cards">
     <div class="card">
       <div class="num">{{数字1}}</div>
@@ -158,6 +173,27 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
 </body>
 </html>
 ```
+
+### 配色来源
+
+**`:root` 变量从 `design.md` 的 `color_direction` 填充：**
+
+| CSS 变量 | 来源 | 默认值 |
+|---------|------|--------|
+| `--accent-warm` | design.md `color_direction.warm` | `#FF8C32` |
+| `--accent-cool` | design.md `color_direction.cool` | `#6CB4EE` |
+| `--bg-dark` | design.md `color_direction.bg_dark` | `#080820` |
+
+**布局变化允许（AI 自主决定）：**
+
+| 元素 | 允许的变化 |
+|------|----------|
+| 主标题（第4层） | 单色/双色/三色；字号 180-260px |
+| 数据卡片（第7层） | 1-3 个卡片；内容格式可变 |
+| 光晕强度 | `--glow-warm-opacity` 0.1-0.25 |
+| 渐变方向 | 分隔线渐变方向可变 |
+
+**7 层必须全部存在，不可省略任何一层。**
 
 ### 渲染命令（3 级降级）
 
@@ -230,14 +266,16 @@ echo "封面门禁通过：cover.html + cover.png 均存在"
 
 将封面作为视频第一帧嵌入，产出两个版本：`final.mp4`（含 BGM）和 `final_no_bgm.mp4`（仅旁白）。
 
-### 封面片段制备 + 双版本输出
+### 必须使用脚本，禁止自行拼接
 
 ```bash
 # 封面嵌入视频第一帧，产出 final.mp4 + final_no_bgm.mp4
 bash .claude/commands/clipforge/scripts/assemble_final.sh
 ```
 
-> **封面仅占 1 帧**，对视频时长影响可忽略。`-b:v 5M` 与 Stage 6 渲染码率一致，避免拼接降质。
+> **禁止绕过 `assemble_final.sh` 自行编写 ffmpeg 拼接命令。** 历史事故：自行拼接曾导致视频时长膨胀至 6 分钟 + 音频丢失。脚本内置 TS concat + stream copy（无损拼接）+ 输出验证（时长/音频断言），能防止此类问题。
+
+> **脚本内含硬性断言：** final.mp4 时长不得超过 output.mp4 + 5 秒，两个文件都必须有音频轨道。断言失败会 exit 1。
 
 ## 7.4 视频交付
 
@@ -348,6 +386,9 @@ echo "   如空间不足，可执行 Stage 8 自动清理（详见 clipforge/_cl
 | 抖音文案含广告审查敏感词 | "必装"、"神器"等会导致审核不通过（§1） |
 | 评论区放完整链接 | 抖音审查敏感，只放项目英文名 |
 | CTA 提及具体更新时间 | §3 禁止"每天7点更新"等具体时间 |
+| 绕过 assemble_final.sh 自行拼接 | 必须使用脚本，脚本内置时长/音频断言 |
+| final.mp4 时长 > output.mp4 + 5s | 封面拼接异常，封面帧被 loop 成长视频 |
+| final.mp4 无音频轨道 | 拼接时音频轨丢失 |
 
 ## Common Rationalizations（常见借口反驳）
 
@@ -357,3 +398,5 @@ echo "   如空间不足，可执行 Stage 8 自动清理（详见 clipforge/_cl
 | "放个链接方便用户" | §4.1 评论区禁止放完整链接，只放名称 + 搜索指引 |
 | "文案用'必装神器'更有吸引力" | §1 广告审查敏感词会导致视频被限流或下架 |
 | "说'每天7点更新'能增加关注" | §3 禁止提及具体更新时间，改用通用表述"每天更新" |
+| "我自己写 ffmpeg 拼接更快" | 历史事故：自行拼接导致 361s 无音频视频。必须用 assemble_final.sh 脚本 |
+| "filter_complex concat 也能用" | filter_complex 会重编码主视频，导致质量损失 + PTS 错乱。TS concat + stream copy 才是正确方式 |

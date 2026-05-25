@@ -10,6 +10,14 @@ FAIL=0
 
 echo "=== Stage 6 完成门禁 ==="
 
+# ── 导演门禁（Layer 1：HTML 设计意图验证）──
+echo "--- 导演门禁（HTML 设计意图验证）---"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+python3 "${SCRIPT_DIR}/director_gate.py" . || {
+  echo "FAIL: 导演门禁未通过（HTML 设计问题）"
+  FAIL=1
+}
+
 # ── 文件存在性 ──
 for f in index.html output.mp4 output_no_bgm.mp4; do
   if [ ! -s "$f" ]; then
@@ -18,10 +26,30 @@ for f in index.html output.mp4 output_no_bgm.mp4; do
   fi
 done
 
-# ── 视频/音频轨 ──
+# ── 视频/音频轨 + 分辨率 + 时长 ──
 for f in output.mp4 output_no_bgm.mp4; do
   ffprobe -v quiet -show_streams "$f" | grep -q "codec_name=h264" || { echo "FAIL: $f no video"; FAIL=1; }
   ffprobe -v quiet -show_streams "$f" | grep -q "codec_name=aac" || { echo "FAIL: $f no audio"; FAIL=1; }
+
+  # 分辨率校验
+  WIDTH=$(ffprobe -v quiet -show_entries stream=width -of csv=p=0 -select_streams v:0 "$f" 2>/dev/null)
+  HEIGHT=$(ffprobe -v quiet -show_entries stream=height -of csv=p=0 -select_streams v:0 "$f" 2>/dev/null)
+  if [ "$WIDTH" = "1080" ] && [ "$HEIGHT" = "1920" ]; then
+    echo "PASS: $f 竖屏 1080x1920"
+  elif [ "$WIDTH" = "1920" ] && [ "$HEIGHT" = "1080" ]; then
+    echo "PASS: $f 横屏 1920x1080"
+  elif [ -n "$WIDTH" ]; then
+    echo "FAIL: $f 分辨率异常 ${WIDTH}x${HEIGHT}，预期 1080x1920 或 1920x1080"
+    FAIL=1
+  fi
+
+  # 时长合理性
+  DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null)
+  DUR_INT=${DUR%.*}
+  if [ -n "$DUR_INT" ] && [ "$DUR_INT" -le 5 ]; then
+    echo "FAIL: $f 时长过短 (${DUR}s)，可能渲染失败"
+    FAIL=1
+  fi
 done
 
 # ── 采样率校验 ──
@@ -133,6 +161,14 @@ fi
 
 if [ $FAIL -eq 0 ]; then
   echo "=== Stage 6 完成门禁通过 ==="
+
+  # ── 渲染帧视觉分析（Layer 2）──
+  if [ -f "output.mp4" ]; then
+    echo "--- 渲染帧视觉分析 ---"
+    python3 "${SCRIPT_DIR}/frame_analysis.py" . || {
+      echo "WARN: 帧分析发现问题，建议检查但可继续"
+    }
+  fi
 else
   echo "=== Stage 6 完成门禁失败 ==="
   exit 1
