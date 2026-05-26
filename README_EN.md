@@ -25,13 +25,31 @@ Most AI video tools are GUI apps with fixed templates. ClipForge takes a differe
 
 **The result:** You get a production-quality video pipeline that's auditable, extensible, and runs unattended on a cron schedule.
 
+### Why not just use HyperFrames directly?
+
+[HyperFrames](https://github.com/heygen-com/hyperframes) is an excellent HTML-to-Video renderer, but it only solves the "last mile" — turning HTML into MP4. A complete short video still requires solving these problems:
+
+| Problem | HyperFrames | What ClipForge adds on top |
+|---------|-------------|---------------------------|
+| **Where does content come from?** | Not involved | Stage 1 fetches from URL/PDF/GitHub/text; category system defines selection strategy per content type |
+| **How to define visual style?** | Not involved | Stage 2 director's toolkit (5 must-answer questions + visual vocabulary) derives palette, typography, immersion mode from content's emotional core |
+| **What to narrate?** | Not involved | Stage 3 scene breakdown + 6-beat emotional rhythm + segmented narration, each segment independently TTS'd with precise duration tracking |
+| **How to sync audio?** | Native mixing, but no audio generation | Stage 4 segmented TTS → loudnorm normalization → BGM selection + 7-level volume table → frame-accurate A/V alignment |
+| **How to write HTML?** | Renders what you give it | Stage 5-6 three-layer architecture (bg/content/fx) + 13 composable components + GSAP animation choreography + A/V gate validation |
+| **How to adapt to different content?** | Not involved | Category system (`categories/`) gives each content type its own data source, voice, hashtag strategy — no code changes needed |
+| **How to batch automate?** | Not involved | DAG orchestration + SubAgent batch dispatch + cron scheduling + auto-renewal — produces videos unattended daily |
+| **How to recover from errors?** | Not involved | DAG-driven cascading rollback table — only rolls back to the minimum necessary stage |
+| **Will disk fill up?** | Not involved | Auto-cleanup policy keeps each project under 30MB after delivery |
+
+**In short:** HyperFrames is the rendering engine; ClipForge is the complete orchestration layer from content to final delivery. HyperFrames solves "how to turn HTML into video"; ClipForge solves "where does the HTML come from, what content goes in it, how is the style determined, how is audio synchronized, and how to produce at scale."
+
 ## Overview
 
 ClipForge converts any content — text, URLs, PDFs, GitHub trending data, and more — into vertical short videos (1080x1920) with:
 
 - **DAG-orchestrated 8-stage pipeline** — each stage is a self-contained skill with explicit inputs/outputs
 - **Category system** — content-specific rules (data, style, voice, hashtags) via pluggable category profiles
-- **Three video modes** — standard multi-topic (25-55s), deep-dive single topic (45-60s), movie commentary (3-5min)
+- **Three video modes** — standard multi-topic (45-55s), deep-dive single topic (45-60s), movie commentary (3-5min)
 - **Embedded audio** — narration and BGM embedded in HTML via `<audio>`, mixed natively by HyperFrames
 - **Segment-precise A/V sync** — segmented TTS with per-segment duration tracking eliminates lip-sync drift
 - **Cron automation** — daily/weekly content videos run unattended with self-renewing cron jobs
@@ -43,12 +61,12 @@ ClipForge converts any content — text, URLs, PDFs, GitHub trending data, and m
 |-------|----------|-------------|
 | 0 | env-check | Dependency detection and auto-install |
 | 1 | content | Content acquisition from text/file/URL/category data source |
-| 2 | design | Visual style derivation (mood → palette → typography) |
-| 3 | narration | Scene breakdown + narration script per segment |
-| 4 | audio | Segmented TTS narration + BGM selection + volume analysis |
+| 2 | design | Director's visual derivation (emotional core → palette → immersion mode → storyboard) |
+| 3 | narration | Scene breakdown + 6-beat emotional rhythm + segmented narration |
+| 4 | audio | Segmented TTS + loudnorm + BGM selection + 7-level volume calibration |
 | 5 | assets | Visual asset preparation (optional, pure CSS/HTML) |
-| 6 | video | HTML composition with `<audio>` + HyperFrames rendering |
-| 7 | delivery | Cover generation + Douyin copywriting + final export |
+| 6 | video | Three-layer HTML + 13 components + GSAP animation → HyperFrames rendering |
+| 7 | delivery | Cover frame embedding + cover image + 3 Douyin copy styles + dual-version output |
 | 8 | cleanup | Intermediate file removal |
 
 The DAG is defined in [`schema.yaml`](.claude/commands/clipforge/schema.yaml) — artifact dependencies, conditional stages, optional stages, all in one place.
@@ -96,8 +114,18 @@ Fully automated: data collection (triple-source cross-validation) → video prod
 ClipForge follows three design principles:
 
 1. **Schema is truth.** `schema.yaml` defines all artifacts, dependencies, and completion criteria. State detection uses file existence (glob patterns), no database.
-2. **Skills are self-contained.** Each stage file (`stage0-env.md` through `stage7-delivery.md`) includes its own execution guide, anti-rationalization table, and red flags. No external context files needed.
+2. **Skills are self-contained.** Each stage file includes its own execution guide, anti-rationalization table, and red flags. No external context files needed.
 3. **Delegate, don't rewrite.** HTML composition and rendering are handled by HyperFrames. Audio mixing is native to the renderer — no FFmpeg post-processing.
+
+### Core Subsystems
+
+| Subsystem | File | Purpose |
+|-----------|------|---------|
+| Director's Toolkit | `_director-toolkit.md` | 5 must-answer questions + visual vocabulary + viral case studies; required before Stage 2/3/6 |
+| Render Safety | `_render-safety.md` | HyperFrames incident post-mortems: no CSS anim-in, three-layer architecture, safe area padding |
+| Content Norms | `_shared-rules.md` | Phrasing, on-screen text language, CTA timing, URL prohibition, golden 3-second rule |
+| Category Config | `categories/github.md` | GitHub-specific data source, selection strategy, voice, hashtag overrides |
+| Viral Case Library | `_viral-cases/` | Multi-dimensional analysis of proven viral videos with extractable patterns |
 
 See [Architecture Guide](docs/architecture.md) for the full DAG semantics, SubAgent dispatch, and error recovery strategy.
 
@@ -140,14 +168,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 clipforge/
 ├── CLAUDE.md                              # AI agent entry point
 ├── README.md                              # 中文说明（默认）
-├── README_EN.md                           # English README
+├── README_EN.md                           # English README (this file)
 ├── LICENSE                                # Apache 2.0
 ├── CONTRIBUTING.md                        # Contribution guidelines
 ├── docs/
 │   ├── architecture.md                    # DAG + stage pipeline deep dive
 │   └── getting-started.md                 # Setup and first video
 ├── .claude/commands/
-│   ├── clipforge.md                       # Main controller
+│   ├── clipforge.md                       # Main controller (DAG, modes, error recovery)
 │   ├── github-daily-trending.md           # Daily cron
 │   ├── github-weekly-trending.md          # Weekly cron
 │   ├── github-weekly-zhihu.md             # Weekly article cron
@@ -155,21 +183,66 @@ clipforge/
 │       ├── schema.yaml                    # Artifact DAG (single source of truth)
 │       ├── categories/                    # Category profiles
 │       │   ├── _category-schema.md        # Category config format spec
-│       │   └── github.md                  # GitHub category (first category)
-│       ├── stage0-env.md ... stage7-delivery.md   # Stage skill files
-│       ├── _shared-rules.md               # Content norms
+│       │   └── github.md                  # GitHub category
+│       ├── stage0-env.md                  # Stage 0: Environment check
+│       ├── stage1-content.md              # Stage 1: Content acquisition
+│       ├── stage2-analysis.md             # Stage 2: Director's thinking + style
+│       ├── stage3-scenes.md               # Stage 3: Scene breakdown + narration
+│       ├── stage4-audio.md                # Stage 4: TTS + BGM
+│       ├── stage5-assets.md               # Stage 5: Asset preparation
+│       ├── stage6-components.md           # Stage 6: Component library reference
+│       ├── stage6-production.md           # Stage 6: HTML assembly + rendering
+│       ├── stage7-delivery.md             # Stage 7: Cover + copywriting + delivery
+│       ├── templates/                     # SubAgent prompt templates
+│       │   ├── subagent-1-content.md      # Batch 1: Content + design + narration
+│       │   ├── subagent-2-audio.md        # Batch 2: Audio + assets
+│       │   ├── subagent-3-video.md        # Batch 3: Video rendering
+│       │   └── subagent-4-delivery.md     # Batch 4: Delivery + cleanup
+│       ├── _shared-rules.md               # Content norms (phrasing/text/CTA)
 │       ├── _cleanup-rules.md              # File retention rules
 │       ├── _cron-renew.md                 # Cron self-renewal
+│       ├── _director-toolkit.md           # Director's toolkit (5 questions + visual vocab)
+│       ├── _render-safety.md              # Render safety + three-layer architecture
 │       ├── _movie-clips.md                # Movie clip extraction (conditional)
-│       └── _bgm-pixabay.md                # BGM download helper
+│       ├── _bgm-pixabay.md                # Pixabay BGM download helper
+│       ├── _viral-cases/                  # Viral video case library
+│       │   └── 05-19-douyin.md            # 05-19 viral case review
 │       ├── scripts/                       # Tool scripts
 │       │   ├── github_trending.py         # GitHub Trending scraper
 │       │   ├── generate_bgm.py            # MusicGen BGM generator
-│       │   ├── merge_video_audio.sh       # Audio/video merge utility
-│       │   └── quality_gate.sh            # Video quality gate
-│       └── components/                    # Visual component library
+│       │   ├── tts_segments.py            # Segmented TTS pipeline
+│       │   ├── tts_pipeline.sh            # TTS workflow script
+│       │   ├── bgm_pipeline.sh            # BGM processing pipeline
+│       │   ├── bgm_gap_check.py           # BGM gap detection
+│       │   ├── loudnorm.sh                # loudnorm normalization
+│       │   ├── polyphone_fix.py           # TTS polyphone preprocessing
+│       │   ├── assemble_final.sh          # TS concat lossless assembly
+│       │   ├── merge_video_audio.sh       # Audio/video merge
+│       │   ├── merge_srt.py               # SRT subtitle merge
+│       │   ├── render_cover.sh            # Cover rendering
+│       │   ├── validate_cover.py          # Cover structure gate
+│       │   ├── stage6_gate.sh             # Stage 6 A/V gate
+│       │   ├── director_gate.py           # Director's thinking gate
+│       │   ├── frame_analysis.py          # Frame analysis tool
+│       │   ├── movie_narration.py         # Movie narration synthesis
+│       │   ├── movie_xfade.sh             # Movie clip xfade
+│       │   ├── env_check.sh               # Environment check
+│       │   ├── cleanup_project.sh         # Project cleanup
+│       │   └── validate_schema.py         # Schema validation
+│       └── components/                    # Visual component library (13 total)
 │           ├── hero_card.html             # Hero card
-│           └── ... (13 components total)
+│           ├── project_full_card.html     # Full project info card
+│           ├── text_reveal.html           # Text reveal animation
+│           ├── code_rain.html             # Code rain effect
+│           ├── particle_burst.html        # Particle burst
+│           ├── pulse_orb.html             # Pulse orb
+│           ├── star_counter.html          # Star counter
+│           ├── timeline_flow.html         # Timeline flow
+│           ├── compare_split.html         # Compare split
+│           ├── data_viz.html              # Data visualization
+│           ├── speech_bubble.html         # Speech bubble
+│           ├── char_overlay.html          # Character overlay
+│           └── three_scene.html           # Three.js 3D scene
 ├── install.sh                             # One-shot dependency installer
 └── workspace/                             # Output (gitignored)
 ```
