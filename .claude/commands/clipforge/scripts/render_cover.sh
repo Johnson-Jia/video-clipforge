@@ -19,6 +19,15 @@ fi
 
 echo "[render_cover] cover.png 缺失，尝试渲染..."
 
+# ── 门禁: 验证 cover.html 7 层结构 ──
+if [ -s cover.html ]; then
+  echo "[render_cover] 验证封面 7 层结构..."
+  python .claude/commands/clipforge/scripts/validate_cover.py cover.html || {
+    echo "FATAL: cover.html 缺少必需的视觉层次，请先修复后再渲染"
+    exit 1
+  }
+fi
+
 # 方案 A: HyperFrames 隔离渲染
 TMPDIR="${TEMP:-/tmp}/cover-render"
 mkdir -p "$TMPDIR"
