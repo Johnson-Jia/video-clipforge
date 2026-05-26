@@ -12,6 +12,8 @@
 工作目录必须在项目目录下。
 """
 import json, subprocess, sys, os, glob
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from polyphone_fix import fix as fix_polyphone
 
 def main():
     if len(sys.argv) < 3:
@@ -30,8 +32,11 @@ def main():
         mp3_file = f'narration_seg_{i}.mp3'
         srt_file = f'narration_seg_{i}.srt'
 
+        # 多音字预处理：修复 edge-tts 发音错误
+        tts_text = fix_polyphone(seg['text'])
+
         with open(text_file, 'w', encoding='utf-8') as f:
-            f.write(seg['text'])
+            f.write(tts_text)
 
         subprocess.run([
             'python', '-m', 'edge_tts',
