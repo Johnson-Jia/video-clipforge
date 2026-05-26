@@ -76,11 +76,17 @@ du -sh workspace/bgm/
 | `bold-energetic` | `energetic upbeat` | 高能、节奏强、适合科技资讯 |
 | `clean-corporate` | `corporate clean business` | 专业、干净、适合商业演示 |
 | `dark-premium` | `dark cinematic dramatic` | 暗黑、电影感、适合高端产品 |
+| `epic-trailer` | `epic trailer cinematic` | 史诗预告、大气磅礴、适合大片感内容 |
+| `chill-lofi` | `lofi chill hip hop` | Lofi 放松、慵懒节拍、适合慢节奏/日常类 |
 | `jewel-rich` | `luxury elegant cinematic` | 奢华、优雅、适合精品展示 |
 | `monochrome` | `minimal ambient piano` | 极简、氛围、钢琴为主 |
 | `nature-earth` | `nature acoustic folk` | 自然、原声、民谣风 |
 | `neon-electric` | `synthwave electronic neon` | 合成波、电子、赛博朋克 |
 | `pastel-soft` | `soft gentle ambient calm` | 柔和、轻缓、治愈系 |
+| `retro-80s` | `retro 80s synth pop` | 复古 80 年代、合成器流行、怀旧感 |
+| `upbeat-pop` | `upbeat pop happy` | 欢快流行、轻松愉快、适合科普/日常 |
+| `suspense-thriller` | `suspense dark thriller` | 悬疑紧张、适合揭秘/深度分析 |
+| `inspiring-motivational` | `inspiring motivational` | 励志激励、适合创业/成长类 |
 | `warm-editorial` | `warm acoustic cozy` | 温暖、原声、舒适 |
 
 ## 文件命名规范
@@ -90,7 +96,7 @@ workspace/bgm/<主题名>-<序号>.mp3
 ```
 
 - 主题名与上表 `主题名` 列一致（kebab-case）
-- 序号 1-5
+- 序号 1-10
 - 例：`bold-energetic-1.mp3`、`dark-premium-3.mp3`
 
 ## 批量补全脚本
@@ -100,8 +106,8 @@ workspace/bgm/<主题名>-<序号>.mp3
 ```
 对于每个主题：
   1. 浏览器导航到 https://pixabay.com/music/search/<搜索词>/
-  2. 从 HTML 提取前 5 个 CDN URL
-  3. 批量下载为 <主题名>-1~5.mp3
+  2. 从 HTML 提取前 10 个 CDN URL
+  3. 批量下载为 <主题名>-1~10.mp3
   4. 验证 HTTP 200 + 文件大小 > 500KB
 ```
 
