@@ -133,22 +133,6 @@ storyboard:
 
 ---
 
-## Red Flags（停止信号）
+## 约束声明
 
-| 信号 | 说明 |
-|------|------|
-| design.md 缺少 style/mood/color_direction | 下游 stage 无法确定视觉方向，会导致配色随意 |
-| design.md 缺少 storyboard 节 | Stage 3 无法确定叙事结构和情感节奏 |
-| emotion_curve 不是 6 元素数组 | 下游 Stage 期望精确 6 个节拍 |
-| immersion_mode 不是 6 种之一 | Stage 6 无法匹配视觉风格 |
-| 风格与内容情绪不匹配 | 科技内容配暖色生活风 → 观感割裂 |
-
-## Common Rationalizations（常见借口反驳）
-
-| 借口 | 事实 |
-|------|------|
-| "风格随便定一个就行" | 不匹配内容情绪的视觉风格会导致观感割裂，前 3 秒就会让观众划走 |
-| "用默认风格不用分析了" | 没有方向指导的 Stage 6 会随机配色，每期视频风格不一致 |
-| "故事板可以跳过，直接写文案" | 没有故事板，Stage 3 无法规划情感节奏和幽默插入点，视频会回到平铺直叙 |
-| "emotion_curve 随便填" | 错误的情感曲线导致高潮段平淡或结尾过于激动，影响观感节奏 |
-| "immersion_mode 用默认就行" | 不匹配内容的沉浸模式会让视觉风格与内容情绪割裂 |
+> 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage2-analysis` 获取完整约束 prompt。
