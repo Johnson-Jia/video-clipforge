@@ -1,0 +1,80 @@
+skill:
+  meta:
+    id: "clipforge.stage1-content"
+    version: "1.0.0"
+    type: ANALYTICAL
+    tags: ["content", "acquisition", "validation"]
+    dependencies: ["clipforge.stage0-env"]
+    rigor: STANDARD
+
+  intent:
+    objective: "获取并验证内容源，确保信息密度足以支撑视频制作"
+    criteria:
+      - "内容源已获取并整理为可分析格式"
+      - "信息密度满足视频场景需求"
+      - "分类数据验证通过（当有分类配置时）"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - inline:
+          id: "R-STAGE1-001"
+          type: FORBIDDEN_METHOD
+          pattern: "使用 web-reader 时未禁用缓存"
+          positive: "调用 web-reader 时必须设置 no_cache: true，确保获取最新数据"
+          guardrail: "检查 web-reader 调用参数中 no_cache 字段"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE1-002"
+          type: FORBIDDEN_ACTION
+          pattern: "在内容量不足时继续推进"
+          positive: "内容密度不足以支撑视频时停止，要求用户提供更多内容"
+          guardrail: "评估内容可提取的核心信息点数量"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE1-003"
+          type: FORBIDDEN_METHOD
+          pattern: "跳过分类配置中定义的数据验证规则"
+          positive: "读取分类配置的 content 段，遵守其中定义的数据验证规则（如双源交叉验证）"
+          guardrail: "检查是否执行了分类配置要求的验证步骤"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+    preferences:
+      - text: "优先使用用户直接提供的内容，减少额外获取步骤"
+        weight: HIGH
+
+  guard:
+    red_flags:
+      - thought: "这些数据看起来合理"
+        reality: "看起来合理 ≠ 数据准确，分类配置中的验证规则必须遵守"
+        trigger: "跳过数据验证步骤"
+      - thought: "跳过数据验证，直接开始"
+        reality: "错误数据进入视频→观众纠正→伤害频道可信度"
+        trigger: "忽略分类配置的验证要求"
+      - thought: "内容不够但先做着"
+        reality: "内容不足导致视频空洞、节奏拖沓，必须补充后再继续"
+        trigger: "在内容密度不足时继续推进"
+    spirit_vs_letter:
+      - rule_ref: "R-STAGE1-003"
+        mode: SPIRIT
+        intent: "确保视频内容的数据准确性，维护频道可信度"
+
+  gate:
+    process:
+      - gate: "data_validation"
+        check: "分类配置要求的数据验证步骤已全部通过"
+    quality:
+      - gate: "content_sufficiency"
+        threshold: 0.7
+        evaluator: HUMAN
+    max_retries: 1
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"

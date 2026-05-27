@@ -1,0 +1,59 @@
+# =============================================================================
+# ClipForge 清理规则库 (SCENE: cleanup)
+# =============================================================================
+# 作用域: GLOBAL — 清理操作适用于所有项目类型（视频/文章）
+# 来源: _cleanup-rules.md
+# 引用方式: skill.yaml 中 boundary.rules[].ref: "R-CLEANUP-xxx"
+# =============================================================================
+
+rules:
+
+  - id: "R-CLEANUP-001"
+    type: FORBIDDEN_ACTION
+    pattern: "删除保留清单中的文件（final.mp4/final_no_bgm.mp4/cover.png/cover.html/index.html/design.md/narration_segments.json/narration.txt/segment_durations.json/douyin.md/content.md/output.mp4/output_no_bgm.mp4）"
+    positive: "只删除必删文件列表中明确列出的文件，不在必删列表中的文件一律不动"
+    guardrail: "清理后检查保留清单中的文件是否全部存在"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_cleanup-rules 保留清单"
+
+  - id: "R-CLEANUP-002"
+    type: FORBIDDEN_METHOD
+    pattern: "使用通配符批量删除（rm -f *.md / rm -f *.json / rm -f *.mp4）"
+    positive: "按必删文件列表逐条删除，不使用通配符匹配保留清单中的文件类型"
+    guardrail: "检测删除命令中是否包含*.md|*.json|*.mp4|*.html等通配符模式"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_cleanup-rules 第一原则"
+
+  - id: "R-CLEANUP-003"
+    type: FORBIDDEN_METHOD
+    pattern: "手动rm -f批量删除文件（绕过清理脚本和逐条步骤）"
+    positive: "只通过以下方式执行清理：①运行cleanup_project.sh脚本（首选）②按本文件逐条删除步骤"
+    guardrail: "检测是否使用了cleanup_project.sh或逐条删除步骤"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_cleanup-rules 强制执行"
+
+  - id: "R-CLEANUP-004"
+    type: FORBIDDEN_METHOD
+    pattern: "跳过清理前检查点直接删除"
+    positive: "执行删除前完成5步检查点：①ls列出文件 ②对照保留清单 ③记录删除名单 ④确认不在保留清单 ⑤逐条删除"
+    guardrail: "检测删除操作前是否执行了ls和保留清单对照"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_cleanup-rules 清理前检查点"
+
+  - id: "R-CLEANUP-005"
+    type: FORBIDDEN_ACTION
+    pattern: "删除output.mp4或output_no_bgm.mp4"
+    positive: "保留output*.mp4作为重渲染源文件——final.mp4已包含封面帧，无法反向提取纯净视频流"
+    guardrail: "清理后检查output.mp4和output_no_bgm.mp4是否存在"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_cleanup-rules 必须保留段"

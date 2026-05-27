@@ -1,11 +1,49 @@
 ---
+id: "clipforge.github-daily-trending"
 name: github-daily-trending
 description: 全自动抓取 GitHub 每日热门项目并生成抖音短视频，无需人工确认。完成后自动续期定时任务。
+version: "2.0.0"
+type: ORCHESTRATOR
+category: "github"
+schedule: "daily"
 ---
 
 # GitHub 每日热门 → 抖音短视频（全自动）
 
 > **全自动执行，不需要人工确认。** 使用 DAG 感知编排 + SubAgent 阶段隔离执行，每个阶段独立上下文窗口。
+
+## Intent
+> 全自动抓取 GitHub 每日热门项目并生成抖音短视频。
+> 成功标准：数据三源验证通过、视频渲染成功、定时任务续期完成。
+
+## Boundary — 编排准则
+
+### 必须遵守（HARD 规则）
+1. **数据三源验证** — 至少两个数据源交叉验证，项目名交集 ≥80% ← `R-GH-001`
+2. **数据量门禁** — 获取 ≥8 个项目，否则停止 ← `R-GH-002`
+3. **活跃度检查** — ≥80% 项目在过去 30 天内有更新 ← `R-GH-003`
+4. **与前次对比** — 与前一天数据做差异对比，避免重复 ← `R-GH-004`
+5. **月台账先于 DAG** — 月台账写入必须在 SubAgent 批次之前完成 ← `R-GH-005`
+6. **续期无条件** — 无论成功失败，必须执行 _cron-renew ← `R-CRON-002`
+
+## Gate — 质量门禁
+
+### 数据采集门禁（Step 1，不通过 = 中止）
+- [ ] 项目数 ≥ 8
+- [ ] 与前日数据不完全相同
+- [ ] ≥ 80% 项目在 30 天内有更新
+- [ ] 三源交叉验证交集 ≥ 80%
+
+### 批次门禁（Step 4，每个 SubAgent 批次）
+- [ ] SA-1: design.md + narration_segments.json + narration.txt 存在
+- [ ] SA-2: segment_durations.json + narration.mp3 + bgm.wav 存在
+- [ ] SA-3: output.mp4 + output_no_bgm.mp4 存在
+- [ ] SA-4: final.mp4 + cover.png + douyin.md 存在，磁盘 < 30MB
+
+## Trace — 采集点
+- **Step 1**：数据源验证结果、选取项目列表
+- **Step 4**：各批次通过/失败状态
+- **写入**：`{PROJECT_DIR}/trace/run-summary.yaml`
 
 ## 前置：日期 & 目录
 
@@ -108,7 +146,7 @@ MONTHLY_FILE="workspace/sources/github-trending/${MONTH}.md"
 - `{{CATEGORY}}` → github
 - `{{CONTENT_SOURCE}}` → 项目目录下的 raw_trending.json（数据已准备好）
 
-额外指令（追加到模板 prompt 末尾）：按 categories/github.md 中的 selection_strategy 选取 5-6 个项目。
+额外指令（追加到模板 prompt 末尾）：按 categories/github/content-design-narration.md 中的 selection_strategy 选取 5-6 个项目。
 
 **验证：** `ls -la ${PROJECT_DIR}/design.md ${PROJECT_DIR}/narration_segments.json ${PROJECT_DIR}/narration.txt`
 

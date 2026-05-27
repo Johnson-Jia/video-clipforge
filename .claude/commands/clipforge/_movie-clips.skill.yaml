@@ -1,0 +1,76 @@
+skill:
+  meta:
+    id: "clipforge.movie-clips"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["movie", "video-clip", "xfade", "conditional"]
+    dependencies: ["clipforge.stage3-scenes"]
+    rigor: STANDARD
+    condition: "narration_segments.json 中包含 video_clip 类型场景"
+
+  intent:
+    objective: "提取电影片段并拼接为可用素材"
+    criteria:
+      - "所有片段提取后经 ffprobe 实测时长"
+      - "clip_durations.json 存在且所有片段时长 > 0"
+      - "所有片段分辨率统一"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - inline:
+          id: "R-MOVIE-001"
+          type: FORBIDDEN_METHOD
+          pattern: "提取片段后不测量实际时长"
+          positive: "提取后必须 ffprobe 实测每段实际时长"
+          guardrail: "clip_durations.json 中的时长来自 ffprobe"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-MOVIE-002"
+          type: FORBIDDEN_METHOD
+          pattern: "clip_durations.json 缺失或时长为 0"
+          positive: "clip_durations.json 必须存在且所有片段时长 > 0"
+          guardrail: "文件存在且所有 actual_duration > 0"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-MOVIE-003"
+          type: FORBIDDEN_METHOD
+          pattern: "片段分辨率不统一"
+          positive: "所有片段统一编码为项目分辨率"
+          guardrail: "ffprobe 检测所有片段分辨率一致"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+
+  guard:
+    red_flags:
+      - thought: "下载成功就行"
+        reality: "部分下载的片段会导致 xfade 拼接失败"
+        trigger: "未验证片段完整性"
+      - thought: "片段时长预估一下"
+        reality: "预估时长偏差级联到全片时间轴"
+        trigger: "不执行 ffprobe 实测"
+      - thought: "分辨率差不多就行"
+        reality: "xfade 要求所有输入分辨率完全一致"
+        trigger: "混合分辨率片段拼接"
+    spirit_vs_letter:
+      - rule_ref: "R-MOVIE-001"
+        mode: SPIRIT
+        intent: "确保时间轴精确，防止音频/视频不同步"
+
+  gate:
+    process:
+      - gate: "clip_durations_exists"
+        check: "clip_durations.json 存在且所有片段时长 > 0"
+      - gate: "resolution_uniform"
+        check: "所有片段分辨率一致"
+    max_retries: 2
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"

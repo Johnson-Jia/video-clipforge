@@ -1,8 +1,88 @@
+---
+name: stage3-scenes
+description: 场景拆解 + 旁白文案 — 拆解场景序列、撰写分段旁白、注入情感标记和幽默元素
+version: "1.0.0"
+type: GENERATIVE
+rigor: STANDARD
+dependencies: ["clipforge.stage2-analysis"]
+---
+
 # Stage 3: 场景拆解 + 旁白文案
 
 当 `design.md` 已存在且 `narration_segments.json` 不存在时触发。拆解场景序列、撰写分段旁白文案、注入情感标记和幽默元素。
 
+## Intent
+> 将内容拆解为场景序列并撰写旁白文案。
+> 成功标准：narration_segments.json 含完整场景序列+情感标记，hook ≤12 字纯钩子，情感节拍分布合理。
+
+## Boundary — 行为准则
+
+### 必须遵守（HARD 规则 · 正向重述）
+
+1. **hook 旁白纯钩子 ≤12 字** — hook 场景旁白使用数据震撼/反问/强对比/悬念，≤12 字，不含信息性内容 ← `R-GLOBAL-013`
+   ↳ 校验：hook 场景 text 长度 ≤12 且不包含项目名称或功能描述
+2. **画面文字以中文为主** — 标题、标签、CTA 等用中文，仅项目名和技术缩写保留英文 ← `R-GLOBAL-008`
+   ↳ 校验：画面文字中英文占比 < 20%
+3. **禁止广告敏感词** — 使用限定性表述替代"必装""神器""最强"等 ← `R-GLOBAL-001`
+   ↳ 校验：旁白和画面文字不包含敏感词表词汇
+4. **emotion 字段必填** — 每个场景必须包含 emotion 字段（6 拍节拍名之一） ← `R-STAGE3-004`
+   ↳ 校验：narration_segments.json 中每个对象有 emotion 字段
+5. **grab/climax 保持严肃** — grab 和 climax 节拍的 humor_type 必须为 null ← `R-STAGE3-005`
+   ↳ 校验：grab/climax 场景的 humor_type 为 null
+6. **hook 不含信息性内容** — hook 旁白为纯钩子，正文从第 2 个场景开始 ← `R-STAGE3-007`
+   ↳ 校验：hook 场景 text 不包含项目名称或功能描述
+
+### 建议参考（SOFT 规则 + 偏好）
+- **角色表情匹配** — tease 表情搭配 humor_type，无 humor 时不出 tease（SOFT）← `R-STAGE3-006`
+- 每个视频至少 1 个项目尝试反直觉描述（LOW，参考 Pattern P-002，SEED 模式待验证）
+- 使用量化钩子开场：≥2 个具体数字（LOW，参考 Pattern P-001，SEED 模式待验证）
+- 标准模式可参考 8 层信息卡片结构（LOW，参考 Pattern P-003，SEED 模式待验证）
+- 每 3-4 个段落注入 1 次幽默（MEDIUM）— 幽默密度由 Agent 根据内容自主决定
+- 重点场景通常 6-8 秒，概括场景 3-4 秒（MEDIUM）— 具体时长由 Agent 根据内容密度自主决定
+
+## Guard — 认知守卫
+
+| 当你产生这个念头 | 现实是 | 触发行为 |
+|---|---|---|
+| "hook 多说点背景信息" | §5 黄金 3 秒要求纯钩子 ≤12 字 | 重写 hook 为纯钩子 |
+| "用英文标题更酷" | §2 画面文字必须以中文为主 | 改为中文 |
+| "hook 里说'这个项目太强了'" | §1 禁止极限用语 | 改用数据说话 |
+| "CTA 说'点赞关注一键三连'" | §1 禁止诱导互动 | 自然提及 |
+| "情感标记太麻烦，后面再说" | 没有 emotion 字段，Stage 4 无法变速 | 立即填写 emotion |
+| "visual_phases 可以省略" | >15s 场景必须有 visual_phases | 补充 visual_phases |
+
+### Spirit vs Letter
+
+| 规则 | 模式 | 真实意图 |
+|---|---|---|
+| R-GLOBAL-013 | SPIRIT | 确保前 3 秒是纯注意力钩子，不包含任何可分散注意力的信息 |
+| R-STAGE3-005 | SPIRIT | 保持视频张力——高潮和开场段需要情感冲击力，幽默会稀释 |
+
+## Gate — 通过标准
+
+### 流程门禁（自动化检查，不通过 = 驳回，max_retries: 2）
+- [ ] `narration_format` — narration_segments.json 存在且格式正确
+- [ ] `emotion_markers` — 所有场景都有 emotion 字段（6 拍节拍名之一）
+
+### 合规门禁（关键词/正则匹配，不通过 = 驳回）
+- [ ] `hook_compliance` — hook 场景旁白 ≤12 字且不含信息性内容（R-GLOBAL-013）
+- [ ] `no_sensitive_words` — 旁白和画面文字不含 R-GLOBAL-001 广告敏感词
+- [ ] `chinese_primary` — 画面文字以中文为主，英文占比 < 20%（R-GLOBAL-008）
+
+### 质量门禁（创意评价，不通过 = 记录但放行，evaluator: HUMAN）
+- `pacing_quality`: 评分 ≥ 0.7（人类评价：整体节奏感、信息密度、观众注意力曲线）
+- `humor_distribution`: 评分 ≥ 0.7（人类评价：幽默的时机、密度、与内容的契合度）
+
+## Trace — 采集点
+- **执行开始**：记录 design.md 的 narrative_template、immersion_mode
+- **关键决策**：记录场景数、总字数、hook 字数、emotion 分布
+- **执行结束**：记录 gate_report，写入 `{project_dir}/trace/stage3-{timestamp}.yaml`
+
+## 操作指令
+
 > **导演思维驱动。** 执行前读取 `_director-toolkit`，每个场景用"导演的 5 个必答题"驱动视觉描述。用"视觉词汇表"写出具体的视觉指令，让 Stage 6 能直接理解和实现。
+
+### 模式表
 
 | 模式 | 场景数 | 目标时长 |
 |------|--------|---------|
@@ -10,9 +90,10 @@
 | 单项目深度解析 | 7-8 个 | 45-60 秒 |
 | 电影解读模式 | 不限 | 3-5 分钟 |
 
-## 标准模式 — 单项目全屏结构（8 层信息）
+### 标准模式 — 单项目全屏结构（8 层信息）
 
 > **数据来源：** 爆款视频分析（05-19，11万播放）采用一屏一项目布局，每项目包含 8 层信息。对比同日另一视频（一屏多项目，5 层信息），播放量差 3 倍。
+> **关联 Pattern：** P-003（8层全屏卡片信息结构）
 
 标准模式下，每个项目独占一个场景（6-8s），画面包含 8 层信息，从理性到感性全覆盖：
 
@@ -32,7 +113,7 @@
 - **三词卖点**：3 个词分别覆盖能力、性能、场景三个维度，用"·"分隔，每词 ≤6 字
 - **感性评语**：用数据或感叹做情绪收尾，不超过 12 字。可以是数据惊叹（"近四千星，速度惊人"）或场景感慨（"家用 WiFi 就能实现"）
 
-### 反直觉角度挖掘（每个项目必须执行）
+#### 反直觉角度挖掘（每个项目必须执行）
 
 对每个项目回答以下问题，提取反直觉角度：
 
@@ -46,18 +127,21 @@
 - 发布文案中的钩子句
 - 类别标签的命名
 
-## 节奏铁律
+### 节奏铁律
 
-| 规则 | 说明 |
-|------|------|
-| **黄金 3 秒** | hook 场景（前 3-5s）必须是纯钩子，不含任何信息性内容。正文从第 2 个场景开始 |
-| 钩子句 ≤ 12 字 | 口语化、一击即中（数据震撼/反问/强对比/悬念） |
-| **视觉切换频率** | 遵守 `_shared-rules` §6 的分级规则：≤10s 单 phase，10-20s ≥2 phases，20-40s ≥3 phases，>40s 按 ⌈duration/14⌉ |
-| 重点场景 6-8 秒 | 短视频核心内容（一句话核心 + 一句话亮点 + 数据/细节） |
-| 概括场景 3-4 秒 | 非重点内容快速带过 |
-| 长视频场景按 phase 拆分 | 时长 >15 秒的场景必须有 `visual_phases`，不足则 Stage 6 gate 拦截 |
+| 规则 | 说明 | 类型 |
+|------|------|------|
+| **黄金 3 秒** | hook 场景（前 3-5s）必须是纯钩子，不含任何信息性内容。正文从第 2 个场景开始 | 流程（HARD） |
+| 钩子句 ≤ 12 字 | 口语化、一击即中（数据震撼/反问/强对比/悬念） | 格式（HARD） |
+| **视觉切换频率** | 遵守 `_shared-rules/visual.md` §6 的分级规则：≤10s 单 phase，10-20s ≥2 phases，20-40s ≥3 phases，>40s 按 ⌈duration/14⌉ | 流程（HARD） |
+| 长视频场景按 phase 拆分 | 时长 >15 秒的场景必须有 `visual_phases`，不足则 Stage 6 gate 拦截 | 流程（HARD） |
 
-## 场景模板
+> **节奏建议（内容层 — Agent 自主决策）：**
+> - 重点场景通常 6-8 秒，但内容密度大时可延长至 10-12 秒（需配 visual_phases）
+> - 概括场景通常 3-4 秒，但有叙事价值时可适当延长
+> - 总时长目标：标准模式 45-55s，深度解析 45-60s。具体分配由 Agent 根据内容密度自主决定
+
+### 场景模板
 
 ```yaml
 scenes:
@@ -89,7 +173,7 @@ scenes:
 
 > **`start` 自动累加：** 场景按顺序排列，`start` = 前面所有场景 `duration` 之和，无需手动填写。调整某个场景的 `duration` 时，后续场景的 `start` 自动更新。
 
-## 场景类型
+### 场景类型
 
 场景类型定义了每个场景的叙事用途，时长由内容密度决定，不套固定值：
 
@@ -107,7 +191,7 @@ scenes:
 | **tech** | 技术栈/硬件/架构（深度解析） |
 | **privacy** | 隐私/安全/合规优势（深度解析，可选） |
 
-### 单项目深度解析 — 8 场景模板
+#### 单项目深度解析 — 8 场景模板
 
 当只聚焦一个项目时，使用以下 8 场景结构替代标准 4-5 场景模板。每个场景专注一个维度，层层递进：
 
@@ -162,7 +246,7 @@ scenes:
     mood: inspiring
 ```
 
-### video_clip 场景（电影解读模式）
+#### video_clip 场景（电影解读模式）
 
 当制作电影/影视解读视频时，使用 `video_clip` 类型嵌入电影原片片段。此类场景的旁白为空（`null`），播放期间由电影原音替代旁白。
 
@@ -190,11 +274,11 @@ scenes:
 - 文案总字数按实际旁白场景计算，不含 `video_clip` 场景
 - **`duration` 是粗估值。** Stage 5 提取片段后会产出 `clip_durations.json`（实际测量值），Stage 6 用实际值设置 `data-duration`。Stage 3 的 `duration` 仅用于内容规划时的参考
 
-## 撰写旁白文案（分段模式）
+### 撰写旁白文案（分段模式）
 
 场景拆解的同时，撰写旁白文案。**每个场景必须对应一段独立的旁白文字**，存为 `narration.txt`（一行一个场景）和 `narration_segments.json`。
 
-### 分段旁白（必须遵守）
+#### 分段旁白（必须遵守）
 
 **核心原则：一个场景 = 一段旁白 = 一个独立 TTS 片段。**
 
@@ -278,7 +362,7 @@ scenes:
 ]
 ```
 
-**新增字段说明：**
+**字段说明：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -289,9 +373,9 @@ scenes:
 | `selling_points` | string/null | 三词卖点（仅标准模式项目场景），格式："词1·词2·词3"，每词 ≤6 字 |
 | `commentary` | string/null | 感性评语（仅标准模式项目场景），≤12 字，数据惊叹或场景感慨 |
 | `contrarian_angle` | string/null | 反直觉角度（仅标准模式项目场景），用于旁白钩子和发布文案 |
-| `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)、`layout_hint`(可选，布局微调)。时长 ≤15s 的场景可传空数组 `[]` |
+| `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)、`layout_hint`(可选)。时长 ≤15s 可传空数组 `[]` |
 
-### visual_phases 类型定义
+#### visual_phases 类型定义
 
 | visual_type | 画面表现 | 适用时机 |
 |------------|---------|---------|
@@ -302,11 +386,11 @@ scenes:
 | `timeline` | 步骤节点依次出现 | 路线图、发展流程、时间线 |
 | `highlight` | 核心结论放大 + 强调色背景 | 段落总结、核心观点强调 |
 
-### visual_phases 规则
+#### visual_phases 规则
 
 1. **计数规则**：时长 ≤15s → 可省略（`[]`）；16-25s → ≥2 phases；26-40s → ≥3 phases；>40s → ⌈duration/14⌉ phases
 2. **相邻 phase 的 visual_type 不应重复**（保持视觉多样性）
-3. **key_data 是画面上必须展示的数据/关键词**，Stage 6 根据 visual_type 选择组件模板展示这些数据
+3. **key_data 是画面上必须展示的数据/关键词**，Stage 6 根据 visual_type 选择组件模板展示
 4. **focus 是该 phase 的内容主题**，Stage 6 据此生成画面标题
 5. **Phase 不足视为 Stage 3 未完成**，Stage 6 gate 会拦截
 6. **layout_hint.density** 可选，控制元素间距密度：`compact`（条目多/时间紧）、`standard`（默认）、`generous`（元素少/强调留白）。不指定时 Stage 6 从 visual_type 自动推导
@@ -319,22 +403,22 @@ scenes:
 关注我，每天更新
 ```
 
-## 双线幽默引擎
+### 双线幽默引擎
 
 读取 `design.md` 的 `storyboard.humor_style` 确定幽默策略。
 
-### 幽默原则
+#### 幽默原则
 
 - 每 3-4 个段落至少注入 1 次幽默（analogy 类比 / sarcasm 反差吐槽 / trivia 冷知识梗）
 - 幽默只在 build/reveal/settle 节拍使用，grab/climax/summon 保持严肃
 - 幽默不改变核心信息，只是表达方式的调剂
 - 遵守分类配置的 humor_rules（如有）
 
-### 角色表情
+#### 角色表情
 
-`character_expression` 非 null 的段落，Stage 6 会渲染对应表情的码力角色。表情跟随情感自然匹配，不需要查表——数据震撼用 shock、分析思考用 think、展示酷功能用 cool、高潮爆发用 explode、调侃用 tease、感人用 moved。
+`character_expression` 非 null 的段落，Stage 6 会渲染对应表情的码力角色。表情跟随情感自然匹配——数据震撼用 shock、分析思考用 think、展示酷功能用 cool、高潮爆发用 explode、调侃用 tease、感人用 moved。
 
-## 情感节拍映射
+### 情感节拍映射
 
 从 `design.md` 的 `storyboard.beat_mapping` 确定每个场景属于哪个节拍，写入 `emotion` 字段：
 
@@ -347,9 +431,9 @@ scenes:
 | settle | 慢（-5%） | 高 | tease/moved |
 | summon | 中（默认） | 低 | 无 |
 
-### 情感变速标记
+#### 情感变速标记
 
-每段的 `emotion` 字段指导 Stage 4 的 TTS 语速偏移（grab/climax 偏快，settle 偏慢，build/reveal/summon 基准）。Stage 3 只标记 emotion，不设置具体 rate 值。Stage 4 读取 emotion 字段后应用偏移。
+每段的 `emotion` 字段指导 Stage 4 的 TTS 语速偏移（grab/climax 偏快，settle 偏慢，build/reveal/summon 基准）。Stage 3 只标记 emotion，不设置具体 rate 值。
 
 ### 文案要求
 
@@ -362,14 +446,14 @@ scenes:
 
 ### 措辞/画面/CTA 规范
 
-> **遵守 `clipforge/_shared-rules` 全部条款**（§1 措辞、§2 画面文字、§3 CTA 时间、§4 内容安全）。已在执行前读取，无需在此重复。
+> **遵守 `clipforge/_shared-rules` 全部条款**（§1 措辞、§3 CTA 时间、§4 内容安全见 `writing.md`；§2 画面文字见 `visual.md`）。已在执行前读取，无需在此重复。
 
 ### 时长估算
 
 按语速 `+25%` 粗算：**每秒约 7-8 个汉字**。
 
-| 模式 | 目标时长   | 建议字数 |
-|------|--------|---------|
+| 模式 | 目标时长 | 建议字数 |
+|------|---------|---------|
 | 标准模式（5-6 个项目） | 45-55s | 250-380 字 |
 | 深度解析模式 | 45-60s | 300-450 字 |
 
@@ -381,21 +465,19 @@ scenes:
 
 **交付物：** 展示场景表和旁白文案（含情感标记和幽默元素），用户确认后进入音频制作。
 
----
+## Red Flags
 
-## Red Flags（停止信号）
+| 信号 | 规则 ID | 说明 |
+|------|---------|------|
+| hook 场景旁白超 12 字 | R-GLOBAL-013 | §5 黄金 3 秒要求纯钩子 ≤12 字，超字会被划走 |
+| hook 包含信息性内容 | R-STAGE3-007 | 钩子必须是纯钩子，不能是项目介绍 |
+| 旁白含广告审查敏感词 | R-GLOBAL-001 | "必装""神器""最强"等会导致视频审核不通过 |
+| 画面文字包含英文非项目名/缩写 | R-GLOBAL-008 | "TRENDING TODAY"等违反中文为主规范 |
+| narration_segments.json 缺少 emotion 字段 | R-STAGE3-004 | Stage 4 无法确定 TTS 语速偏移 |
+| grab/climax 节拍包含 humor_type | R-STAGE3-005 | 抓取和高潮段保持严肃 |
+| character_expression 与 humor_type 不匹配 | R-STAGE3-006 | tease 表情应搭配 humor_type |
 
-| 信号 | 说明 |
-|------|------|
-| hook 场景旁白超 12 字 | _shared-rules §5 黄金 3 秒要求纯钩子 ≤12 字，超字会被划走 |
-| hook 包含信息性内容 | 钩子必须是纯钩子（数据震撼/反问/强对比/悬念），不能是项目介绍 |
-| 旁白含广告审查敏感词 | "必装"、"神器"、"最强"等会导致视频审核不通过（§1） |
-| 画面文字包含英文非项目名/缩写 | "TRENDING TODAY"等违反中文为主规范（§2） |
-| narration_segments.json 缺少 emotion 字段 | Stage 4 无法确定 TTS 语速偏移，Stage 6 无法匹配角色表情 |
-| grab/climax 节拍包含 humor_type | 抓取和高潮段保持严肃，幽默只在 build/reveal/settle |
-| character_expression 与 humor_type 不匹配 | tease 表情应搭配 humor_type，无 humor 时不应出 tease 表情 |
-
-## Common Rationalizations（常见借口反驳）
+## Common Rationalizations
 
 | 借口 | 事实 |
 |------|------|
@@ -403,5 +485,5 @@ scenes:
 | "用英文标题更酷" | §2 画面文字必须以中文为主，英文仅限项目名和技术缩写 |
 | "hook 里说'这个项目太强了'" | §1 禁止"太强了"等极限用语，改用数据说话（"33K Star"） |
 | "CTA 说'点赞关注一键三连'" | §1 禁止诱导互动，文案末尾自然提及即可 |
-| "情感标记太麻烦，后面再说" | 没有 emotion 字段，Stage 4 无法变速（全线均匀），Stage 6 无法匹配角色表情和视觉力度 |
+| "情感标记太麻烦，后面再说" | 没有 emotion 字段，Stage 4 无法变速，Stage 6 无法匹配角色表情和视觉力度 |
 | "每段都加幽默更搞笑" | 幽默过密会削弱节奏感，grab/climax/summon 必须严肃以保持张力 |

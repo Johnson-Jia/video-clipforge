@@ -1,0 +1,142 @@
+skill:
+  meta:
+    id: "clipforge.stage6-production"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["video", "hyperframes", "render", "html", "gsap"]
+    dependencies: ["clipforge.stage4-audio"]
+    rigor: STRICT
+
+  intent:
+    objective: "编写 HTML 组合并渲染竖屏视频，含旁白和 BGM"
+    criteria:
+      - "双版本输出（output.mp4 + output_no_bgm.mp4）"
+      - "渲染安全通过（director_gate.py + stage6_gate.sh）"
+      - "GSAP timeline 注册且非空"
+      - "音频验证通过（BGM 未泄露到 no_bgm 版本）"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      # ── Stage 6 独有规则 ──
+      - ref: "R-STAGE6-001"  # 渲染前移除非index.html文件 → R-RENDER-007
+      - ref: "R-STAGE6-002"  # GSAP timeline注册 → R-RENDER-009
+      - ref: "R-STAGE6-003"  # output_no_bgm必须用narration.mp3合成
+      - ref: "R-STAGE6-004"  # BGM音量渲染前写入HTML
+      - ref: "R-STAGE6-005"  # 双版本输出
+      - ref: "R-STAGE6-006"  # 使用stage6-components.md
+      - ref: "R-STAGE6-007"  # Canvas不用rAF → R-RENDER-015
+      - ref: "R-STAGE6-008"  # Three.js用__hfThreeTime
+      - ref: "R-STAGE6-009"  # 角色不遮挡核心内容
+      - ref: "R-STAGE6-010"  # 封面帧48kHz
+      - ref: "R-STAGE6-011"  # data-start/duration用秒
+      - ref: "R-STAGE6-012"  # __timelines是{}不是[]
+      - ref: "R-STAGE6-013"  # timeline paused:true
+      - ref: "R-STAGE6-014"  # composition-id只在根元素
+      - ref: "R-STAGE6-015"  # 根元素data-start=0
+      # ── 引用渲染安全规则 ──
+      - ref: "R-RENDER-001"  # 禁止CSS opacity:0入场
+      - ref: "R-RENDER-002"  # Phase 2+用GSAP .set()
+      - ref: "R-RENDER-003"  # 禁止HTML实体
+      - ref: "R-RENDER-004"  # 安全区padding
+      - ref: "R-RENDER-005"  # 水平安全边距
+      - ref: "R-RENDER-006"  # 单层padding铁律
+      - ref: "R-RENDER-007"  # 移除非index.html
+      - ref: "R-RENDER-008"  # 音频在项目目录内
+      - ref: "R-RENDER-009"  # GSAP timeline注册
+      - ref: "R-RENDER-010"  # 特效默认可见
+      - ref: "R-RENDER-011"  # Phase断点对齐
+      - ref: "R-RENDER-012"  # 三层架构
+      - ref: "R-RENDER-013"  # layer-fx非空
+      - ref: "R-RENDER-014"  # layer-content height:100%
+      - ref: "R-RENDER-015"  # seek驱动不用rAF
+      # ── 引用全局规则 ──
+      - ref: "R-GLOBAL-016"  # 视觉切换频率
+      - ref: "R-GLOBAL-017"  # Phase断点与旁白对齐
+    preferences:
+      - text: "使用 HyperFrames 委托模式渲染，降级时自行编写 HTML"
+        weight: HIGH
+      - text: "每个场景独立创作视觉，不套固定模板"
+        weight: MEDIUM
+      - text: "对照 stage6-components.md 的 10 条反面清单自检"
+        weight: MEDIUM
+
+  guard:
+    red_flags:
+      - thought: "anullsrc 用 44100 也行"
+        reality: "封面 44.1kHz vs 正片 48kHz → TS 拼接后音频异常"
+        trigger: "封面帧采样率非 48kHz"
+      - thought: "CSS 动画更简单"
+        reality: "CSS opacity:0 入场动画在 HyperFrames 中永远不执行"
+        trigger: "使用 .anim-in CSS 类"
+      - thought: "&amp; 是标准 HTML"
+        reality: "无头浏览器对实体字符解析不可靠"
+        trigger: "使用 HTML 实体字符"
+      - thought: "不用 padding"
+        reality: "缺少 padding 导致内容区域塌陷"
+        trigger: "scene-wrap 无 padding"
+      - thought: "GSAP 会自动注册"
+        reality: "空 __timelines={} 导致全片空白"
+        trigger: "GSAP timeline 未注册"
+      - thought: "绝对路径也能找到"
+        reality: "只认项目目录内相对路径"
+        trigger: "音频文件不在项目目录内"
+      - thought: "cover.html 不影响"
+        reality: "含 data-composition-id 的 HTML 都会导致冲突"
+        trigger: "渲染前未移除非 index.html"
+      - thought: "用 -map 0:a:0 提取旁白轨"
+        reality: "HyperFrames 输出只有 1 条混合音频轨"
+        trigger: "BGM 泄露到 no_bgm 文件"
+      - thought: "双次渲染更安全"
+        reality: "单次渲染 + ffmpeg 合成更高效"
+        trigger: "试图二次渲染"
+      - thought: "Canvas 用 rAF 更流畅"
+        reality: "HyperFrames seek 驱动，rAF 不同步"
+        trigger: "Canvas 使用 requestAnimationFrame"
+      - thought: "Three.js 用 performance.now()"
+        reality: "seek 回放时 performance.now() 不回溯"
+        trigger: "Three.js 使用 Date.now()"
+      - thought: "角色大点更可爱"
+        reality: "CharOverlay 限制 15-20%，仅在角落"
+        trigger: "角色遮挡核心内容"
+      - thought: "组件太多不需要都读"
+        reality: "stage6-components.md 是组件装配的唯一参考"
+        trigger: "缺少 stage6-components.md 引用"
+      - thought: "白屏可能是正常的"
+        reality: "检查 window.__hf 定义和 data-duration 值"
+        trigger: "白屏/黑屏渲染结果"
+    spirit_vs_letter:
+      - rule_ref: "R-STAGE6-003"
+        mode: SPIRIT
+        intent: "确保 no_bgm 版本是纯旁白音频，BGM 可被用户自定义替换"
+      - rule_ref: "R-STAGE6-002"
+        mode: SPIRIT
+        intent: "确保 HyperFrames 有可执行的 timeline，不渲染空帧"
+      - rule_ref: "R-RENDER-006"
+        mode: SPIRIT
+        intent: "防止多层累计 padding 导致内容区域严重压缩"
+
+  gate:
+    process:
+      - gate: "render_safety"
+        check: "director_gate.py + stage6_gate.sh 全部通过"
+      - gate: "dual_output"
+        check: "output.mp4 和 output_no_bgm.mp4 都存在且非空"
+      - gate: "gsap_timeline"
+        check: "window.__timelines['main'] 已注册且非空"
+      - gate: "audio_verification"
+        check: "post-render volumedetect: BGM 未泄露到 no_bgm 版本（差值 > 3dB）"
+    quality:
+      - gate: "visual_quality"
+        threshold: 0.7
+        evaluator: HUMAN
+    max_retries: 2
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"
+    strict_extras:
+      - human_review_first_n: 5
+      - attribution_audit: true
+      - pattern_deposit_confirmation: true

@@ -1,11 +1,44 @@
 ---
+id: "clipforge.github-weekly-trending"
 name: github-weekly-trending
 description: 全自动抓取 GitHub 每周热门项目汇总并生成抖音短视频，无需人工确认。完成后自动续期定时任务。
+version: "2.0.0"
+type: ORCHESTRATOR
+category: "github"
+schedule: "weekly"
 ---
 
 # GitHub 每周热门汇总 → 抖音短视频（全自动）
 
 > **全自动执行，不需要人工确认。** 使用 DAG 感知编排 + SubAgent 阶段隔离执行，每个阶段独立上下文窗口。
+
+## Intent
+> 全自动抓取 GitHub 每周热门项目汇总并生成抖音短视频。
+> 成功标准：数据三源验证通过、分类整理完成、视频渲染成功、定时任务续期完成。
+
+## Boundary — 编排准则
+
+### 必须遵守（HARD 规则）
+1. **数据三源验证** — 至少两个数据源交叉验证，项目名交集 ≥80% ← `R-GH-001`
+2. **数据量门禁** — 获取 ≥8 个项目 ← `R-GH-002`
+3. **活跃度检查** — ≥80% 项目活跃 ← `R-GH-003`
+4. **分类覆盖** — 按语言/领域分组，每组 3-4 个项目 ← `R-GH-W001`
+5. **续期无条件** — 无论成功失败，必须执行 _cron-renew ← `R-CRON-002`
+
+## Gate — 质量门禁
+
+### 数据采集门禁（Step 1，不通过 = 中止）
+- [ ] 项目数 ≥ 8
+- [ ] ≥ 80% 项目活跃
+- [ ] 三源交叉验证交集 ≥ 80%
+
+### 批次门禁（Step 3，同 daily）
+- [ ] SA-1 ~ SA-4 各批次产出文件存在
+
+## Trace — 采集点
+- **Step 1**：数据源验证结果、分类统计
+- **Step 3**：各批次状态
+- **写入**：`{PROJECT_DIR}/trace/run-summary.yaml`
 
 ## 前置：日期 & 目录
 

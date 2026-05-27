@@ -1,10 +1,75 @@
+---
+name: stage2-analysis
+description: 内容分析与故事板设计 — 推导视觉风格方向、规划叙事结构和沉浸模式
+version: "1.0.0"
+type: GENERATIVE
+rigor: STANDARD
+dependencies: ["clipforge.stage1-content"]
+---
+
 # Stage 2: 内容分析与故事板设计
 
 当内容摘要已整理且 `design.md` 不存在时触发。推导视觉风格方向、规划叙事结构和沉浸模式。
 
+## Intent
+> 推导视觉风格方向并设计故事板。
+> 成功标准：design.md 包含完整的风格/配色/故事板定义，视觉风格与内容情绪匹配。
+
+## Boundary — 行为准则
+
+### 必须遵守（HARD 规则 · 正向重述）
+
+1. **design.md 包含风格字段** — design.md 必须包含 style、mood、color_direction 三个字段 ← `R-STAGE2-001`
+   ↳ 校验：检查 design.md 是否包含 style:、mood:、color_direction: 字段
+2. **design.md 包含故事板** — design.md 必须包含 storyboard 节（含 narrative_template + emotion_curve） ← `R-STAGE2-002`
+   ↳ 校验：检查 design.md 是否包含 storyboard: 节
+3. **emotion_curve 为 6 元素数组** — emotion_curve 必须是精确 6 元素的数组，对应 6 个情感节拍 ← `R-STAGE2-003`
+   ↳ 校验：检查 emotion_curve 数组长度是否为 6
+4. **immersion_mode 为 6 种之一** — immersion_mode 必须是 hyper-pace/hidden-gem/mega-update/versus/story-time/fun-tool 之一 ← `R-STAGE2-004`
+   ↳ 校验：检查 immersion_mode 值是否在允许列表中
+
+### 建议参考（SOFT 规则 + 偏好）
+- **风格匹配内容情绪** — 科技有未来感、商业有专业感、人文有温度感（SOFT）← `R-STAGE2-005`
+- 用户明确指定的风格优先于推导结果（HIGH）
+- 深色做底亮色做刀——深色背景让亮色元素更突出（MEDIUM）
+- 参考 `_director-toolkit` 的导演笔记校准直觉（MEDIUM）
+
+## Guard — 认知守卫
+
+| 当你产生这个念头 | 现实是 | 触发行为 |
+|---|---|---|
+| "风格随便定一个就行" | 不匹配内容情绪的视觉风格会导致观感割裂，前 3 秒就会让观众划走 | 回到内容重新推导 |
+| "用默认风格不用分析了" | 没有方向指导的 Stage 6 会随机配色，每期视频风格不一致 | 执行完整风格推导 |
+| "故事板可以跳过，直接写文案" | 没有故事板，Stage 3 无法规划情感节奏和幽默插入点 | 完成故事板设计 |
+| "emotion_curve 随便填" | 错误的情感曲线导致高潮段平淡或结尾过于激动 | 根据内容推导情感弧线 |
+| "immersion_mode 用默认就行" | 不匹配内容的沉浸模式会让视觉风格与内容情绪割裂 | 执行沉浸模式判定 |
+
+### Spirit vs Letter
+
+| 规则 | 模式 | 真实意图 |
+|---|---|---|
+| R-STAGE2-001 | SPIRIT | 确保下游 Stage 3/6 有明确的视觉方向指引，而非机械填字段 |
+| R-STAGE2-002 | SPIRIT | 确保 Stage 3 有叙事结构和情感节奏的规划依据 |
+
+## Gate — 通过标准
+
+### 流程门禁（自动化检查，不通过 = 驳回，max_retries: 2）
+- [ ] `design_completeness` — design.md 包含 style + mood + color_direction 字段
+- [ ] `storyboard_validity` — design.md 包含 storyboard 节，含 narrative_template + emotion_curve（6元素数组）+ immersion_mode
+
+### 质量门禁（创意评价，不通过 = 记录但放行，evaluator: HUMAN）
+- `style_content_match`: 评分 ≥ 0.7（人类评价：design.md 的视觉方向与内容主题的匹配度）
+
+## Trace — 采集点
+- **执行开始**：记录内容主题、情绪基调
+- **关键决策**：记录选定的 narrative_template、immersion_mode、emotion_curve
+- **执行结束**：记录 gate_report，写入 `{project_dir}/trace/stage2-{timestamp}.yaml`
+
+## 操作指令
+
 > **导演思维驱动。** 执行前读取 `_director-toolkit`，用"导演的 5 个必答题"驱动风格推导，参考"导演笔记"校准直觉。不是查表选风格，是理解内容后自主决策。
 
-## 情绪提炼
+### 情绪提炼
 
 | 维度 | 说明 |
 |------|------|
@@ -14,19 +79,19 @@
 | 节奏感 | 短视频默认：紧凑 |
 | 文化调性 | 东方古典 / 现代科技 / 自然清新 / 暗黑悬疑 / ... |
 
-## 视觉风格
+### 视觉风格
 
 基于内容推导，不查表。**用户明确指定的优先。**
 
-**黄金 3 秒视觉要求：** hook 场景必须是全片视觉最强画面——字号最大、对比最强、布局最精致、配色最优雅。`design.md` 的配色方向必须能支撑这种冲击力。详见 `_shared-rules` §5。
+**黄金 3 秒视觉要求：** hook 场景必须是全片视觉最强画面——字号最大、对比最强、布局最精致、配色最优雅。`design.md` 的配色方向必须能支撑这种冲击力。详见 `_shared-rules/visual.md` §5。
 
-### 风格原则
+#### 风格原则
 
 ① **风格服务内容**：读完内容感受它的调性，选择能放大这种调性的视觉风格——科技内容有未来感、商业内容有专业感、人文内容有温度感
 ② **深色做底亮色做刀**：深色背景让亮色元素更突出，这是短视频的黄金法则
 ③ **统一但不单调**：同一个视频内风格统一（配色体系、字体层级），但不同场景之间有足够的视觉差异
 
-### 风格反面清单
+#### 风格反面清单
 
 ✗ 科技内容配暖色生活风 → 观感割裂
 ✗ 全片只有一种色调 → 像监控画面
@@ -34,11 +99,11 @@
 ✗ 情感曲线全平或全满 → 无张力
 ✗ 字体超过 3 种 → 杂乱不专业
 
-## 配乐方向
+### 配乐方向
 
 基于情绪基调确定配乐搜索关键词、风格和氛围。具体来源和下载方式见 Stage 4（§4.2 配乐）。
 
-## 素材需求预判
+### 素材需求预判
 
 预判哪些场景需要外部素材：
 
@@ -49,11 +114,11 @@
 | 场景需要氛围感 | 使用 CSS 渐变/光效背景 |
 | 纯文字/概念展示 | 无需额外素材，纯 CSS 渐变即可 |
 
-## 故事板设计
+### 故事板设计
 
 在完成上述分析后，规划视频的叙事结构、情感节奏和沉浸模式。输出到 `design.md` 的 `storyboard` 字段。
 
-### 叙事模板选择
+#### 叙事模板选择
 
 根据内容自然选择叙事结构——有对比就用对比弧，有悬念就用揭秘弧，无明确匹配时用默认弧。分类配置有 `narrative.default_template` 时优先使用。
 
@@ -66,17 +131,17 @@
 | `hyper-pace` | 快速 → 密集 → 爆发 → 呼吸 |
 | `story-time` | 平静 → 转折 → 深情 → 共鸣 |
 
-### 沉浸模式判定
+#### 沉浸模式判定
 
-根据分类配置的 `immersion_mapping` 或内容标签自动选择。6 种模式的配色速查见 `stage6-components.md`。
+根据分类配置的 `immersion_mapping` 或内容标签自动选择。6 种模式的配色速查见 `stage6-components-ref.md`。
 
-### 6 拍情感节奏
+#### 6 拍情感节奏
 
 视频按 6 个情感节拍规划：**grab（好奇）→ build（期待）→ reveal（惊喜）→ climax（激动）→ settle（思考）→ summon（行动）**。时长分配由内容决定，不套固定比例。
 
 `emotion_curve` 是一个 6 元素数组，值域 [0,1]，表示每个节拍的情感强度。示例：`[0.3, 0.5, 0.8, 1.0, 0.6, 0.4]`。各阶段根据节拍名称自主推导视觉方法，不查表。
 
-### 角色出场规划
+#### 角色出场规划
 
 如果分类配置 `character_presence` 为 true：
 - `character_presence: true` 写入 design.md
@@ -87,7 +152,7 @@
 
 > **design.md 归属：Stage 2 负责写入。** Stage 6 仅读取此文件，不重写。如需调整风格，回退到 Stage 2 重新生成。
 
-## design.md 格式规范（扩展）
+### design.md 格式规范（扩展）
 
 Stage 2 产出的 `design.md` 是**方向性规范**，定义视觉风格方向、情绪基调和故事板。具体配色、字号、间距由 Stage 6 根据场景类型和组件库自行决定。
 
@@ -129,21 +194,19 @@ storyboard:
 
 > **beat_mapping 说明：** 这是场景到情感节拍的粗映射，帮助 Stage 3 和 Stage 6 理解每个场景应传递的情感。不是严格约束，Stage 3 可以调整。
 
-> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction` 和 `immersion_mode` 选择对应的组件和配色方案（见 `stage6-components.md` 的沉浸模式配色速查），Stage 7 封面复用同一风格方向。
+> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction` 和 `immersion_mode` 选择对应的组件和配色方案（见 `stage6-components-ref.md` 的沉浸模式配色速查），Stage 7 封面复用同一风格方向。
 
----
+## Red Flags
 
-## Red Flags（停止信号）
+| 信号 | 规则 ID | 说明 |
+|------|---------|------|
+| design.md 缺少 style/mood/color_direction | R-STAGE2-001 | 下游 stage 无法确定视觉方向，会导致配色随意 |
+| design.md 缺少 storyboard 节 | R-STAGE2-002 | Stage 3 无法确定叙事结构和情感节奏 |
+| emotion_curve 不是 6 元素数组 | R-STAGE2-003 | 下游 Stage 期望精确 6 个节拍 |
+| immersion_mode 不是 6 种之一 | R-STAGE2-004 | Stage 6 无法匹配视觉风格 |
+| 风格与内容情绪不匹配 | R-STAGE2-005 | 科技内容配暖色生活风 → 观感割裂 |
 
-| 信号 | 说明 |
-|------|------|
-| design.md 缺少 style/mood/color_direction | 下游 stage 无法确定视觉方向，会导致配色随意 |
-| design.md 缺少 storyboard 节 | Stage 3 无法确定叙事结构和情感节奏 |
-| emotion_curve 不是 6 元素数组 | 下游 Stage 期望精确 6 个节拍 |
-| immersion_mode 不是 6 种之一 | Stage 6 无法匹配视觉风格 |
-| 风格与内容情绪不匹配 | 科技内容配暖色生活风 → 观感割裂 |
-
-## Common Rationalizations（常见借口反驳）
+## Common Rationalizations
 
 | 借口 | 事实 |
 |------|------|

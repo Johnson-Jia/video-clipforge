@@ -1,0 +1,163 @@
+# =============================================================================
+# ClipForge 视频制作场景规则库 (SCENE: video-production)
+# =============================================================================
+# 作用域: SCENE — 仅适用于视频制作相关 Skill（Stage 6 为主）
+# 来源: _render-safety.md §1-§2
+# 引用方式: skill.yaml 中 boundary.rules[].ref: "R-RENDER-xxx"
+# =============================================================================
+
+rules:
+
+  # ─── §1 HyperFrames 渲染安全规范 ─────────────────────────────────
+
+  - id: "R-RENDER-001"
+    type: FORBIDDEN_METHOD
+    pattern: "使用CSS .anim-in或任何CSS opacity:0入场动画"
+    positive: "入场动画由GSAP .from({opacity:0})实现，元素CSS默认opacity:1"
+    guardrail: "检测HTML中是否包含.anim-in类或CSS中opacity:0入场声明"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.1"
+
+  - id: "R-RENDER-002"
+    type: FORBIDDEN_METHOD
+    pattern: "Phase 2+使用CSS opacity:0隐藏（如.phase-2 { opacity: 0 }）"
+    positive: "Phase 2+通过GSAP .set({opacity:0})在clip起始时刻实现，非CSS"
+    guardrail: "检测CSS中是否存在.phase-*的opacity:0声明"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.1a"
+
+  - id: "R-RENDER-003"
+    type: FORBIDDEN_METHOD
+    pattern: "使用HTML实体字符（&#9733;、&#10084;、&amp;等）"
+    positive: "改用Unicode字符直接输入（★、❤）或纯文本替代"
+    guardrail: "检测HTML中是否包含&#\\d+;或&\\w+;模式的实体字符"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.2"
+
+  - id: "R-RENDER-004"
+    type: FORBIDDEN_METHOD
+    pattern: "安全区padding缺失或双重设置"
+    positive: "每个场景有且仅有一层设置padding: 180px 80px 220px 80px"
+    guardrail: "director_gate.py检测：每个场景恰好一个层级含安全区padding"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.3"
+
+  - id: "R-RENDER-005"
+    type: FORBIDDEN_METHOD
+    pattern: "水平安全边距不足（左/右<80px）"
+    positive: "左右各80px对称边距（兼容抖音/小红书/微信视频号三平台）"
+    guardrail: "检测CSS中水平padding是否≥80px"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.4"
+
+  - id: "R-RENDER-006"
+    type: FORBIDDEN_METHOD
+    pattern: "scene-wrap和.phase（或任何内层元素）同时设置padding"
+    positive: "全项目只允许一个层级设置安全区padding（单层padding铁律）"
+    guardrail: "director_gate.py自动检测双重padding，渲染前必须通过"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.4a"
+
+  - id: "R-RENDER-007"
+    type: FORBIDDEN_ACTION
+    pattern: "渲染前未移除非index.html的含data-composition-id的HTML文件"
+    positive: "渲染前将cover.html等文件重命名为.renderbak，渲染后恢复"
+    guardrail: "渲染前检测项目目录中是否存在多个含data-composition-id的HTML文件"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.5"
+
+  - id: "R-RENDER-008"
+    type: FORBIDDEN_ACTION
+    pattern: "音频文件不在项目目录内（使用绝对路径或外部路径）"
+    positive: "确保bgm.mp3/bgm.wav和narration.mp3存在于index.html同级目录"
+    guardrail: "渲染前ls -la检查音频文件存在"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.6"
+
+  - id: "R-RENDER-009"
+    type: FORBIDDEN_METHOD
+    pattern: "window.__timelines为空对象{}未注册GSAP timeline"
+    positive: "必须注册window.__timelines['main']=tl，tl为GSAP timeline实例"
+    guardrail: "检测HTML中window.__timelines赋值后是否有['main']注册"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.7"
+
+  - id: "R-RENDER-010"
+    type: FORBIDDEN_METHOD
+    pattern: "特效元素CSS animation从不可见状态开始（scaleY(0)→1、opacity:0→1、translateY(-100%)→0）"
+    positive: "'从无到有'的动画必须使用GSAP .from()实现，CSS animation只允许可见位置间移动"
+    guardrail: "检测CSS animation的0%状态是否在画面内且可见"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1.8"
+
+  - id: "R-RENDER-011"
+    type: FORBIDDEN_METHOD
+    pattern: "Phase断点使用gap=duration/phase_count均分计算"
+    positive: "逐场景分析旁白文本话题转换点，按字数比例换算时间戳"
+    guardrail: "检测Phase间隔是否为均匀分布（容差±1s），均匀则判定违规"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SCENE
+    source: "_render-safety §1.1a, _shared-rules §6"
+
+  # ─── §2 三层渲染架构 ──────────────────────────────────────────────
+
+  - id: "R-RENDER-012"
+    type: FORBIDDEN_METHOD
+    pattern: "场景缺少三层架构（.layer-bg / .layer-fx / .layer-content）"
+    positive: "每个场景必须包含三层：bg(z:1)+fx(z:2,pointer-events:none)+content(z:3)"
+    guardrail: "检测每个.scene-wrap内是否包含三个layer div"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §2.1-§2.3"
+
+  - id: "R-RENDER-013"
+    type: FORBIDDEN_METHOD
+    pattern: "layer-fx为空div（<div class=\"layer-fx\"></div>）"
+    positive: "layer-fx必须包含至少1个特效子元素（光球/射线/渐变带/矩阵雨/双轨道粒子等）"
+    guardrail: "stage6_gate.sh检测：每个layer-fx是否有子元素"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SCENE
+    source: "_render-safety §2.4"
+
+  - id: "R-RENDER-014"
+    type: FORBIDDEN_METHOD
+    pattern: "layer-content缺少height:100%"
+    positive: ".layer-content必须设置height:100%防止Phase内容塌陷"
+    guardrail: "检测.layer-content的CSS是否包含height:100%"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §2.2"
+
+  - id: "R-RENDER-015"
+    type: FORBIDDEN_METHOD
+    pattern: "使用Canvas requestAnimationFrame或Three.js performance.now()"
+    positive: "HyperFrames seek驱动渲染，使用__hfThreeTime替代performance.now()"
+    guardrail: "检测JS代码中是否包含requestAnimationFrame或performance.now()调用"
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    source: "_render-safety §1, stage6 Red Flags"

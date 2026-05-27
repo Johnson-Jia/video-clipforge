@@ -1,0 +1,97 @@
+skill:
+  meta:
+    id: "clipforge.stage0-env"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["environment", "dependencies", "setup"]
+    dependencies: []
+    rigor: LITE
+
+  intent:
+    objective: "确认所有运行时依赖就绪，缺失时自动安装或提示安装"
+    criteria:
+      - "所有必须依赖已安装且版本满足要求"
+      - "标记文件 workspace/.env-checked 已创建"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - inline:
+          id: "R-STAGE0-001"
+          type: FORBIDDEN_ACTION
+          pattern: "在 Node.js < 22 的环境下继续执行"
+          positive: "确认 Node.js ≥ 22 已安装，缺失时提示安装命令"
+          guardrail: "node --version 输出 ≥ v22"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE0-002"
+          type: FORBIDDEN_ACTION
+          pattern: "在 FFmpeg 缺失的环境下继续执行"
+          positive: "确认 FFmpeg 已安装，缺失时提示安装命令"
+          guardrail: "ffmpeg -version 可执行"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE0-003"
+          type: FORBIDDEN_ACTION
+          pattern: "在 edge-tts 缺失的环境下继续执行"
+          positive: "确认 edge-tts 已安装，缺失时提示 pip install edge-tts"
+          guardrail: "edge-tts --version 可执行"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE0-004"
+          type: FORBIDDEN_ACTION
+          pattern: "在 yt-dlp 缺失的环境下继续执行"
+          positive: "确认 yt-dlp 已安装，缺失时提示 pip install yt-dlp"
+          guardrail: "yt-dlp --version 可执行"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE0-005"
+          type: FORBIDDEN_ACTION
+          pattern: "跳过 .env-checked 标记文件创建"
+          positive: "检测全部通过后创建 workspace/.env-checked 标记文件"
+          guardrail: "workspace/.env-checked 文件存在"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+    preferences:
+      - text: "推荐安装 GitHub CLI (gh) 以获取精确的项目实时数据"
+        weight: MEDIUM
+      - text: "推荐安装 jq 以实现两遍精确 loudnorm 音量标准化"
+        weight: MEDIUM
+
+  guard:
+    red_flags:
+      - thought: "之前的视频跑过了，不用再检查"
+        reality: "环境可能被更新或卸载破坏，标记文件不存在=必须重新检查"
+        trigger: "跳过环境检测"
+      - thought: "跳过环境检测，直接开始制作"
+        reality: "一个缺失依赖就能导致30分钟后的渲染失败"
+        trigger: "跳过 env_check.sh 执行"
+      - thought: "jq 不是必须的，跳过就行"
+        reality: "缺失时 Stage 4 loudnorm 降级为单遍处理，精度下降"
+        trigger: "忽略 jq 缺失提示"
+    spirit_vs_letter:
+      - rule_ref: "R-STAGE0-005"
+        mode: SPIRIT
+        intent: "确保后续阶段不会因缺少依赖而中途失败"
+
+  gate:
+    process:
+      - gate: "dependency_completeness"
+        check: "Node.js≥22 + FFmpeg + edge-tts + yt-dlp 全部就绪"
+      - gate: "marker_file_created"
+        check: "workspace/.env-checked 存在"
+    max_retries: 0
+
+  trace:
+    capture: true
+    level: SUMMARY
+    retention: "30d"

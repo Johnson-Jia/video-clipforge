@@ -1,11 +1,47 @@
 ---
+id: "clipforge.github-weekly-zhihu"
 name: github-weekly-zhihu
 description: 每周一自动汇总上周 GitHub Trending 数据，生成高质量知乎文章。完成后自动续期定时任务。
+version: "2.0.0"
+type: ORCHESTRATOR
+category: "github"
+schedule: "weekly"
+output_type: "article"
 ---
 
 # GitHub 每周热门 → 知乎深度文章（全自动）
 
 > **全自动执行，不需要人工确认。** 文章项目仅执行数据采集 + 内容撰写 + 封面生成，不涉及视频 DAG 流水线。状态通过文件系统检测。
+
+## Intent
+> 全自动汇总上周 GitHub Trending 数据，生成高质量知乎文章。
+> 成功标准：数据三源验证通过（≥15 项目）、文章深度达标、封面生成、定时任务续期。
+
+## Boundary — 编排准则
+
+### 必须遵守（HARD 规则）
+1. **数据量门禁** — Weekly 页面 ≥15 个项目，否则停止 ← `R-ZH-001`
+2. **深度优先** — 每个项目描述 ≥150 字，避免走马观花 ← `R-ZH-002`
+3. **数据驱动** — 必须包含具体数据（Star/Fork/Issue） ← `R-ZH-003`
+4. **品牌中立** — 不使用品牌名，使用类别术语 ← `R-GLOBAL-007`
+5. **续期无条件** — 无论成功失败，必须执行 _cron-renew ← `R-CRON-002`
+
+## Gate — 质量门禁
+
+### 数据采集门禁（Step 1，不通过 = 中止）
+- [ ] 周热门页面项目数 ≥ 15
+- [ ] 周 × 日交集 ≥ 60%（正常范围）
+
+### 文章质量门禁（Step 3）
+- [ ] 每个项目描述 ≥ 150 字
+- [ ] 包含代码示例
+- [ ] 分类正确
+
+## Trace — 采集点
+- **Step 1**：数据来源、验证结果、项目数量
+- **Step 3**：文章字数、项目数
+- **Step 4**：封面渲染方式
+- **写入**：`{PROJECT_DIR}/trace/run-summary.yaml`
 
 ## 前置：日期 & 目录
 

@@ -1,0 +1,121 @@
+skill:
+  meta:
+    id: "clipforge.stage3-scenes"
+    version: "1.0.0"
+    type: GENERATIVE
+    tags: ["scenes", "narration", "pacing", "humor", "emotion"]
+    dependencies: ["clipforge.stage2-analysis"]
+    rigor: STANDARD
+
+  intent:
+    objective: "将内容拆解为场景序列并撰写旁白文案"
+    criteria:
+      - "narration_segments.json 包含完整的场景序列和情感标记"
+      - "narration.txt 包含每场景一行的完整旁白"
+      - "hook 场景旁白 ≤12 字且不含信息性内容"
+      - "情感节拍分布合理，幽默仅在 build/reveal/settle"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - ref: "R-GLOBAL-013"   # hook 场景旁白 ≤12 字
+      - ref: "R-GLOBAL-008"   # 画面文字以中文为主
+      - ref: "R-GLOBAL-001"   # 禁止广告敏感词
+      - inline:
+          id: "R-STAGE3-004"
+          type: FORBIDDEN_METHOD
+          pattern: "narration_segments.json 缺少 emotion 字段"
+          positive: "每个场景必须包含 emotion 字段（6 拍节拍名之一）"
+          guardrail: "检查 narration_segments.json 中每个对象是否有 emotion 字段"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE3-005"
+          type: FORBIDDEN_LOGIC
+          pattern: "grab/climax 节拍包含 humor_type"
+          positive: "grab 和 climax 节拍保持严肃，幽默只在 build/reveal/settle 使用"
+          guardrail: "检查 grab/climax 场景的 humor_type 是否为 null"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE3-006"
+          type: FORBIDDEN_LOGIC
+          pattern: "character_expression 与 humor_type 不匹配"
+          positive: "tease 表情搭配 humor_type，无 humor 时不出 tease 表情"
+          guardrail: "检查 character_expression 和 humor_type 的一致性"
+          severity: SOFT
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE3-007"
+          type: FORBIDDEN_METHOD
+          pattern: "hook 场景包含信息性内容（项目介绍、功能说明）"
+          positive: "hook 场景旁白为纯钩子（数据震撼/反问/强对比/悬念），正文从第 2 个场景开始"
+          guardrail: "检查 hook 场景的 text 是否包含项目名称或功能描述"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+    preferences:
+      - text: "角色表情与 humor_type 搭配，无 humor 时不出 tease 表情"
+        weight: MEDIUM
+      - text: "每 3-4 个段落注入 1 次幽默（密度由 Agent 自主决定）"
+        weight: MEDIUM
+      - text: "重点场景通常 6-8 秒，概括场景 3-4 秒（具体时长由 Agent 根据内容密度自主决定）"
+        weight: MEDIUM
+
+  guard:
+    red_flags:
+      - thought: "hook 多说点背景信息"
+        reality: "§5 黄金 3 秒要求纯钩子 ≤12 字。背景信息从第 2 个场景开始"
+        trigger: "hook 场景旁白超过 12 字"
+      - thought: "用英文标题更酷"
+        reality: "§2 画面文字必须以中文为主，英文仅限项目名和技术缩写"
+        trigger: "画面文字使用英文"
+      - thought: "hook 里说'这个项目太强了'"
+        reality: "§1 禁止极限用语，改用数据说话（'33K Star'）"
+        trigger: "使用极限用语"
+      - thought: "CTA 说'点赞关注一键三连'"
+        reality: "§1 禁止诱导互动，文案末尾自然提及即可"
+        trigger: "使用诱导互动语"
+      - thought: "情感标记太麻烦，后面再说"
+        reality: "没有 emotion 字段，Stage 4 无法变速，Stage 6 无法匹配角色表情"
+        trigger: "跳过 emotion 字段填写"
+      - thought: "visual_phases 可以省略"
+        reality: "时长 >15s 的场景必须有 visual_phases，否则 Stage 6 gate 拦截"
+        trigger: "长场景缺少 visual_phases"
+    spirit_vs_letter:
+      - rule_ref: "R-GLOBAL-013"
+        mode: SPIRIT
+        intent: "确保前 3 秒是纯注意力钩子，不包含任何可分散注意力的信息"
+      - rule_ref: "R-STAGE3-005"
+        mode: SPIRIT
+        intent: "保持视频张力——高潮和开场段需要情感冲击力，幽默会稀释"
+
+  gate:
+    process:
+      - gate: "narration_format"
+        check: "narration_segments.json 存在且格式正确"
+      - gate: "emotion_markers"
+        check: "所有场景都有 emotion 字段（6 拍节拍名之一）"
+    compliance:
+      - gate: "hook_compliance"
+        check: "hook 场景旁白 ≤12 字且不含信息性内容（R-GLOBAL-013）"
+      - gate: "no_sensitive_words"
+        check: "旁白和画面文字不含 R-GLOBAL-001 广告敏感词"
+      - gate: "chinese_primary"
+        check: "画面文字以中文为主，英文占比 < 20%（R-GLOBAL-008）"
+    quality:
+      - gate: "pacing_quality"
+        threshold: 0.7
+        evaluator: HUMAN
+      - gate: "humor_distribution"
+        threshold: 0.7
+        evaluator: HUMAN
+    max_retries: 2
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"

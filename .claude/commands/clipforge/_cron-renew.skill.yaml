@@ -1,0 +1,75 @@
+skill:
+  meta:
+    id: "clipforge.cron-renew"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["cron", "automation", "renewal"]
+    dependencies: []
+    rigor: STRICT
+
+  intent:
+    objective: "确保定时任务持续运行"
+    criteria:
+      - "新的定时任务已创建并激活"
+      - "旧的重复任务已清理，仅保留 1 个活跃任务"
+
+  boundary:
+    scene: "automation"
+    rules:
+      - inline:
+          id: "R-CRON-001"
+          type: FORBIDDEN_METHOD
+          pattern: "先删除旧任务再创建新任务"
+          positive: "先创建新任务成功后，再删除旧任务（先建后拆，保证原子性）"
+          guardrail: "检测 CronDelete 是否在 CronCreate 确认成功之后执行"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-CRON-002"
+          type: FORBIDDEN_ACTION
+          pattern: "因管线失败而跳过续期"
+          positive: "无论管线执行成功或失败，都必须执行续期"
+          guardrail: "检测续期是否在每次执行末尾无条件触发"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-CRON-003"
+          type: FORBIDDEN_METHOD
+          pattern: "续期后未验证任务唯一性"
+          positive: "续期后 CronList 确认只有 1 个同关键词任务存在"
+          guardrail: "检测 CronList 输出中同关键词任务数量是否为 1"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+    preferences: []
+
+  guard:
+    red_flags:
+      - thought: "管线失败了，不用续期"
+        reality: "续期与本次执行结果无关，不续期 = 定时任务永久死亡"
+        trigger: "试图跳过续期步骤"
+      - thought: "先删旧的再建新的更快"
+        reality: "删成功但建失败 = 任务丢失，无人知晓"
+        trigger: "试图颠倒先建后拆顺序"
+      - thought: "创建成功就行了，不用验证"
+        reality: "可能出现多个同关键词任务导致重复触发"
+        trigger: "跳过 CronList 验证"
+    spirit_vs_letter:
+      - rule_ref: "R-CRON-001"
+        mode: SPIRIT
+        intent: "确保定时任务在任何时刻都至少有一个活跃实例"
+
+  gate:
+    process:
+      - gate: "cron_active"
+        check: "CronList 确认新任务存在且 cron 表达式正确"
+      - gate: "unique_job"
+        check: "CronList 确认同关键词任务数量为 1"
+    max_retries: 1
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"

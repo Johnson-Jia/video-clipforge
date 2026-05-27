@@ -1,0 +1,134 @@
+skill:
+  meta:
+    id: "clipforge.stage4-audio"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["audio", "tts", "bgm", "loudnorm"]
+    dependencies: ["clipforge.stage3-scenes"]
+    rigor: STANDARD
+
+  intent:
+    objective: "生成旁白音频并匹配 BGM，确保音量标准化和平衡"
+    criteria:
+      - "TTS 旁白清晰，loudnorm 达标（max_volume ≥ -10dB）"
+      - "BGM 不遮盖旁白，音量通过 data-volume 控制"
+      - "segment_durations.json 包含每段实际时长"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - inline:
+          id: "R-STAGE4-001"
+          type: FORBIDDEN_METHOD
+          pattern: "用预估时长替代实际时长"
+          positive: "每段 TTS 生成后必须 ffprobe 测量实际时长，写入 segment_durations.json"
+          guardrail: "segment_durations.json 中所有段的 duration 来源为 ffprobe，非估算"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE4-002"
+          type: FORBIDDEN_METHOD
+          pattern: "BGM 音量未写入 segment_durations.json"
+          positive: "BGM 校准完成后，将 bgm_volume 值写入 segment_durations.json 的 meta 字段"
+          guardrail: "meta.bgm_volume 字段存在且为数值"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE4-003"
+          type: FORBIDDEN_METHOD
+          pattern: "narration.mp3 未做 loudnorm 校验"
+          positive: "narration.mp3 合并后必须执行 loudnorm 校验，max_volume ≥ -10dB"
+          guardrail: "ffmpeg volumedetect 输出 max_volume ≥ -10dB"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - ref: "R-GLOBAL-015"
+      - inline:
+          id: "R-STAGE4-005"
+          type: FORBIDDEN_METHOD
+          pattern: "对 bgm.wav 做 gain/volume 预衰减"
+          positive: "bgm.wav 保持原始音量，音量调节由 Stage 6 的 data-volume 属性负责"
+          guardrail: "bgm.wav 未经 ffmpeg volume 滤镜处理"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE4-006"
+          type: FORBIDDEN_ACTION
+          pattern: "用 output.mp4 反向提取音频做 output_no_bgm"
+          positive: "output_no_bgm.mp4 必须从 narration.mp3 合成"
+          guardrail: "output_no_bgm 的音频轨与 narration.mp3 一致"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE4-007"
+          type: FORBIDDEN_METHOD
+          pattern: "BGM 时长不足时使用 HTML loop 属性"
+          positive: "BGM 时长不足时用 ffmpeg -stream_loop 扩展 WAV 文件"
+          guardrail: "bgm.wav 由 FFmpeg 循环扩展，非 HTML loop"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE4-008"
+          type: FORBIDDEN_LOGIC
+          pattern: "使用预估时长作为 Stage 6 data-duration 的数据源"
+          positive: "segment_durations.json 是 Stage 6 data-duration 的唯一数据来源"
+          guardrail: "Stage 6 读取的时长全部来自 segment_durations.json"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+    preferences:
+      - text: "BGM 优先使用 workspace/bgm/ 素材库已有文件"
+        weight: HIGH
+      - text: "TTS 默认使用 zh-CN-YunjianNeural +25%"
+        weight: MEDIUM
+
+  guard:
+    red_flags:
+      - thought: "预估时长够用了"
+        reality: "预估偏差累计 8 秒导致全片空白"
+        trigger: "使用 estimated_duration 替代 actual_duration"
+      - thought: "BGM 音量后面再调"
+        reality: "segment_durations.json 是唯一传递通道"
+        trigger: "跳过 BGM 音量校准"
+      - thought: "听起来差不多就行"
+        reality: "loudnorm 防止部分段过响或过轻"
+        trigger: "跳过 loudnorm 校验"
+      - thought: "开头加个淡入更自然"
+        reality: "§5.3 前 3 秒禁止淡入，淡入削弱 hook"
+        trigger: "对第一段音频添加 fade-in"
+      - thought: "BGM 不够响，先放大再写入"
+        reality: "bgm.wav 保持原始音量，data-volume 负责衰减"
+        trigger: "对 bgm.wav 应用 gain/volume 滤镜"
+    spirit_vs_letter:
+      - rule_ref: "R-STAGE4-001"
+        mode: SPIRIT
+        intent: "确保 Stage 6 获得精确的音视频同步数据"
+      - rule_ref: "R-STAGE4-005"
+        mode: SPIRIT
+        intent: "防止双重衰减（预衰减 + data-volume）导致 BGM 近乎静音"
+
+  gate:
+    process:
+      - gate: "loudnorm_compliance"
+        check: "ffmpeg volumedetect: max_volume ≥ -10dB"
+      - gate: "segment_durations_exists"
+        check: "segment_durations.json 存在且包含所有段的 actual_duration"
+      - gate: "bgm_volume_written"
+        check: "segment_durations.json 的 meta.bgm_volume 有值"
+      - gate: "dual_audio_output"
+        check: "narration.mp3 和 narration.srt 都存在"
+    quality:
+      - gate: "audio_quality"
+        threshold: 0.7
+        evaluator: HUMAN
+    max_retries: 2
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"

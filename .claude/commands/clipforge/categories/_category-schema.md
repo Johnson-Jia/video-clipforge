@@ -1,3 +1,10 @@
+---
+id: "clipforge.categories.schema"
+description: 分类配置文件格式规范 — 定义分类文件的 schema 和覆盖机制
+version: "2.0.0"
+type: SCHEMA
+---
+
 # 分类配置文件格式规范
 
 > 每个分类一个 `.md` 文件，放在 `clipforge/categories/` 下。文件名即分类 ID（如 `github.md`、`comics.md`）。
@@ -13,6 +20,11 @@
 name: "分类中文名"
 description: "一句话描述"
 id: "分类ID（与文件名一致，如 github、comics）"
+version: "2.0.0"
+type: CATEGORY
+category_id: "分类ID"
+rules_lib_ref: "_rules-lib/global-rules.yaml"
+patterns_ref: "_patterns/store.yaml"
 ---
 ```
 
@@ -113,12 +125,66 @@ id: "分类ID（与文件名一致，如 github、comics）"
 对通用内容安全规范的补充或覆盖
 ```
 
+### boundary_overrides（四原子架构新增）
+
+分类特有的 Boundary 规则，覆盖或补充通用阶段规则：
+
+```yaml
+## boundary_overrides
+rules:
+  - id: "R-{CATEGORY}-001"
+    type: FORBIDDEN_ACTION | FORBIDDEN_METHOD | FORBIDDEN_SPEECH | FORBIDDEN_LOGIC
+    pattern: "分类特有的禁止行为"
+    positive: "正向重述"
+    guardrail: "校验方式"
+    severity: HARD | SOFT
+    class: SAFETY | EXPERIENTIAL
+    scope: SKILL
+```
+
+### gate_overrides（四原子架构新增）
+
+分类特有的门禁标准：
+
+```yaml
+## gate_overrides
+hard:
+  - gate: "gate_name"
+    check: "检查方式"
+soft:
+  - gate: "gate_name"
+    threshold: 0.7
+```
+
+### trace_overrides（四原子架构新增）
+
+分类特有的 Trace 采集点：
+
+```yaml
+## trace_overrides
+additional_capture:
+  - "分类特有的采集项"
+```
+
+### patterns_ref（四原子架构新增）
+
+关联的经验模式（从 `_patterns/store.yaml` 引用）：
+
+```yaml
+## patterns_ref
+  - id: "P-001"
+    applies_to: "stage3-scenes"
+  - id: "P-002"
+    applies_to: "stage3-scenes, stage7-delivery"
+```
+
 ## 设计原则
 
 1. **覆盖而非重写。** 分类配置只声明与通用规则不同的部分。通用 stage 文件的规则始终作为基线。
 2. **分类配置由 SubAgent 在执行时读取。** SubAgent prompt 中会包含"读取 `categories/{id}.md` 获取分类配置"的指令。
 3. **一个分类一个文件。** 不要跨分类引用，每个文件自包含。
 4. **分类 ID 用英文小写。** 文件名 = 分类 ID = cron 文件中的引用键。
+5. **四原子对齐。** 分类配置可声明 boundary_overrides / gate_overrides / trace_overrides / patterns_ref，与四原子架构对齐。
 
 ## 如何添加新分类
 

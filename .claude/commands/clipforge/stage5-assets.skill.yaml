@@ -1,0 +1,52 @@
+skill:
+  meta:
+    id: "clipforge.stage5-assets"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["assets", "visual", "optional"]
+    dependencies: ["clipforge.stage2-analysis"]
+    rigor: LITE
+    optional: true
+
+  intent:
+    objective: "制备 CSS 无法实现的视觉素材（如外部图片、复杂 SVG、品牌 logo）"
+    criteria:
+      - "素材已放入 assets/ 目录"
+      - "manifest.md 已创建并列出所有素材"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - inline:
+          id: "R-STAGE5-001"
+          type: FORBIDDEN_ACTION
+          pattern: "在 HTML 中引用未复制到 assets/ 的外部路径"
+          positive: "所有素材复制到项目 assets/ 目录后用相对路径引用"
+          guardrail: "HTML 中的 img/video src 均为 assets/ 相对路径"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+    preferences:
+      - text: "大部分视频无需本阶段，纯 CSS/HTML 已能覆盖绝大多数视觉效果"
+        weight: HIGH
+
+  guard:
+    red_flags:
+      - thought: "素材未复制到 assets/ 就引用"
+        reality: "渲染时工作目录是项目目录，外部路径会 404"
+        trigger: "HTML 中使用绝对路径或外部路径引用素材"
+    spirit_vs_letter:
+      - rule_ref: "R-STAGE5-001"
+        mode: SPIRIT
+        intent: "确保 HyperFrames 渲染时所有资源可通过相对路径访问"
+
+  gate:
+    process:
+      - gate: "asset_manifest_exists"
+        check: "assets/manifest.md 存在且列出所有素材文件"
+    max_retries: 0
+
+  trace:
+    capture: true
+    level: SUMMARY
+    retention: "30d"

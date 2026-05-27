@@ -38,10 +38,14 @@ python -c "from transformers import MusicgenForConditionalGeneration; print('✅
 # 工具脚本
 mkdir -p scripts
 if [ ! -f "scripts/generate_bgm.py" ] || [ ! -f "scripts/merge_video_audio.sh" ]; then
-  echo "⏳ 下载工具脚本..."
-  REPO="https://raw.githubusercontent.com/Johnson-Jia/video-clipforge/main/scripts"
-  curl -sL "$REPO/generate_bgm.py" -o scripts/generate_bgm.py 2>/dev/null
-  curl -sL "$REPO/merge_video_audio.sh" -o scripts/merge_video_audio.sh 2>/dev/null
+  echo "⏳ 复制工具脚本（从本地仓库）..."
+  SCRIPTS_DIR="$(git rev-parse --show-toplevel)/.claude/commands/clipforge/scripts"
+  mkdir -p "$WORKSPACE/scripts"
+  for f in generate_bgm.py merge_video_audio.sh; do
+    if [ -f "$SCRIPTS_DIR/$f" ]; then
+      cp "$SCRIPTS_DIR/$f" "scripts/$f"
+    fi
+  done
   chmod +x scripts/merge_video_audio.sh 2>/dev/null
   echo "✅ 工具脚本就绪"
 fi

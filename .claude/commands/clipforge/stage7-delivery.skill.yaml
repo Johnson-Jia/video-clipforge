@@ -1,0 +1,136 @@
+skill:
+  meta:
+    id: "clipforge.stage7-delivery"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["delivery", "cover", "douyin", "final"]
+    dependencies: ["clipforge.stage6-production"]
+    rigor: STANDARD
+
+  intent:
+    objective: "生成封面、嵌入视频第一帧、产出抖音文案"
+    criteria:
+      - "封面 cover.png 存在且通过结构检查（含日期/URL/可读性）"
+      - "双版本 final.mp4 + final_no_bgm.mp4 存在且有时长/音频"
+      - "抖音文案不含广告敏感词，标签跨圈覆盖"
+
+  boundary:
+    scene: "video-production"
+    rules:
+      - ref: "R-GLOBAL-001"
+      - ref: "R-GLOBAL-009"
+      - ref: "R-GLOBAL-012"
+      - inline:
+          id: "R-STAGE7-001"
+          type: FORBIDDEN_METHOD
+          pattern: "绕过 assemble_final.sh 自行编写 ffmpeg 拼接"
+          positive: "必须使用 assemble_final.sh 脚本嵌入封面帧"
+          guardrail: "脚本调用记录存在"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE7-002"
+          type: FORBIDDEN_ACTION
+          pattern: "只产出单版本 final（缺少 final_no_bgm.mp4）"
+          positive: "必须产出双版本 final.mp4 + final_no_bgm.mp4"
+          guardrail: "两个文件都存在且非空"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE7-003"
+          type: FORBIDDEN_METHOD
+          pattern: "封面嵌入前跳过白屏检查"
+          positive: "封面 HTML 渲染后必须检查是否白屏"
+          guardrail: "白屏检查步骤已执行"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-STAGE7-007"
+          type: FORBIDDEN_LOGIC
+          pattern: "final.mp4 时长超过 output.mp4 + 5 秒"
+          positive: "final.mp4 时长 ≤ output.mp4 + 5s（封面帧时长上限）"
+          guardrail: "ffprobe 比较时长差 ≤ 5s"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+      - inline:
+          id: "R-STAGE7-008"
+          type: FORBIDDEN_METHOD
+          pattern: "final.mp4 无音频轨道"
+          positive: "final.mp4 和 final_no_bgm.mp4 都必须有音频轨道"
+          guardrail: "ffprobe 检测音频轨道存在"
+          severity: HARD
+          class: SAFETY
+          scope: SKILL
+    preferences:
+      - text: "文案首选爆款钩子型（量化锚定 + 反直觉）"
+        weight: HIGH
+
+  guard:
+    red_flags:
+      - thought: "封面只有一帧不用检查白屏"
+        reality: "封面 HTML 复杂度高，同样可能白屏"
+        trigger: "跳过封面白屏检查"
+      - thought: "我自己写 ffmpeg 拼接更快"
+        reality: "历史事故：自行拼接导致 361s 无音频视频"
+        trigger: "绕过 assemble_final.sh"
+      - thought: "放个链接方便用户"
+        reality: "评论区禁止放完整链接"
+        trigger: "在评论区添加 URL"
+      - thought: "文案用'必装神器'更有吸引力"
+        reality: "广告审查敏感词会导致限流或下架"
+        trigger: "使用 R-GLOBAL-001 禁止的词汇"
+    spirit_vs_letter:
+      - rule_ref: "R-STAGE7-001"
+        mode: SPIRIT
+        intent: "防止自行拼接导致时长膨胀和音频丢失"
+      - rule_ref: "R-STAGE7-002"
+        mode: SPIRIT
+        intent: "确保用户有无 BGM 两个版本可选"
+
+  gate:
+    process:
+      - gate: "cover_existence"
+        check: "cover.html 和 cover.png 都存在且非空"
+      - gate: "dual_final_output"
+        check: "final.mp4 和 final_no_bgm.mp4 都存在"
+      - gate: "assembly_script"
+        check: "通过 assemble_final.sh 执行（含时长/音频断言）"
+      - gate: "duration_check"
+        check: "final.mp4 时长 ≤ output.mp4 + 5s"
+      - gate: "audio_track"
+        check: "两个 final 文件都有音频轨道"
+    compliance:
+      - gate: "cover_no_url"
+        check: "封面中不包含任何网址（正则匹配 https://|www.|.com|.io）"
+      - gate: "cover_chinese_date"
+        check: "封面包含中文日期标识（匹配 YYYY年M月D日 格式）"
+      - gate: "no_sensitive_words"
+        check: "抖音文案不含 R-GLOBAL-001 广告敏感词"
+      - gate: "no_url_in_copy"
+        check: "文案和评论区无完整 URL（R-GLOBAL-010/012）"
+      - gate: "hashtags_count"
+        check: "标签数量 ≥ 5 个"
+      - gate: "no_engagement_bait"
+        check: "文案不含'点赞关注''一键三连'等诱导互动语（R-GLOBAL-006）"
+      - gate: "no_specific_time"
+        check: "CTA 不含具体更新时间（如'每天7点'，R-GLOBAL-009）"
+    quality:
+      - gate: "cover_quality"
+        threshold: 0.7
+        evaluator: HUMAN
+      - gate: "copy_engagement"
+        threshold: 0.7
+        evaluator: HUMAN
+      - gate: "cover_readability"
+        threshold: 0.5
+        evaluator: HUMAN
+    max_retries: 2
+
+  trace:
+    capture: true
+    level: FULL
+    retention: "30d"

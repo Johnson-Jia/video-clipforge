@@ -1,8 +1,108 @@
+---
+name: stage6-production
+description: 沉浸式视频制作 — HTML 组合 + HyperFrames 渲染 + 双版本输出
+version: "1.0.0"
+type: EXECUTIVE
+rigor: STRICT
+dependencies: ["clipforge.stage4-audio"]
+---
+
 # Stage 6: 沉浸式视频制作（委托 HyperFrames）
 
-当 `segment_durations.json` + 音频文件已存在且 `output.mp4` 不存在时触发。基于组件库装配 HTML 组合并渲染为视频。
+> 当 `segment_durations.json` + 音频文件已存在且 `output.mp4` 不存在时触发。基于组件库装配 HTML 组合并渲染为视频。
 
-## 6.1 项目初始化
+## Intent
+> 编写 HTML 组合并渲染竖屏视频，含旁白和 BGM。
+> 成功标准：双版本输出（output.mp4 + output_no_bgm.mp4）、渲染安全通过、GSAP timeline 注册、音频验证通过。
+
+## Boundary — 行为准则
+
+### 必须遵守（HARD 规则 · 正向重述）
+
+1. **渲染前移除非 index.html 文件** — 将 cover.html 等含 `data-composition-id` 的文件临时重命名为 `.renderbak` ← `R-STAGE6-001` / `R-RENDER-007`
+   ↳ 校验：渲染前项目目录中仅 index.html 含 `data-composition-id`
+2. **注册 GSAP timeline** — `window.__timelines["main"] = tl`，tl 为 GSAP timeline({paused:true}) ← `R-STAGE6-002` / `R-RENDER-009`
+   ↳ 校验：`window.__timelines["main"]` 非空
+3. **用 narration.mp3 合成 no_bgm 版本** — `output_no_bgm.mp4 = output.mp4 视频轨 + narration.mp3 音频轨`（ffmpeg -map 0:v -map 1:a） ← `R-STAGE6-003`
+   ↳ 校验：volumedetect 差值 > 3dB
+4. **BGM 音量渲染前写入 HTML** — 从 `segment_durations.json` 的 `meta.bgm_volume` 读取并写入 `data-volume` ← `R-STAGE6-004`
+   ↳ 校验：HTML 中 BGM 的 `data-volume` 与 JSON 一致
+5. **产出双版本** — output.mp4（含 BGM）+ output_no_bgm.mp4（仅旁白），缺一不可 ← `R-STAGE6-005`
+   ↳ 校验：两个文件都存在且非空
+6. **使用 stage6-components.md 作为装配参考** — 组件库是 HTML 装配的唯一参考来源 ← `R-STAGE6-006`
+7. **Canvas/Three.js 使用 seek 驱动时间** — 不使用 requestAnimationFrame，Three.js 使用 `__hfThreeTime` ← `R-STAGE6-007` / `R-RENDER-015` / `R-STAGE6-008`
+8. **封面帧 anullsrc 使用 48kHz** — 确保与正片 48kHz 一致 ← `R-STAGE6-010`
+9. **data-start 和 data-duration 使用秒** — 不使用毫秒 ← `R-STAGE6-011`
+10. **window.__timelines 是 {} 不是 []** ← `R-STAGE6-012`
+11. **timeline 必须 { paused: true }** ← `R-STAGE6-013`
+12. **data-composition-id 只在根元素** — scene div 不加此属性 ← `R-STAGE6-014`
+13. **根元素必须有 data-start="0"** ← `R-STAGE6-015`
+14. **遵守渲染安全全部规则** — `_render-safety.md` §1-§2 的所有规则（R-RENDER-001~015） ← 引用
+15. **遵守视觉切换频率** — Phase 断点与旁白话题转换对齐，禁止时间均分 ← `R-GLOBAL-016` / `R-GLOBAL-017`
+
+### 建议参考（SOFT 规则 + 偏好）
+- 角色覆盖层限制 15-20%，仅在角落，不遮挡核心内容（SOFT）← `R-STAGE6-009`
+- 使用 HyperFrames 委托模式渲染，降级时自行编写 HTML（HIGH）
+- 每个场景独立创作视觉，不套固定模板（MEDIUM）
+- 对照 `stage6-components-ref.md` 的 10 条反面清单自检（MEDIUM）
+- 导演自审（Layer 3）在渲染前执行（MEDIUM）
+
+## Guard — 认知守卫
+
+| 当你产生这个念头 | 现实是 | 触发行为 |
+|---|---|---|
+| "anullsrc 用 44100 也行" | 封面 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 | 修改为 48kHz |
+| "CSS 动画更简单" | CSS opacity:0 入场动画在 HyperFrames 中永远不执行 | 改用 GSAP .from() |
+| "&amp; 是标准 HTML" | 无头浏览器对实体字符解析不可靠 | 改用 Unicode |
+| "不用 padding" | 缺少 padding 导致内容区域塌陷 | 添加安全区 padding |
+| "GSAP 会自动注册" | 空 __timelines={} 导致全片空白 | 显式注册 timeline |
+| "绝对路径也能找到" | 只认项目目录内相对路径 | 确保文件在同级目录 |
+| "cover.html 不影响" | 含 data-composition-id 的 HTML 都会导致冲突 | 渲染前移除 |
+| "用 -map 0:a:0 提取旁白" | HyperFrames 输出只有 1 条混合音频轨 | 用 narration.mp3 合成 |
+| "双次渲染更安全" | 单次渲染 + ffmpeg 合成更高效 | 遵循 §6.7 流程 |
+| "Canvas 用 rAF 更流畅" | HyperFrames seek 驱动，rAF 不同步 | 使用 seek 驱动 |
+| "Three.js 用 performance.now()" | seek 回放时不回溯 | 使用 __hfThreeTime |
+| "角色大点更可爱" | CharOverlay 限制 15-20%，仅在角落 | 缩小角色尺寸 |
+| "组件太多不需要都读" | stage6-components.md 是装配的唯一参考 | 完整读取组件索引，按需读取组件文件和 stage6-components-ref.md |
+| "白屏可能是正常的" | 检查 window.__hf 和 data-duration | 排查并修复 |
+
+### Spirit vs Letter
+
+| 规则 | 模式 | 真实意图 |
+|---|---|---|
+| R-STAGE6-003 | SPIRIT | 确保 no_bgm 版本是纯旁白音频，BGM 可被用户自定义替换 |
+| R-STAGE6-002 | SPIRIT | 确保 HyperFrames 有可执行的 timeline，不渲染空帧 |
+| R-RENDER-006 | SPIRIT | 防止多层累计 padding 导致内容区域严重压缩 |
+
+## Gate — 通过标准
+
+### 流程门禁（自动化检查，不通过 = 驳回，max_retries: 2）
+- [ ] `render_safety` — director_gate.py + stage6_gate.sh 全部通过
+- [ ] `dual_output` — output.mp4 和 output_no_bgm.mp4 都存在且非空
+- [ ] `gsap_timeline` — window.__timelines["main"] 已注册且非空
+- [ ] `audio_verification` — post-render volumedetect: BGM 未泄露到 no_bgm 版本（差值 > 3dB）
+
+### 质量门禁（创意评价，不通过 = 记录但放行，evaluator: HUMAN）
+- `visual_quality`: 评分 ≥ 0.7（人类评价：视觉冲击力、信息层次、配色创意、与内容的契合度）
+
+### STRICT 模式特有机制
+
+本阶段标记为 `rigor: STRICT`，除标准门禁外还有以下增强机制：
+
+- **首次人工复核**：新上线或重大修改后的前 5 次执行，即使流程/合规门禁全部通过，也需人工确认产出质量后才标记为 PASSED
+- **归因审计**：每次归因产出 Delta Rule 时，记录完整审计日志（证据链 + 置信度推导）
+- **模式入库确认**：正向闭环产出的经验模式在写入 Pattern Store 前需人工确认
+
+## Trace — 采集点
+- **执行开始**：记录 design.md 的 immersion_mode、场景数、总时长
+- **HTML 编写**：记录使用的组件列表、Phase 数量、特效类型
+- **渲染过程**：记录渲染次数、失败原因、路径切换
+- **门禁结果**：记录 director_gate / stage6_gate / frame_analysis 结果
+- **执行结束**：记录 gate_report，写入 `{project_dir}/trace/stage6-{timestamp}.yaml`
+
+## 操作指令
+
+### 6.1 项目初始化
 
 ```bash
 # 创建日期目录（如不存在）+ 项目目录（纯英文路径）
@@ -12,7 +112,7 @@ npx hyperframes init "workspace/<YYYY>/<MM>/<DD>/<project-name>" --example blank
 
 项目目录结构为 `workspace/<YYYY>/<MM>/<DD>/<项目名>/`，日期格式为纯数字（如 `workspace/2026/05/18/github-trending/`）。详见 `clipforge.md` 的「项目目录结构」段。
 
-## 6.2 读取 design.md + storyboard
+### 6.2 读取 design.md + storyboard
 
 Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只读取，不重写。**
 
@@ -22,13 +122,13 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 |------|------|
 | `style`, `mood` | 整体风格方向 |
 | `color_direction` | 配色方案选择 |
-| `storyboard.immersion_mode` | 沉浸模式 → 匹配 `stage6-components.md` 的配色速查表 |
+| `storyboard.immersion_mode` | 沉浸模式 → 匹配 `stage6-components-ref.md` 的配色速查表 |
 | `storyboard.emotion_curve` | 6 拍情感强度 → 影响每个场景的视觉力度 |
 | `storyboard.narrative_template` | 叙事模板 → 影响场景布局选择 |
 | `storyboard.humor_style` | 幽默策略 → 是否添加 SpeechBubble 组件 |
 | `storyboard.character_presence` | 角色出场 → 是否添加 CharOverlay 组件 |
 
-**沉浸模式 → CSS 变量映射：** 从 `stage6-components.md` 的「沉浸模式配色速查」表获取具体色值，写入 `:root` CSS 变量。
+**沉浸模式 → CSS 变量映射：** 从 `stage6-components-ref.md` 的「沉浸模式配色速查」表获取具体色值，写入 `:root` CSS 变量。
 
 ```css
 /* 示例：immersion_mode = "hyper-pace" */
@@ -51,18 +151,18 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 - 实践：先从 `immersion_mode` 查表获取 `:root` CSS 变量，再用 `color_direction` 中明确的色值覆盖对应变量。
 
 **设计决策链：**
-1. `immersion_mode` → `stage6-components.md` 配色速查 → `:root` CSS 变量（兜底）
+1. `immersion_mode` → `stage6-components-ref.md` 配色速查 → `:root` CSS 变量（兜底）
 2. `color_direction` → 覆盖 `:root` 中冲突的色值（优先）
 3. 每个场景的**具体内容** → 读内容想画面（格言引导 + 反面清单兜底） → 背景层 + 特效层 + 内容层的视觉方案
 4. `character_presence` + 每段 `character_expression` → CharOverlay 组件选择
 
-## 6.3 音频嵌入
+### 6.3 音频嵌入
 
 > **前置依赖：Stage 4 的 `segment_durations.json` 和音频文件必须已产出。**
 
 HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC 编码、MP4 封装。HTML 中嵌入音频后，`output.mp4` 直接包含完整音轨，无需 FFmpeg 手动合并。
 
-### 嵌入方式
+#### 嵌入方式
 
 在 composition 根元素内添加 `<audio>` 元素：
 
@@ -82,7 +182,7 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 </div>
 ```
 
-### 参数说明
+#### 参数说明
 
 | 属性 | 值 | 说明 |
 |------|-----|------|
@@ -91,17 +191,17 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 | `loop` | 仅 BGM 添加 | BGM 循环播放直到视频结束 |
 | `preload="auto"` | 必须 | 确保 HyperFrames 预加载音频 |
 
-### 电影解读模式
+#### 电影解读模式
 
 电影模式使用 `narration_new.mp3`（含静音填充），并在电影片段场景使用 `<video>` 元素（见 `_movie-clips` 的嵌入规则）。
 
-### 对齐机制
+#### 对齐机制
 
 **场景连续无间隔 + 旁白连续无间隔 → 单条 `narration.mp3` 天然与场景序列对齐。** 每个 scene div 的 `data-duration` 取自 `segment_durations.json` 的对应段落实测时长，画面时长 = 语音时长，零偏移计算。
 
 HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>` 时长，`mediaDurationFloor` 确保视频时间线不短于音频。
 
-## 6.4 编写 HTML 组合（组件装配模式）
+### 6.4 编写 HTML 组合（组件装配模式）
 
 **调用 `/hyperframes` 技能**，传入：视觉风格方向、故事板、design.md 路径、`stage6-components.md` 组件库、`segment_durations.json` 时长、`narration_segments.json` 情感标记、音频嵌入参数。
 
@@ -114,20 +214,20 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 > **素材交接方式：** 读取 `assets/manifest.md`，将每个素材的文件名和用途描述写入 HyperFrames 的 prompt。HyperFrames 不解析 manifest.md，由编排者负责桥接。
 
-### 组件装配流程
+#### 组件装配流程
 
 1. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
-3. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
+3. **读取 `stage6-components-ref.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
 4. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
-   - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
+   - 参考 `stage6-components-ref.md` 的设计格言（5 条正面引导）
    - 对照反面清单（10 条红线），确保不踩雷
    - 用 CSS 特效参考库的工具实现你的构思
    - **不查表、不套公式、每个场景独立思考**
 5. **装配 HTML** — 按 HyperFrames composition 结构组装
 
-### 场景 → 组件参考
+#### 场景 → 组件参考
 
 > **这是参考映射，不是固定分配。** 根据场景内容选择最合适的组件组合，允许跨场景复用和变体。
 
@@ -143,26 +243,26 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 > **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（§13），一个项目占满一屏，包含 8 层信息。数据来自 `narration_segments.json` 的 `selling_points`、`commentary` 字段和 content 数据。
 
-### 角色和幽默组件插入
+#### 角色和幽默组件插入
 
 - `character_expression` 非 null 的场景 → 添加 `CharOverlay` 组件（对应表情 SVG）
 - `humor_type` 非 null 的场景 → 添加 `SpeechBubble` 组件（文案从 narration 提取幽默句）
 - 角色定位：画面左下角，占 15-20%
 - 气泡定位：画面右下角或角色上方
 
-### 特效填充验证
+#### 特效填充验证
 
 > `director_gate.py` §6 检查 layer-fx 内容非空，`stage6_gate.sh` 检查空 layer-fx 数量。HTML 写完后直接运行门禁脚本即可。
 
-### 视觉检查（对照反面清单）
+#### 视觉检查（对照反面清单）
 
-> HTML 写完后，快速扫一遍 `stage6-components.md` 的 10 条反面清单，确保没有踩雷。无需额外检查流程——反面清单已经编码了所有已知的视觉质量问题。
+> HTML 写完后，快速扫一遍 `stage6-components-ref.md` 的 10 条反面清单，确保没有踩雷。无需额外检查流程——反面清单已经编码了所有已知的视觉质量问题。
 
-### 导演自审（Layer 3 — HTML 写完后、渲染前必须执行）
+#### 导演自审（Layer 3 — HTML 写完后、渲染前必须执行）
 
 > **目的**：像导演审看每日样片，逐场景检查 HTML 是否实现了导演决策。这是最后一道"导演看监视器"关卡。
 
-读取 `_director-toolkit.md` 的"导演 5 个必答题"，逐 `.clip` 场景自审：
+读取 `_director-toolkit/questions.md` 的"导演 5 个必答题"，逐 `.clip` 场景自审：
 
 | # | 必答题 | 检查点 |
 |---|--------|--------|
@@ -181,11 +281,11 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 **发现偏差立即修复。自审不通过的禁止渲染。**
 
-## 6.4a 视觉分镜（Visual Phasing）
+### 6.4a 视觉分镜（Visual Phasing）
 
-> **当场景时长 >15 秒时必须使用。** 将一个 `.clip` 拆分为多个视觉阶段（phase），每 phase 8-15 秒，通过 GSAP timeline 控制渐进揭示。遵守 `_shared-rules` §6 的切换频率规则。
+> **当场景时长 >15 秒时必须使用。** 将一个 `.clip` 拆分为多个视觉阶段（phase），每 phase 8-15 秒，通过 GSAP timeline 控制渐进揭示。遵守 `_shared-rules/visual.md` §6 的切换频率规则。
 
-### 核心原理
+#### 核心原理
 
 ```
 改造前: 1 段旁白 ──→ 1 个 clip ──→ 1 个静态画面（30-57 秒不动）
@@ -196,7 +296,7 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 - `.clip` 数量不变：仍然一个 narration segment 对应一个 clip
 - phase 是 `.layer-content` 内的多个子 div，通过 GSAP opacity 控制显示/隐藏
 
-### Phase HTML 结构
+#### Phase HTML 结构
 
 ```html
 <div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
@@ -229,7 +329,7 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 - Phase 2+ **不在 CSS 中设 opacity:0**，由 GSAP `.set()` 在运行时初始化（遵守 §1.1a 豁免）
 - 所有 phase 共享同一个 `.layer-bg` 和 `.layer-fx`（背景和特效不随 phase 切换）
 
-### GSAP Phase 切换机制
+#### GSAP Phase 切换机制
 
 ```javascript
 const SCENE_START = 394;   // clip 的 data-start
@@ -264,7 +364,7 @@ tl.to('.s-biz-elderly .phase-3', {opacity: 0, duration: 0.3}, SCENE_START + BP3)
 - **Phase 断点必须与旁白话题转换对齐，禁止均分**（见下方 §6.4b）
 - Phase 间 GSAP 动画offset：`SCENE_START + BP[i][n-1] + offset`（BP 为内容对齐断点数组）
 
-### §6.4b Phase 断点计算方法（内容对齐，禁止均分）
+### 6.4b Phase 断点计算方法（内容对齐，禁止均分）
 
 > **事故复盘**：均分 gap 导致旁白与画面严重不同步——观众听到话题 A，画面已显示话题 B，偏差达 5-12 秒。
 
@@ -299,7 +399,7 @@ S.forEach((sc, i) => {
 
 **验证标准**：观看视频时，Phase N 的视觉内容与对应时间段内的旁白文本语义匹配，偏差 ≤ 2 秒。
 
-### Phase 内容来源
+#### Phase 内容来源
 
 读取 `narration_segments.json` 的 `visual_phases` 数组：
 
@@ -313,10 +413,10 @@ S.forEach((sc, i) => {
 ```
 
 - `focus` → phase 画面标题（`phase-header`）
-- `visual_type` → 选择 `stage6-components.md` 的 Phase 视觉模板
+- `visual_type` → 选择 `stage6-components-ref.md` 的 Phase 视觉模板
 - `key_data` → 画面上的数据/关键词内容
 
-### Phase 视觉类型 → 模板映射
+#### Phase 视觉类型 → 模板映射
 
 | visual_type | 画面布局 | 参考组件 |
 |------------|---------|---------|
@@ -327,13 +427,13 @@ S.forEach((sc, i) => {
 | `timeline` | 标题 + 步骤节点 | TimeLineFlow 风格 |
 | `highlight` | 大号结论文字 + 强调色 | TextReveal 风格 |
 
-每种类型的具体 HTML/CSS 骨架见 `stage6-components.md` 的「Phase 视觉模板」章节。
+每种类型的具体 HTML/CSS 骨架见 `stage6-components-ref.md` 的「Phase 视觉模板」章节。
 
-### Phase 完整性验证
+#### Phase 完整性验证
 
 > `stage6_gate.sh` 的视觉分镜完整性检查会验证长场景的 phase 数量。HTML 写完后运行门禁即可。
 
-### 呼吸帧插入
+#### 呼吸帧插入
 
 在场景切换点插入 0.3-0.5s 的视觉呼吸：
 
@@ -342,7 +442,7 @@ tl.to('.current-scene .scene-content', { scale: 1.02, duration: 0.15, ease: 'pow
   .to('.current-scene .scene-content', { scale: 1.0, duration: 0.15, ease: 'power1.inOut' });
 ```
 
-### Canvas 粒子和 Three.js 3D
+#### Canvas 粒子和 Three.js 3D
 
 根据沉浸模式决定是否使用 3D 场景：
 
@@ -355,9 +455,9 @@ tl.to('.current-scene .scene-content', { scale: 1.02, duration: 0.15, ease: 'pow
 | story-time | — | 否 |
 | fun-tool | ParticleBurst | 否 |
 
-Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek 回调。详见 `stage6-components.md` 的 ThreeScene 组件。
+Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek 回调。详见 `stage6-components-ref.md` 的 ThreeScene 组件。
 
-### 降级触发条件
+#### 降级触发条件
 
 以下任一情况发生时，从 HyperFrames 委托模式降级为自行编写 HTML：
 
@@ -365,18 +465,18 @@ Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek
 |---------|---------|
 | HyperFrames 技能不可用 | Skill 工具调用 `/hyperframes` 失败或找不到技能 |
 | 技能调用超时/报错 | Skill 调用返回错误，或渲染命令 `npx hyperframes` 执行失败 |
-| lint 检查不通过 | 产出的 HTML 运行 `npx hyperframes lint` 报错且无法快速修复 |
+| lint 检查不通过 | 产出的 HTML 运行 `npx hyperframes lint` 报错且无法快修复 |
 
 降级时向用户说明原因，然后继续执行。降级自行编写时，**严格遵守以下规则**：
 
-### 内容规则
+#### 内容规则
 
 > **以下全部规则同样适用于 HyperFrames 委托模式产出的 HTML。**
 
-0. **内容安全规范**遵守 `clipforge/_shared-rules` 全部条款。
+0. **内容安全规范**遵守 `clipforge/_shared-rules` 全部条款（措辞/CTA/内容安全见 `writing.md`，画面文字/视觉切换见 `visual.md`，渲染安全见 `render-ref.md`）。
 0. **渲染安全规范**遵守 `clipforge/_render-safety` 全部条款（Stage 6 必读）。
 
-### 结构规则
+#### 结构规则
 
 1. `window.__timelines` 是 `{}` 不是 `[]`
 2. timeline 必须 `{ paused: true }`
@@ -402,54 +502,33 @@ Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek
      </script>
      ```
 
-### CSS 规则
+#### CSS 规则
 
 > **CSS 渲染安全规则全部在 `_render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
 8. **`.clip` 只设 `position: absolute` + 尺寸**，不要加其他样式（上140 / 右90 / 下260 / 左70）
 
-### 视觉设计规则（必须遵守）
+#### 视觉结构约束（流程层 — 必须遵守）
 
-#### 视觉密度要求（分级规则）
+- 每个场景必须有背景层（渐变/纯色/纹理），不可纯白或纯黑
+- 文字在深色背景上必须有 text-shadow 或足够对比度
+- 安全区 padding 由 .phase 统一管理（见 _render-safety §1.4a）
 
-| 场景类型 | 最低元素数 | 说明 |
-|---------|-----------|------|
-| 内容场景（项目介绍等） | ≥ 5 | 排名 + 名称 + 数据 + 描述 + 标签（+ 卖点/角色 可选） |
-| Hook/CTA | ≥ 3 | 主标题 + 装饰 + 标识（不强凑，保持极简冲击力） |
-| 高潮场景 | ≥ 5 | 额外添加视觉强化元素（特效爆发 + 数据强调） |
+#### 视觉创意空间（内容层 — Agent 自主决策）
 
-每个场景的元素计数不包含背景装饰（光晕、网格等），只计入 `.layer-content` 中的可读/可交互元素。
+以下为指导性建议，Agent 根据场景内容和 design.md 的风格方向自主决定：
 
-#### hook 场景 — 黄金 3 秒视觉
+- **背景构成**：渐变 + 光晕 + 网格底纹是常见方案，也可根据内容选择其他背景
+- **元素密度**：内容场景通常 5+ 元素，hook/CTA 通常 3+ 元素，具体由信息密度决定
+- **配色方案**：复用 design.md 的 color_direction，具体冷暖比例由场景情绪决定
+- **字号层级**：参考 `_director-toolkit/vocabulary.md` 的字号层级表，具体数值由内容长度调整
+- **场景配色**：不强制暖色/冷色分配，由导演自审（Q1-Q5）驱动
 
-hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（主标题 ≥100px）、对比最强、光晕加倍（2 个大光晕 ≥画面 50%）、发光效果、配色优雅（≤3 色）、布局精致（留白 ≥30%）、动画干脆（0.3-0.5s）。
+##### 整体品质检查
 
-#### 背景：渐变 + 光晕 + 网格三件套
+渲染前对照清单：背景层、光晕、配色区分、CTA 完整、安全区、居中（flexbox）、`__hf` + GSAP、音频、无 anim-in、无 HTML 实体、scene-wrap padding、无多余 composition。
 
-每个场景必须同时包含：渐变背景（`linear-gradient`）、光晕装饰（1-2 个 `filter: blur(140px)` 球）、网格底纹（3%-5% 透明度）。
-
-#### 场景独立配色
-
-| 场景类型 | 强调色方向 |
-|---------|-----------|
-| hook | 暖色（金/琥珀/橙） |
-| solution/top | 暖色 → 冷色过渡 |
-| features/more | 冷色（翠绿/青） |
-| CTA | 暖色主调 + 冷色辅 |
-
-#### 项目卡片设计
-
-展示项目的卡片必须包含：排名数字（≥40px）、项目名（等宽 34-42px）、中文描述（浅灰 26-32px）、语言标签（药丸 20-24px）、星数（右对齐 28-32px）。
-
-#### CTA 场景
-
-CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个标签药丸。
-
-#### 整体品质检查
-
-渲染前对照清单：背景三层、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf` + GSAP、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition。
-
-### 动画规则
+#### 动画规则
 
 8. 入场动画时长 **0.3-0.7 秒**（"快入+静止"模式）
 9. stagger 间隔 **0.2-0.3 秒**
@@ -457,28 +536,28 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 11. 场景间由框架 transitions 处理，不手动 exit
 12. **动画设计原则：** 每个场景的动画在 1 秒内完成入场，之后保持最终状态静止直到 `data-duration` 结束。
 
-### 字体规则
+#### 字体规则
 
 12. 优先使用 HyperFrames 内置字体映射
 13. **中文渲染**：先渲染一帧验证，异常时用 `font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif`
 
-### 渲染规则
+#### 渲染规则
 
 14. 渲染传目录路径（`.`），不传文件路径
 15. 渲染前确保 `lint` 通过
 16. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
-## 6.5 默认竖屏
+### 6.5 默认竖屏
 
 默认输出 **竖屏（1080×1920）**。如用户要求横屏再额外生成。
 
-### 动画设计原则（HyperFrames 时长模型）
+#### 动画设计原则（HyperFrames 时长模型）
 
 采用"快入+静止"动画策略：入场 0.3-0.7s，之后静止到场景结束。
 
 竖屏字号参考：hero 约 80-100px、title 约 56-72px、body 约 36-44px、tag 约 26-34px。
 
-### 竖屏垂直居中规则
+#### 竖屏垂直居中规则
 
 > **居中已内置到 `.phase` CSS 中**：`.phase` 统一使用 `display:flex;flex-direction:column;justify-content:center`，所有 phase 内容自动垂直居中。不需要在 `.scene-wrap` 或 inline style 上手动添加 flex 居中。
 
@@ -486,13 +565,13 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 **禁止紧贴顶部**：不能用 `top: 80px` 等小值。场景内容容器禁止 `position: absolute` + 小 top 值。
 
-### 布局推导（两级体系）
+#### 布局推导（两级体系）
 
 **垂直方向强制居中**（`.phase` flex 内置），水平方向由布局推导决定：
 
-#### Level 1：visual_type → 布局框架
+##### Level 1：visual_type → 布局框架
 
-每个 phase 的布局从 `narration_segments.json` 的 `visual_phases[].visual_type` 推导，不套固定模板。完整规格表见 `stage6-components.md` 的「布局推导体系」章节。
+每个 phase 的布局从 `narration_segments.json` 的 `visual_phases[].visual_type` 推导，不套固定模板。完整规格表见 `stage6-components-ref.md` 的「布局推导体系」章节。
 
 **水平对齐推导规则：**
 
@@ -505,31 +584,31 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 | timeline | 标题居中，步骤区 width:85% 内部左对齐 | 时间标签 + 文字 |
 | highlight | 全部居中 | 大号文字 + 可选徽章 |
 
-#### Level 2：内容字数 → 元素尺寸
+##### Level 2：内容字数 → 元素尺寸
 
-primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85×，9-14 字 = 0.7×，15-24 字 = 0.55×，≥25 字 = 0.45×。具体基准字号见 `stage6-components.md`。
+primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85×，9-14 字 = 0.7×，15-24 字 = 0.55×，≥25 字 = 0.45×。具体基准字号见 `stage6-components-ref.md`。
 
-#### 密度控制
+##### 密度控制
 
 - `visual_phases[].layout_hint.density` 可微调间距（compact ×0.7 / standard ×1.0 / generous ×1.3）
 - 不指定时从 visual_type 自动推导：hero/highlight → generous，list/timeline → standard，data/compare → compact
 
-#### 渲染顺序原则
+##### 渲染顺序原则
 
 - 水平：从左到右（排名 → 名称 → 数据）
 - 垂直：从上到下（标签 → 标题 → 描述 → 卖点）
 - 不强制所有元素居中，让内容和 visual_type 决定最美观的布局
 
-### 平台安全区域
+#### 平台安全区域
 
 - 顶部危险区：上 200px
 - 底部危险区：下 300px
 - 水平安全边距：左 80px / 右 80px（兼容抖音/小红书/微信视频号三平台）
 - 安全内容区：180px ~ 1700px（垂直），80px ~ 1000px（水平）
 
-## 6.6 渲染
+### 6.6 渲染
 
-### 渲染前检查（必须执行）
+#### 渲染前检查（必须执行）
 
 ```bash
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
@@ -547,14 +626,14 @@ for f in cover.html index_with_bgm.html cover.html.bak; do
 done
 ```
 
-### 渲染命令
+#### 渲染命令
 
 ```bash
 npx hyperframes lint
 npx hyperframes render . --output output.mp4 --video-bitrate 5M
 ```
 
-### 渲染后恢复
+#### 渲染后恢复
 
 ```bash
 for f in cover.html index_with_bgm.html; do
@@ -563,18 +642,18 @@ done
 rm -f cover.html.bak.renderbak index_with_bgm.html.renderbak
 ```
 
-### 渲染后音频验证
+#### 渲染后音频验证
 
 ```bash
 ffprobe -v quiet -show_streams -select_streams a output.mp4 | grep codec_name
 ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 ```
 
-## 6.7 单次渲染 + ffmpeg 合成
+### 6.7 单次渲染 + ffmpeg 合成
 
 > **HyperFrames 只渲染一次 output.mp4（旁白 + BGM 混合）。** output_no_bgm.mp4 由 ffmpeg 从 output.mp4 视频轨 + narration.mp3（纯旁白源文件）合成，无需二次渲染。
 
-### 渲染前准备
+#### 渲染前准备
 
 ```bash
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
@@ -585,14 +664,14 @@ sed -i "s/id=\"bgm\" data-volume=\"[^\"]*\"/id=\"bgm\" data-volume=\"${BGM_VOL}\
 echo "HTML BGM data-volume set to ${BGM_VOL}"
 ```
 
-### 渲染（仅一次）
+#### 渲染（仅一次）
 
 ```bash
 # ── 渲染: 完整 HTML → output.mp4（旁白 + BGM）──
 npx hyperframes render . --output output.mp4 --video-bitrate 5M
 ```
 
-### 合成 output_no_bgm.mp4（ffmpeg，不渲染）
+#### 合成 output_no_bgm.mp4（ffmpeg，不渲染）
 
 > **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
 > **必须**用 narration.mp3（纯旁白源文件）作为音频源。
@@ -606,7 +685,7 @@ ffmpeg -y -i output.mp4 -i narration.mp3 \
   output_no_bgm.mp4
 ```
 
-### 文件逻辑
+#### 文件逻辑
 
 ```
 output.mp4      = 视频 + 旁白 + BGM（HyperFrames 渲染）
@@ -615,7 +694,7 @@ final.mp4      = cover.png + output.mp4
 final_no_bgm.mp4 = cover.png + output_no_bgm.mp4
 ```
 
-## 6.8 封面帧拼接
+### 6.8 封面帧拼接
 
 > **ffmpeg concat filter 拼接封面帧 + 正片视频，不碰音频。**
 
@@ -645,11 +724,11 @@ ffmpeg -y -i cover_clip.mp4 -i output_no_bgm.mp4 \
 rm -f cover_clip.mp4
 ```
 
-### BGM 音量
+#### BGM 音量
 
 > BGM 音量由 Stage 4 的 `bgm_gap_check.py` 自动查表校准，值存储在 `segment_durations.json` 的 `meta.bgm_volume`。渲染前从该文件读取并写入 HTML `data-volume`。
 
-### 致命约束
+#### 致命约束
 
 | 约束 | 违反后果 |
 |------|---------|
@@ -659,7 +738,7 @@ rm -f cover_clip.mp4
 
 > **封面帧仅增加 1/30 秒（~33ms），对音画同步无感知影响。** `cover.png` 仍作为独立封面图上传平台。
 
-## 6.10 Stage 6 完成门禁
+### 6.10 Stage 6 完成门禁
 
 ```bash
 # ── Stage 6 完成门禁 ──
@@ -671,50 +750,38 @@ python3 .claude/commands/clipforge/scripts/frame_analysis.py .
 
 **如果任何检查失败，修复问题后重新执行，不得跳过。**
 
----
-
-## Iron Law
-
-**NO VIDEO OUTPUT WITHOUT RENDER SAFETY CHECKS PASSED.**
-
-渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成 = 双版本输出失败。
-
-**Violating the letter of the rules is violating the spirit of the rules.**
-
----
-
 ## Red Flags（停止信号）
 
-| 信号 | 说明 |
-|------|------|
-| 封面帧 anullsrc 非 48kHz | 事故：封面 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 |
-| 使用 CSS `.anim-in`（§7.1） | 事故：CSS `opacity: 0` 导致 HyperFrames 渲染空白 |
-| 使用 HTML 实体（§7.2） | 事故：`&amp;` 等实体在无头浏览器中不解析 |
-| scene-wrap 无 padding（§7.3） | 事故：内容区域在渲染中塌陷不显示 |
-| GSAP timeline 未注册（§7.6） | 事故：空 `__timelines={}` 导致全片空白 |
-| 音频文件不在项目目录内（§7.5） | 事故：渲染引擎只认相对路径，绝对路径 404 静音 |
-| 渲染前未移除 cover.html 等（§7.4） | 事故：多个 root composition 导致渲染冲突 |
-| BGM 泄露到 no_bgm 文件 | volumedetect 差值 < 3dB → output_no_bgm.mp4 未用 narration.mp3 合成，而是错误地从 output.mp4 提取了混合轨，必须重做 §6.7 |
-| 缺少 `output_no_bgm.mp4` | 双版本输出不可省略 |
-| 白屏/黑屏渲染结果 | 检查 `window.__hf` 定义和 `data-duration` 值 |
-| Canvas 粒子使用 requestAnimationFrame | HyperFrames seek 驱动，独立 rAF 循环导致画面不一致 |
-| Three.js 使用 Date.now() | 必须 `__hfThreeTime`，否则 seek 回放时 3D 动画不回溯 |
-| 角色遮挡核心内容 | CharOverlay 限制 15-20%，仅在角落 |
-| 缺少 stage6-components.md 引用 | 组件库是装配 HTML 的参考来源 |
+| 信号 | 规则 ID | 说明 |
+|------|---------|------|
+| 封面帧 anullsrc 非 48kHz | R-STAGE6-010 | 封面 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 |
+| 使用 CSS `.anim-in` | R-RENDER-001 | CSS opacity:0 导致 HyperFrames 渲染空白 |
+| 使用 HTML 实体 | R-RENDER-003 | 实体在无头浏览器中不解析 |
+| scene-wrap 无 padding | R-RENDER-004 | 内容区域在渲染中塌陷不显示 |
+| GSAP timeline 未注册 | R-RENDER-009 | 空 __timelines={} 导致全片空白 |
+| 音频文件不在项目目录内 | R-RENDER-008 | 绝对路径 404 静音 |
+| 渲染前未移除 cover.html 等 | R-RENDER-007 | 多个 root composition 导致渲染冲突 |
+| BGM 泄露到 no_bgm 文件 | R-STAGE6-003 | volumedetect 差值 < 3dB → 未用 narration.mp3 合成 |
+| 缺少 output_no_bgm.mp4 | R-STAGE6-005 | 双版本输出不可省略 |
+| 白屏/黑屏渲染结果 | R-STAGE6-012 | 检查 window.__hf 定义和 data-duration 值 |
+| Canvas 使用 requestAnimationFrame | R-RENDER-015 | HyperFrames seek 驱动，独立 rAF 循环导致不一致 |
+| Three.js 使用 Date.now() | R-STAGE6-008 | seek 回放时 3D 动画不回溯 |
+| 角色遮挡核心内容 | R-STAGE6-009 | CharOverlay 限制 15-20%，仅在角落 |
+| 缺少 stage6-components.md 引用 | R-STAGE6-006 | 组件库是装配 HTML 的唯一参考 |
 
 ## Common Rationalizations（常见借口反驳）
 
 | 借口 | 事实 |
 |------|------|
 | "anullsrc 用 44100 也行" | 事故：封面帧 44.1kHz + 正片 48kHz → TS concat 后播放器异常 |
-| "CSS 动画更简单" | §7.1 事故：CSS `opacity: 0` 入场动画永远不会执行 |
-| "`&amp;` 是标准 HTML" | §7.2 事故：无头浏览器对实体字符解析不可靠 |
-| "不用 padding" | §7.3 事故：缺少 padding 导致内容区域塌陷 |
-| "GSAP 会自动注册" | §7.6 事故：必须显式 `window.__timelines["main"] = tl` |
-| "绝对路径也能找到" | §7.5 事故：只认项目目录内相对路径 |
-| "cover.html 不影响" | §7.4 事故：含 `data-composition-id` 的 HTML 都会导致冲突 |
-| "用 -map 0:a:0 提取旁白轨" | 05-23 事故：HyperFrames 输出只有 1 条混合音频轨（旁白+BGM），-map 0:a:0 提取的是混合轨而非纯旁白 |
-| "双次渲染更安全" | 单次渲染 + ffmpeg 合成更高效，省掉一次 ~15 分钟的渲染，且避免了 sed 替换 BGM 音量可能失败的风险 |
+| "CSS 动画更简单" | 事故：CSS opacity:0 入场动画永远不会执行 |
+| "`&amp;` 是标准 HTML" | 事故：无头浏览器对实体字符解析不可靠 |
+| "不用 padding" | 事故：缺少 padding 导致内容区域塌陷 |
+| "GSAP 会自动注册" | 事故：必须显式 `window.__timelines["main"] = tl` |
+| "绝对路径也能找到" | 事故：只认项目目录内相对路径 |
+| "cover.html 不影响" | 事故：含 data-composition-id 的 HTML 都会导致冲突 |
+| "用 -map 0:a:0 提取旁白轨" | 事故：HyperFrames 输出只有 1 条混合音频轨 |
+| "双次渲染更安全" | 单次渲染 + ffmpeg 合成更高效，省掉一次 ~15 分钟的渲染 |
 | "Canvas 用 rAF 更流畅" | HyperFrames 逐帧 seek 驱动，rAF 与 seek 不同步会导致闪烁 |
-| "Three.js 用 performance.now()" | seek 回放时 `performance.now()` 不回溯，3D 动画不倒放 |
-| "组件太多不需要都读" | `stage6-components.md` 是组件装配的唯一参考，不读就不知道有哪些组件 |
+| "Three.js 用 performance.now()" | seek 回放时 performance.now() 不回溯，3D 动画不倒放 |
+| "组件太多不需要都读" | stage6-components.md 是组件装配的唯一参考 |

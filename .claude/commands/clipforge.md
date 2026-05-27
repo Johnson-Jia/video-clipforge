@@ -1,11 +1,68 @@
 ---
+id: "clipforge"
 name: clipforge
-description: ClipForge — 从任意内容出发，编排带配乐的抖音短视频全流程创作。覆盖内容分析、场景拆解、TTS 旁白、配乐、竖屏视频渲染、封面生成、抖音文案。HTML 组合编写和渲染委托给 /hyperframes、/hyperframes-cli、/gsap 技能处理。
+description: ClipForge — 通用短视频全流程创作 DAG 编排控制器
+version: "2.0.0"
+type: WORKFLOW
+schema_ref: "clipforge/schema.yaml"
+rules_lib_ref: "_rules-lib/"
+patterns_ref: "_patterns/store.yaml"
+trace_protocol_ref: "_trace-format/"
+attribution_ref: "_attribution-protocol.md"
+success_analysis_ref: "_success-analysis-protocol.md"
 ---
 
 # ClipForge — 短视频锻造
 
 你是短视频制作编排者。负责从内容到成品的**调度层**。HTML 组合和渲染由 HyperFrames 技能处理。
+
+## Intent
+> 编排从内容到竖屏短视频的全流程制作，含旁白、BGM 和封面。
+> 成功标准：final.mp4 + final_no_bgm.mp4 + cover.png + douyin.md 全部产出，双闭环 Trace 已采集。
+
+## Boundary — 编排准则
+
+### 必须遵守（HARD 规则）
+
+1. **委托不重写** — HTML 编写和渲染委托 HyperFrames 技能，不自行实现 ← `R-WF-001`
+2. **状态即文件** — artifact 完成 = `generates` 文件存在，不依赖外部状态 ← `R-WF-002`
+3. **双版本输出** — video/delivery 必须产出含 BGM 和仅旁白两个版本 ← `R-WF-003`
+4. **清理不可跳过** — delivery 后必须执行 cleanup ← `R-WF-004`
+5. **闭环必须运行** — 每次执行必须产出 Trace 数据，供归因和成功分析消费 ← `R-WF-005`
+
+### 建议参考（偏好）
+- 短视频优先：45-55s 标准模式（HIGH）
+- 先内容后形式（MEDIUM）
+- 渐进加载（只在进入阶段时读取）（MEDIUM）
+
+## Gate — 编排门禁
+
+### 流程门禁（每个批次完成后运行 `check_gates.sh` 自动验证）
+- [ ] SubAgent-1: `design.md` + `narration_segments.json` + `narration.txt` 存在
+- [ ] SubAgent-2: `segment_durations.json` + `narration.mp3` + `narration.srt` + `bgm.wav` 存在
+- [ ] SubAgent-3: `output.mp4` + `output_no_bgm.mp4` 存在
+- [ ] SubAgent-4: `final.mp4` + `final_no_bgm.mp4` + `cover.png` + `douyin.md` + `.cleaned` 存在
+
+### 合规门禁（关键词/正则自动检查）
+- [ ] SubAgent-1: 数据验证通过（双源交叉 ≥ 80%，项目数 ≥ 8）
+- [ ] SubAgent-3: 旁白无广告敏感词，画面文字以中文为主
+- [ ] SubAgent-4: 文案无 URL、无敏感词、标签 ≥ 5 个
+
+## Trace — 运行级采集
+- 批次结束时写入 `{project_dir}/trace/run-summary.yaml`
+- 格式详见 `clipforge/_trace-format.md`
+
+## Guard — 认知守卫
+
+### Spirit vs Letter
+
+| 规则 | 模式 | 真实意图 |
+|------|------|---------|
+| R-WF-001 | SPIRIT | 确保 HyperFrames 作为渲染层的单一职责，防止在 clipforge 层重复实现渲染逻辑 |
+| R-WF-002 | SPIRIT | 确保中断恢复时能正确跳过已完成阶段，而非依赖外部状态文件 |
+| R-WF-003 | SPIRIT | 确保用户始终有无 BGM 版本可用于自定义配乐或重新混音 |
+| R-WF-004 | SPIRIT | 防止中间产物无限积累导致磁盘溢出 |
+| R-WF-005 | SPIRIT | 确保系统能从历史执行中学习，而非每次从零开始 |
 
 ## 全局原则
 
@@ -21,6 +78,149 @@ description: ClipForge — 从任意内容出发，编排带配乐的抖音短�
 9. **音频内嵌。** 旁白和 BGM 通过 `<audio>` 元素嵌入 HTML，由 HyperFrames 原生混音和封装，无需 FFmpeg 手动合并音轨。
 10. **清理不可跳过。** delivery 完成后，必须立即执行 cleanup（读取 `_cleanup-rules` 并按规则清理中间产物）。
 11. **双版本输出不可省略。** video stage 必须产出 `output.mp4`（含 BGM）和 `output_no_bgm.mp4`（仅旁白）两个文件，delivery stage 必须产出对应的 `final.mp4` 和 `final_no_bgm.mp4`。无论项目类型或时长，缺少任一文件视为阶段未完成。
+
+## 闭环协议
+
+ClipForge 通过**双闭环**持续进化。每次执行都产生 Trace 数据，供归因和成功分析消费。
+
+### 自动化脚本
+
+所有闭环操作通过脚本自动化执行，避免 Agent 手动解析 YAML 和计算评分：
+
+```
+.claude/commands/clipforge/scripts/
+├── inject_patterns.sh              # 经验模式注入（按 skill_scope 过滤）
+├── check_gates.sh                # 批次门禁检查（文件存在性验证）
+├── calc_soft_score.py            # 软门禁评分计算（按 skill.yaml 中的 scoring 函数）
+├── write_trace.sh                # Trace 文件生成（标准化 YAML 输出）
+├── run_summary.py                # 运行汇总生成（聚合所有阶段 Trace）
+├── aggregate_traces.py           # Trace 聚合（收集高分案例到全局目录）
+├── apply_delta.py                # Delta Rule 应用（修改规则库 YAML）
+├── upgrade_patterns.py           # SEED→VALIDATED 升级（source_traces ≥ 3）
+├── check_injection_filter.sh     # 注入过滤器一致性检查
+└── convert_relaxation_to_delta.py # 放宽提案转 Delta Rule
+```
+
+### Trace 采集（每批次必须执行）
+
+**SubAgent 完成时的标准流程：**
+
+1. 运行门禁检查：
+   ```bash
+   bash .claude/commands/clipforge/scripts/check_gates.sh {batch} {project_dir}
+   ```
+
+2. 计算软门禁评分（如适用）：
+   ```bash
+   python3 .claude/commands/clipforge/scripts/calc_soft_score.py {skill_scope} \
+     --hook_duration=X --word_count=Y --phase_alignment=Z ...
+   ```
+
+3. 写入 Trace 文件：
+   ```bash
+   bash .claude/commands/clipforge/scripts/write_trace.sh {stage} {project_dir} \
+     --status=PASSED|FAILED --soft_score=X.XX --constraint_hits=...
+   ```
+
+4. 生成运行汇总（仅 SubAgent-4 执行）：
+   ```bash
+   python3 .claude/commands/clipforge/scripts/run_summary.py {project_dir}
+   ```
+
+### 负向闭环（失败 → 归因 → 规则回流）
+
+**自动触发条件**：`run-summary.yaml` 中存在 `status: FAILED` 的阶段
+
+**执行流程**：
+1. 读取 `trace/run-summary.yaml`，定位失败阶段
+2. 执行**强归因**：检查已有规则是否覆盖此违规
+3. 如未覆盖，进入**弱归因**：判定根因（rule_missing / capability_gap / rule_violation）
+4. 产出 Delta Rule 候选，写入 `_deltas/D-{timestamp}.yaml`
+5. 应用 Delta Rule（confidence ≥ 0.7 且 EXPERIMENTAL 时自动执行）：
+   ```bash
+   python3 .claude/commands/clipforge/scripts/apply_delta.py _deltas/ _rules-lib/
+   ```
+
+**协议详情**：`clipforge/_attribution-protocol.md`
+
+### 正向闭环（成功 → 分析 → 经验沉淀）
+
+**自动触发条件**：`run-summary.yaml` 中存在 `soft_score ≥ 0.85` 的阶段
+
+**执行流程**：
+1. 聚合高分 Trace 到全局目录：
+   ```bash
+   python3 .claude/commands/clipforge/scripts/aggregate_traces.py {project_dir} _success-traces/
+   ```
+
+2. 标记为"高分成功案例"，提取关键决策点
+3. 与历史高分案例比对，识别重复模式
+4. 校验不违规（负向闭环否决权）
+5. 沉淀到 `_patterns/store.yaml`（type=SEED, requires_validation=true）
+6. 升级满足条件的模式（source_traces ≥ 3）：
+   ```bash
+   python3 .claude/commands/clipforge/scripts/upgrade_patterns.py _patterns/store.yaml
+   ```
+7. 转换放宽提案为 Delta Rule（如有）：
+   ```bash
+   python3 .claude/commands/clipforge/scripts/convert_relaxation_to_delta.py _patterns/store.yaml _deltas/
+   ```
+
+**协议详情**：`clipforge/_success-analysis-protocol.md`
+
+### 经验模式注入（每批次开始前）
+
+**自动执行**：SubAgent 启动时自动注入匹配的经验模式
+
+```bash
+bash .claude/commands/clipforge/scripts/inject_patterns.sh {skill_scope}
+```
+
+**过滤逻辑**：
+- 按 `skill_scope` 匹配（如 `clipforge.stage3-scenes`）
+- 按 `weight` 排序（HIGH > MEDIUM > LOW）
+- 输出 `as_preference.text`（SEED 和 VALIDATED 模式）
+- 输出 `as_fewshot.example_output`（仅 VALIDATED 模式）
+
+**注入位置**：SubAgent prompt 的"经验模式注入"段
+
+### Trace 采集
+
+每个阶段执行时，在 `{project_dir}/trace/` 目录下写入 Trace 文件：
+- 格式：`stage{N}-{timestamp}.yaml`（详见 `clipforge/_trace-format.md`）
+- 内容：gate_report（门禁结果）、constraint_hits（规则触碰）、artifacts（产出文件）
+- 批次结束时写入 `run-summary.yaml`（汇总所有阶段状态）
+
+### 负向闭环（失败 → 归因 → 规则回流）
+
+当某阶段流程/合规门禁未通过时：
+1. 记录违规详情到 Trace
+2. 执行**强归因**：检查已有规则是否覆盖此违规
+3. 如未覆盖，进入**弱归因**：判定根因（rule_missing / capability_gap / rule_violation）
+4. 产出 Delta Rule 候选（详见 `clipforge/_attribution-protocol.md`）
+5. confidence ≥ 0.7 且 EXPERIENTIAL → 自动执行；否则 → 标记待人工确认
+
+### 正向闭环（成功 → 分析 → 经验沉淀）
+
+当某阶段软门禁评分 ≥ 0.85 时：
+1. 标记为"高分成功案例"，记录到 Trace
+2. 提取关键决策点
+3. 与历史高分案例比对，识别重复模式
+4. 校验不违规（负向闭环否决权）
+5. 沉淀到 `_patterns/store.yaml`（详见 `clipforge/_success-analysis-protocol.md`）
+
+## 经验模式注入
+
+每次执行前，从 `_patterns/store.yaml` 读取与当前 Skill 相关的经验模式：
+- 按 `skill_scope` 过滤（如 Stage 3 只读取 scope 含 `stage3-scenes` 的模式）
+- 将 `as_preference.text` 注入 SubAgent prompt 的"成功经验"段
+- 将 `as_fewshot.example_output` 注入 few-shot 示例（如有）
+
+SubAgent prompt 组装时追加：
+```
+成功经验（来自历史高分案例，供参考）：
+{pattern_store 中相关偏好列表}
+```
 
 ## 模式
 
@@ -94,6 +294,8 @@ clipforge/categories/
 | `clipforge/_director-toolkit` | 导演思维工具包（5 个必答题 + 视觉词汇表 + 爆款导演笔记） | Stage 2/3/6 |
 | `clipforge/_viral-cases/{file}` | 爆款视频案例库（多维度分析 + 可提取模式） | Stage 2/3/7 按需参考 |
 | `clipforge/categories/{id}` | 分类配置（数据获取、风格、音色、标签等覆盖规则） | 各 stage 按需读取 |
+| `clipforge/_patterns/store.yaml` | 经验模式库（从高分案例沉淀的可复用模式） | SubAgent prompt 注入 |
+| `clipforge/_rules-lib/` | 结构化规则库（全局 + 场景 + 清理规则，统一编号） | 各 stage 的 Boundary 引用 |
 
 **Stage 1/3/6/7 执行前，必须先读取 `clipforge/_shared-rules` 获取内容规范。Stage 2/3/6 执行前读取 `clipforge/_director-toolkit` 获取导演思维工具。Stage 6 额外读取 `clipforge/_render-safety` 获取渲染安全和三层架构规范。**
 
@@ -204,6 +406,11 @@ workspace/
                 ├── douyin.md           # delivery artifact
                 ├── final.mp4           # delivery artifact
                 ├── final_no_bgm.mp4    # delivery artifact
+                ├── trace/              # Trace 数据
+                │   ├── stage0-*.yaml
+                │   ├── stage1-*.yaml
+                │   ├── ...
+                │   └── run-summary.yaml
                 └── .cleaned            # cleanup artifact
 ```
 

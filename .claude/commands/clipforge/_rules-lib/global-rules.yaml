@@ -1,0 +1,191 @@
+# =============================================================================
+# ClipForge 全局规则库 (GLOBAL scope)
+# =============================================================================
+# 作用域: GLOBAL — 所有 Skill、所有场景、所有阶段均适用
+# 来源: _shared-rules.md §1-§7
+# 引用方式: skill.yaml 中 boundary.rules[].ref: "R-GLOBAL-xxx"
+# =============================================================================
+
+rules:
+
+  # ─── §1 措辞规范（防止广告审核）───────────────────────────────────
+
+  - id: "R-GLOBAL-001"
+    type: FORBIDDEN_SPEECH
+    pattern: "使用广告审查敏感词（必装、必备、神器）"
+    positive: "使用限定性表述如'挺好用''值得关注''推荐试试'"
+    guardrail: "检测输出中是否包含敏感词表：必装|必备|神器"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  - id: "R-GLOBAL-002"
+    type: FORBIDDEN_SPEECH
+    pattern: "使用强诱导行为词（赶紧去、马上去、立即下载）"
+    positive: "使用'感兴趣的可以看看''开源免费，值得试试'等自然表述"
+    guardrail: "检测输出中是否包含：赶紧去|马上去|立即下载|立刻下载"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  - id: "R-GLOBAL-003"
+    type: FORBIDDEN_SPEECH
+    pattern: "使用极限用语（全网最好、第一、最强）"
+    positive: "使用'很受欢迎''在XX领域表现不错'"
+    guardrail: "检测输出中是否包含：全网最好|全网第一|最强|最好|第一"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  - id: "R-GLOBAL-004"
+    type: FORBIDDEN_SPEECH
+    pattern: "使用命令式语气（你一定要、千万别错过）"
+    positive: "使用'大家可以试试''也挺有意思的'等分享式语气"
+    guardrail: "检测输出中是否包含：你一定要|千万别错过|必须试试|不看后悔"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  - id: "R-GLOBAL-005"
+    type: FORBIDDEN_SPEECH
+    pattern: "使用促销词汇（免费领、福利、白嫖）"
+    positive: "使用'开源项目''可以免费使用'"
+    guardrail: "检测输出中是否包含：免费领|福利|白嫖|薅羊毛"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  - id: "R-GLOBAL-006"
+    type: FORBIDDEN_SPEECH
+    pattern: "在正文中使用诱导互动语（点赞关注、一键三连）"
+    positive: "仅在文案末尾自然提及互动，正文不放"
+    guardrail: "检测视频旁白/画面文字中是否包含：点赞|关注|一键三连|双击"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  - id: "R-GLOBAL-007"
+    type: FORBIDDEN_SPEECH
+    pattern: "点名商业品牌名称（GPT、DeepSeek、通义千问）"
+    positive: "使用技术类别替代品牌名（如'大语言模型''AI助手'）"
+    guardrail: "检测输出中是否包含品牌名：GPT|DeepSeek|通义千问|文心一言|Kimi"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §1"
+
+  # ─── §2 画面文字语言规范 ──────────────────────────────────────────
+
+  - id: "R-GLOBAL-008"
+    type: FORBIDDEN_SPEECH
+    pattern: "画面文字使用非中文（标题/标签/CTA用英文）"
+    positive: "画面文字以中文为主，仅项目名称和技术缩写保留英文"
+    guardrail: "检测HTML中非项目名/非技术缩写的英文标题/标签/CTA"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §2"
+
+  # ─── §3 CTA 时间规范 ─────────────────────────────────────────────
+
+  - id: "R-GLOBAL-009"
+    type: FORBIDDEN_SPEECH
+    pattern: "CTA提及具体更新时间（每天7点、每晚8点）"
+    positive: "使用通用表述如'每天更新''关注获取每日热门'"
+    guardrail: "检测输出中是否包含具体时间模式：每天\\d点|每晚\\d点|\\d点更新"
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §3"
+
+  # ─── §4 视频内容安全 ─────────────────────────────────────────────
+
+  - id: "R-GLOBAL-010"
+    type: FORBIDDEN_ACTION
+    pattern: "视频中展示网址/URL"
+    positive: "只展示项目名称，链接放评论区"
+    guardrail: "检测HTML画面文字中是否包含URL模式（https://|www.|.com|.io）"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §4"
+
+  - id: "R-GLOBAL-011"
+    type: FORBIDDEN_SPEECH
+    pattern: "引导脱离平台（下载安装包、打开浏览器就能用）"
+    positive: "描述能力而非获取路径（'本地运行''在线就能用''开箱即用'）"
+    guardrail: "检测输出中是否包含：下载安装包|双击安装|下载桌面应用|打开浏览器就能用|前往github"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §4.1"
+
+  - id: "R-GLOBAL-012"
+    type: FORBIDDEN_ACTION
+    pattern: "评论区放完整链接"
+    positive: "评论区只列名称+搜索指引（'搜名字就能找到'）"
+    guardrail: "检测douyin.md评论区段是否包含完整URL"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules §4.1"
+
+  # ─── §5 黄金3秒法则 ─────────────────────────────────────────────
+
+  - id: "R-GLOBAL-013"
+    type: FORBIDDEN_METHOD
+    pattern: "hook场景旁白超过12字或含信息性内容"
+    positive: "hook旁白为纯钩子≤12字（数据震撼/反问/强对比/悬念）"
+    guardrail: "检测narration_segments.json中hook场景的narration_segment字数是否≤12"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §5.1"
+
+  - id: "R-GLOBAL-014"
+    type: FORBIDDEN_METHOD
+    pattern: "hook场景视觉元素超过3个"
+    positive: "hook画面极简：≤3个元素，主标题≥100px，双色光晕，留白≥30%"
+    guardrail: "检测index.html中hook场景的可见元素数量是否≤3"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §5.2"
+
+  - id: "R-GLOBAL-015"
+    type: FORBIDDEN_ACTION
+    pattern: "视频开头使用音频淡入（afade=t=in）"
+    positive: "旁白+BGM第一帧立即全音量播放"
+    guardrail: "检测TTS/ffmpeg命令中第一段是否含afade=t=in"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §5.3"
+
+  # ─── §6 视觉切换频率 ─────────────────────────────────────────────
+
+  - id: "R-GLOBAL-016"
+    type: FORBIDDEN_METHOD
+    pattern: "场景超过12秒不切换视觉内容"
+    positive: "遵守切换频率：≤10s=1phase, 10-20s≥2, 20-40s≥3, >40s=⌈d/14⌉"
+    guardrail: "检测narration_segments.json中每个场景的visual_phases数量是否满足公式"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §6"
+
+  - id: "R-GLOBAL-017"
+    type: FORBIDDEN_METHOD
+    pattern: "Phase断点使用时间均分（gap = duration / phase_count）"
+    positive: "Phase断点与旁白话题转换对齐，按字数比例换算时间戳"
+    guardrail: "检测Phase间隔是否为均匀分布（容差±1s）"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules §6"

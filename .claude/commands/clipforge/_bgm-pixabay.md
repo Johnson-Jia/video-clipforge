@@ -1,3 +1,11 @@
+---
+id: "clipforge.bgm-pixabay"
+description: Pixabay BGM 批量下载 — 按主题风格分类下载无版权 BGM
+version: "2.0.0"
+type: EXECUTIVE
+rigor: STANDARD
+---
+
 # Pixabay BGM 批量下载
 
 > **用途：** 从 Pixabay 批量下载无版权 BGM 到 `workspace/bgm/`，按主题风格分类命名。

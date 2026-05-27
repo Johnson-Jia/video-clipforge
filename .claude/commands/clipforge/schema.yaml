@@ -1,24 +1,40 @@
 name: clipforge
-version: 1
-description: 通用短视频全流程创作 DAG
+version: 2
+description: 通用短视频全流程创作 DAG（v2: 新增 rigor + trace_level 字段）
+
+# ═══ 渐进严谨度（rigor）═══
+# LITE    — 低风险、高频、简单任务（仅 HARD 规则 + HARD Gate）
+# STANDARD — 通用场景（全量注入 + HARD/SOFT Gate）
+# STRICT  — 高风险、复杂任务（全量注入 + Guard 完整加载 + FULL Trace 不可降级）
+
+# ═══ 轨迹采集级别（trace_level）═══
+# FULL    — 完整执行过程 + 决策节点
+# SUMMARY — 仅结果 + 门禁报告
+# NONE    — 不采集
 
 artifacts:
   env-check:
     generates: "workspace/.env-checked"
     description: "当 workspace/.env-checked 缺失时使用 — 校验 Node.js、FFmpeg、edge-tts、yt-dlp 和 HyperFrames 是否就绪"
     template: "stage0-env"
+    rigor: LITE
+    trace_level: SUMMARY
 
   content:
     generates: "**/content_ready.txt"
     description: "当环境已就绪但 content_ready.txt 不存在时使用 — 从 URL、GitHub 或用户输入获取并准备原始内容"
     template: "stage1-content"
     requires: [env-check]
+    rigor: STANDARD
+    trace_level: FULL
 
   design:
     generates: "**/design.md"
     description: "当内容已就绪但 design.md 不存在时使用 — 分析内容，定义视觉风格方向、配色方案和故事板"
     template: "stage2-analysis"
     requires: [content]
+    rigor: STANDARD
+    trace_level: FULL
 
   narration:
     generates:
@@ -27,6 +43,8 @@ artifacts:
     description: "当 design.md 已存在但 narration_segments.json 缺失时使用 — 拆解场景，编写含钩子和 CTA 的旁白文案"
     template: "stage3-scenes"
     requires: [design]
+    rigor: STANDARD
+    trace_level: FULL
 
   movie-clips:
     generates: "**/clip_durations.json"
@@ -34,6 +52,8 @@ artifacts:
     template: "_movie-clips"
     requires: [narration]
     condition: "narration_segments.json 中包含 video_clip 类型场景"
+    rigor: STANDARD
+    trace_level: FULL
 
   audio:
     generates:
@@ -46,6 +66,8 @@ artifacts:
     requires: [narration]
     requires_any: [movie-clips]
     requires_any_note: "当 movie-clips 条件触发时，audio 必须等 movie-clips 完成；否则直接依赖 narration"
+    rigor: STANDARD
+    trace_level: FULL
 
   assets:
     generates: "**/assets/manifest.md"
@@ -54,6 +76,8 @@ artifacts:
     requires: [design]
     optional: true
     optional_note: "不执行时 video 不等待，直接继续"
+    rigor: LITE
+    trace_level: SUMMARY
 
   video:
     generates:
@@ -65,6 +89,8 @@ artifacts:
     requires: [audio]
     requires_optional: [assets]
     requires_optional_note: "assets 为 optional，不执行时不阻塞 video"
+    rigor: STRICT
+    trace_level: FULL
 
   delivery:
     generates:
@@ -76,9 +102,13 @@ artifacts:
     description: "当 output.mp4 已存在但 final.mp4 缺失时使用 — 拼接封面帧，生成封面图，编写抖音文案和标签"
     template: "stage7-delivery"
     requires: [video]
+    rigor: STANDARD
+    trace_level: FULL
 
   cleanup:
     generates: "**/.cleaned"
     description: "当交付已完成但 .cleaned 标记缺失时使用 — 按保留策略清理中间产物"
     template: "_cleanup-rules"
     requires: [delivery]
+    rigor: LITE
+    trace_level: SUMMARY
