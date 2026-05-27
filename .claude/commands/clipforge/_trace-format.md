@@ -68,6 +68,49 @@ trace:
   # 归因 / 成功分析（执行后由协议填充）
   attribution: null
   success_analysis: null
+
+  # 外部播放数据（发布后回填）
+  external_metrics:
+    douyin:                          # 抖音数据
+      plays: 208979                  # 播放量
+      five_second_rate: 0.459        # 5s 完播率
+      completion_rate: 0.046         # 完播率
+      avg_play_time: 14.67           # 平均播放时长(秒)
+      likes: 5917                    # 点赞
+      shares: 7037                   # 分享
+      comments: 956                  # 评论
+      favorites: 168                 # 收藏
+    wechat_video:                    # 视频号数据
+      plays: 7766                    # 播放量
+      completion_rate: 0.116         # 完播率
+      avg_play_time: 26              # 平均播放时长(秒)
+      likes: 90                      # 点赞
+      shares: 377                    # 分享
+      comments: 10                   # 评论
+    xiaohongshu:                     # 小红书数据
+      impressions: 6331              # 曝光量
+      saves: 154                     # 收藏
+      save_rate: 0.024               # 收藏率
+      likes: 94                      # 点赞
+      comments: 2                    # 评论
+      fans_gained: 51                # 涨粉
+    aggregate:                       # 聚合评分
+      best_platform: "douyin"        # 表现最好的平台
+      quality_score: 0.95            # 综合质量评分 (0-1)
+      quality_evaluator: "PLAYBACK_DATA"  # 评分来源
+      content_type: "github-daily"   # 内容类型分类
+```
+
+**聚合评分计算参考**（非强制，由评价者决定）：
+
+| 信号 | 权重 | 说明 |
+|------|------|------|
+| 抖音 5s 完播率 ≥ 45% | 高 | 算法推流的先行指标 |
+| 视频号完播率 ≥ 15% | 高 | 用户粘性的可靠信号 |
+| 小红书收藏率 ≥ 3% | 中 | 干货价值信号 |
+| 抖音分享量 > 播放量×3% | 中 | 社交传播价值 |
+| 三平台一致高 | 高 | 内容质量好（非分发问题） |
+| 三平台一致低 | 高（负面） | 内容本身有问题 |
 ```
 
 ## 运行汇总结构

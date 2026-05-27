@@ -4,11 +4,12 @@
 # 从高分成功案例中提炼的可复用模式
 # 生命周期：发现(Discover) → 验证(Validate) → 沉淀(Deposit) → 应用(Apply) → 淘汰(Retire)
 #
-# ─── 种子模式说明 ───────────────────────────────────────────────────────────
-# 以下 5 个模式均为 SEED 类型，来源于 05-19 爆款案例（11万播放，抖音）。
-# sample_size = 1（单一案例），不满足 ≥3 案例的 VALIDATED 沉淀门槛。
-# 当前作为种子模式注入，需 ≥3 个后续高分案例验证后方可升级为 VALIDATED。
-# 升级路径：当 source_traces 积累 ≥3 个案例 → type 改为 VALIDATED → confidence 重新计算
+# ─── 首次数据驱动升级（2026-05-27）──────────────────────────────────────────
+# 基于 17 天 58 条视频（抖音）+ 30 条（视频号）+ 36 条（小红书）的播放数据：
+# - P-001（量化钩子）→ VALIDATED：TOP 5 全部含数字锚定（5s率≥44%），BOTTOM 5 多数无数字
+# - P-003（8层卡片）→ VALIDATED：GitHub日推类型全平台 S 级表现
+# - P-002（反直觉）→ 部分验证：RuView 案例完播率 9.1%（远超均值），但效果不稳定
+# - P-005（时长甜区）→ 部分验证：TOP 视频集中 45-55s，但范围可能更宽
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # 消费方式：
@@ -18,7 +19,7 @@
 #   4. as_constraint_relaxation 需人工确认后生效（仅 VALIDATED）
 #
 # 治理：
-#   - 有效性评估（每周）：应用模式后的平均软评分是否高于基线
+#   - 有效性评估（每周）：应用模式后的平均质量评分是否高于基线
 #   - 淘汰（每两周）：连续 30 天未命中，或应用后评分下降 → 标记废弃
 #   - 冲突检测（每周）：经验模式是否与新增禁止规则冲突
 
@@ -26,21 +27,23 @@ patterns:
 
   # ─── P-001: 量化钩子 ─────────────────────────────────────────────────────
   - id: "P-001"
-    type: SEED                              # SEED | VALIDATED
+    type: VALIDATED                          # 2026-05-27 升级：17天数据验证
     source: "viral-case:05-19-douyin"
     description: "量化钩子开场（≥2 个具体数字）"
-    requires_validation: true                # sample_size < 3，需更多案例验证
+    requires_validation: false
+    upgraded_at: "2026-05-27"
+    validation_evidence: "17天58条视频分析：TOP 5 全部包含数字锚定（5s率≥44%），BOTTOM 5 多数无数字（5s率≤35%）"
     evidence:
-      sample_size: 1
-      case_result: "11万播放（抖音），远超同期平均"
-      confidence: 0.55                       # 单案例弱证据（原 0.75 → 降至种子置信度）
+      sample_size: 15
+      case_result: "TOP5 视频 hook 全部含具体数字，5s完播率≥44%；BOTTOM5 多数无数字锚定"
+      confidence: 0.85                       # 15条数据交叉验证，高置信度
     as_preference:
       text: "视频开场使用包含 ≥2 个具体数字的量化钩子（如'6个项目，AI占了一半'）"
-      weight: LOW                            # SEED 模式统一 LOW，升级 VALIDATED 后可提升至 MEDIUM/HIGH
-    as_fewshot: null                         # 升级 VALIDATED 且 sample_size ≥ 5 时填充
-    as_constraint_relaxation: null           # 升级 VALIDATED 且有证据支撑时填充
+      weight: HIGH                           # VALIDATED 模式提升至 HIGH
+    as_fewshot: null                         # sample_size < 5，暂不填充 few-shot
+    as_constraint_relaxation: null
     skill_scope: "clipforge.stage3-scenes"
-    source_traces: []                        # 后续高分案例的 Trace ID 追加于此
+    source_traces: []
 
   # ─── P-002: 反直觉描述 ───────────────────────────────────────────────────
   - id: "P-002"
@@ -48,10 +51,11 @@ patterns:
     source: "viral-case:05-19-douyin"
     description: "反直觉描述（用常见事物做不常见的事）"
     requires_validation: true
+    partial_validation: "RuView反直觉案例完播率9.1%（远超均值），但非所有反直觉话题都有同等效果"
     evidence:
       sample_size: 1
       case_result: "'WiFi信号做空间感知，完全不用摄像头'是最高点击率钩子句"
-      confidence: 0.58                       # 单案例弱证据（原 0.80 → 降至种子置信度）
+      confidence: 0.65                       # 部分验证：有效果但稳定性不足
     as_preference:
       text: "至少 1 个项目使用反直觉角度描述（用常见事物做不常见的事）"
       weight: LOW                            # SEED 模式统一 LOW
@@ -62,17 +66,19 @@ patterns:
 
   # ─── P-003: 8层全屏卡片 ─────────────────────────────────────────────────
   - id: "P-003"
-    type: SEED
+    type: VALIDATED                          # 2026-05-27 升级：全平台 S 级表现验证
     source: "viral-case:05-19-douyin"
     description: "8层全屏卡片信息结构"
-    requires_validation: true
+    requires_validation: false
+    upgraded_at: "2026-05-27"
+    validation_evidence: "GitHub日推类型在所有平台S级表现：抖音均播放20276，视频号均播放6878，小红书均曝光28244"
     evidence:
-      sample_size: 1
-      case_result: "一屏一项目8秒，对比同日多项目版3.3万，单项目版11万"
-      confidence: 0.60                       # 单案例弱证据（原 0.85 → 降至种子置信度，保留相对较高因有 A/B 对照）
+      sample_size: 24
+      case_result: "github-daily 类型跨平台一致碾压其他类型，24条样本验证"
+      confidence: 0.80                       # 24条样本 + 三平台交叉验证
     as_preference:
       text: "标准模式使用8层信息卡片（类别标签+排名+项目名+描述+语言+星标+三词卖点+评语）"
-      weight: LOW                            # SEED 模式统一 LOW
+      weight: HIGH                           # VALIDATED 模式提升至 HIGH
     as_fewshot: null
     as_constraint_relaxation: null
     skill_scope: "clipforge.stage6-production"
@@ -102,10 +108,11 @@ patterns:
     source: "viral-case:05-19-douyin"
     description: "45-55秒时长甜区"
     requires_validation: true
+    partial_validation: "TOP视频集中在45-55s范围，但也有55s+的表现良好，甜区范围可能更宽"
     evidence:
       sample_size: 1
       case_result: "55秒时长，完播率和互动率均优于过长或过短版本"
-      confidence: 0.50                       # 单案例弱证据（原 0.70 → 降至种子置信度）
+      confidence: 0.60                       # 部分验证：范围有效但可能偏窄
     as_preference:
       text: "标准模式视频总时长控制在 45-55 秒（6项目×8秒 + 4秒hook + 3秒CTA）"
       weight: LOW                            # SEED 模式统一 LOW

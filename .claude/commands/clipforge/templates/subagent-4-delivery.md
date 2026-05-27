@@ -25,15 +25,20 @@ bash .claude/commands/clipforge/scripts/inject_patterns.sh "clipforge.stage7-del
 
 将输出拼入执行上下文。如果输出"无匹配经验模式"则跳过。
 
-## Part A: delivery — 封面 + 交付 + 抖音文案
+## Part A: delivery — 封面 + 交付 + 三平台文案
 
 1. 读取 .claude/commands/clipforge/_shared-rules/writing.md（§1 措辞规范 + §3 CTA + §4 内容安全）
 2. 读取 .claude/commands/clipforge/stage7-delivery.md，按指引执行
-3. 读取 .claude/commands/clipforge/categories/{{CATEGORY}}/delivery.md（delivery 配置：标签、评论区模板、封面徽章、数据验证）
+3. 读取 .claude/commands/clipforge/categories/{{CATEGORY}}/delivery.md（delivery 配置：各平台标签、评论区模板、封面徽章、数据验证）
 4. 读取 design.md 获取风格方向（封面复用视频风格）
-5. 封面: 6 层模板 + 双色光晕 + 渐变背景，2x 超采样 → 缩放
+5. 封面: 结构约束 + 创意空间，2x 超采样 → 缩放（详见 stage7-delivery.md §7.1）
 6. 封面嵌入第一帧: final.mp4 + final_no_bgm.mp4
-7. 生成 3 套抖音文案，标签使用 delivery.md 的 hashtags
+7. 生成**三平台差异化文案**：
+   - 读取 `categories/{{CATEGORY}}/delivery.md` 获取各平台的标签和评论区模板
+   - 抖音文案：数据锚定 hook + 泛流量标签 + 项目名列表
+   - 视频号文案：专业深度 + 职业标签 + 转发引导
+   - 小红书文案：SEO 标题 + 干货列表体 + 搜索标签（8-10个）
+   - 输出到 `douyin.md`（含三平台文案，用 `## 抖音` / `## 视频号` / `## 小红书` 分段）
 
 确认文件: cover.png, final.mp4, final_no_bgm.mp4, douyin.md
 

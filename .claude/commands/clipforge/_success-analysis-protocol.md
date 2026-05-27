@@ -45,17 +45,17 @@
 
 满足以下**任一**条件时，标记为"高分成功案例"，触发采集和分析：
 
-1. **外部数据触发**（首选）：视频发布后，播放数据回填到 Trace 的 `quality_score` 字段
-   - `quality_score ≥ 0.85` 且 `quality_evaluator: PLAYBACK_DATA`
-   - 数据来源：完播率、互动率、播放量等（由人工或自动化工具回填）
-   
-2. **人工评价触发**：人工审看后，回填 `quality_score` 和 `quality_evaluator: HUMAN`
+1. **外部数据触发**（首选）：视频发布后，播放数据回填到 Trace 的 `external_metrics` 字段
+   - `aggregate.quality_score ≥ 0.85` 且 `quality_evaluator: PLAYBACK_DATA`
+   - 或：任一平台核心指标超 TOP 20% 基准（抖音播放 > 20000 / 视频号完播 > 15% / 小红书收藏率 > 3%）
+
+2. **人工评价触发**：人工审看后回填 `quality_score`（`quality_evaluator: HUMAN`）
    - `quality_score ≥ 0.85`
 
-3. **流程完整性触发**（降级方案）：当外部数据不可用时
+3. **流程完整性触发**（降级方案，产出 SEED 模式）：
    - `process_passed: true` AND `compliance_passed: true`
-   - 且 Agent 在 Trace 中记录了 `quality_notes`（定性描述而非评分）
-   - 此方式产出的模式标记为 `type: SEED`，需要更多案例验证
+   - 无外部数据时，记录为"流程完整案例"
+   - 此类案例产出的模式标记为 `type: SEED`，需更多数据验证
 
 ## 外部指标回填
 
@@ -112,6 +112,20 @@ Step 4: 负向闭环否决权
 Step 5: 沉淀到 Pattern Store
     │  以偏好/示例/放宽提案形式写入 _patterns/store.yaml
     │  设置 skill_scope 和 confidence
+    │
+    ▼
+Step 6: 跨平台对比分析
+    │  比较同一视频在三平台的表现差异：
+    │  - 抖音高播放 + 视频号高完播 = 内容质量好（双验证）
+    │  - 抖音低播放 + 视频号高分享 = 话题有社交价值但算法不推
+    │  - 小红书高收藏 = 内容有干货价值（长尾流量信号）
+    │  - 三平台一致低 = 内容本身有问题（非分发问题）
+    │
+    │  按 content_type 分组统计：
+    │  - github-daily 基准：抖音均播放 20000，视频号完播 12.6%
+    │  - deep-dive 基准：抖音均播放 1800，视频号完播 8.1%
+    │  - 超过基准 2x → 高质量信号
+    │  - 低于基准 0.5x → 低质量信号
 ```
 
 ## 成功案例采集格式

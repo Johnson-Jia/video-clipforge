@@ -84,9 +84,14 @@ Q: 根因是什么？
     │   → 归档，不回流到规则库
     │   → 记录到能力边界清单
     │
-    └─ rule_violation → Agent 故意绕过已有规则
-        → 加强 Red Flags 表
-        → 考虑提升规则 severity
+    ├─ rule_violation → Agent 故意绕过已有规则
+    │   → 加强 Red Flags 表
+    │   → 考虑提升规则 severity
+    │
+    └─ content_type_mismatch → 内容类型与流水线不匹配
+        → 记录到内容类型诊断报告
+        → 建议切换到适配的视觉结构（图表/对比/论述型）
+        → 不回流到规则库（这不是规则问题，是策略问题）
 ```
 
 **弱归因产出格式**：

@@ -57,6 +57,33 @@ skill:
           severity: HARD
           class: EXPERIENTIAL
           scope: SKILL
+      - inline:
+          id: "R-HOOK-001"
+          type: FORBIDDEN_METHOD
+          pattern: "hook 场景标题不包含任何具体数字"
+          positive: "hook 标题必须包含至少 1 个具体数字（项目数/涨星数/比例/金额）"
+          guardrail: "检测 hook 场景 text 是否包含数字字符（0-9）"
+          severity: HARD
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-HOOK-002"
+          type: FORBIDDEN_SPEECH
+          pattern: "hook 以疑问句开头（'你知道吗''你还在''为什么不'）"
+          positive: "hook 用陈述句+数据开头，制造信息冲击而非疑问"
+          guardrail: "检测 hook text 首 5 字是否包含疑问词"
+          severity: SOFT
+          class: EXPERIENTIAL
+          scope: SKILL
+      - inline:
+          id: "R-HOOK-003"
+          type: FORBIDDEN_SPEECH
+          pattern: "hook 使用纯情绪表达无数据支撑（'太强了''炸了''绝了'单独出现）"
+          positive: "hook 的情绪表达必须搭配具体数据（'炸了'→'一天涨近四千星'）"
+          guardrail: "hook text 中如有情绪词，前后 10 字内必须有数字"
+          severity: SOFT
+          class: EXPERIENTIAL
+          scope: SKILL
     preferences:
       - text: "角色表情与 humor_type 搭配，无 humor 时不出 tease 表情"
         weight: MEDIUM
@@ -64,6 +91,8 @@ skill:
         weight: MEDIUM
       - text: "重点场景通常 6-8 秒，概括场景 3-4 秒（具体时长由 Agent 根据内容密度自主决定）"
         weight: MEDIUM
+      - text: "hook 使用'数据锚定'公式：具体数字 + 比例/对比 + 动感词汇"
+        weight: HIGH
 
   guard:
     red_flags:
