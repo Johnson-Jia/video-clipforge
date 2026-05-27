@@ -350,6 +350,8 @@ mkdir -p ${OUTPUT_DIR}
 
 保存完成后，立即执行 `clipforge/_cleanup-rules` 清理中间产物，保留核心产出物（article.md、cover.png、content.md、raw_trending.json）。磁盘占用应 < 5 MB。
 
+> **⛔ 禁止手动 `rm -f` 批量删除。** 使用清理脚本：`bash .claude/commands/clipforge/scripts/cleanup_project.sh "${OUTPUT_DIR}"`。如果脚本不适用文章项目，按 `_cleanup-rules.md` 的 §清理前检查点 逐条对照删除。
+
 ## Step 6: 自续期
 
 执行 `clipforge/_cron-renew` 定时任务自续期模式，任务关键词为 `github-weekly-zhihu`。

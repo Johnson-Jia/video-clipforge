@@ -19,9 +19,14 @@
 
 ## Part B: cleanup — 项目清理
 
-1. 读取 .claude/commands/clipforge/_cleanup-rules.md，按指引执行完整清理
-2. bgm.wav 如来自 workspace/bgm/ 素材库，删除项目副本
-3. 报告清理前后磁盘占用
+> **⛔ 必须通过脚本执行清理，禁止手动 rm。**
+> 2026-05-22 和 2026-05-27 两次事故均因手动 rm 删除了保留清单文件。
+
+1. 读取 .claude/commands/clipforge/_cleanup-rules.md（保留清单 + 必删列表）
+2. **执行清理脚本**：`bash .claude/commands/clipforge/scripts/cleanup_project.sh "${PROJECT_DIR}"`
+3. 如果脚本不可用，按 _cleanup-rules.md 的 §清理前检查点 逐步执行
+4. 清理后验证：`ls -la ${PROJECT_DIR}/` 确认保留清单文件仍存在
+5. 报告清理前后磁盘占用
 
 确认项目目录仅含保留文件，磁盘占用 < 30 MB。
 报告状态: DONE / DONE_WITH_CONCERNS / BLOCKED
