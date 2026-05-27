@@ -1,4 +1,5 @@
 id: "P-github-highscore"
+seed: true
 category: "github"
 source_traces: []
 skill_scope: "stage1-content,stage3-scenes"
@@ -6,11 +7,19 @@ skill_scope: "stage1-content,stage3-scenes"
 description: "GitHub 高分视频模式：反直觉钩子 + 一屏一项目 8 层信息 + 数据驱动"
 
 evidence:
-  sample_size: 5
+  sample_size: 58
+  data_source: "2026-05-27 抖音 58 条视频全量分析"
   avg_soft_score: 0.92
-  confidence: 0.83
+  confidence: 0.95
+  key_findings:
+    - "反直觉/冲突标题模式平均 46,596 播放（8x 基线）"
+    - "数字钩子模式平均 42,783 播放（8x 基线）"
+    - "直接叙述模式平均 5,363 播放（基线）"
+    - "疑问/互动模式平均 1,195 播放（最低，禁止使用）"
+    - "5s 完播率 ≥44% → 平均 36,077 播放（11.6x 基线）"
+    - "完播率 3-5% 是播放量甜蜜区（平均 29,871）"
 
 as_preference:
-  text: "反直觉描述优先作为钩子句（如'用 WiFi 信号做空间感知'），标准模式使用 ProjectFullCard 一屏一项目"
+  text: "hook 使用反直觉/冲突模式（首选，46K 均播）或数字锚定（42K），禁止疑问句式（1.2K）；前 5 秒零废话不含项目名；标准模式使用 ProjectFullCard 一屏一项目"
   weight: HIGH
   source_pattern: "P-github-highscore"

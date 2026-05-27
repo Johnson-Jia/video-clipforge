@@ -1,20 +1,24 @@
 skill:
   meta:
     id: "skill.clipforge.movie-clips"
-    version: "1.0.0"
+    version: "1.1.0"
     type: EXECUTIVE
     tags: ["movie", "clips"]
     rigor: STANDARD
   intent:
-    objective: "电影/影视剪辑模式：从长视频素材提取精彩片段"
+    objective: "影视片段剪辑就绪，时间线已标注"
     criteria:
       - "clips_timeline.json 存在且格式正确"
   boundary:
     rules:
       - ref: "R-G-*"
       - ref: "R-C-*"
+    preferences:
+      - text: "片段选取优先考虑情绪峰值和视觉冲击力"
+        weight: "MEDIUM"
   guard:
     red_flags: []
+    spirit_vs_letter: []
   gate:
     hard: []
     soft: []

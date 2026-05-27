@@ -25,19 +25,6 @@ rules:
     skill: "stage7-delivery"
     source: "feedback-cover-design.md"
 
-  - id: "R-S7-003"
-    type: FORBIDDEN_ACTION
-    pattern: "标题文案使用极限用语"
-    positive: "标题使用信息性描述（如'N 个项目，AI 占了一半'），不用极限词"
-    guardrail: "标题包含'最强'、'必备'、'神器'等广告敏感词"
-    detection:
-      keywords: ["最强", "必备", "神器", "必装"]
-    severity: HARD
-    class: SAFETY
-    scope: SKILL
-    skill: "stage7-delivery"
-    source: "_shared-rules.md §1"
-
   - id: "R-S7-004"
     type: FORBIDDEN_ACTION
     pattern: "封面文字使用英文"

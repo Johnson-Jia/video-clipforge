@@ -1,12 +1,12 @@
 skill:
   meta:
     id: "skill.clipforge.stage3-scenes"
-    version: "1.0.0"
+    version: "1.2.0"
     type: EXECUTIVE
     tags: ["scenes", "narration"]
     rigor: STANDARD
   intent:
-    objective: "拆解场景并撰写旁白文案，产出 narration_segments.json"
+    objective: "旁白文案就绪，场景拆分和节奏设计完成"
     criteria:
       - "narration_segments.json 存在且含 segments 数组"
       - "hook 场景为纯钩子"
@@ -16,6 +16,9 @@ skill:
       - ref: "R-G-*"
       - ref: "R-C-*"
       - ref: "R-S3-*"
+    preferences:
+      - text: "场景节奏和情绪起伏从内容自然推导"
+        weight: "MEDIUM"
   guard:
     red_flags:
       - thought: "hook 里顺便介绍一下背景"
@@ -24,6 +27,16 @@ skill:
       - thought: "场景数量和节奏差不多就行"
         reality: "节奏是视频质量的根本，必须严格按 emotion_curve 设计"
         trigger: "试图跳过节奏设计"
+    spirit_vs_letter:
+      - rule_ref: "R-S3-*"
+        mode: LETTER
+        intent: "hook 结构是流程层硬约束：前 3 秒纯钩子，不放信息性内容"
+      - rule_ref: "R-G-003"
+        mode: LETTER
+        intent: "旁白音色是流程层约束：固定 YunjianNeural，禁止播报腔"
+      - rule_ref: "R-C-*"
+        mode: SPIRIT
+        intent: "场景内容设计享有最大自由度，从内容自主推导叙事节奏"
   gate:
     hard:
       - gate: file_exists

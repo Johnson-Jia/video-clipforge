@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_skill, load_rules_by_scope, RULES_DIR, SKILLS_DIR
 from engine.lib.models import (
-    GateReport, Violation, Severity, GateType, SkillDefinition,
+    GateReport, Violation, Severity, GateType, SkillDefinition, RuleClass,
 )
 
 
@@ -144,6 +144,13 @@ GATE_CHECKERS = {
 }
 
 
+# SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
+SAFETY_GATES = {
+    GateType.no_forbidden_speech,
+    GateType.no_url_in_output,
+}
+
+
 def run_gate(skill: SkillDefinition, project_dir: Path) -> GateReport:
     hard_violations: list[Violation] = []
     hard_passed = True
@@ -203,7 +210,16 @@ def main():
     output = {
         "hard_passed": report.hard_passed,
         "soft_score": report.soft_score,
-        "hard_violations": [{"rule_id": v.rule_id, "details": v.details} for v in report.hard_violations],
+        "hard_violations": [
+            {
+                "rule_id": v.rule_id,
+                "details": v.details,
+                "rule_class": "SAFETY" if any(
+                    v.rule_id.endswith(gt.value) for gt in SAFETY_GATES
+                ) else "EXPERIENTIAL",
+            }
+            for v in report.hard_violations
+        ],
         "soft_issues": report.soft_issues,
     }
     print(json.dumps(output, ensure_ascii=False, indent=2))

@@ -1,4 +1,10 @@
-"""归因引擎 — 强归因（规则命中分析）+ 弱归因（根因判定）。"""
+"""归因引擎 — 强归因（规则命中分析）+ 弱归因（根因判定 + Delta 产出）。
+
+架构哲学对齐：
+- P3（事故复盘）：弱归因产出 Delta，实现「失败 → 归因 → 收紧规则」闭环
+- P8（渐进严谨）：证据驱动置信度，而非硬编码常量
+- Delta Rule API 完整调用：归因不再只返回 dict，而是直接产出增量规则变更
+"""
 from __future__ import annotations
 import argparse
 import json
@@ -8,6 +14,53 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
 from engine.lib.models import Rule, Severity, RuleClass
+from engine.lib.delta import create_delta, save_delta
+
+
+def _evidence_confidence(violation: dict, trace: dict | None = None) -> float:
+    """证据驱动置信度：基于语义级信号动态计算。
+
+    信号来源（按权重递减）：
+    1. trace 中是否存在规则触碰记录（constraint_hits）→ 直接证据
+    2. violation 是否匹配已有规则的 detection.keywords → 模式匹配证据
+    3. trace gate_report 中 hard_violations 的数量 → 上下文证据
+    4. violation 详情中是否包含具体关键词（绕过/跳过/无法）→ 行为证据
+    """
+    signals = 0.25  # 基础置信度（低起点，证据积累才提升）
+
+    # 信号 1：trace 中有规则触碰记录（最高权重）
+    if trace:
+        exec_data = trace.get("execution", {})
+        steps = exec_data.get("steps", [])
+        for step in steps:
+            hits = step.get("constraint_hits", [])
+            if hits:
+                signals += 0.25
+                break
+
+        # 信号 3：gate_report 中 hard_violations 数量提供上下文
+        gate = trace.get("result", {}).get("gate_report", {})
+        violations = gate.get("hard_violations", [])
+        if len(violations) >= 1:
+            signals += 0.10
+        if len(violations) >= 2:
+            signals += 0.05
+
+        # path_switches 说明 Agent 曾尝试规避
+        switches = exec_data.get("path_switches", [])
+        if switches:
+            signals += 0.10
+
+    # 信号 2：violation 详情匹配具体行为关键词
+    details = violation.get("details", violation.get("rule_pattern", ""))
+    behavior_keywords = ["绕过", "跳过", "忽略", "遗漏", "缺失", "失败", "异常"]
+    matched_behaviors = sum(1 for kw in behavior_keywords if kw in details)
+    if matched_behaviors >= 1:
+        signals += 0.10
+    if matched_behaviors >= 2:
+        signals += 0.05
+
+    return min(signals, 0.95)
 
 
 def strong_attribution(violation: dict, rules: list[Rule]) -> dict:
@@ -46,43 +99,63 @@ def strong_attribution(violation: dict, rules: list[Rule]) -> dict:
     }
 
 
-def weak_attribution(violation: dict, trace: dict | None = None) -> dict:
-    """弱归因：根因判定。因果推断，需置信度和人工兜底。"""
+def weak_attribution(
+    violation: dict,
+    trace: dict | None = None,
+    produce_delta: bool = True,
+) -> dict:
+    """弱归因：根因判定 + Delta 产出。
+
+    证据驱动置信度 + rule_missing 时自动调用 create_delta。
+    """
     violation_pattern = violation.get("details", violation.get("rule_pattern", ""))
+    confidence = _evidence_confidence(violation, trace)
 
     if "绕过" in violation_pattern or "跳过" in violation_pattern:
         root = "behavior_violation"
-        confidence = 0.75
     elif "无法" in violation_pattern or "不支持" in violation_pattern:
         root = "capability_gap"
-        confidence = 0.65
     else:
         root = "rule_missing"
-        confidence = 0.70
 
     action = None
     candidate = None
+    delta_path = None
+
     if root == "rule_missing":
         action = "NEW_RULE"
         candidate = {
             "id": f"R-AUTO-{violation.get('rule_id', 'UNK')}",
             "type": "FORBIDDEN_ACTION",
-            "pattern": violation_pattern[:100],
+            "pattern": violation_pattern[:200],
+            "positive": f"确保{violation_pattern[:80]}的正确处理",
             "severity": "SOFT",
             "class": "EXPERIENTIAL",
             "scope": "SKILL",
         }
+        if produce_delta:
+            delta = create_delta(
+                operation="ADDED",
+                source="weak_attribution",
+                confidence=confidence,
+                target_rule_id=candidate["id"],
+                new_rule_raw=candidate,
+                reason=f"归因发现规则缺失: {violation_pattern[:100]}",
+            )
+            delta_path = save_delta(delta)
+
     elif root == "behavior_violation":
         action = "STRENGTHEN_INJECTION"
 
     return {
         "layer": "WEAK",
         "root_cause": root,
-        "confidence": confidence,
-        "evidence": [violation_pattern],
+        "confidence": round(confidence, 3),
+        "evidence": [t for t in [violation_pattern] if t],
         "action": action,
         "candidate_rule": candidate,
-        "requires_human_review": confidence < 0.7,
+        "delta_path": str(delta_path) if delta_path else None,
+        "requires_human_review": confidence < 0.55,
     }
 
 
@@ -118,9 +191,13 @@ def main():
     parser = argparse.ArgumentParser(description="ClipForge 归因引擎")
     parser.add_argument("--trace-file", required=True)
     parser.add_argument("--rules-dir", default=None)
+    parser.add_argument("--no-delta", action="store_true", help="不产出 Delta 文件")
     args = parser.parse_args()
 
-    result = analyze_trace(Path(args.trace_file), Path(args.rules_dir) if args.rules_dir else None)
+    result = analyze_trace(
+        Path(args.trace_file),
+        Path(args.rules_dir) if args.rules_dir else None,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

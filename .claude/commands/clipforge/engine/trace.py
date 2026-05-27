@@ -1,4 +1,10 @@
-"""轨迹采集 — 执行轨迹记录与查询。"""
+"""轨迹采集 — 执行轨迹记录与查询。
+
+支持结构化 execution 字段：
+- steps: 决策节点列表 [{decision, chosen, reason, alternatives, ts}]
+- path_switches: 路径切换记录 [{from_path, to_path, trigger, ts}]
+- token_usage: {prompt, completion, total}
+"""
 from __future__ import annotations
 import argparse
 import json
@@ -23,13 +29,18 @@ def record_trace(
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     trace_id = f"T-{ts}-{skill_id}"
 
+    exec_data = execution or {}
     trace = {
         "id": trace_id,
         "skill_id": skill_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "project_dir": str(project_dir),
         "context": context or {},
-        "execution": execution or {},
+        "execution": {
+            "steps": exec_data.get("steps", []),
+            "path_switches": exec_data.get("path_switches", []),
+            "token_usage": exec_data.get("token_usage"),
+        },
         "result": {
             "status": result,
             "gate_report": gate_report,
@@ -82,6 +93,7 @@ def main():
     rec.add_argument("--project-dir", required=True)
     rec.add_argument("--result", required=True, choices=["pass", "fail"])
     rec.add_argument("--gate-report", default=None)
+    rec.add_argument("--execution", default=None, help="JSON: {steps, path_switches, token_usage}")
 
     q = sub.add_parser("query")
     q.add_argument("--skill-id", default=None)
@@ -90,7 +102,8 @@ def main():
     args = parser.parse_args()
     if args.command == "record":
         gate = json.loads(args.gate_report) if args.gate_report else None
-        path = record_trace(args.skill_id, args.project_dir, args.result, gate)
+        exec_data = json.loads(args.execution) if args.execution else None
+        path = record_trace(args.skill_id, args.project_dir, args.result, gate, exec_data)
         print(json.dumps({"saved": str(path)}))
     elif args.command == "query":
         traces = query_traces(args.skill_id, args.last)

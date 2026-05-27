@@ -1,4 +1,5 @@
 id: "P-director-toolkit"
+seed: true
 category: null
 source_traces: []
 skill_scope: "stage2-analysis,stage3-scenes,stage6-production"
