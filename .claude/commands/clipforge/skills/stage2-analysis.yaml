@@ -1,0 +1,36 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage2-analysis"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["design", "analysis"]
+    rigor: STANDARD
+  intent:
+    objective: "分析内容并产出设计文档 design.md"
+    criteria:
+      - "design.md 包含 style/mood/color_direction/storyboard"
+      - "emotion_curve 为 6 元素数组"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+      - ref: "R-C-*"
+      - ref: "R-S2-*"
+  guard:
+    red_flags:
+      - thought: "design.md 写个大概就行"
+        reality: "design.md 是后续所有阶段的蓝图，缺失字段会导致 Stage 3/6 无法正确执行"
+        trigger: "试图跳过 design.md 必要字段"
+      - thought: "emotion_curve 随便填个曲线"
+        reality: "emotion_curve 直接决定场景间情绪起伏设计，必须基于内容节奏"
+        trigger: "试图快速填充 emotion_curve"
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["design.md"]
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []

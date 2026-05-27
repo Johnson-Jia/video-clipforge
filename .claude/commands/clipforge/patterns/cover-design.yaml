@@ -1,0 +1,16 @@
+id: "P-cover-design"
+category: null
+source_traces: []
+skill_scope: "stage7-delivery"
+
+description: "7 层封面模板：中文日期 → 场景标签 → 胶囊徽章 → 双色主标题 → 渐变分隔线 → 数据说明 → 双数据卡片"
+
+evidence:
+  sample_size: 10
+  avg_soft_score: 0.90
+  confidence: 0.88
+
+as_preference:
+  text: "封面严格遵循 7 层模板，配色复用 design.md 的 color_direction，主标题双色（白+强调色）"
+  weight: HIGH
+  source_pattern: "P-cover-design"

@@ -1,0 +1,24 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage5-assets"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["assets", "images"]
+    rigor: LITE
+  intent:
+    objective: "准备视频所需的所有视觉素材（图片、图标等）"
+    criteria:
+      - "assets/ 目录包含所需的所有素材文件"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+  guard:
+    red_flags: []
+  gate:
+    hard: []
+    soft: []
+    max_retries: 1
+  trace:
+    capture: true
+    level: SUMMARY
+    sensitive_fields: []

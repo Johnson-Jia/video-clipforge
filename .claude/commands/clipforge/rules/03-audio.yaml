@@ -1,0 +1,89 @@
+rules:
+  - id: "R-A-001"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 estimated_duration 替代 actual_duration"
+    positive: "使用分段 TTS 实测 actual_duration 作为时长数据来源"
+    guardrail: "segment_durations.json 中存在 estimated_duration 字段"
+    detection:
+      keywords: ["estimated_duration"]
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "stage4-audio.md Red Flags"
+
+  - id: "R-A-002"
+    type: FORBIDDEN_ACTION
+    pattern: "BGM 音量未写入 segment_durations.json"
+    positive: "BGM 音量通过 segment_durations.json 的 meta.bgm_volume 字段传递到 Stage 6"
+    guardrail: "segment_durations.json 缺少 meta.bgm_volume 字段"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "stage4-audio.md Iron Law"
+
+  - id: "R-A-003"
+    type: FORBIDDEN_METHOD
+    pattern: "narration.mp3 未做 loudnorm 标准化"
+    positive: "narration.mp3 必须经过 loudnorm 两遍标准化，max_volume >= -10 dB"
+    guardrail: "narration.mp3 的 max_volume < -10 dB"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "stage4-audio.md Iron Law"
+
+  - id: "R-A-004"
+    type: FORBIDDEN_METHOD
+    pattern: "对 bgm.wav 做 gain/volume 预衰减"
+    positive: "bgm.wav 保持原始音量，混音衰减由 HTML data-volume 控制"
+    guardrail: "对 bgm.wav 使用了 volume 或 gain 滤镜"
+    detection:
+      keywords: ["-af volume", "-af gain", "afade"]
+      regex: "-af\\s+(volume|gain)"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "stage4-audio.md Common Rationalizations"
+
+  - id: "R-A-005"
+    type: FORBIDDEN_METHOD
+    pattern: "从 output.mp4 反向提取音频做 output_no_bgm"
+    positive: "output_no_bgm.mp4 从 narration.mp3 合成，不从 output.mp4 提取音频轨"
+    guardrail: "使用 ffmpeg -i output.mp4 -vn 方式提取音频"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "stage4-audio.md Common Rationalizations"
+
+  - id: "R-A-006"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 HTML loop 属性循环 BGM"
+    positive: "BGM 循环使用 FFmpeg -stream_loop 扩展 WAV 文件"
+    guardrail: "bgm.wav 短于视频总时长且依赖 HTML loop 属性"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "stage4-audio.md Common Rationalizations"
+
+  - id: "R-A-007"
+    type: FORBIDDEN_ACTION
+    pattern: "使用播报腔音色 YunyangNeural"
+    positive: "使用叙事感音色 YunjianNeural，保持自然口吻"
+    guardrail: "TTS 命令中使用 zh-CN-YunyangNeural 音色"
+    detection:
+      keywords: ["YunyangNeural"]
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "stage4-audio.md + feedback-no-broadcast-voice.md"

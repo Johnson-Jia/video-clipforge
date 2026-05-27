@@ -1,0 +1,48 @@
+rules:
+  - id: "R-CG-001"
+    type: FORBIDDEN_METHOD
+    pattern: "URL 数据未交叉验证"
+    positive: "至少两个独立数据源交叉验证 GitHub 数据"
+    guardrail: "数据仅来自单一来源，未做交叉比对"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    scene: "github"
+    source: "categories/github.md Red Flags"
+
+  - id: "R-CG-002"
+    type: FORBIDDEN_ACTION
+    pattern: "数据量低于最低阈值（<8 个项目）"
+    positive: "确保数据项 >= 8 个项目，不足时停止执行"
+    guardrail: "trending 数据项目数 < 8"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    scene: "github"
+    source: "categories/github.md Red Flags"
+
+  - id: "R-CG-003"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 README badge 的 Star 数而非 API 实时数据"
+    positive: "使用 gh api 或智谱 MCP 获取实时数据，不依赖 README 缓存"
+    guardrail: "Star 数来源为 README badge 或截图"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SCENE
+    scene: "github"
+    source: "categories/github.md Common Rationalizations"
+
+  - id: "R-CG-004"
+    type: FORBIDDEN_ACTION
+    pattern: "未检查前次视频项目列表导致重复"
+    positive: "检查同类型最近一次视频的项目列表，避免连续两期介绍同样项目"
+    guardrail: "未读取前次视频数据直接选取项目"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SCENE
+    scene: "github"
+    source: "categories/github.md Common Rationalizations"

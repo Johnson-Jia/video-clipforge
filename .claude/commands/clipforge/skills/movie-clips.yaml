@@ -1,0 +1,25 @@
+skill:
+  meta:
+    id: "skill.clipforge.movie-clips"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["movie", "clips"]
+    rigor: STANDARD
+  intent:
+    objective: "电影/影视剪辑模式：从长视频素材提取精彩片段"
+    criteria:
+      - "clips_timeline.json 存在且格式正确"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+      - ref: "R-C-*"
+  guard:
+    red_flags: []
+  gate:
+    hard: []
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: SUMMARY
+    sensitive_fields: []

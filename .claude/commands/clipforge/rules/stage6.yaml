@@ -1,0 +1,99 @@
+rules:
+  - id: "R-S6-001"
+    type: FORBIDDEN_METHOD
+    pattern: "HTML 中使用 CSS animation 做入场动画"
+    positive: "所有入场动画使用 GSAP .from()/.fromTo()，不使用 CSS animation"
+    guardrail: "HTML 中存在 @keyframes 入场动画或 .anim-in 类"
+    detection:
+      keywords: ["@keyframes", "anim-in"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "stage6-production.md + _render-safety.md"
+
+  - id: "R-S6-002"
+    type: FORBIDDEN_ACTION
+    pattern: "场景 HTML 缺少三层架构"
+    positive: "每个 .scene-wrap 必须包含 .layer-bg + .layer-fx + .layer-content"
+    guardrail: "某个场景缺少 layer-bg、layer-fx 或 layer-content"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "_render-safety.md §2"
+
+  - id: "R-S6-003"
+    type: FORBIDDEN_METHOD
+    pattern: "Phase 切换使用硬切而非渐变过渡"
+    positive: "Phase 间使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0"
+    guardrail: "Phase 切换无过渡效果或使用 display:none 切换"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage6-production"
+    source: "stage6-production.md §6.4a"
+
+  - id: "R-S6-004"
+    type: FORBIDDEN_ACTION
+    pattern: "相邻 phase 的 visual_type 重复"
+    positive: "相邻 phase 必须使用不同的 visual_type 确保视觉多样性"
+    guardrail: "同一场景内连续两个 phase 的 visual_type 相同"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage6-production"
+    source: "_shared-rules.md §6"
+
+  - id: "R-S6-005"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 setInterval/setTimeout 控制动画时序"
+    positive: "使用 GSAP timeline 控制所有动画时序，确保与音频同步"
+    guardrail: "JS 中使用 setInterval 或 setTimeout 控制视觉切换"
+    detection:
+      keywords: ["setInterval", "setTimeout"]
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage6-production"
+    source: "stage6-production.md"
+
+  - id: "R-S6-006"
+    type: FORBIDDEN_ACTION
+    pattern: "未从 content_ready.txt 和 design.md 推导视觉效果"
+    positive: "所有视觉效果必须从内容自主推导，禁止套用固定特效/查表"
+    guardrail: "视觉组件选择不基于内容主题而是固定模板"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage6-production"
+    source: "feedback-template-as-reference.md"
+
+  - id: "R-S6-007"
+    type: FORBIDDEN_METHOD
+    pattern: "封面结构与主视频在同一 index.html"
+    positive: "封面 HTML 独立文件，渲染前重命名为 .renderbak"
+    guardrail: "index.html 中同时包含封面和主视频场景"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "_render-safety.md §1.5"
+
+  - id: "R-S6-008"
+    type: FORBIDDEN_ACTION
+    pattern: "清理阶段删除了非目标文件"
+    positive: "cleanup 严格按保留清单操作，只删除 schema.yaml 中未声明的临时文件"
+    guardrail: "cleanup 删除了产出物或必要中间文件"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "feedback-cleanup-overdeletion.md"

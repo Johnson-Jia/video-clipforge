@@ -1,0 +1,1481 @@
+# Agent 自进化架构设计文档
+
+> 范式：弱引导 · 强边界 · 双闭环反馈 · DAG 驱动 · 渐进严谨
+> 设计哲学：定义边界，而非路径；校验结果，而非过程；同时从失败和成功中沉淀经验；轻量创建，重量执行；证据驱动的增量变更。
+
+## 1. 设计目标
+
+| 目标 | 衡量标准 |
+|------|----------|
+| 释放 Agent 创造力 | 非标准解法占比提升，拒绝机械复刻 |
+| 沉淀历史经验 | 失败案例 → 规则转化率 ≥ 80% |
+| 从成功中学习 | 高分案例 → 经验模式沉淀率 ≥ 60% |
+| 自主迭代进化 | 约束库随运行数据自动丰富，能力随经验积累持续提升 |
+| 跨场景复用 | 同一套约束体系适配多个细分任务 |
+
+**核心主张**：以负向约束为主、正向目标为辅，定义"不能做什么"和"做成什么样算合格"，把"怎么做"留给 Agent 自主决策。
+
+> **为什么不是纯负向？** 纯负向约束在 LLM 上存在白熊效应（"不要想 X"反而增加 X 的出现概率）。实践经验表明，负向约束负责**校验**（guardrail），正向重述负责**引导**（prompt injection），两者分工明确、互不矛盾。详见 §6.1.1。
+
+---
+
+## 2. 核心抽象
+
+### 2.1 四个核心原子
+
+本架构建立在一个基本观察之上：**对 Agent 的控制，本质上是四个维度的问题**。
+
+| 维度 | 回答的问题 | 对应概念 | 方向 |
+|------|-----------|----------|------|
+| 目标 | 要达成什么？ | **Intent**（意图） | 正向，极简 |
+| 边界 | 不能做什么？ | **Boundary**（边界） | 负向，结构化 |
+| 合格 | 怎样算通过？ | **Gate**（门禁） | 校验，分级 |
+| 经验 | 如何改进？ | **Trace**（轨迹） | 反馈，闭环 |
+
+> **关于正交性的诚实声明**：四个原子在实践中存在依赖关系——Gate 依据 Boundary 定义校验内容，Trace 采集 Gate 的校验结果，Trace 驱动 Boundary 的更新，Intent 的 criteria 影响 Gate 的评判标准。它们构成**闭环耦合**，而非严格的正交关系。这种耦合是闭环运转的前提，不是缺陷。所谓"独立"是指在任意**单次执行**中，四个原子各自承担不重叠的职责；它们的耦合发生在**跨执行的迭代**中。
+
+**所有上层概念（Skill、规则、偏好、归因）都是这四个原子的组合。**
+
+### 2.2 双闭环模型
+
+本架构的核心运行机制是**两个方向相反、互相制衡的闭环**：
+
+```
+          ┌─────────────────────────────────────────────┐
+          │              负 向 闭 环                     │
+          │          （约束优化 · 减少犯错）              │
+          │                                             │
+          │  犯错 → 归因 → 收紧约束 → 下次不犯这个错     │
+          │                                             │
+          │  作用：提升 Agent 的下限（越来越安全）        │
+          └─────────────────────────────────────────────┘
+                          ↕  互相制衡
+          ┌─────────────────────────────────────────────┐
+          │              正 向 闭 环                     │
+          │          （能力进化 · 发现优秀）              │
+          │                                             │
+          │  成功 → 分析 → 沉淀经验 → 下次做得更好       │
+          │                                             │
+          │  作用：提升 Agent 的上限（越来越强大）        │
+          └─────────────────────────────────────────────┘
+```
+
+**为什么需要双闭环？**
+
+单靠负向闭环，Agent 只会"越来越不犯错"，但不会"越来越聪明"。它像一个只会记教训、不会总结成功经验的学生——下限在提升，上限不变。
+
+正向闭环补全了缺失的一半：从成功中提炼**经验模式**（Pattern），沉淀到偏好和 few-shot 示例中，让后续执行可以直接复用成功路径，而不需要每次都从头探索。
+
+**双闭环的制衡关系**：
+
+| | 负向闭环 | 正向闭环 |
+|---|---|---|
+| 输入 | 失败案例 | 高分成功案例 |
+| 产出 | 新增/收紧约束 | 新增经验模式 / 放宽过严约束 |
+| 方向 | 约束空间收紧（减法） | 能力空间拓展（加法） |
+| 风险 | 过度约束 → 创造力丧失 | 经验固化 → 路径依赖 |
+| 制衡点 | 正向闭环可以在证据充分时放宽经验性约束 | 负向闭环防止成功经验中隐藏的违规模式 |
+
+---
+
+## 3. 架构总览
+
+```
+                        ┌──────────────────────────┐
+                        │       Skill Registry      │
+                        │   skill = intent          │
+                        │         + boundary        │
+                        │         + gate            │
+                        │         + trace           │
+                        └────────────┬─────────────┘
+                                     │ 注册 & 发现
+        ┌────────────────────────────┼────────────────────────────┐
+        │                    运 行 时 协 议 层                     │
+        │                                                          │
+        │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
+        │  │ 约束注入  │  │ 执行治理  │  │ 门禁评估  │  │ 轨迹采集 │ │
+        │  │ 协议     │  │ 协议     │  │ 协议     │  │ 协议    │ │
+        │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬────┘ │
+        │       │             │             │             │      │
+        │       ▼             ▼             ▼             ▼      │
+        │  ┌─────────────────────────────────────────────────┐   │
+        │  │              基 础 设 施 层                      │   │
+        │  │                                                 │   │
+        │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────┐  │   │
+        │  │  │约束引擎  │ │校验引擎 │ │ 归因 & 治理引擎 │  │   │
+        │  │  └─────────┘ └─────────┘ └─────────────────┘  │   │
+        │  │  ┌─────────────────┐ ┌─────────────────────┐  │   │
+        │  │  │ 经验模式库       │ │ 成功分析引擎        │  │   │
+        │  │  │ (Pattern Store) │ │ (Success Analyzer)  │  │   │
+        │  │  └─────────────────┘ └─────────────────────┘  │   │
+        │  └─────────────────────────────────────────────────┘   │
+        │                          ↑↓                             │
+        │              ┌───────────┴───────────┐                  │
+        │              │     双 闭 环 控 制     │                  │
+        │              │                       │                  │
+        │              │  负向闭环：犯错→归因   │                  │
+        │              │           →收紧约束   │                  │
+        │              │                       │                  │
+        │              │  正向闭环：成功→分析   │                  │
+        │              │           →沉淀模式   │                  │
+        │              └───────────────────────┘                  │
+        └─────────────────────────────────────────────────────────┘
+```
+
+**四层结构**：
+- **Skill Registry**：Skill 定义与发现，是架构的使用界面
+- **运行时协议层**：四个协议定义"系统如何运行"，是架构的动态骨架
+- **基础设施层**：引擎实现，是架构的静态组件
+- **双闭环控制**：负向闭环负责安全收敛，正向闭环负责能力提升，两者互相制衡
+
+---
+
+## 4. Skill 规范层
+
+### 4.1 Skill 是什么
+
+Skill 是本架构的**一等公民**——Agent 的每一个能力单元都表现为一个 Skill。
+
+一个 Skill 是四个核心原子的组合：
+
+```
+Skill = Intent + Boundary + Gate + Trace
+```
+
+| 原子 | 在 Skill 中的角色 | 是否必须 |
+|------|-------------------|----------|
+| Intent | 这个 Skill 要达成什么 | 必须 |
+| Boundary | 这个 Skill 的边界约束集 | 必须（可为空集，表示无额外约束） |
+| Gate | 这个 Skill 的通过标准 | 必须 |
+| Trace | 这个 Skill 的执行记录策略 | 必须（至少声明是否采集） |
+
+### 4.2 Skill 双轨声明规范
+
+> **设计决策（来自 Superpowers）**：Skill 声明采用**双轨格式**——结构化元数据放在 `skill.yaml`（机器可解析、运行时消费），自然语言内容放在 `skill.md`（人类可读、Agent prompt 注入源）。这降低了 Skill 的创建门槛：写 Markdown 就能创建一个 Skill，结构化字段按需补充。
+
+#### 4.2.1 skill.yaml — 结构化声明（机器消费）
+
+```yaml
+# skill.yaml — Skill 的结构化元数据
+skill:
+  meta:
+    id: "skill.activity-planning"          # 全局唯一 ID
+    version: "1.0.0"                       # 语义版本
+    type: GENERATIVE                       # GENERATIVE | ANALYTICAL | EXECUTIVE | INTERACTIVE
+    tags: ["marketing", "planning", "creative"]
+    dependencies: []                       # 依赖的其他 skill（组合关系）
+    rigor: STANDARD                        # LITE | STANDARD | STRICT（渐进严谨度，§6.x）
+
+  # ═══ Intent：极简正向目标 ═══
+  intent:
+    objective: "设计完整的活动方案"
+    criteria:
+      - "方案完整可执行"
+      - "预算在合理范围内"
+      - "目标受众明确"
+
+  # ═══ Boundary：负向约束集 ═══
+  boundary:
+    scene: "marketing"                     # 绑定场景（自动继承场景级规则）
+    rules:
+      - ref: "R-CONTENT-001"
+      - inline:
+          id: "R-ACT-001"
+          type: FORBIDDEN_ACTION
+          pattern: "直接复制竞品活动流程"
+          severity: HARD
+          class: EXPERIENTIAL
+    preferences:
+      - text: "优先考虑线上+线下混合形式"
+        weight: LOW
+
+  # ═══ Guard：认知层行为守卫 ═══
+  guard:
+    red_flags:
+      - thought: "这只是个简单问题"
+        reality: "问题是任务，必须检查约束"
+        trigger: "试图跳过约束检查"
+      - thought: "我需要更多上下文"
+        reality: "Guard 检查先于澄清问题"
+        trigger: "试图延迟约束加载"
+      - thought: "我可以快速绕过"
+        reality: "工具缺乏对话上下文，不可跳过"
+        trigger: "试图绕过校验流程"
+      - thought: "我会先做这一件事"
+        reality: "检查先于任何行动"
+        trigger: "试图抢先执行"
+      - thought: "这不需要正式守卫"
+        reality: "简单的事情会变复杂"
+        trigger: "试图简化安全流程"
+    spirit_vs_letter:
+      - rule_ref: "R-ACT-001"
+        mode: SPIRIT                       # SPIRIT | LETTER
+        intent: "确保方案原创性，而非机械比对文字"
+
+  # ═══ Gate：通过标准 ═══
+  gate:
+    hard:
+      - gate: "content_safety"
+      - gate: "format_compliance"
+        params:
+          template: "activity-plan-v2"
+    soft:
+      - gate: "creativity_score"
+        threshold: 0.7
+    max_retries: 2
+
+  # ═══ Trace：轨迹采集策略 ═══
+  trace:
+    capture: true
+    level: FULL                            # FULL | SUMMARY | NONE
+    retention: "30d"
+    sensitive_fields: ["budget_details"]
+```
+
+#### 4.2.2 skill.md — 内容声明（人类编写 + Agent 消费）
+
+```markdown
+---
+name: activity-planning
+description: 设计完整的营销活动方案，含预算、受众、执行计划
+version: "1.0.0"
+tags: ["marketing", "planning", "creative"]
+rigor: STANDARD
+---
+
+# 活动方案策划
+
+## 目标
+设计完整的活动方案，确保方案可执行、预算合理、受众明确。
+
+## 约束（必须遵守）
+- 所有表述使用限定性语言（避免绝对化用语）
+- 方案中所有数据必须标注来源
+- 不得直接复制竞品活动流程（精神：确保原创性）
+
+## 偏好（建议参考）
+- 优先考虑线上+线下混合形式
+
+## 行为守卫
+| 当你产生这个念头 | 现实是 | 触发行为 |
+|---|---|---|
+| "这只是个简单问题" | 问题是任务，必须检查约束 | 立即回到约束检查 |
+| "我可以快速绕过" | 校验流程不可跳过 | 暂停，加载完整约束 |
+| "这不需要正式守卫" | 简单的事情会变复杂 | 执行完整安全流程 |
+
+## 通过标准
+- 硬门禁：内容安全合规 + 格式符合 activity-plan-v2 模板
+- 软门禁：创意评分 ≥ 0.7
+```
+
+**双轨协同规则**：
+
+| 维度 | skill.yaml | skill.md |
+|------|-----------|----------|
+| **读者** | 运行时引擎（机器解析） | Agent prompt 注入 + 人类阅读 |
+| **内容** | 结构化字段（ID、规则引用、阈值） | 自然语言描述（目标、约束、守卫） |
+| **创建门槛** | 中（需理解 YAML schema） | 低（写 Markdown 即可） |
+| **演化方式** | 版本号递增，Delta Rule 驱动 | 内容更新，直接编辑 |
+| **一致性保证** | `skill.md` 的 frontmatter 必须与 `skill.yaml` 的 meta 字段一致，注册时自动 lint |
+
+### 4.3 Skill 模板（推荐配置）
+
+> **设计决策**：Skill 没有强类型标签。类型不是前置约束，而是四原子组合后的**涌现属性**——一个 Skill 的"类型"由其实际声明的 Intent/Boundary/Gate/Trace 决定，而非预设标签。
+>
+> 以下模板是**推荐配置**，供快速起步使用。你可以自由组合四个原子，不需要绑定某个模板。
+
+| 模板名 | 典型场景 | Intent 建议 | Boundary 重点 | Gate 重点 |
+|--------|----------|------------|---------------|-----------|
+| `GENERATIVE` | 生成内容/方案 | 开放性目标 | 内容安全、原创性 | 质量 + 合规 |
+| `ANALYTICAL` | 分析/推理 | 结构化结论 | 逻辑错误、数据误用 | 准确性 + 完整性 |
+| `EXECUTIVE` | 执行操作 | 确定性结果 | 操作禁区、权限边界 | 成功/失败 + 副作用 |
+| `INTERACTIVE` | 对话/交互 | 满足用户意图 | 话术禁区、行为边界 | 用户体验 + 合规 |
+
+```yaml
+# 使用模板起步（meta.type 只是参考标记，不影响运行时行为）
+skill:
+  meta:
+    template: GENERATIVE     # 非强制，仅供人类阅读理解
+    ...
+```
+
+### 4.4 Skill 组合
+
+Skill 可以组合为更复杂的能力：
+
+```yaml
+# workflow.yaml — 通过组合构建复杂工作流
+workflow:
+  id: "wf.product-launch"
+  steps:
+    - skill: "skill.market-analysis"       # ANALYTICAL
+      output_as: "market_report"
+    - skill: "skill.activity-planning"     # GENERATIVE
+      input_from: "market_report"
+    - skill: "skill.budget-review"         # EXECUTIVE
+      gate_override:
+        hard: ["budget_approval"]
+```
+
+**组合规则**：
+- 上游 Skill 的输出自动作为下游 Skill 的 Intent 输入
+- Boundary 不继承——每个 Skill 只受自己声明的约束
+- Gate 独立评估——一个 Skill 不通过，工作流在当前步骤暂停
+
+### 4.5 Skill 生命周期
+
+```
+定义(Define) → 注册(Register) → 激活(Active) → 演化(Evolve) → 废弃(Deprecate)
+
+Define    : 编写 skill.yaml，声明四原子
+Register  : 提交到 Skill Registry，通过合法性检查
+Active    : 可被调度执行，开始积累 Trace
+Evolve    : 基于 Trace 数据更新 Boundary/Gate（版本递增）
+Deprecate : 标记废弃，不再调度，Trace 保留供分析
+```
+
+### 4.6 元 Skill（Meta-Skills）
+
+> **自描述原则**：架构应能用自身来描述自身。以下"维护架构的 Skill"也是 Skill，它们遵循同样的四原子规范。
+
+本架构的运维和治理能力，本身也建模为 Skill：
+
+```yaml
+# 元 Skill 1：规则库治理
+skill:
+  meta:
+    id: "skill.meta-rule-governance"
+    template: EXECUTIVE
+  intent:
+    objective: "保持规则库健康：无冲突、无冗余、不过时"
+    criteria: ["冲突率 = 0", "冗余率 < 5%", "过时规则已清理"]
+  boundary:
+    rules:
+      - type: FORBIDDEN_ACTION
+        pattern: "未经人工确认删除命中率 > 0 的规则"
+        severity: HARD
+      - type: FORBIDDEN_METHOD
+        pattern: "单次瘦身删除超过总量的 20%"
+        severity: HARD
+  gate:
+    hard: ["governance_compliance"]
+    soft: ["governance_efficiency"]
+  trace:
+    capture: true
+    level: SUMMARY
+
+---
+# 元 Skill 2：归因判定
+skill:
+  meta:
+    id: "skill.meta-attribution"
+    template: ANALYTICAL
+  intent:
+    objective: "准确判定失败案例的根因"
+    criteria: ["强归因自动完成", "弱归因置信度 ≥ 0.7"]
+  boundary:
+    rules:
+      - type: FORBIDDEN_ACTION
+        pattern: "置信度 < 0.7 时自动执行规则回流"
+        severity: HARD
+      - type: FORBIDDEN_LOGIC
+        pattern: "将能力不足归因为规则缺失"
+        severity: HARD
+  gate:
+    hard: ["attribution_consistency"]        # 归因结论与历史同类案例一致
+    soft: ["attribution_confidence"]         # 置信度趋势上升
+  trace:
+    capture: true
+    level: FULL                             # 归因本身需要完整审计
+```
+
+**元 Skill 的意义**：
+- 架构的自进化能力本身受同样的约束体系管理（"谁来监督监督者"的问题用同一套机制回答）
+- 元 Skill 也产生 Trace，可以被自身的归因协议分析
+- 当元 Skill 的门禁通过率下降，说明架构自身的治理能力需要调优
+
+---
+
+## 5. 三层指令体系
+
+> 这三层是 Skill 内部 Intent 和 Boundary 的具体实现方式。
+
+### 5.1 第一层：Intent（极简正向）
+
+只声明**最终要达成什么**，不写中间步骤。
+
+```yaml
+# 合法 ✓
+intent:
+  objective: "完成一份产品发布会活动方案"
+  criteria: ["方案完整可执行", "预算合理"]
+
+# 非法 ✗ — 包含步骤暗示
+intent:
+  objective: "先调研市场，再确定主题，最后做预算"  # ← 拒绝
+```
+
+**Lint 规则**（Skill 注册时自动检查）：
+- 目标描述 ≤ 2 句话
+- 不含序列词（"先…再…最后"、"首先…然后"）
+- 评价标准只描述结果特征，不描述过程特征
+
+### 5.2 第二层：Boundary（负向约束）
+
+用结构化格式定义边界，消除自然语言歧义。
+
+#### 5.2.1 规则结构
+
+```yaml
+rule:
+  id: "R-2024-001"
+  category: content_safety
+  type: FORBIDDEN_ACTION
+  pattern: "未经核实的数据引用"
+  detection:
+    regex: null
+    keywords: ["据调查", "据统计"]
+    semantic_check: true
+  severity: HARD                           # HARD | SOFT
+  scope: "GLOBAL"                          # GLOBAL | SCENE | SKILL
+  class: SAFETY                            # SAFETY | EXPERIENTIAL
+  source: "INC-2024-012"                   # 可追溯
+  created_at: "2024-03-15"
+  hit_count: 0                             # 运行时统计
+  false_positive_count: 0                  # 误杀统计
+```
+
+#### 5.2.1.1 Delta Rule（增量规则变更）
+
+> **设计决策（来自 OpenSpec）**：规则变更采用**增量表达**，而非全量替换。每次规则库治理或闭环回流产出的不是新版本的全量规则文件，而是一条 Delta——描述"对哪条规则做了什么操作"。
+
+```yaml
+# Delta Rule 声明
+delta:
+  id: "D-2024-031"
+  operation: ADDED                         # ADDED | MODIFIED | REMOVED | DEPRECATED
+  target_rule: "R-ACT-002"                 # MODIFIED/REMOVED/DEPRECATED 时指定
+  source: "attribution:T-20240315-001"     # 变更来源（归因/治理/放宽提案）
+  confidence: 0.85                         # 变更置信度
+  approved_by: null                        # null = 待审核，"human:张三" = 已审核
+
+  # ADDED 时包含完整新规则
+  new_rule:
+    id: "R-ACT-002"
+    type: FORBIDDEN_ACTION
+    pattern: "使用未经验证的第三方数据源"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: "SCENE"
+    scene: "marketing"
+
+  # MODIFIED 时包含变更字段
+  # modified_fields:
+  #   pattern:
+  #     old: "使用未经验证的数据"
+  #     new: "使用未经验证的第三方数据源"
+
+  # DEPRECATED 时包含替代方案
+  # superseded_by: "R-ACT-003"
+  # reason: "该规则被更精确的 R-ACT-003 替代"
+```
+
+**Delta 操作语义**：
+
+| 操作 | 语义 | 可自动执行 | 回滚方式 |
+|------|------|-----------|----------|
+| `ADDED` | 新增规则到规则库 | confidence ≥ 0.7 且 class=EXPERIENTIAL | 删除该 Delta |
+| `MODIFIED` | 修改已有规则的字段 | confidence ≥ 0.7 且非 SAFETY 规则 | 恢复旧值 |
+| `REMOVED` | 从规则库删除 | 仅限 EXPERIENTIAL 且命中率 0 持续 60 天 | 恢复规则 |
+| `DEPRECATED` | 标记废弃，仍保留 | 任意（不删除数据） | 取消废弃标记 |
+
+**Delta 的安全性约束**：
+- `class: SAFETY` 的规则**不允许 REMOVED 操作**，只能 DEPRECATED
+- 任何 Delta 在生效前必须通过**影子校验**：用最近 50 条 Trace 重放，确认变更不会导致误杀率上升
+- 审核结果写入 `approved_by` 字段，形成完整审计链
+
+**规则作用域**（由宽到窄）：
+
+| 作用域 | 生效范围 | 典型内容 |
+|--------|----------|----------|
+| `GLOBAL` | 所有 Skill | 内容安全红线、法律合规 |
+| `SCENE` | 该场景下所有 Skill | 行业特定禁区 |
+| `SKILL` | 仅当前 Skill | 该能力特有的边界 |
+
+**规则继承**：SKILL 级规则 + SCENE 级规则 + GLOBAL 级规则合并生效。
+
+**约束双轨制**：约束分为两类，继承规则不同。
+
+| 约束类型 | 标记 | 继承规则 | 典型内容 |
+|----------|------|----------|----------|
+| **安全约束**（Safety） | `class: SAFETY` | **只收紧不放宽**——子级只能新增，不能覆盖或取消父级约束 | 法律合规、内容安全红线、权限边界 |
+| **经验约束**（Experiential） | `class: EXPERIENTIAL` | **可收紧也可放宽**——但放宽必须由正向闭环提供证据支撑 | 风格偏好、质量标准、效率优化 |
+
+```yaml
+rule:
+  id: "R-2024-001"
+  class: SAFETY                          # SAFETY | EXPERIENTIAL
+  # ... 其余字段同前
+```
+
+**安全约束为什么不能放宽？** 安全约束对应生物进化中的"致死区"——触碰即致命，没有试错空间。一旦确立为安全约束，它代表的是组织红线，不是可优化的经验。
+
+**经验约束为什么可以放宽？** 经验约束来自历史失败案例的归纳。但归纳可能过度——某条规则在 3 个月前的业务环境下合理，现在可能已经过严。正向闭环可以产出证据（"该规则连续 60 天误杀率 > 40%，且无安全事故"），支撑放宽提案。
+
+**放宽流程**（仅适用于 `EXPERIENTIAL` 约束）：
+1. 正向闭环分析引擎产出放宽提案，附证据
+2. 人工审核确认（不可自动执行）
+3. 降级（HARD → SOFT）或收窄（SCENE → SKILL）或废弃
+4. 观察 7 天，如无安全事故则生效
+
+#### 5.2.2 规则分类
+
+| 分类 | 说明 | 示例 |
+|------|------|------|
+| `FORBIDDEN_ACTION` | 禁止执行的动作 | 禁止直接复制竞品文案 |
+| `FORBIDDEN_SPEECH` | 禁止使用的表述 | 禁止绝对化用语 |
+| `FORBIDDEN_LOGIC` | 禁止出现的逻辑错误 | 禁止因果关系倒置 |
+| `FORBIDDEN_METHOD` | 禁止获取结果的方式 | 禁止绕过审批流程 |
+
+### 5.3 第三层：偏好引导（弱倾向）
+
+```yaml
+preferences:
+  - text: "优先采用低成本方案"
+    weight: LOW                            # LOW | MEDIUM | HIGH（均为非强制）
+```
+
+---
+
+## 6. 运行时协议层
+
+> 协议定义"系统怎么跑"，是 Skill 从静态声明到动态执行的桥梁。
+
+### 6.0 渐进严谨度（Progressive Rigor）
+
+> **设计决策（来自 OpenSpec）**：不是所有 Skill 都需要同等严苛的校验。本架构采用三级严谨度，在 Skill 声明的 `meta.rigor` 字段中指定，默认 `STANDARD`。
+
+| 维度 | LITE | STANDARD | STRICT |
+|------|------|----------|--------|
+| **适用场景** | 低风险、高频、简单任务 | 通用场景（默认） | 高风险、合规敏感、新 Skill 上线 |
+| **约束注入** | 仅 HARD 规则注入 | 全量注入（正向重述 + 经验模式） | 全量注入 + Guard 守卫完整加载 |
+| **门禁评估** | 仅 HARD Gate | HARD + SOFT Gate | HARD + SOFT + 人工复核（首次 N 条） |
+| **轨迹采集** | SUMMARY | FULL（可降级为 SUMMARY） | FULL（不可降级） |
+| **归因** | 仅强归因（自动） | 双层归因（强 + 弱） | 双层归因 + 归因审计 |
+| **经验沉淀** | 不触发 | 自动触发正向闭环 | 自动触发 + 模式入库前人工确认 |
+| **Delta 规则** | 自动执行（EXPERIENTIAL） | 自动执行 + 人工兜底 | 全部人工审核 |
+| **冷启动** | 直接运行 | 校准运行（Phase 0b） | 完整三阶段冷启动 |
+
+**严谨度升降规则**：
+- 升级（LITE → STANDARD → STRICT）：任意时刻，由人工或治理引擎触发
+- 降级（STRICT → STANDARD → LITE）：需满足稳定性条件——连续 14 天通过率 ≥ 95%，无安全事故
+- 新 Skill 上线默认 STRICT，稳定 14 天后可降为 STANDARD
+
+### 6.1 约束注入协议
+
+**核心问题**：规则如何进入 Agent 的执行上下文？
+
+#### 6.1.1 正向重述原则
+
+LLM 对负向指令存在**白熊效应**——"不要想 X"反而增加 X 出现的概率。
+
+**规则**：每条禁止规则在注入时必须转换为正向表述。
+
+```yaml
+# 规则定义（存储格式，负向）
+rule:
+  id: "R-CONTENT-001"
+  type: FORBIDDEN_SPEECH
+  pattern: "禁止使用绝对化用语"
+
+# 注入格式（运行时，正向重述）
+injection:
+  positive: "所有表述使用限定性语言，如'可能'、'通常'、'在一定程度上'"
+  guardrail: "如果输出中包含'一定'、'绝对'、'必然'等词，视为违规"
+```
+
+**重述规范**：
+- `positive`：告诉 Agent "应该做什么"，用于 prompt 注入
+- `guardrail`：保留负向形式，仅用于校验引擎检测（不注入 prompt）
+
+#### 6.1.2 注入策略
+
+```
+规则数量        注入策略
+───────────────────────────────────────────
+≤ 20 条        全量注入 system prompt + 经验模式全量注入
+20-100 条      按相关性检索 Top-K 注入 + 全量 guardrail 校验 + Top-K 模式注入
+> 100 条       RAG 检索 + 向量化匹配 + 全量 guardrail 校验 + Top-K 模式注入
+```
+
+**注入位置**：system prompt 的约束段，与用户 prompt 隔离。
+
+#### 6.1.3 注入模板
+
+```
+[SYSTEM]
+你的目标：{intent.objective}
+成功标准：{intent.criteria}
+
+行为准则（请遵循）：
+{boundary.rules | map(positive) | join("\n")}
+
+参考偏好（可选择是否采纳）：
+{boundary.preferences | join("\n")}
+
+成功经验（来自历史高分案例，供参考）：
+{pattern_store.preferences | join("\n")}
+{pattern_store.fewshots | join("\n")}
+
+行为守卫（当以下念头出现时，立即 STOP）：
+{guard.red_flags | format_table("thought", "reality")}
+任何 Red Flag 触发 → 暂停当前行为，回到约束检查。
+{/SYSTEM]
+```
+
+### 6.2 执行治理协议
+
+**核心问题**：Agent 执行过程中，约束如何施加控制？
+
+#### 6.2.1 三阶段治理
+
+```
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│  Pre-check   │    │  In-flight   │    │ Post-check   │
+│  执行前检查   │───→│  执行中监控   │───→│  执行后校验   │
+└──────────────┘    └──────────────┘    └──────────────┘
+
+Pre-check  : 检查计划动作是否触碰 HARD 规则 → 阻断 / 放行
+In-flight  : 采集执行轨迹，监控关键指标（用于 Trace）
+Post-check : 调用 Gate 协议做完整校验
+```
+
+#### 6.2.2 触碰规则时的决策
+
+```
+Agent 计划执行动作 A
+  │
+  ├─ Pre-check: A 是否触碰 HARD 规则？
+  │    ├─ 是 → 拒绝执行 A，返回拒绝原因 + 正向引导
+  │    │        Agent 必须选择替代路径（不重试 A 的变体）
+  │    └─ 否 → 放行执行
+  │
+  └─ 执行过程中 Agent 主动判断可能触碰规则？
+       ├─ 是 → Agent 自行切换路径（鼓励行为，记录到 Trace）
+       └─ 否 → 继续
+```
+
+**关键设计**：规则触碰不触发重试，而是触发**路径切换**。这防止了 Agent 在同一方向反复试探。
+
+#### 6.2.3 最大探索深度
+
+每个 Skill 声明 `max_retries`（默认 2），硬门禁驳回达到上限后：
+- 停止执行
+- 输出当前最佳结果 + 失败原因
+- 轨迹完整记录，进入归因
+
+### 6.3 门禁评估协议
+
+**核心问题**：结果如何被校验？校验结论如何分类处理？
+
+#### 6.3.1 评估流程
+
+```
+                    Agent 输出结果
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │  硬门禁评估    │
+                  │  HARD Gate    │
+                  └───────┬───────┘
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+          通过 ✓                  违规 ✗
+              │                       │
+              ▼                       ▼
+      ┌───────────────┐     ┌────────────────┐
+      │  软门禁评估    │     │  驳回 + 归因    │
+      │  SOFT Gate    │     │  记录违规详情    │
+      └───────┬───────┘     │  进入负向闭环    │
+              │              └────────────────┘
+     ┌────────┴────────┐
+     │                 │
+  质量达标 ✓      质量偏低 △
+     │                 │
+     ▼                 ▼
+  ┌──────────┐     放行 + 记录
+  │ 成功分析  │     进入案例归档
+  │          │
+  │ 高分? ──→│──→ 进入正向闭环（§6.7）
+  │ 普通? ──→│──→ 记录 Trace，输出结果
+  └──────────┘
+```
+
+**成功分析的触发条件**：软门禁评分 ≥ 0.85（默认，可按 Skill 配置），视为"高分成功案例"，进入正向闭环。
+
+#### 6.3.2 硬门禁（HARD Gate）
+
+| 属性 | 说明 |
+|------|------|
+| 触发 | 违反 HARD 规则 |
+| 动作 | 立即驳回 |
+| 追踪 | 进入归因协议 |
+| 重试 | 在 `max_retries` 内允许 Agent 换路径重新执行 |
+
+#### 6.3.3 软门禁（SOFT Gate）
+
+| 属性 | 说明 |
+|------|------|
+| 触发 | 合规但偏好匹配度低于阈值 |
+| 动作 | 放行，记录案例 |
+| 追踪 | 归档，定期批量分析 |
+| 后续 | 优化偏好引导（不新增禁止规则） |
+
+### 6.4 轨迹采集协议
+
+**核心问题**：执行过程中采集什么数据，供归因和治理使用？
+
+#### 6.4.1 Trace 结构
+
+```yaml
+trace:
+  id: "T-20240315-001"
+  skill_id: "skill.activity-planning"
+  skill_version: "1.0.0"
+  timestamp: "2024-03-15T10:30:00Z"
+
+  # 执行上下文
+  context:
+    intent_snapshot: { ... }                # 执行时的 Intent 快照
+    boundary_snapshot: { ... }              # 执行时的 Boundary 快照
+    injected_prompt: "..."                  # 实际注入的 prompt（脱敏）
+
+  # 执行过程
+  execution:
+    steps:                                  # 关键决策节点
+      - action: "选择活动形式"
+        chosen: "线上直播"
+        alternatives_considered: ["线下发布会", "混合"]
+        constraint_hits: []                 # 触碰的规则
+    path_switches: 0                        # 路径切换次数
+    total_tokens: 4500
+
+  # 结果
+  result:
+    output: "..."                           # 脱敏后的输出
+    gate_report:
+      hard_passed: true
+      soft_score: 0.65                      # 软门禁评分
+    retry_count: 0
+
+  # 归因（由归因协议填充）
+  attribution: null                         # 初始为空，归因后填充
+```
+
+#### 6.4.2 采集级别
+
+| 级别 | 采集内容 | 适用场景 |
+|------|----------|----------|
+| `FULL` | 完整执行过程 + 决策节点 + prompt 快照 | 新 Skill 上线初期、归因调试 |
+| `SUMMARY` | 仅结果 + 门禁报告 + 关键指标 | 稳定运行的 Skill |
+| `NONE` | 不采集（仅记录调用次数） | 敏感场景、高频低价值 Skill |
+
+### 6.5 归因协议
+
+**核心问题**：失败怎么归因？如何防止错误归因污染规则库？
+
+> **诚实声明**：归因不是均匀可靠的。规则命中分析是确定性推理，可以自动化（强归因）；根因判定是因果推断，本质上依赖人类判断（弱归因）。本架构将两者**显式区分**，避免用工程手段掩盖认知困难。
+
+#### 6.5.1 双层归因模型
+
+```
+硬门禁违规案例
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│            强归因层（Strong Attribution）          │
+│            确定性推理，可全自动执行                  │
+│                                                   │
+│  Q: 已有规则是否覆盖此违规？                        │
+│  ├─ 是 → 规则有效，判定为 "规则命中"               │
+│  │       动作：检查检测精度，是否需要加强            │
+│  └─ 否 → 无法在强归因层结案，进入弱归因层           │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│            弱归因层（Weak Attribution）            │
+│            因果推断，需人工参与或低置信度自动        │
+│                                                   │
+│  Q: 根因是什么？                                   │
+│  ├─ 行为违规 → Agent 故意绕过已有规则               │
+│  ├─ 能力不足 → 模型本身无法完成此任务               │
+│  └─ 规则缺失 → 场景无规则覆盖，需新增               │
+│                                                   │
+│  约束：                                            │
+│  - 必须给出置信度（0-1）                            │
+│  - 置信度 < 0.7 → 强制人工审核                     │
+│  - 近 30 天争议率 > 30% → 触发熔断                 │
+└─────────────────────────────────────────────────┘
+```
+
+**关键区别**：
+
+| | 强归因 | 弱归因 |
+|---|---|---|
+| 方法 | 规则匹配（确定性） | 因果推断（概率性） |
+| 自动化 | 可全自动 | 低置信度必须人工 |
+| 回流影响 | 调整检测精度 | 新增/修改规则（高风险操作） |
+| 熔断条件 | 不适用 | 争议率 > 30% |
+
+#### 6.5.2 归因置信度
+
+弱归因层每次判定必须给出**置信度评分**（0-1）：
+
+```yaml
+attribution:
+  layer: WEAK                              # 强归因层无需置信度
+  root_cause: "rule_missing"
+  confidence: 0.85
+  evidence:
+    - "Trace 中无已有规则的触碰记录"
+    - "同类场景历史上 3 次出现相似违规"
+    - "违规模式可提炼为通用 FORBIDDEN_ACTION"
+  action:
+    type: "NEW_RULE"
+    candidate:
+      id: "R-ACT-002"
+      type: FORBIDDEN_ACTION
+      pattern: "..."
+  requires_human_review: false              # confidence ≥ 0.7 自动执行
+```
+
+强归因层的输出更简单：
+
+```yaml
+attribution:
+  layer: STRONG
+  root_cause: "rule_hit"
+  matched_rule: "R-CONTENT-001"
+  detection_gap: null                       # 如果有漏检，记录原因
+  action:
+    type: "OPTIMIZE_DETECTION"              # 或 "STRENGTHEN_RULE"
+    requires_human_review: false
+```
+
+#### 6.5.3 归因安全机制
+
+| 机制 | 触发条件 | 动作 |
+|------|----------|------|
+| 人工审核 | 置信度 < 0.7 | 暂停自动回流，标记待人工确认 |
+| 归因熔断 | 近 30 天归因争议率 > 30% | 全局暂停自动归因，进入人工审查期 |
+| 规则回滚 | 新增规则后误杀率 > 20% | 自动回滚到上一版本，标记待优化 |
+| 归因溯源 | 每条规则可查到来源 Trace | 支持从规则反查到原始失败案例 |
+
+### 6.6 冷启动协议
+
+**核心问题**：第一天规则库是空的，如何从 0 到 1？
+
+#### 6.6.1 冷启动三阶段
+
+```
+Phase 0a: 种子注入（Day 1）
+  │  来源：领域专家人工输入 + 行业合规基线
+  │  产出：GLOBAL 级种子规则（10-20 条核心红线）
+  │  验证：专家逐一审核
+  │
+  ▼
+Phase 0b: 校准运行（Day 2-7）
+  │  方式：用种子规则执行一批样本任务
+  │  采集：FULL 级 Trace
+  │  产出：
+  │    - 校准报告：种子规则的命中率、误杀率
+  │    - 候选规则池：从失败案例中提炼的规则候选
+  │  决策：哪些候选规则可以转正（需人工确认）
+  │
+  ▼
+Phase 0c: 首轮扩张（Day 8-14）
+     方式：转正候选规则 + 新增 SCENE 级规则
+     验证：对比有/无新规则时的门禁通过率
+     达标：通过率提升 + 误杀率 < 5% → 进入稳态运行
+     不达标：回退到 0b，调整规则后重新校准
+```
+
+#### 6.6.2 种子规则模板
+
+```yaml
+# 每个 Skill 类型的最小种子规则集
+seed_rules:
+  GENERATIVE:
+    - { type: FORBIDDEN_SPEECH, pattern: "绝对化用语", severity: HARD, class: SAFETY }
+    - { type: FORBIDDEN_METHOD, pattern: "直接复制已有内容", severity: HARD, class: EXPERIENTIAL }
+    - { type: FORBIDDEN_LOGIC,  pattern: "自相矛盾", severity: HARD, class: EXPERIENTIAL }
+
+  ANALYTICAL:
+    - { type: FORBIDDEN_LOGIC,  pattern: "数据与结论不匹配", severity: HARD, class: EXPERIENTIAL }
+    - { type: FORBIDDEN_METHOD, pattern: "虚构数据", severity: HARD, class: SAFETY }
+
+  EXECUTIVE:
+    - { type: FORBIDDEN_ACTION, pattern: "越权操作", severity: HARD, class: SAFETY }
+    - { type: FORBIDDEN_METHOD, pattern: "绕过审批", severity: HARD, class: SAFETY }
+
+  INTERACTIVE:
+    - { type: FORBIDDEN_SPEECH, pattern: "冒犯性用语", severity: HARD, class: SAFETY }
+    - { type: FORBIDDEN_ACTION, pattern: "未确认就执行危险操作", severity: HARD, class: SAFETY }
+```
+
+### 6.7 正向闭环协议（成功进化）
+
+**核心问题**：Agent 的成功经验如何被捕获、沉淀、复用？
+
+> 本协议是 §2.2 中"正向闭环"的运行时实现。它让 Agent 不仅"不犯错"，还能"越做越好"。
+
+#### 6.7.1 成功案例采集
+
+当一次执行的软门禁评分 ≥ 阈值（默认 0.85），视为**高分成功案例**，触发采集：
+
+```yaml
+success_trace:
+  id: "ST-20240315-001"
+  skill_id: "skill.activity-planning"
+  trace_ref: "T-20240315-001"              # 关联原始 Trace
+
+  # 成功要素提取
+  success_factors:
+    decision_points:                       # 关键决策节点
+      - decision: "选择活动形式"
+        chosen: "线上直播 + 线下快闪"
+        rationale_in_trace: "分析了目标受众画像，发现 70% 为年轻白领"
+        alternatives_rejected: ["纯线下发布会", "纯线上直播"]
+    patterns_observed:                     # 观察到的成功模式
+      - "受众分析先于方案设计"
+      - "混合形式比单一形式获得更高的创意评分"
+    efficiency:
+      path_switches: 0                     # 没有规则触碰，路径清晰
+      tokens_used: 3200                    # 低于平均水平
+
+  # 质量评分
+  quality:
+    soft_score: 0.92
+    gate_report: { ... }
+```
+
+#### 6.7.2 经验模式提炼
+
+成功案例经过批量分析后，提炼为**经验模式**（Pattern）：
+
+```yaml
+pattern:
+  id: "P-2024-001"
+  source_traces: ["ST-20240315-001", "ST-20240318-003", "ST-20240322-001"]
+  skill_scope: "skill.activity-planning"   # 或 "scene.marketing"（跨 Skill 时提升作用域）
+
+  # 模式描述
+  description: "受众分析先于方案设计，可提升方案精准度"
+  evidence:
+    sample_size: 3
+    avg_soft_score_with_pattern: 0.91
+    avg_soft_score_without_pattern: 0.72   # 对比基线
+    confidence: 0.83                       # 基于样本量的统计置信度
+
+  # 可执行形态——三种沉淀方式
+  as_preference:                           # 方式 1：沉淀为偏好引导
+    text: "先分析目标受众画像，再设计活动形式"
+    weight: MEDIUM
+    source_pattern: "P-2024-001"
+
+  as_fewshot:                              # 方式 2：沉淀为 few-shot 示例
+    context: "规划活动方案时"
+    example_output: "..."                  # 脱敏后的高分输出片段
+
+  as_constraint_relaxation:                # 方式 3：提案放宽过严的经验性约束
+    target_rule: "R-ACT-003"               # 目标规则
+    evidence: "该规则在 3 次高分案例中触发了路径切换，但切换后的路径评分更低"
+    proposal: "DOWNGRADE_HARD_TO_SOFT"     # 降级为软约束
+    requires_human_review: true            # 放宽约束必须人工确认
+```
+
+**三种沉淀方式的使用条件**：
+
+| 沉淀方式 | 触发条件 | 作用 |
+|----------|----------|------|
+| 偏好引导 | 同一模式在 ≥ 3 个成功案例中出现 | 为后续执行提供参考方向 |
+| Few-shot 示例 | 同一模式在 ≥ 5 个成功案例中出现且置信度 > 0.8 | 作为 prompt 中的示例注入 |
+| 约束放宽提案 | 某条 EXPERIENTIAL 约束频繁导致路径切换，且切换后评分更低 | 提案放宽过严约束（必须人工确认） |
+
+#### 6.7.3 经验模式库（Pattern Store）
+
+```
+┌──────────────────────────────────────────────────────┐
+│                 经 验 模 式 库                         │
+│                                                      │
+│  ┌───────────────┐  ┌──────────────┐  ┌───────────┐ │
+│  │ 偏好模式       │  │ Few-shot 示例│  │ 放宽提案   │ │
+│  │ (Preference)  │  │ (Examples)   │  │ (Relax)   │ │
+│  └───────┬───────┘  └──────┬───────┘  └─────┬─────┘ │
+│          │                 │                │        │
+│          └────────┬────────┘                │        │
+│                   │                         │        │
+│                   ▼                         │        │
+│          注入约束引擎                        │        │
+│          （偏好和示例参与                     │        │
+│           后续执行的 prompt）                │        │
+│                                             │        │
+└──────────────────────────────────────────────────────┘
+```
+
+**经验模式的生命周期**：
+
+```
+发现(Discover) → 验证(Validate) → 沉淀(Deposit) → 应用(Apply) → 淘汰(Retire)
+
+Discover  : 从 ≥ 3 个高分案例中识别出重复模式
+Validate  : 统计置信度达标（≥ 0.8），且与已有模式不冲突
+Deposit   : 以偏好 / few-shot / 放宽提案之一的形式入库
+Apply     : 参与后续执行的约束注入（偏好和示例自动注入）
+Retire    : 连续 30 天未命中，或应用后软评分下降 → 标记废弃
+```
+
+#### 6.7.4 正向闭环与负向闭环的制衡
+
+```
+                  ┌────────────────────┐
+                  │    执 行 结 果      │
+                  └────────┬───────────┘
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+          失败 ✗                    高分成功 ✓
+              │                         │
+              ▼                         ▼
+     ┌────────────────┐      ┌─────────────────┐
+     │   负 向 闭 环   │      │   正 向 闭 环    │
+     │                │      │                 │
+     │ 归因 → 新增约束 │      │ 分析 → 沉淀模式  │
+     │ 作用：减法      │      │ 作用：加法       │
+     │                │      │                 │
+     │ 风险：过度约束  │      │ 风险：经验固化   │
+     └───────┬────────┘      └────────┬────────┘
+             │                        │
+             └──────────┬─────────────┘
+                        │
+                        ▼
+              ┌────────────────────┐
+              │   互 相 制 衡      │
+              │                    │
+              │ 经验模式隐藏违规？  │──→ 负向闭环拦截，阻止模式沉淀
+              │ 约束过于严苛？      │──→ 正向闭环提案放宽（仅 EXPERIENTIAL）
+              └────────────────────┘
+```
+
+**制衡规则**：
+- 每条经验模式入库前，必须通过硬门禁校验——如果模式本身包含违规内容，负向闭环有权否决
+- 每次约束放宽提案，必须由正向闭环提供证据——没有成功案例支撑的放宽，不予执行
+- 安全约束（`class: SAFETY`）不在制衡范围内——它绝对不可放宽
+
+---
+
+## 7. DAG 驱动的闭环迭代流程
+
+> **设计决策（来自 OpenSpec）**：用**工件依赖图（Artifact Dependency Graph）**取代线性步骤序列。每个节点是一个"工件"（已处理的输入或已生成的输出），边是"依赖关系"。当上游工件就绪时，下游自动触发——依赖是使能条件，不是关卡。
+
+### 7.1 工件依赖图（单次执行）
+
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
+│ SkillDef    │────→│ Assembled    │────→│ InjectedPrompt   │
+│ (from       │     │ Constraints  │     │ (正向重述 +       │
+│  Registry)  │     │ (合并规则     │     │  经验模式 +       │
+│             │     │  + 经验模式)  │     │  行为守卫)        │
+└─────────────┘     └──────────────┘     └────────┬──────────┘
+                                                    │
+                              ┌──────────────────────┘
+                              ▼
+                    ┌──────────────────┐
+                    │ ExecutionResult  │
+                    │ (三阶段治理产出)  │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+              ▼                             ▼
+    ┌──────────────────┐          ┌──────────────────┐
+    │ GateReport       │          │ TraceRecord      │
+    │ (HARD + SOFT)    │          │ (执行轨迹)       │
+    └────────┬─────────┘          └────────┬─────────┘
+             │                             │
+             └──────────┬──────────────────┘
+                        │
+             ┌──────────┴──────────┐
+             │                     │
+        失败 ✗               高分成功 ✓
+             │                     │
+             ▼                     ▼
+   ┌──────────────────┐  ┌──────────────────┐
+   │ AttributionResult│  │ PatternCandidate │
+   │ (归因结论)       │  │ (经验模式候选)   │
+   └────────┬─────────┘  └────────┬─────────┘
+            │                     │
+            ▼                     ▼
+   ┌──────────────────┐  ┌──────────────────┐
+   │ RuleDelta        │  │ PatternDeposit   │
+   │ (规则变更提案)   │  │ (沉淀的模式)     │
+   └──────────────────┘  └──────────────────┘
+```
+
+**DAG 节点定义**：
+
+| 工件 | 产出者 | 消费者 | 就绪条件 |
+|------|--------|--------|----------|
+| SkillDef | Registry | Assembler | Registry 查询成功 |
+| AssembledConstraints | 约束引擎 | Injector | 规则合并完成 |
+| InjectedPrompt | 注入协议 | 执行推理 | 正向重述 + 模式注入完成 |
+| ExecutionResult | 执行推理 | Gate / Trace | 三阶段治理完成 |
+| GateReport | 校验引擎 | 闭环分叉 | HARD + SOFT 评估完成 |
+| TraceRecord | 轨迹采集 | 闭环分叉 | 采集完成 |
+| AttributionResult | 归因引擎 | 规则治理 | 双层归因完成 |
+| PatternCandidate | 成功分析 | 模式治理 | 模式提炼完成 |
+| RuleDelta | 规则治理 | 规则库 | 人工确认（弱归因时） |
+| PatternDeposit | 模式治理 | 模式库 | 硬门禁校验通过 |
+
+**DAG 的关键特性**：
+
+- **并行性**：GateReport 和 TraceRecord 没有依赖关系，可以并行产出
+- **条件触发**：AttributionResult 仅在失败时产出，PatternCandidate 仅在高分成功时产出
+- **使能而非关卡**：依赖是"我需要你的输出才能开始"，不是"你必须批准我才能继续"
+- **无前置编排**：DAG 结构由 Skill 定义静态声明，运行时按依赖拓扑自动调度
+
+### 7.2 规则库与经验库治理（定期执行）
+
+> 所有治理动作均通过 **Delta Rule** 表达（§5.2.1.1），治理结果不是直接修改规则库，而是产出 Delta 待审核/生效。
+
+#### 7.2.1 规则库治理（负向闭环维护）
+
+| 治理动作 | 频率 | Delta 操作 | 说明 |
+|----------|------|-----------|------|
+| 冲突检测 | 每周 | — | 发现互斥规则，人工裁决后产出 MODIFIED Delta |
+| 冗余合并 | 每两周 | MODIFIED + DEPRECATED | 语义相近的规则合并，旧规则 DEPRECATED |
+| 过时清理 | 每月 | DEPRECATED | 业务已变更的规则标记废弃 |
+| 效果评估 | 每月 | — | 每条规则的命中率、误杀率、置信度，触发后续 Delta |
+| 膨胀检查 | 每周 | REMOVED（仅 EXPERIENTIAL） | 单场景规则数 > 80 时预警 |
+| 约束分类复核 | 每季度 | MODIFIED | 重新评估 SAFETY / EXPERIENTIAL 分类 |
+
+**Delta 治理流水线**：
+```
+治理分析 → 产出 Delta 候选
+    → 影子校验（用最近 50 条 Trace 重放，确认不恶化）
+    → 审核决策（confidence ≥ 0.7 且 EXPERIENTIAL → 可自动；其余 → 人工）
+    → Delta 生效 → 规则库更新
+    → 生效后监控 7 天（误杀率、通过率）
+    → 异常则自动回滚 Delta
+```
+
+**规则膨胀熔断**：
+- 单场景上限 100 条，触达时强制触发瘦身
+- 瘦身产出 `REMOVED` Delta（仅 `EXPERIENTIAL` 规则，命中率 0 且存活 > 60 天）
+- `SAFETY` 规则不参与自动淘汰，产出 `DEPRECATED` Delta 待人工评审
+- 每条 Delta 淘汰前需人工确认（防止误删季节性规则）
+
+#### 7.2.2 经验模式库治理（正向闭环维护）
+
+| 治理动作 | 频率 | 说明 |
+|----------|------|------|
+| 有效性评估 | 每周 | 模式应用后的平均软评分是否高于基线 |
+| 模式淘汰 | 每两周 | 连续 30 天未命中，或应用后评分下降 → 废弃 |
+| 冲突检测 | 每周 | 经验模式是否与新增禁止规则冲突 |
+| 提升作用域 | 每月 | 单 Skill 内高度有效的模式，评估是否提升到 SCENE 级 |
+
+---
+
+## 8. 运行时可观测性
+
+### 8.1 核心指标
+
+**负向闭环指标**：
+
+| 指标 | 计算方式 | 告警阈值 |
+|------|----------|----------|
+| 门禁通过率 | 通过次数 / 总执行次数 | < 70% → 检查规则是否过严 |
+| 硬门禁驳回率 | 硬驳回 / 总执行次数 | > 30% → 检查约束注入是否有效 |
+| 归因自动执行率 | 自动执行 / 总归因 | < 50% → 归因模型需优化 |
+| 归因争议率 | 人工推翻 / 总自动归因 | > 30% → 触发归因熔断 |
+| 规则命中率 | 命中 / 总执行 | 单规则 60 天命中 0 → 淘汰候选 |
+| 规则误杀率 | 人工确认误杀 / 规则命中 | > 20% → 自动回滚 |
+| 路径切换率 | 路径切换 / 总执行 | > 50% → Agent 探索效率低，加偏好 |
+| 平均重试次数 | 总重试 / 总执行 | > 1.5 → 门禁或约束可能不合理 |
+
+**正向闭环指标**：
+
+| 指标 | 计算方式 | 告警阈值 |
+|------|----------|----------|
+| 高分案例占比 | 软评分 ≥ 0.85 的执行 / 总通过 | < 10% → 偏好和经验模式需要优化 |
+| 经验模式有效率 | 应用后评分上升 / 模式应用总数 | < 50% → 模式库需要治理 |
+| 经验模式复用率 | 模式命中 / 总执行 | 追踪趋势，持续上升为健康 |
+| 能力提升趋势 | 近 30 天平均软评分 vs 前 30 天 | 下降 → 正向闭环可能固化错误模式 |
+| 约束放宽成功率 | 放宽后 7 天无安全事故 / 总放宽 | < 100% → 放宽审批标准需收紧 |
+
+### 8.2 观测看板
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    架构健康度看板                         │
+├──────────────┬──────────────┬──────────────┬────────────┤
+│  通过率趋势   │  规则 TOP10  │  归因分布    │  规则增长  │
+│  (7d/30d)    │  命中排行    │  饼图        │  趋势线    │
+├──────────────┴──────────────┴──────────────┴────────────┤
+│  告警：[归因争议率 35% > 阈值 30%] → 已触发归因熔断      │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. 场景适配指南
+
+### 9.1 适配度评估矩阵
+
+| 场景特征 | 适配度 | 说明 |
+|----------|--------|------|
+| 开放式、需要创新 | ✅ 强烈推荐 | 方案策划、创意设计、问题推演 |
+| 半结构化、有弹性 | ✅ 推荐 | 报告撰写、分析总结 |
+| 强流程、高合规 | ⚠️ 谨慎使用 | 需混合正向流程指令 |
+| 标准化作业 | ❌ 不推荐 | 数据录入、固定接口调用，用正向指令更高效 |
+
+### 9.2 混合模式（强流程场景）
+
+```yaml
+mode: HYBRID
+positive_flow:
+  - "核实用户身份"
+  - "查询账户余额"
+  - "校验交易限额"
+negative_constraints:
+  - FORBIDDEN_ACTION: "未完成身份核实前执行转账"
+  - FORBIDDEN_METHOD: "绕过限额校验"
+```
+
+---
+
+## 10. 模块职责与接口
+
+### 10.1 模块清单
+
+| 模块 | 职责 | 输入 | 输出 |
+|------|------|------|------|
+| **Skill Registry** | Skill 注册、发现、版本管理 | skill.yaml | Skill 实例 |
+| **目标解析模块** | 提取核心目标，Lint 检查 | 原始任务描述 | 结构化 Intent |
+| **约束引擎** | 规则管理、作用域合并、正向重述、经验模式注入 | Skill.boundary + PatternStore | ConstraintSet（含 positive + guardrail + patterns） |
+| **执行推理模块** | 自主规划路径，三阶段治理 | Intent + ConstraintSet | 执行结果 + Trace |
+| **校验引擎** | HARD + SOFT Gate 评估 | 结果 + Gate 定义 | ValidationReport |
+| **归因引擎** | 双层归因（强归因：规则命中分析；弱归因：根因判定）、置信度评分、安全机制 | Violation + Trace | StrongAttributionResult 或 WeakAttributionResult |
+| **成功分析引擎** | 高分案例采集、经验模式提炼、约束放宽提案 | 高分 Trace + 历史基线 | Pattern（偏好/示例/放宽提案） |
+| **经验模式库** | 模式存储、生命周期管理、有效性评估 | Pattern | 按作用域检索的模式集 |
+| **规则治理引擎** | 冲突检测、冗余合并、膨胀控制、约束分类复核 | 规则库 + 统计数据 | 治理报告 + 规则变更 |
+
+### 10.2 核心接口
+
+```
+# Skill Registry
+SkillRegistry.register(skill: SkillDefinition) → Skill
+SkillRegistry.query(tags: string[]) → Skill[]
+SkillRegistry.evolve(skill_id: string, mutation: SkillMutation) → Skill
+
+# 约束引擎 — 含正向重述
+ConstraintEngine.prepare(boundary: Boundary) → PreparedConstraints {
+    positive_prompts: string[],              # 注入 prompt 的正向表述
+    guardrails: GuardRule[],                 # 用于校验的负向规则
+    scope_summary: string                    # 规则作用域摘要
+}
+
+# 校验引擎
+ValidationEngine.validate(result: any, gate: Gate, guardrails: GuardRule[]) → ValidationReport {
+    passed: boolean,
+    hard_violations: Violation[],
+    soft_issues: Issue[],
+    soft_score: float
+}
+
+# 归因引擎 — 双层模型
+AttributionEngine.analyze(violation: Violation, trace: Trace, rule_lib: RuleLibrary) → AttributionResult
+
+# 强归因结果（确定性）
+StrongAttributionResult {
+    layer: "STRONG",
+    root_cause: "rule_hit",
+    matched_rule: Rule,
+    detection_gap: string | null,
+    action: "OPTIMIZE_DETECTION" | "STRENGTHEN_RULE",
+    requires_human_review: false
+}
+
+# 弱归因结果（概率性）
+WeakAttributionResult {
+    layer: "WEAK",
+    root_cause: "rule_violation" | "capability_gap" | "rule_missing",
+    confidence: float,                      # 必须 ≥ 0.7 才能自动执行
+    evidence: string[],
+    action: "NEW_RULE" | "ARCHIVE" | null,
+    candidate_rule: Rule | null,
+    requires_human_review: boolean          # confidence < 0.7 时为 true
+}
+
+# 轨迹采集
+TraceCollector.capture(execution: Execution, level: CaptureLevel) → Trace
+
+# 成功分析引擎 — 正向闭环核心
+SuccessAnalyzer.analyze(success_traces: Trace[], baseline: BaselineStats) → PatternCandidate {
+    description: string,
+    evidence: { sample_size: int, avg_score_with: float, avg_score_without: float, confidence: float },
+    deposit_as: "PREFERENCE" | "FEWSHOT" | "CONSTRAINT_RELAXATION",
+    preference_text: string | null,
+    fewshot_example: string | null,
+    relaxation_target: Rule | null,
+    requires_human_review: boolean            # 放宽提案必须 true
+}
+
+# 经验模式库
+PatternStore.query(scope: string, skill_id: string | null) → Pattern[]
+PatternStore.deposit(pattern: PatternCandidate) → Pattern
+PatternStore.retire(pattern_id: string, reason: string) → void
+PatternStore.effectiveness_report() → EffectivenessReport
+```
+
+---
+
+## 11. 落地路线图
+
+### Phase 0：冷启动（第 1-2 周）
+
+- [ ] 定义 Skill 双轨格式（skill.yaml + skill.md）和 seed_rules 模板
+- [ ] 实现 Skill Registry 的注册 + 查询 + 双轨一致性 lint
+- [ ] 人工输入 GLOBAL 级种子规则（10-20 条）
+- [ ] 实现约束注入的正向重述管道
+- [ ] 用 3 个示例 Skill 跑通校准运行（STRICT 模式）
+- [ ] 产出校准报告，确认种子规则有效性
+
+### Phase 1：最小闭环 + DAG（第 3-4 周）
+
+- [ ] 实现约束引擎（规则合并 + 作用域）
+- [ ] 实现硬门禁的关键词/正则/语义校验
+- [ ] 实现轨迹采集（FULL 级）
+- [ ] 实现归因引擎的基础判定（规则命中 + 能力边界）
+- [ ] 实现 DAG 调度器（工件依赖图拓扑排序 + 自动触发）
+- [ ] 跑通「执行 → 校验 → 归因 → Delta Rule 产出」闭环
+
+### Phase 2：能力完善（第 5-7 周）
+
+- [ ] 实现软门禁 + 案例归档
+- [ ] 实现偏好引导层
+- [ ] 实现归因置信度评分
+- [ ] 实现归因安全机制（人工审核、熔断、回滚）
+- [ ] 实现规则库治理（冲突检测、冗余合并），输出 Delta Rule
+- [ ] 实现约束双轨制（SAFETY / EXPERIENTIAL 分类）
+- [ ] 实现渐进严谨度（LITE / STANDARD / STRICT 三级切换）
+- [ ] 支持 Guard 守卫（Red Flags + Spirit vs Letter）注入
+- [ ] 支持混合模式（HYBRID）
+
+### Phase 3：正向闭环（第 8-10 周）
+
+- [ ] 实现高分案例采集与成功 Trace 结构
+- [ ] 实现经验模式提炼引擎（偏好 / few-shot / 放宽提案）
+- [ ] 实现经验模式库（Pattern Store）及生命周期管理
+- [ ] 实现约束放宽审批流程（仅 EXPERIENTIAL + 人工确认 + 7 天观察）
+- [ ] 实现经验模式注入约束引擎的管道
+- [ ] 实现双闭环制衡逻辑（负向否决权 + 正向放宽提案）
+- [ ] 实现 Delta Rule 影子校验（重放最近 50 条 Trace）
+
+### Phase 4：规模化（持续）
+
+- [ ] 双闭环运行时可观测性看板（含严谨度分布、Delta 审计链）
+- [ ] Skill 组合（Workflow）
+- [ ] 跨场景规则和经验模式迁移与复用
+- [ ] 约束注入的 RAG 检索策略（规则 > 100 条时）
+- [ ] 归因模型和成功分析模型持续优化
+- [ ] 经验模式跨 Skill 提升作用域的自动化评估
+- [ ] 渐进严谨度自动升降级（基于稳定性指标）
+
+---
+
+## 12. 风险清单与应对
+
+| 风险 | 等级 | 应对策略 | 文档位置 |
+|------|------|----------|----------|
+| Agent 无效探索，效率暴跌 | 高 | Intent 兜底 + 偏好引导 + 路径切换（非重试） | §6.2.2 |
+| 禁止规则无限膨胀 | 高 | 单场景上限 100 + 定期瘦身 + Delta Rule 审计链 | §7.2 |
+| 归因偏差，污染规则库 | 高 | 强弱归因分离 + 置信度评分 + 人工审核兜底 + 熔断 + 回滚 | §6.5 |
+| 负向指令白熊效应 | 高 | 正向重述原则（存储负向，注入正向）+ Guard Red Flags 认知层拦截 | §6.1.1 |
+| 弱归因本质不可靠 | 高 | 显式承认弱归因是因果推断而非工程问题，以置信度和人工兜底管理预期 | §6.5 |
+| 经验模式固化，路径依赖 | 高 | 模式有效性评估（应用后评分是否上升）+ 淘汰机制 + 负向闭环否决权 | §6.7.4 |
+| 约束放宽引入安全风险 | 高 | 仅 EXPERIENTIAL 约束可放宽 + 必须人工确认 + 7 天观察期 | §5.2.1 |
+| Delta Rule 级联效应 | 高 | 影子校验（重放 50 条 Trace）+ 7 天观察期 + 自动回滚 | §5.2.1.1 |
+| 只收紧不放宽，创造力丧失 | 中 | 约束双轨制：SAFETY 只收紧，EXPERIENTIAL 可双向调整 | §5.2.1 |
+| 自然语言规则歧义 | 中 | 规则结构化（正则/关键词/语义标签）+ Spirit vs Letter 声明 | §5.2.1 |
+| 冷启动无规则可用 | 中 | 种子规则模板 + 校准运行 + 人工确认 | §6.6 |
+| Skill 双轨格式不一致 | 中 | 注册时自动 lint（frontmatter 与 skill.yaml meta 一致性检查） | §4.2.2 |
+| 严谨度选择不当 | 中 | 新 Skill 默认 STRICT + 稳定 14 天后可降级 + 任意时刻可升级 | §6.0 |
+| DAG 调度死锁或循环依赖 | 中 | DAG 静态校验（注册时拓扑排序检测）+ 运行时超时熔断 | §7.1 |
+| 场景误用 | 低 | 适配度评估前置 + 混合模式降级 | §9 |
+
+---
+
+## 附录 A：设计哲学
+
+本架构遵循九条设计原则（P1-P7 为原始原则，P8-P9 为借鉴 Superpowers 和 OpenSpec 后新增），它们是所有具体设计的决策依据：
+
+**P1. 负向为主，正向为辅，认知层先发制人**
+> 以禁止规则定义行为边界，以极简目标指明方向，以 Red Flags 在认知层拦截合理化冲动。三层防线分工明确：负向规则负责**校验**（guardrail），正向目标负责**引导**（prompt injection），Guard 守卫负责**认知拦截**（anti-rationalization）。纯负向约束在 LLM 上存在白熊效应，需要正向重述辅助引导。这不削弱负向约束的核心地位——正向目标仍然是极简的（≤ 2 句话），执行路径仍然完全由 Agent 自主决策。
+
+**P2. 校验结果，而非过程**
+> 过程监管扼杀创造力。只看最终产出是否合格。
+
+**P3. 双向沉淀——从失败和成功中同时学习**
+> 失败案例沉淀为禁止规则（减少犯错），成功案例沉淀为经验模式（提升能力）。只有双闭环同时运转，Agent 才能同时提升下限和上限。
+
+**P4. 闭环耦合，DAG 驱动**
+> 四个核心原子（Intent / Boundary / Gate / Trace）在单次执行中职责不重叠，但在跨执行的迭代中形成闭环耦合。迭代流程由**工件依赖图（DAG）**驱动——依赖是使能条件，不是关卡；上游就绪，下游自动触发。
+
+**P5. 证据驱动，增量表达**
+> 每条规则的增删改、每次归因的判定、每条经验模式的沉淀，都必须有可追溯的证据支撑。规则变更采用**增量表达**（Delta Rule）——不替换全量文件，只描述"对哪条规则做了什么操作"，形成完整审计链。
+
+**P6. 安全底线不可逾越，经验边界可适应**
+> 安全约束（SAFETY）只收紧不放宽，对应"致死区"。经验约束（EXPERIENTIAL）可收紧也可放宽，但放宽必须由正向闭环提供证据并经人工确认。
+
+**P7. 双闭环互相制衡**
+> 负向闭环防止正向闭环沉淀违规经验。正向闭环防止负向闭环过度约束。两者制衡，使 Agent 在安全范围内持续进化。
+
+**P8. 轻量创建，重量执行**（来自 Superpowers）
+> Skill 的创建门槛尽可能低——写一份 Markdown 就是一个 Skill。但运行时的约束注入、门禁校验、轨迹采集、归因判定不因创建简单而缩水。双轨格式（skill.yaml + skill.md）让"写"和"跑"解耦：人类用自然语言写，引擎用结构化数据跑。
+
+**P9. 渐进严谨度**（来自 OpenSpec）
+> 不是所有场景都需要同等严苛的校验。三级严谨度（LITE / STANDARD / STRICT）让每个 Skill 按需选择合适的约束强度——高频低风险的用 LITE 跑效率，高风险合规敏感的用 STRICT 保安全，默认 STANDARD 兼顾两者。严谨度可升可降，升降条件由证据驱动。
+
+---
+
+## 附录 B：概念速查
+
+| 概念 | 定义 |
+|------|------|
+| **Skill** | Agent 的能力单元 = Intent + Boundary + Gate + Trace；无强类型，"类型"是涌现属性；双轨格式声明（skill.yaml + skill.md） |
+| **Skill 双轨格式** | 结构化元数据（skill.yaml，机器消费）+ 自然语言内容（skill.md，人类编写 + Agent 注入）的分离声明方式 |
+| **Intent** | 极简正向目标，只说"要什么"，不说"怎么做" |
+| **Boundary** | 负向约束集，定义行为禁区；约束分 SAFETY（不可放宽）和 EXPERIENTIAL（可双向调整） |
+| **Gate** | 结果校验标准，分 HARD（驳回）和 SOFT（记录）；高分案例触发正向闭环 |
+| **Trace** | 执行轨迹，同时供负向归因和正向成功分析使用 |
+| **Guard** | 认知层行为守卫，包含 Red Flags（反合理化红旗表）和 Spirit vs Letter（精神 vs 字面声明） |
+| **Red Flags** | 红旗表——当 Agent 产生特定"念头"时触发拦截的反合理化检查表 |
+| **Spirit vs Letter** | 约束的解释模式声明：SPIRIT（按意图解释）或 LETTER（按字面精确匹配） |
+| **正向重述** | 将负向规则转换为正向表述后注入 prompt 的技术（解决白熊效应） |
+| **双闭环** | 负向闭环（犯错→归因→收紧约束）+ 正向闭环（成功→分析→沉淀模式），互相制衡 |
+| **强归因** | 规则命中分析，确定性推理，可全自动执行 |
+| **弱归因** | 根因判定（行为违规/能力不足/规则缺失），因果推断，需置信度和人工兜底 |
+| **归因熔断** | 归因争议率过高时暂停自动归因的安全机制 |
+| **经验模式** | 从高分成功案例中提炼的可复用模式，以偏好/few-shot/放宽提案三种形态沉淀 |
+| **安全约束** | `class: SAFETY`，对应组织红线，只收紧不放宽 |
+| **经验约束** | `class: EXPERIENTIAL`，对应历史经验，可收紧也可放宽（需证据+人工确认） |
+| **种子规则** | 冷启动阶段的人工预设规则基线 |
+| **路径切换** | 触碰规则后切换执行方向（而非重试同一方向） |
+| **元 Skill** | 维护架构本身的 Skill（规则治理、归因判定、成功分析等），遵循同样的四原子规范 |
+| **Delta Rule** | 增量规则变更，描述"对哪条规则做了什么操作"（ADDED/MODIFIED/REMOVED/DEPRECATED），取代全量替换 |
+| **工件依赖图** | DAG 驱动的执行流程模型，节点是工件（输入/输出），边是依赖关系，上游就绪时下游自动触发 |
+| **渐进严谨度** | 三级校验强度（LITE/STANDARD/STRICT），Skill 按需选择，可升可降，升降由证据驱动 |
+| **影子校验** | Delta Rule 生效前，用最近 50 条 Trace 重放验证变更不会恶化的安全机制 |

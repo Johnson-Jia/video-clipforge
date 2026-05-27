@@ -1,0 +1,36 @@
+rules:
+  - id: "R-S4-001"
+    type: FORBIDDEN_METHOD
+    pattern: "TTS 未分段生成直接整段合成"
+    positive: "TTS 必须按 narration_segments.json 的 segments 逐段生成，确保 actual_duration 精确"
+    guardrail: "narration.mp3 是一次性 TTS 合成而非分段拼接"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage4-audio"
+    source: "stage4-audio.md Common Rationalizations"
+
+  - id: "R-S4-002"
+    type: FORBIDDEN_METHOD
+    pattern: "BGM 选择未参考 design.md 的 mood"
+    positive: "BGM 风格必须与 design.md 的 mood/immersion_mode 匹配"
+    guardrail: "BGM 风格与视频情绪基调不匹配"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage4-audio"
+    source: "stage4-audio.md Common Rationalizations"
+
+  - id: "R-S4-003"
+    type: FORBIDDEN_ACTION
+    pattern: "多音字未做预处理"
+    positive: "TTS 前对多音字/专有名词做拼音注音预处理"
+    guardrail: "TTS 输出中存在明显发音错误的多音字"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage4-audio"
+    source: "stage4-audio.md"

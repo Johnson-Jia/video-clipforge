@@ -1,0 +1,41 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage3-scenes"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["scenes", "narration"]
+    rigor: STANDARD
+  intent:
+    objective: "拆解场景并撰写旁白文案，产出 narration_segments.json"
+    criteria:
+      - "narration_segments.json 存在且含 segments 数组"
+      - "hook 场景为纯钩子"
+      - "总字数在目标范围内"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+      - ref: "R-C-*"
+      - ref: "R-S3-*"
+  guard:
+    red_flags:
+      - thought: "hook 里顺便介绍一下背景"
+        reality: "前 3 秒是生死线，任何信息性内容都会削弱钩子冲击力"
+        trigger: "试图在 hook 场景加入正文内容"
+      - thought: "场景数量和节奏差不多就行"
+        reality: "节奏是视频质量的根本，必须严格按 emotion_curve 设计"
+        trigger: "试图跳过节奏设计"
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["narration_segments.json"]
+      - gate: json_valid
+        params:
+          files: ["narration_segments.json"]
+          required_keys: ["segments"]
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []
