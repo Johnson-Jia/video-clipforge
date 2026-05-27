@@ -1,0 +1,24 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage0-env"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["env", "setup"]
+    rigor: LITE
+  intent:
+    objective: "检查和准备运行环境（ffmpeg, edge-tts, node 等）"
+    criteria:
+      - "所有必要工具已安装且版本兼容"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+  guard:
+    red_flags: []
+  gate:
+    hard: []
+    soft: []
+    max_retries: 1
+  trace:
+    capture: true
+    level: SUMMARY
+    sensitive_fields: []

@@ -1,0 +1,55 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage4-audio"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["audio", "tts", "bgm"]
+    rigor: STANDARD
+  intent:
+    objective: "生成 TTS 旁白音频和背景配乐，产出逐段时长数据"
+    criteria:
+      - "segment_durations.json 存在且含 meta + segments"
+      - "narration.mp3 经过 loudnorm 标准化（max_volume >= -10 dB）"
+      - "bgm.wav 存在且音量已通过 bgm_pipeline.sh 校准"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+      - ref: "R-A-*"
+      - ref: "R-C-*"
+  guard:
+    red_flags:
+      - thought: "预估时长够用了"
+        reality: "事故：预估偏差累计 8 秒导致全片空白。必须用分段 TTS 实测 actual_duration"
+        trigger: "试图跳过分段 TTS"
+      - thought: "BGM 音量后面再调"
+        reality: "segment_durations.json 是唯一传递通道，不写入 Stage 6 就无法控制音量"
+        trigger: "试图跳过 BGM 音量校准"
+      - thought: "听起来差不多就行"
+        reality: "loudnorm 标准化不是差不多，是防止部分段过响或过轻影响混音"
+        trigger: "试图跳过 loudnorm 校验"
+      - thought: "BGM 不够长用 HTML loop 就行"
+        reality: "HyperFrames 对 loop 支持不可靠，必须用 FFmpeg 循环扩展 WAV"
+        trigger: "试图用 HTML loop 替代 FFmpeg 循环"
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["segment_durations.json", "narration.mp3", "bgm.wav"]
+      - gate: json_valid
+        params:
+          files: ["segment_durations.json"]
+          required_keys: ["meta", "segments"]
+      - gate: loudnorm_verified
+        params:
+          file: "narration.mp3"
+          min_db: -10
+      - gate: bgm_volume_set
+        params:
+          file: "segment_durations.json"
+          key: "meta.bgm_volume"
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []

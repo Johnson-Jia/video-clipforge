@@ -1,0 +1,65 @@
+rules:
+  - id: "R-C-001"
+    type: FORBIDDEN_ACTION
+    pattern: "hook 场景包含信息性内容而非纯钩子"
+    positive: "hook 场景（前 3-5s）必须是纯钩子：震撼数据/反问/强对比/悬念，正文从第 2 个场景开始"
+    guardrail: "hook 场景旁白包含项目介绍或功能说明等正文内容"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §5.1"
+
+  - id: "R-C-002"
+    type: FORBIDDEN_ACTION
+    pattern: "钩子句超过 12 个字"
+    positive: "钩子句控制在 12 字以内，口语化，一击即中"
+    guardrail: "hook narration_segment 超过 12 个中文字符"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §5.1"
+
+  - id: "R-C-003"
+    type: FORBIDDEN_ACTION
+    pattern: "视频开头音频淡入"
+    positive: "音频从第一帧立即全音量播放，确保 hook 冲击力"
+    guardrail: "narration 或 BGM 使用了 afade=t=in 淡入效果"
+    detection:
+      keywords: ["afade=t=in"]
+      regex: "afade.*t=in"
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §5.3"
+
+  - id: "R-C-004"
+    type: FORBIDDEN_ACTION
+    pattern: "场景时长超过 15 秒且无 visual_phases"
+    positive: "时长 >15 秒的场景必须拆分为多个 visual phase，每 phase 8-15 秒"
+    guardrail: "narration_segments.json 中存在 duration >15 且 visual_phases 为空的场景"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §6"
+
+  - id: "R-C-005"
+    type: FORBIDDEN_METHOD
+    pattern: "Phase 断点使用时间均分"
+    positive: "Phase 断点按旁白话题转换对齐，用字数比例换算时间戳"
+    guardrail: "Phase 断点使用 gap = duration / phase_count 均分计算"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §6 + _render-safety.md §1.1a"

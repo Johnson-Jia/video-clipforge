@@ -1,0 +1,16 @@
+id: "P-github-highscore"
+category: "github"
+source_traces: []
+skill_scope: "stage1-content,stage3-scenes"
+
+description: "GitHub 高分视频模式：反直觉钩子 + 一屏一项目 8 层信息 + 数据驱动"
+
+evidence:
+  sample_size: 5
+  avg_soft_score: 0.92
+  confidence: 0.83
+
+as_preference:
+  text: "反直觉描述优先作为钩子句（如'用 WiFi 信号做空间感知'），标准模式使用 ProjectFullCard 一屏一项目"
+  weight: HIGH
+  source_pattern: "P-github-highscore"

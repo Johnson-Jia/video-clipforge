@@ -1,0 +1,36 @@
+rules:
+  - id: "R-S2-001"
+    type: FORBIDDEN_ACTION
+    pattern: "design.md 缺少 style/mood/color_direction"
+    positive: "design.md 必须包含 style、mood 和 color_direction 三个字段"
+    guardrail: "design.md 中 style 或 mood 或 color_direction 字段缺失"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage2-analysis"
+    source: "stage2-analysis.md Red Flags"
+
+  - id: "R-S2-002"
+    type: FORBIDDEN_ACTION
+    pattern: "design.md 缺少 storyboard 节"
+    positive: "design.md 必须包含完整的 storyboard 定义（narrative_template + emotion_curve + immersion_mode）"
+    guardrail: "design.md 中 storyboard 字段缺失或不完整"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage2-analysis"
+    source: "stage2-analysis.md Red Flags"
+
+  - id: "R-S2-003"
+    type: FORBIDDEN_ACTION
+    pattern: "emotion_curve 不是 6 元素数组"
+    positive: "emotion_curve 必须是恰好 6 个 [0,1] 范围数值的数组"
+    guardrail: "emotion_curve 长度 != 6 或包含非数值元素"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage2-analysis"
+    source: "stage2-analysis.md Red Flags"

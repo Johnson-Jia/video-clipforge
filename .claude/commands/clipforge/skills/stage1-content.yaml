@@ -1,0 +1,28 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage1-content"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["content", "data"]
+    rigor: STANDARD
+  intent:
+    objective: "获取和整理视频内容素材，产出 content_ready.txt"
+    criteria:
+      - "content_ready.txt 存在且非空"
+      - "数据来源已交叉验证"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+  guard:
+    red_flags: []
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["content_ready.txt"]
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []

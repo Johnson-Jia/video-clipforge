@@ -1,0 +1,86 @@
+rules:
+  - id: "R-G-001"
+    type: FORBIDDEN_SPEECH
+    pattern: "使用绝对化用语（必装、必备、神器等）"
+    positive: "所有表述使用限定性语言，如'可能'、'通常'、'值得关注'"
+    guardrail: "输出包含'必装'、'必备'、'神器'、'最强'、'最好'等词视为违规"
+    detection:
+      keywords: ["必装", "必备", "神器", "赶紧去", "马上去", "立即下载", "全网最好", "第一", "最强", "你一定要", "千万别错过", "免费领", "福利", "白嫖", "点赞关注", "一键三连"]
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules.md §1"
+
+  - id: "R-G-002"
+    type: FORBIDDEN_ACTION
+    pattern: "视频内放网址/URL"
+    positive: "只展示项目名称/产品名称，链接放评论区"
+    guardrail: "画面或旁白包含 github.com/xxx 或 https://xxx.com 形式的 URL"
+    detection:
+      keywords: ["github.com/", "https://", "http://", "www."]
+      regex: "https?://[^\\s]+|github\\.com/[^\\s]+"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules.md §4"
+
+  - id: "R-G-003"
+    type: FORBIDDEN_SPEECH
+    pattern: "引导用户脱离平台（下载安装包、打开浏览器等）"
+    positive: "只描述能力，不说获取路径：说'能做什么'，不说'去哪下载/怎么安装'"
+    guardrail: "旁白或评论区出现'下载安装包'、'双击安装'、'打开浏览器就能用'等表述"
+    detection:
+      keywords: ["下载安装包", "双击安装", "打开浏览器", "前往github", "下载地址"]
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules.md §4.1"
+
+  - id: "R-G-004"
+    type: FORBIDDEN_SPEECH
+    pattern: "诱导互动（点赞关注、一键三连等）"
+    positive: "正文自然提及，文案末尾温和引导"
+    guardrail: "正文中出现'点赞关注'、'一键三连'等诱导互动词"
+    detection:
+      keywords: ["点赞关注", "一键三连", "点个赞", "点个关注"]
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §1"
+
+  - id: "R-G-005"
+    type: FORBIDDEN_SPEECH
+    pattern: "点名商业产品/品牌名称"
+    positive: "使用技术类别描述（如'大语言模型'、'AI 助手'），不点品牌名"
+    guardrail: "出现'GPT'、'DeepSeek'、'通义千问'等具体品牌名"
+    detection:
+      keywords: ["ChatGPT", "GPT-4", "DeepSeek", "通义千问", "文心一言", "Kimi"]
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_shared-rules.md §1"
+
+  - id: "R-G-006"
+    type: FORBIDDEN_ACTION
+    pattern: "CTA 提及具体更新时间"
+    positive: "使用通用表述如'每天更新'、'关注获取每日热门'"
+    guardrail: "CTA 包含具体时间如'每天7点'、'每晚8点'"
+    detection:
+      keywords: ["每天7点", "每晚8点", "每天晚上", "每天早上"]
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §3"
+
+  - id: "R-G-007"
+    type: FORBIDDEN_SPEECH
+    pattern: "画面文字使用英文（非项目名/技术缩写）"
+    positive: "画面文字全部使用中文，仅项目名和技术缩写保留英文"
+    guardrail: "画面包含 TRENDING TODAY、TOP 3、FOLLOW 等非中文文字"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_shared-rules.md §2"

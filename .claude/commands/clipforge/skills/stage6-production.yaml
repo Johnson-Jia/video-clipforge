@@ -1,0 +1,41 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage6-production"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["html", "render", "video"]
+    rigor: STRICT
+  intent:
+    objective: "编写 HTML 场景并渲染为最终视频"
+    criteria:
+      - "index.html 存在且包含所有场景"
+      - "所有场景使用三层架构"
+      - "GSAP timeline 已正确注册"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+      - ref: "R-C-*"
+      - ref: "R-R-*"
+      - ref: "R-S6-*"
+  guard:
+    red_flags:
+      - thought: "这个效果用 CSS animation 更简单"
+        reality: "HyperFrames seek 不执行 CSS animation，所有入场必须用 GSAP"
+        trigger: "试图使用 CSS animation 做入场"
+      - thought: "三层架构太麻烦，直接写内容就行"
+        reality: "三层是正确结构，扁平化会导致渲染异常和视觉分层混乱"
+        trigger: "试图省略三层架构"
+      - thought: "padding 设两层更安全"
+        reality: "双重 padding 是最常见的渲染事故，只设一层"
+        trigger: "试图同时设置 scene-wrap 和 .phase 的 padding"
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["index.html"]
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []

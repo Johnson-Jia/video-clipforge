@@ -1,0 +1,129 @@
+rules:
+  - id: "R-R-001"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 .anim-in CSS 类或 CSS opacity:0 入场动画"
+    positive: "所有内容元素默认可见（opacity:1），入场动画使用 GSAP .from()"
+    guardrail: "HTML 中包含 .anim-in 类或在 CSS 中设置 opacity:0 的入场机制"
+    detection:
+      keywords: ["anim-in", "opacity:0"]
+      regex: "\\.anim-in|opacity\\s*:\\s*0"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.1"
+
+  - id: "R-R-002"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 HTML 实体字符（&#9733; 等）"
+    positive: "使用 Unicode 字符直接输入（★ 而非 &#9733;）"
+    guardrail: "HTML 中包含 &amp;# 等实体编码"
+    detection:
+      regex: "&#\\d+;"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.2"
+
+  - id: "R-R-003"
+    type: FORBIDDEN_ACTION
+    pattern: "scene-wrap 和 .phase 同时设置 padding（双重 padding）"
+    positive: "安全区 padding 只设一层（180px 80px 220px 80px），scene-wrap 或 .phase 二选一"
+    guardrail: ".scene-wrap 和 .phase 都有 padding 属性"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.4a"
+
+  - id: "R-R-004"
+    type: FORBIDDEN_ACTION
+    pattern: "场景缺少安全区 padding"
+    positive: "每个场景必须有四方向安全区 padding（180px 80px 220px 80px）"
+    guardrail: ".scene-wrap 和 .phase 都没有 padding"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.3"
+
+  - id: "R-R-005"
+    type: FORBIDDEN_ACTION
+    pattern: "渲染前未移除非 index.html 的 composition 文件"
+    positive: "渲染前将 cover.html 等其他 HTML 文件重命名为 .renderbak，渲染后恢复"
+    guardrail: "项目目录中存在多个含 data-composition-id 的 HTML 文件"
+    detection:
+      keywords: ["data-composition-id"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.5"
+
+  - id: "R-R-006"
+    type: FORBIDDEN_ACTION
+    pattern: "GSAP timeline 未注册（__timelines 为空对象）"
+    positive: "注册 GSAP timeline：window.__timelines['main'] = tl，确保 HyperFrames 可驱动动画"
+    guardrail: "HTML 中只有 window.__timelines = {}; 而无赋值"
+    detection:
+      keywords: ["__timelines"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.7"
+
+  - id: "R-R-007"
+    type: FORBIDDEN_ACTION
+    pattern: "场景缺少三层架构（.layer-bg / .layer-fx / .layer-content）"
+    positive: "每个场景包含三层：.layer-bg(z:1) + .layer-fx(z:2) + .layer-content(z:3)"
+    guardrail: "某个 .scene-wrap 内缺少 .layer-bg、.layer-fx 或 .layer-content 之一"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §2"
+
+  - id: "R-R-008"
+    type: FORBIDDEN_ACTION
+    pattern: ".layer-fx 为空 div"
+    positive: ".layer-fx 必须包含至少 1 个特效子元素（光球/射线/粒子等）"
+    guardrail: ".layer-fx 内无子元素"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: GLOBAL
+    source: "_render-safety.md §2.4"
+
+  - id: "R-R-009"
+    type: FORBIDDEN_METHOD
+    pattern: "CSS animation 从不可见状态开始（scaleY:0 / opacity:0→1 / translateY(-100%)→0）"
+    positive: "CSS animation 仅用于可见位置之间的移动（如漂移），'从无到有'用 GSAP .from()"
+    guardrail: "CSS keyframes 中存在从 opacity:0/scaleY(0)/translateY(-100%) 到可见状态的 animation"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.8"
+
+  - id: "R-R-010"
+    type: FORBIDDEN_ACTION
+    pattern: "音频文件不在 index.html 同级目录"
+    positive: "确保 narration.mp3 和 bgm.wav 存在于 index.html 同级目录"
+    guardrail: "<audio src> 引用的文件在项目目录中不存在"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "_render-safety.md §1.6"

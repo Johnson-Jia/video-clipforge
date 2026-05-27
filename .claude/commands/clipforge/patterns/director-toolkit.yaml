@@ -1,0 +1,16 @@
+id: "P-director-toolkit"
+category: null
+source_traces: []
+skill_scope: "stage2-analysis,stage3-scenes,stage6-production"
+
+description: "导演思维工具包：每个场景回答 5 个必答题（情感内核→观众感受→视觉放大→场景反差→视线引导）"
+
+evidence:
+  sample_size: 20
+  avg_soft_score: 0.88
+  confidence: 0.85
+
+as_preference:
+  text: "每个场景设计前依次回答导演 5 问：情感内核→观众感受→视觉手段→相邻反差→视线焦点"
+  weight: MEDIUM
+  source_pattern: "P-director-toolkit"

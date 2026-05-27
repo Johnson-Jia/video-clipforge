@@ -1,0 +1,60 @@
+rules:
+  - id: "R-S3-001"
+    type: FORBIDDEN_ACTION
+    pattern: "narration_segments.json 缺少 hook 纯钩子验证"
+    positive: "第一个场景的 narration 必须是纯钩子（震撼数据/反问/强对比/悬念），不含信息性内容"
+    guardrail: "segments[0] 的 narration 包含项目介绍或功能描述"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "stage3-scenes.md 节奏铁律"
+
+  - id: "R-S3-002"
+    type: FORBIDDEN_ACTION
+    pattern: "场景数量不在合理范围（3-8 个）"
+    positive: "标准视频 4-7 个场景，深度解析 5-10 个场景"
+    guardrail: "narration_segments.json 的 segments 数量 < 3 或 > 10"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "stage3-scenes.md Red Flags"
+
+  - id: "R-S3-003"
+    type: FORBIDDEN_ACTION
+    pattern: "场景间缺少情绪起伏设计"
+    positive: "每个场景必须定义 emotion 字段，相邻场景 emotion 不应完全相同"
+    guardrail: "segments 中存在连续 3+ 个场景 emotion 相同"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "stage3-scenes.md 节奏铁律"
+
+  - id: "R-S3-004"
+    type: FORBIDDEN_ACTION
+    pattern: "总旁白字数超出目标范围"
+    positive: "标准模式 250-380 字，深度解析 300-450 字"
+    guardrail: "narration_segments.json 总字数不在目标范围内"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "stage3-scenes.md Red Flags"
+
+  - id: "R-S3-005"
+    type: FORBIDDEN_METHOD
+    pattern: "未从 design.md 的 immersion_mode 推导视觉风格"
+    positive: "每个场景的 visual_type 必须与 design.md 的 immersion_mode 一致"
+    guardrail: "visual_type 与 immersion_mode 的视觉风格不匹配"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "stage3-scenes.md Red Flags"
