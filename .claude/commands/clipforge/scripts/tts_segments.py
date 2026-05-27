@@ -24,7 +24,8 @@ def main():
     rate = sys.argv[2]
 
     with open('narration_segments.json', 'r', encoding='utf-8') as f:
-        segments = json.load(f)
+        data = json.load(f)
+    segments = data.get('segments', data) if isinstance(data, dict) else data
 
     durations = []
     for i, seg in enumerate(segments):
@@ -33,7 +34,11 @@ def main():
         srt_file = f'narration_seg_{i}.srt'
 
         # 多音字预处理：修复 edge-tts 发音错误
-        tts_text = fix_polyphone(seg['text'])
+        raw_text = seg.get('text') or seg.get('narration_segment', '')
+        if not raw_text:
+            durations.append({'scene': seg['scene'], 'actual_duration': 0})
+            continue
+        tts_text = fix_polyphone(raw_text)
 
         with open(text_file, 'w', encoding='utf-8') as f:
             f.write(tts_text)
