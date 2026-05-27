@@ -96,7 +96,17 @@ clipforge/categories/
 | `clipforge/_viral-cases/{file}` | 爆款视频案例库（多维度分析 + 可提取模式） | Stage 2/3/7 按需参考 |
 | `clipforge/categories/{id}` | 分类配置（数据获取、风格、音色、标签等覆盖规则） | 各 stage 按需读取 |
 
-**Stage 1/3/6/7 执行前，必须先读取 `clipforge/_shared-rules` 获取内容规范。Stage 2/3/6 执行前读取 `clipforge/_director-toolkit` 获取导演思维工具。Stage 6 额外读取 `clipforge/_render-safety` 获取渲染安全和三层架构规范。**
+**共享规范按需加载（不全文加载）：**
+
+| Stage | `_shared-rules` 章节 | `_director-toolkit` | `_render-safety` |
+|-------|---------------------|--------------------|-----------------|
+| Stage 1 | §1 措辞 + §2 语言 | — | — |
+| Stage 2 | — | 第 2 层 视觉词汇表 | — |
+| Stage 3 | §1 措辞 + §5 黄金 3 秒 | 第 1 层 5 个必答题 + 第 2 层 | — |
+| Stage 6 | §5 黄金 3 秒 + §6 切换频率 | 第 1 层 + 第 2 层 | §1 渲染安全 + §2 三层架构 |
+| Stage 7 | §1 措辞 + §3 CTA | — | — |
+
+> 每个共享规范文件顶部有章节号，只读取该 stage 需要的章节，不全文加载。引擎注入已包含结构化规则覆盖，共享规范提供"为什么这样做"的上下文。
 
 **有分类配置时，各 stage 还需读取 `clipforge/categories/{id}.md` 获取分类特定的覆盖规则。分类配置优先于通用 stage 文件中的默认值。**
 
