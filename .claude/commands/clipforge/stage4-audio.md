@@ -190,36 +190,8 @@ python .claude/commands/clipforge/scripts/movie_narration.py
 
 ---
 
-## Iron Law
+## 约束声明
 
-**NO AUDIO COMPLETION WITHOUT loudnorm VERIFICATION + BGM VOLUME CALIBRATION.**
+**Iron Law:** 旁白未经 loudnorm 校验通过 = 音频阶段未完成。BGM 音量未写入 `segment_durations.json` = 音频阶段未完成。
 
-旁白未经 loudnorm 校验通过 = 音频阶段未完成。BGM 音量未写入 `segment_durations.json` = 音频阶段未完成。
-
-**Violating the letter of the rules is violating the spirit of the rules.**
-
----
-
-## Red Flags（停止信号）
-
-| 信号 | 说明 |
-|------|------|
-| 用 `estimated_duration` 替代 `actual_duration` | 事故：预估偏差累计 8 秒导致视频出现空白 |
-| BGM 音量未写入 `segment_durations.json` | 此文件是 BGM 音量传递到 Stage 6 的唯一通道 |
-| `narration.mp3` 未做 loudnorm | 不标准化会影响最终混音质量，部分段过响或过轻 |
-| 视频开头做了音频淡入 | §5.3 前 3 秒禁止淡入，削弱 hook 冲击力 |
-| `segment_durations.json` 缺失 | Stage 6 无法设置 `data-duration`，渲染必失败 |
-
-## Common Rationalizations（常见借口反驳）
-
-| 借口 | 事实 |
-|------|------|
-| "预估时长够用了" | 事故：预估偏差累计 8 秒导致全片空白。必须用分段 TTS 实测 `actual_duration` |
-| "BGM 音量后面再调" | `segment_durations.json` 是唯一传递通道，不写入 Stage 6 就无法控制音量 |
-| "听起来差不多就行" | loudnorm 标准化不是"差不多"，是防止部分段过响或过轻影响混音 |
-| "开头加个淡入更自然" | §5.3 前 3 秒禁止淡入。淡入让钩子时刻声音渐强，直接削弱冲击力 |
-| "BGM 听起来不响，加个 volume 滤镜" | 绝对禁止对 bgm.wav 做预衰减。音量表分级控制，不靠主观听觉。预衰减 + data-volume = 双重衰减 = 静音 |
-| "跳过 loudnorm 校验，之前都能过" | BGM 来源响度差异可达 20dB，每次必须校验。narration.mp3 max_volume < -10 dB = loudnorm 未生效 |
-| "用 output.mp4 反向提取音频做 output_no_bgm" | 绝对禁止。output_no_bgm 必须从 narration.mp3 合成，从 output.mp4 提取会带入 BGM |
-| "BGM 不够长，用 HTML loop 属性" | HyperFrames 对 loop 支持不可靠。必须用 FFmpeg -stream_loop 循环扩展 WAV 文件 |
-| "bgm.wav 音量太低，先放大再写入" | bgm.wav 保持原始音量，Stage 6 的 data-volume 负责衰减。改原始文件会破坏音量表校准 |
+> 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage4-audio` 获取完整约束 prompt。

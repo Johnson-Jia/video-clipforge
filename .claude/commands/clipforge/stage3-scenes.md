@@ -383,25 +383,6 @@ scenes:
 
 ---
 
-## Red Flags（停止信号）
+## 约束声明
 
-| 信号 | 说明 |
-|------|------|
-| hook 场景旁白超 12 字 | _shared-rules §5 黄金 3 秒要求纯钩子 ≤12 字，超字会被划走 |
-| hook 包含信息性内容 | 钩子必须是纯钩子（数据震撼/反问/强对比/悬念），不能是项目介绍 |
-| 旁白含广告审查敏感词 | "必装"、"神器"、"最强"等会导致视频审核不通过（§1） |
-| 画面文字包含英文非项目名/缩写 | "TRENDING TODAY"等违反中文为主规范（§2） |
-| narration_segments.json 缺少 emotion 字段 | Stage 4 无法确定 TTS 语速偏移，Stage 6 无法匹配角色表情 |
-| grab/climax 节拍包含 humor_type | 抓取和高潮段保持严肃，幽默只在 build/reveal/settle |
-| character_expression 与 humor_type 不匹配 | tease 表情应搭配 humor_type，无 humor 时不应出 tease 表情 |
-
-## Common Rationalizations（常见借口反驳）
-
-| 借口 | 事实 |
-|------|------|
-| "hook 多说点背景信息" | §5 黄金 3 秒要求纯钩子 ≤12 字。背景信息从第 2 个场景开始 |
-| "用英文标题更酷" | §2 画面文字必须以中文为主，英文仅限项目名和技术缩写 |
-| "hook 里说'这个项目太强了'" | §1 禁止"太强了"等极限用语，改用数据说话（"33K Star"） |
-| "CTA 说'点赞关注一键三连'" | §1 禁止诱导互动，文案末尾自然提及即可 |
-| "情感标记太麻烦，后面再说" | 没有 emotion 字段，Stage 4 无法变速（全线均匀），Stage 6 无法匹配角色表情和视觉力度 |
-| "每段都加幽默更搞笑" | 幽默过密会削弱节奏感，grab/climax/summon 必须严肃以保持张力 |
+> 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage3-scenes` 获取完整约束 prompt。

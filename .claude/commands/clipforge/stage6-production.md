@@ -673,48 +673,8 @@ python3 .claude/commands/clipforge/scripts/frame_analysis.py .
 
 ---
 
-## Iron Law
+## 约束声明
 
-**NO VIDEO OUTPUT WITHOUT RENDER SAFETY CHECKS PASSED.**
+**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成 = 双版本输出失败。
 
-渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成 = 双版本输出失败。
-
-**Violating the letter of the rules is violating the spirit of the rules.**
-
----
-
-## Red Flags（停止信号）
-
-| 信号 | 说明 |
-|------|------|
-| 封面帧 anullsrc 非 48kHz | 事故：封面 44.1kHz vs 正片 48kHz → TS 拼接后音频异常 |
-| 使用 CSS `.anim-in`（§7.1） | 事故：CSS `opacity: 0` 导致 HyperFrames 渲染空白 |
-| 使用 HTML 实体（§7.2） | 事故：`&amp;` 等实体在无头浏览器中不解析 |
-| scene-wrap 无 padding（§7.3） | 事故：内容区域在渲染中塌陷不显示 |
-| GSAP timeline 未注册（§7.6） | 事故：空 `__timelines={}` 导致全片空白 |
-| 音频文件不在项目目录内（§7.5） | 事故：渲染引擎只认相对路径，绝对路径 404 静音 |
-| 渲染前未移除 cover.html 等（§7.4） | 事故：多个 root composition 导致渲染冲突 |
-| BGM 泄露到 no_bgm 文件 | volumedetect 差值 < 3dB → output_no_bgm.mp4 未用 narration.mp3 合成，而是错误地从 output.mp4 提取了混合轨，必须重做 §6.7 |
-| 缺少 `output_no_bgm.mp4` | 双版本输出不可省略 |
-| 白屏/黑屏渲染结果 | 检查 `window.__hf` 定义和 `data-duration` 值 |
-| Canvas 粒子使用 requestAnimationFrame | HyperFrames seek 驱动，独立 rAF 循环导致画面不一致 |
-| Three.js 使用 Date.now() | 必须 `__hfThreeTime`，否则 seek 回放时 3D 动画不回溯 |
-| 角色遮挡核心内容 | CharOverlay 限制 15-20%，仅在角落 |
-| 缺少 stage6-components.md 引用 | 组件库是装配 HTML 的参考来源 |
-
-## Common Rationalizations（常见借口反驳）
-
-| 借口 | 事实 |
-|------|------|
-| "anullsrc 用 44100 也行" | 事故：封面帧 44.1kHz + 正片 48kHz → TS concat 后播放器异常 |
-| "CSS 动画更简单" | §7.1 事故：CSS `opacity: 0` 入场动画永远不会执行 |
-| "`&amp;` 是标准 HTML" | §7.2 事故：无头浏览器对实体字符解析不可靠 |
-| "不用 padding" | §7.3 事故：缺少 padding 导致内容区域塌陷 |
-| "GSAP 会自动注册" | §7.6 事故：必须显式 `window.__timelines["main"] = tl` |
-| "绝对路径也能找到" | §7.5 事故：只认项目目录内相对路径 |
-| "cover.html 不影响" | §7.4 事故：含 `data-composition-id` 的 HTML 都会导致冲突 |
-| "用 -map 0:a:0 提取旁白轨" | 05-23 事故：HyperFrames 输出只有 1 条混合音频轨（旁白+BGM），-map 0:a:0 提取的是混合轨而非纯旁白 |
-| "双次渲染更安全" | 单次渲染 + ffmpeg 合成更高效，省掉一次 ~15 分钟的渲染，且避免了 sed 替换 BGM 音量可能失败的风险 |
-| "Canvas 用 rAF 更流畅" | HyperFrames 逐帧 seek 驱动，rAF 与 seek 不同步会导致闪烁 |
-| "Three.js 用 performance.now()" | seek 回放时 `performance.now()` 不回溯，3D 动画不倒放 |
-| "组件太多不需要都读" | `stage6-components.md` 是组件装配的唯一参考，不读就不知道有哪些组件 |
+> 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage6-production` 获取完整约束 prompt。
