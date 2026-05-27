@@ -114,6 +114,8 @@ no_cache: true
 - `{{PROJECT_DIR}}` → `${PROJECT_DIR}`
 - `{{CATEGORY}}` → github
 
+> **⛔ 清理必须通过 SubAgent-4 执行，主编排禁止直接手动清理。** 如 SubAgent-4 跳过或失败，用脚本补救：`bash .claude/commands/clipforge/scripts/cleanup_project.sh "${PROJECT_DIR}"`。禁止手动 `rm -f` 批量删除中间文件。
+
 **验证：** `ls ${PROJECT_DIR}/` 确认中间文件已清理，`du -sh ${PROJECT_DIR}` 确认 < 30 MB。
 
 ## Step 5: 自续期
