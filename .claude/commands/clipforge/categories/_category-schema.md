@@ -28,6 +28,24 @@ patterns_ref: "_patterns/store.yaml"
 ---
 ```
 
+### clipforge_fit — 内容类型适配度
+
+标记该分类下不同内容类型与 ClipForge 流水线的适配程度：
+
+```yaml
+## meta
+  clipforge_fit:
+    project-listing: HIGH    # 项目盘点：标准流水线直接生产
+    deep-dive: MEDIUM        # 深度解析：需要额外视觉设计（图表/对比）
+    business-analysis: LOW   # 商业分析：需要图表/数据可视化组件支持
+```
+
+| 适配度 | 说明 | 视觉要求 |
+|--------|------|---------|
+| HIGH | 8 层卡片 + 快速切换完美匹配 | 标准组件即可 |
+| MEDIUM | 需要额外视觉元素 | 至少 2 种：数据图表/对比表/数字动画/逻辑链 |
+| LOW | 标准流水线不适配 | 必须搭配图表组件，否则建议转图文 |
+
 ### Stage 覆盖段
 
 每个 stage 覆盖段是可选的。**不覆盖的 stage 不写**，通用 stage 文件的规则自动生效。
