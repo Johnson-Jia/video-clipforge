@@ -36,6 +36,7 @@ class GateType(str, Enum):
     no_forbidden_speech = "no_forbidden_speech"
     no_url_in_output = "no_url_in_output"
     duration_in_range = "duration_in_range"
+    hook_pattern_verified = "hook_pattern_verified"
 
 
 class Rigor(str, Enum):
@@ -60,6 +61,42 @@ class DeltaOperation(str, Enum):
     MODIFIED = "MODIFIED"
     REMOVED = "REMOVED"
     DEPRECATED = "DEPRECATED"
+
+
+class Platform(str, Enum):
+    DOUYIN = "douyin"
+    WECHAT_VIDEO = "wechat_video"
+    XIAOHONGSHU = "xiaohongshu"
+
+
+@dataclass
+class PerformanceRecord:
+    """发布后播放数据 — 播放数据接入双闭环的基础数据结构。"""
+    platform: Platform
+    title: str = ""
+    plays: int = 0
+    completion_rate: float = 0.0
+    completion_5s_rate: float = 0.0
+    cover_ctr: float = 0.0
+    share_rate: float = 0.0
+    save_rate: float = 0.0
+    like_rate: float = 0.0
+    comment_rate: float = 0.0
+    follow_count: int = 0
+    avg_watch_duration: float = 0.0
+    hook_type: str = ""
+    topic: str = ""
+    duration_seconds: float = 0.0
+
+    @property
+    def is_high_performance(self) -> bool:
+        if self.platform == Platform.DOUYIN:
+            return self.completion_5s_rate >= 0.44
+        if self.platform == Platform.WECHAT_VIDEO:
+            return self.share_rate >= 0.04
+        if self.platform == Platform.XIAOHONGSHU:
+            return self.save_rate > self.like_rate * 1.5
+        return self.plays > 0
 
 
 @dataclass
@@ -201,3 +238,4 @@ class TraceRecord:
     result: dict[str, Any] = field(default_factory=dict)
     gate_report: GateReport | None = None
     attribution: dict[str, Any] | None = None
+    performance: dict[str, Any] | None = None

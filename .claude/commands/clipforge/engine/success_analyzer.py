@@ -4,6 +4,8 @@
 - P4（成功进化）：Gate 验证后才 save_pattern，确保模式质量
 - P5（偏好模型）：提炼的决策点存为 Preference（带 weight），而非泛泛描述
 - 从 trace execution.steps 提取真实决策点，替代 generic "执行路径高效"
+- 平台区分成功阈值：抖音看 5s 完播率、视频号看分享率、小红书看收藏率
+- 从播放数据自动提取高分模式（auto_extract_from_performance）
 """
 from __future__ import annotations
 import argparse
@@ -12,10 +14,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from engine.trace import query_traces, TRACES_DIR
+from engine.trace import query_traces, query_traces_with_performance, TRACES_DIR
 from engine.lib.delta import create_delta, save_delta, DELTAS_DIR
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
-from engine.lib.models import Severity
+from engine.lib.models import Severity, Platform, PerformanceRecord
 
 
 PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
@@ -157,6 +159,156 @@ def save_pattern(pattern: dict, patterns_dir: Path | None = None) -> Path:
     with open(filepath, "w", encoding="utf-8") as f:
         yaml.dump(pattern, f, allow_unicode=True, default_flow_style=False)
     return filepath
+
+
+# ── 平台区分成功判定 ──────────────────────────────────────────────────────────
+
+PLATFORM_THRESHOLDS = {
+    Platform.DOUYIN.value: {
+        "key_metric": "completion_5s_rate",
+        "high_threshold": 0.44,
+        "medium_threshold": 0.38,
+    },
+    Platform.WECHAT_VIDEO.value: {
+        "key_metric": "share_rate",
+        "high_threshold": 0.04,
+        "medium_threshold": 0.02,
+    },
+    Platform.XIAOHONGSHU.value: {
+        "key_metric": "save_to_like_ratio",
+        "high_threshold": 1.5,
+        "medium_threshold": 1.0,
+    },
+}
+
+
+def _is_platform_success(performance: dict) -> bool:
+    """按平台特定指标判断是否为成功案例。"""
+    platform = performance.get("platform", "")
+    thresholds = PLATFORM_THRESHOLDS.get(platform)
+    if not thresholds:
+        return performance.get("plays", 0) > 0
+
+    metric = thresholds["key_metric"]
+    if metric == "save_to_like_ratio":
+        like_rate = performance.get("like_rate", 0)
+        save_rate = performance.get("save_rate", 0)
+        if like_rate > 0:
+            value = save_rate / like_rate
+        else:
+            value = 0
+    else:
+        value = performance.get(metric, 0)
+
+    return value >= thresholds["high_threshold"]
+
+
+def _platform_success_score(performance: dict) -> float:
+    """计算平台特定的成功分数（0-1）。"""
+    platform = performance.get("platform", "")
+    thresholds = PLATFORM_THRESHOLDS.get(platform)
+    if not thresholds:
+        plays = performance.get("plays", 0)
+        return min(plays / 50000, 1.0)
+
+    metric = thresholds["key_metric"]
+    if metric == "save_to_like_ratio":
+        like_rate = performance.get("like_rate", 0)
+        save_rate = performance.get("save_rate", 0)
+        value = save_rate / like_rate if like_rate > 0 else 0
+    else:
+        value = performance.get(metric, 0)
+
+    high = thresholds["high_threshold"]
+    medium = thresholds["medium_threshold"]
+    if value >= high:
+        return min(0.8 + (value - high) / high * 0.2, 1.0)
+    elif value >= medium:
+        return 0.5 + (value - medium) / (high - medium) * 0.3
+    return max(0.0, value / medium * 0.5)
+
+
+def find_high_performance_traces(
+    traces_dir: Path | None = None,
+    min_plays: int = 10000,
+) -> list[dict]:
+    """从带播放数据的 trace 中找出高播放量案例。"""
+    perf_traces = query_traces_with_performance(traces_dir=traces_dir, last=500)
+    high_perf: list[dict] = []
+    for t in perf_traces:
+        perf = t.get("performance", {})
+        if not perf:
+            continue
+        if perf.get("plays", 0) >= min_plays or _is_platform_success(perf):
+            high_perf.append(t)
+    return high_perf
+
+
+def auto_extract_from_performance(
+    performance_data: list[dict],
+    min_samples: int = 3,
+) -> list[dict]:
+    """从原始播放数据（非 trace 格式）自动提取高分模式。
+
+    Args:
+        performance_data: [{platform, plays, completion_5s_rate, title, hook_type, ...}]
+        min_samples: 最小样本数
+
+    Returns:
+        提炼出的 pattern 列表
+    """
+    if len(performance_data) < min_samples:
+        return []
+
+    # 按 hook_type 分组
+    hook_groups: dict[str, list[dict]] = {}
+    for pd in performance_data:
+        ht = pd.get("hook_type", "unknown")
+        hook_groups.setdefault(ht, []).append(pd)
+
+    patterns: list[dict] = []
+    for ht, group in hook_groups.items():
+        if len(group) < min_samples:
+            continue
+
+        avg_plays = sum(p.get("plays", 0) for p in group) / len(group)
+        avg_5s = sum(p.get("completion_5s_rate", 0) for p in group) / len(group)
+        avg_comp = sum(p.get("completion_rate", 0) for p in group) / len(group)
+
+        # 只提炼高于基线的模式
+        if avg_plays < 5000:
+            continue
+
+        confidence = min(0.5 + len(group) * 0.1, 0.95)
+        weight = "HIGH" if avg_plays > 30000 else "MEDIUM" if avg_plays > 10000 else "LOW"
+
+        # 构建偏好文本
+        pref_text = f"hook 使用 {ht} 模式（{len(group)} 条数据，平均 {avg_plays:.0f} 播放，5s 完播率 {avg_5s:.1%}）"
+
+        pattern = {
+            "id": f"P-hook-{ht}",
+            "skill_scope": "stage3-scenes",
+            "description": f"Hook {ht} 模式：{len(group)} 条视频，avg_plays={avg_plays:.0f}",
+            "evidence": {
+                "sample_size": len(group),
+                "avg_plays": round(avg_plays),
+                "avg_completion_5s_rate": round(avg_5s, 3),
+                "avg_completion_rate": round(avg_comp, 3),
+                "confidence": round(confidence, 3),
+                "platform": group[0].get("platform", "unknown"),
+            },
+            "as_preference": {
+                "text": pref_text,
+                "weight": weight,
+                "source_pattern": f"P-hook-{ht}",
+            },
+        }
+        # Gate 验证
+        check = gate_validate_pattern(pattern)
+        if check["valid"]:
+            patterns.append(pattern)
+
+    return patterns
 
 
 def main():

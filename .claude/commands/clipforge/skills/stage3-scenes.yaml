@@ -46,6 +46,9 @@ skill:
         params:
           files: ["narration_segments.json"]
           required_keys: ["segments"]
+      - gate: hook_pattern_verified
+        params:
+          file: "narration_segments.json"
     soft: []
     max_retries: 2
   trace:

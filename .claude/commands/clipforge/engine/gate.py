@@ -141,7 +141,61 @@ GATE_CHECKERS = {
     GateType.no_forbidden_speech: check_no_forbidden_speech,
     GateType.no_url_in_output: check_no_url,
     GateType.duration_in_range: check_duration_in_range,
+    GateType.hook_pattern_verified: None,  # 占位，在下面实现
 }
+
+
+# hook 模式禁用词列表（数据驱动：疑问/互动模式平均 1,195 播放，最低）
+HOOK_FORBIDDEN_STARTS = ("你知道吗", "有没有想过", "猜猜", "你知道", "大家知道")
+# hook 高优模式关键词（数据驱动：反直觉/冲突平均 46,596 播放）
+HOOK_HIGH_VALUE_KEYWORDS = ("不用", "却能", "居然", "竟然", "竟然能", "只要", "不需要")
+# hook 数字锚定关键词（数据驱动：平均 42,783 播放）— 注意避免子串误匹配
+HOOK_NUMBER_ANCHORS = ("涨星最快", "N 个项目", "天涨近", "千星", "万星", "单日涨", "最高涨星", "涨星最多")
+
+
+def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """校验 hook 场景文本是否命中高优模式，是否避开禁用模式。
+
+    数据来源：2026-05-27 抖音 58 条视频分析
+    - 禁用模式（疑问词开头）：平均 1,195 播放
+    - 高优模式（反直觉/冲突）：平均 46,596 播放
+    - 数字锚定模式：平均 42,783 播放
+    """
+    narration_file = project_dir / params.get("file", "narration_segments.json")
+    if not narration_file.exists():
+        return False, "narration_segments.json 缺失，无法校验 hook 模式"
+    try:
+        data = json.loads(narration_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return False, f"narration_segments.json 解析失败: {e}"
+
+    segments = data.get("segments", [])
+    if not segments:
+        return False, "segments 为空"
+
+    hook_text = segments[0].get("narration_segment", "").strip()
+    if not hook_text:
+        return False, "hook 场景的 narration_segment 为空"
+
+    # 检查禁用模式
+    for forbidden in HOOK_FORBIDDEN_STARTS:
+        if hook_text.startswith(forbidden) or forbidden in hook_text[:10]:
+            return False, f"hook 命中禁用模式 '{forbidden}'（疑问/互动平均 1,195 播放，数据来源：抖音 58 条）"
+
+    # 检查是否命中高优或数字锚定
+    is_high_value = any(kw in hook_text for kw in HOOK_HIGH_VALUE_KEYWORDS)
+    is_number_anchor = any(kw in hook_text for kw in HOOK_NUMBER_ANCHORS)
+
+    if is_high_value:
+        return True, f"hook 命中反直觉/冲突模式（平均 46,596 播放）: {hook_text[:30]}"
+    if is_number_anchor:
+        return True, f"hook 命中数字锚定模式（平均 42,783 播放）: {hook_text[:30]}"
+
+    return True, f"hook 未命中高优模式但未违规: {hook_text[:30]}"
+
+
+# 更新 GATE_CHECKERS
+GATE_CHECKERS[GateType.hook_pattern_verified] = check_hook_pattern_verified
 
 
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
