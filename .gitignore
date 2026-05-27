@@ -22,3 +22,7 @@ skills-lock.json
 .claude/scheduled_tasks.lock
 
 .agents/
+
+# Python
+__pycache__/
+*.pyc
