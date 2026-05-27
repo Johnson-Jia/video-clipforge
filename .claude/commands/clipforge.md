@@ -21,6 +21,7 @@ description: ClipForge — 从任意内容出发，编排带配乐的抖音短�
 9. **音频内嵌。** 旁白和 BGM 通过 `<audio>` 元素嵌入 HTML，由 HyperFrames 原生混音和封装，无需 FFmpeg 手动合并音轨。
 10. **清理不可跳过。** delivery 完成后，必须立即执行 cleanup（读取 `_cleanup-rules` 并按规则清理中间产物）。
 11. **双版本输出不可省略。** video stage 必须产出 `output.mp4`（含 BGM）和 `output_no_bgm.mp4`（仅旁白）两个文件，delivery stage 必须产出对应的 `final.mp4` 和 `final_no_bgm.mp4`。无论项目类型或时长，缺少任一文件视为阶段未完成。
+12. **引擎驱动约束。** 每个 stage 执行前由约束引擎注入正向规则，执行后由门禁引擎校验产出物。引擎规则（`rules/`）是机器可校验的结构化层，与 stage 文件中的文本规则并行生效。
 
 ## 模式
 
@@ -99,6 +100,48 @@ clipforge/categories/
 
 **有分类配置时，各 stage 还需读取 `clipforge/categories/{id}.md` 获取分类特定的覆盖规则。分类配置优先于通用 stage 文件中的默认值。**
 
+## 引擎层
+
+ClipForge 引擎层提供四原子约束体系（Intent/Boundary/Gate/Trace），与 stage 文件并行生效。引擎层**不替代** stage 文件中的操作指令，而是提供结构化的约束注入和门禁校验。
+
+### 引擎工具一览
+
+| 工具 | 用途 | 调用时机 |
+|------|------|---------|
+| `engine/inject.py` | 生成约束 prompt（正向规则 + 经验模式 + Guard Red Flags） | Stage 执行前 |
+| `engine/gate.py` | 校验产出物（file_exists / loudnorm / no_url 等） | Stage 执行后 |
+| `engine/trace.py` | 记录执行轨迹（skill / result / score / violations） | Stage 完成后 |
+| `engine/attribution.py` | 失败归因（强归因：规则匹配 / 弱归因：概率推断） | 门禁失败时 |
+| `engine/constraints.py` | 约束集合准备（加载 + 去重 + 合并） | inject 内部调用 |
+| `engine/governance.py` | 规则治理（冲突检测 / 膨胀预警） | 维护时使用 |
+
+### 引擎调用约定
+
+所有引擎命令在 `.claude/commands/clipforge/` 目录下执行：
+
+```bash
+# 约束注入（输出正向 prompt 段）
+python engine/inject.py --skill stage4-audio [--category github]
+
+# 门禁校验（exit 0=通过, 1=失败）
+python engine/gate.py --skill stage4-audio --project-dir workspace/2026/05/27/github-trending/
+
+# 轨迹记录
+python engine/trace.py record --skill stage4-audio --project-dir workspace/2026/05/27/github-trending/ --result pass --score 85
+
+# 失败归因
+python engine/attribution.py --trace traces/github-trending/trace.json --skill stage4-audio
+```
+
+### 规则与 Skill 的映射
+
+每个 artifact 在 `schema.yaml` 中声明 `template`（如 `stage4-audio`），对应引擎层两个配置：
+
+- **规则文件**：`rules/stage4.yaml` — 该阶段的 HARD/SOFT 约束
+- **Skill 声明**：`skills/stage4-audio.yaml` — 四原子定义（Intent/Boundary/Gate/Trace）
+
+全局规则（`rules/00-global-safety.yaml` 等）对所有阶段生效，stage 规则只对该阶段生效。分类规则（`rules/categories/github.yaml`）在指定分类时叠加。
+
 ## DAG 编排流程
 
 ### DAG 定义
@@ -132,12 +175,21 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
   → 扫描 generates 路径，检测已完成 artifact
   → 拓扑排序，确定执行队列
   → 逐个执行 ready artifact：
-     1. 读取对应 stage 技能文件（如 clipforge/stage0-env）
-     2. 执行 stage 技能内容
-     3. 展示结果并确认
+     1. 引擎注入：运行 python engine/inject.py --skill <stage-id> [--category <cat>]
+        → 将输出（Intent + 正向规则 + 经验模式 + Guard Red Flags）拼入 stage prompt 前段
+     2. 读取对应 stage 技能文件（如 clipforge/stage0-env）
+     3. 执行 stage 技能内容
+     4. 引擎门禁：运行 python engine/gate.py --skill <stage-id> --project-dir <dir>
+        → HARD 门禁失败：展示违规项，要求修复后重新执行此 stage
+        → SOFT 门禁失败：展示警告，由用户决定是否接受
+        → 全部通过：继续
+     5. 轨迹记录：运行 python engine/trace.py record --skill <stage-id> --project-dir <dir> --result pass/fail --score <N>
+     6. 展示结果并确认
   → 完成后重新扫描状态，更新队列
   → 全部完成 → 触发 cleanup → 结束
 ```
+
+> **引擎命令基础路径**：`cd .claude/commands/clipforge && python engine/<tool>.py`
 
 ### 自动化模式（cron 编排文件）
 
@@ -145,8 +197,12 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
 Controller 读取 schema.yaml
   → 按 DAG 推导 SubAgent 批次
   → 逐批次调度：
-     加载对应 stage 技能文件内容
+     引擎注入：inject.py --skill <stage-id> 输出拼入 SubAgent prompt
+     → 加载对应 stage 技能文件内容
      → SubAgent 完成后扫描 generates 文件验证
+     → 引擎门禁：gate.py --skill <stage-id> --project-dir <dir>
+     → HARD 门禁失败：SubAgent 自动修复并重试（最多 2 次）
+     → 轨迹记录：trace.py record --skill <stage-id> --result pass/fail
      → 通过则下一批次
   → 全部完成 → 调用 _cron-renew 续期
 ```
@@ -238,3 +294,13 @@ workspace/
 | 电影原音不清晰 | 对白被 BGM/旁白盖住 | video | 调整 `<audio data-volume>` 参数 |
 
 > **原则：** 只回退到必须修改的最小阶段。DAG 依赖图决定了级联范围——上游改动会级联到所有下游 artifact。
+
+### 引擎归因（失败诊断）
+
+当 stage 执行失败或门禁不通过时，运行归因引擎定位根因：
+
+```bash
+python engine/attribution.py --trace traces/<project>/trace.json --skill <stage-id>
+```
+
+归因引擎返回：违反的规则 ID（强归因）+ 可能的能力缺口/规则缺失（弱归因）。根据归因结果决定是修复重试还是回退上游。
