@@ -1,20 +1,34 @@
 skill:
   meta:
     id: "skill.clipforge.stage1-content"
-    version: "1.0.0"
+    version: "1.2.0"
     type: EXECUTIVE
     tags: ["content", "data"]
     rigor: STANDARD
   intent:
-    objective: "获取和整理视频内容素材，产出 content_ready.txt"
+    objective: "视频内容素材就绪，数据来源已交叉验证"
     criteria:
       - "content_ready.txt 存在且非空"
       - "数据来源已交叉验证"
+      - "content_summary.md 包含结构化摘要"
   boundary:
     rules:
       - ref: "R-G-*"
+    preferences:
+      - text: "内容摘要突出核心信息，用内容本身决定重点"
+        weight: "MEDIUM"
   guard:
-    red_flags: []
+    red_flags:
+      - thought: "这个数据看起来差不多，不需要交叉验证"
+        reality: "未验证的数据是内容安全的最大隐患，必须至少两个来源确认"
+        trigger: "试图跳过数据交叉验证"
+      - thought: "star 数量不精确也没关系"
+        reality: "数据准确性直接影响视频可信度，所有数字必须来自原始 API"
+        trigger: "试图使用估算或非原始数据"
+    spirit_vs_letter:
+      - rule_ref: "R-G-*"
+        mode: LETTER
+        intent: "数据获取工具链是流程层约束：MCP 优先，Web 抓取备选"
   gate:
     hard:
       - gate: file_exists

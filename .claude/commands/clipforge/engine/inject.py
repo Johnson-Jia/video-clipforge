@@ -1,4 +1,10 @@
-"""注入生成器 — 生成约束 prompt 段（正向重述 + 经验模式 + Guard Red Flags）。"""
+"""注入生成器 — 生成约束 prompt 段（正向重述 + 经验模式 + Guard Red Flags）。
+
+根据 Skill 的 rigor 级别控制注入内容：
+- LITE: 仅 HARD 规则
+- STANDARD: 全量规则 + 经验模式
+- STRICT: 全量 + Red Flags + spirit_vs_letter 声明
+"""
 from __future__ import annotations
 import argparse
 import json
@@ -7,12 +13,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_skill, load_rules_by_scope, RULES_DIR, SKILLS_DIR
-from engine.lib.models import Severity
+from engine.lib.models import Severity, Rigor, Rule, RuleClass
 from engine.lib.positive_rewrite import rewrite_rule
-from engine.constraints import merge_rules
 
 
 PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
+
+
+def merge_rules(rules: list[Rule]) -> list[Rule]:
+    """按 ID 去重，SAFETY 规则不可覆盖，EXPERIENTIAL 后声明的优先。"""
+    seen: dict[str, Rule] = {}
+    for r in rules:
+        if r.id in seen:
+            existing = seen[r.id]
+            if existing.rule_class == RuleClass.SAFETY:
+                continue
+        seen[r.id] = r
+    return list(seen.values())
 
 
 def load_patterns(category: str | None = None, patterns_dir: Path | None = None) -> list[str]:
@@ -65,11 +82,14 @@ def generate_injection(
                     skill_rules.extend([r for r in rules if r.id == rref])
         rules = merge_rules(skill_rules)
 
+    rigor = skill.rigor_level if skill else Rigor.STANDARD
+
     hard_rules = [r for r in rules if r.severity == Severity.HARD]
     soft_rules = [r for r in rules if r.severity == Severity.SOFT]
 
     lines: list[str] = []
 
+    # Intent（所有严谨度都注入）
     if skill:
         lines.append(f"## 目标\n{skill.intent.objective}\n")
         if skill.intent.criteria:
@@ -78,33 +98,64 @@ def generate_injection(
                 lines.append(f"- {c}")
             lines.append("")
 
+    # HARD 规则（所有严谨度都注入）
     lines.append("## 行为准则（必须遵守）")
     for r in hard_rules:
         rw = rewrite_rule(r)
         lines.append(f"- **[HARD]** {rw['positive']}")
     lines.append("")
 
-    if soft_rules:
+    # SOFT 规则（STANDARD 和 STRICT 注入）
+    if rigor in (Rigor.STANDARD, Rigor.STRICT) and soft_rules:
         lines.append("## 参考偏好（建议遵守）")
         for r in soft_rules:
             rw = rewrite_rule(r)
             lines.append(f"- [SOFT] {rw['positive']}")
         lines.append("")
 
-    patterns = load_patterns(category, patterns_dir)
-    if patterns:
-        lines.append("## 成功经验（来自历史高分案例，供参考）")
-        for p in patterns:
-            lines.append(f"- {p}")
+    # Skill 声明的偏好（STANDARD 和 STRICT 注入）
+    if rigor in (Rigor.STANDARD, Rigor.STRICT) and skill and skill.boundary.preferences:
+        lines.append("## 偏好引导（来自 Skill 声明和历史经验）")
+        for pref in skill.boundary.preferences:
+            lines.append(f"- [{pref.weight}] {pref.text}")
         lines.append("")
 
-    if skill and skill.guard_red_flags:
+    # 经验模式（STANDARD 和 STRICT 注入）
+    if rigor in (Rigor.STANDARD, Rigor.STRICT):
+        patterns = load_patterns(category, patterns_dir)
+        if patterns:
+            lines.append("## 成功经验（来自历史高分案例，供参考）")
+            for p in patterns:
+                lines.append(f"- {p}")
+            lines.append("")
+
+    # Guard Red Flags（仅 STRICT 注入）
+    if rigor == Rigor.STRICT and skill and skill.guard_red_flags:
         lines.append("## 行为守卫（当以下念头出现时，立即 STOP）")
         lines.append("| 当你产生这个念头 | 现实是 |")
         lines.append("|---|---|")
         for rf in skill.guard_red_flags:
             lines.append(f"| {rf.get('thought', '')} | {rf.get('reality', '')} |")
-        lines.append("任何 Red Flag 触发 → 暂停当前行为，回到约束检查。")
+        lines.append("任何 Red Flag 触发 → 暂停当前行为，回到约束检查。\n")
+
+    # spirit_vs_letter LETTER 声明（STANDARD+ 注入，协议域核心约束）
+    # SPIRIT 声明保留在 STRICT（生成域引导，非强制）
+    if rigor in (Rigor.STANDARD, Rigor.STRICT) and skill and skill.spirit_vs_letter:
+        letter_entries = [sl for sl in skill.spirit_vs_letter if sl.mode.value == "LETTER"]
+        if letter_entries:
+            lines.append("## 流程约束（必须按字面精确遵守）")
+            for sl in letter_entries:
+                lines.append(f"- 规则 {sl.rule_ref}: **按字面精确匹配** — {sl.intent}")
+            lines.append("")
+
+    # spirit_vs_letter SPIRIT 声明（仅 STRICT 注入）
+    if rigor == Rigor.STRICT and skill and skill.spirit_vs_letter:
+        spirit_entries = [sl for sl in skill.spirit_vs_letter if sl.mode.value == "SPIRIT"]
+        if spirit_entries:
+            lines.append("## 内容引导（按意图灵活解释）")
+            for sl in spirit_entries:
+                lines.append(f"- 规则 {sl.rule_ref}: 按意图解释 — {sl.intent}")
+            lines.append("")
 
     return "\n".join(lines)
 

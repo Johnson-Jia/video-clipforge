@@ -1,12 +1,12 @@
 skill:
   meta:
     id: "skill.clipforge.stage6-production"
-    version: "1.0.0"
+    version: "1.2.0"
     type: EXECUTIVE
     tags: ["html", "render", "video"]
     rigor: STRICT
   intent:
-    objective: "编写 HTML 场景并渲染为最终视频"
+    objective: "HTML 场景就绪，视频已渲染输出"
     criteria:
       - "index.html 存在且包含所有场景"
       - "所有场景使用三层架构"
@@ -17,6 +17,10 @@ skill:
       - ref: "R-C-*"
       - ref: "R-R-*"
       - ref: "R-S6-*"
+    preferences:
+      - text: "特效、布局和视觉表达从内容自主推导，不查表套用"
+        weight: "HIGH"
+        source_pattern: "P-feedback-template-reference"
   guard:
     red_flags:
       - thought: "这个效果用 CSS animation 更简单"
@@ -28,6 +32,16 @@ skill:
       - thought: "padding 设两层更安全"
         reality: "双重 padding 是最常见的渲染事故，只设一层"
         trigger: "试图同时设置 scene-wrap 和 .phase 的 padding"
+    spirit_vs_letter:
+      - rule_ref: "R-S6-*"
+        mode: LETTER
+        intent: "HTML 结构规则是流程层硬约束：三层架构、单层 padding、GSAP timeline"
+      - rule_ref: "R-R-*"
+        mode: LETTER
+        intent: "渲染管线约束：HTML 实体净化、禁用 anim-in、cover.html 渲染前移除"
+      - rule_ref: "R-C-*"
+        mode: SPIRIT
+        intent: "视觉设计享有最大自由度：配色、布局、动效从内容自主推导"
   gate:
     hard:
       - gate: file_exists

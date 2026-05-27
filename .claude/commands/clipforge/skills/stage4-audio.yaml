@@ -1,12 +1,12 @@
 skill:
   meta:
     id: "skill.clipforge.stage4-audio"
-    version: "1.0.0"
+    version: "1.2.0"
     type: EXECUTIVE
     tags: ["audio", "tts", "bgm"]
     rigor: STANDARD
   intent:
-    objective: "生成 TTS 旁白音频和背景配乐，产出逐段时长数据"
+    objective: "音频资产就绪，旁白和 BGM 已合成且技术参数合规"
     criteria:
       - "segment_durations.json 存在且含 meta + segments"
       - "narration.mp3 经过 loudnorm 标准化（max_volume >= -10 dB）"
@@ -16,6 +16,7 @@ skill:
       - ref: "R-G-*"
       - ref: "R-A-*"
       - ref: "R-C-*"
+    preferences: []
   guard:
     red_flags:
       - thought: "预估时长够用了"
@@ -30,6 +31,16 @@ skill:
       - thought: "BGM 不够长用 HTML loop 就行"
         reality: "HyperFrames 对 loop 支持不可靠，必须用 FFmpeg 循环扩展 WAV"
         trigger: "试图用 HTML loop 替代 FFmpeg 循环"
+    spirit_vs_letter:
+      - rule_ref: "R-A-*"
+        mode: LETTER
+        intent: "音频技术参数是流程层硬约束：loudnorm、音量通道、分段 TTS、TTS 音色固定、BGM 音量控制机制"
+      - rule_ref: "R-G-*"
+        mode: LETTER
+        intent: "全局安全规则是流程层约束，精确遵守"
+      - rule_ref: "R-C-*"
+        mode: SPIRIT
+        intent: "BGM 选曲享有最大自由度，从内容和情绪自主推导"
   gate:
     hard:
       - gate: file_exists

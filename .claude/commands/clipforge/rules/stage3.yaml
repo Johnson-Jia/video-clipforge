@@ -2,14 +2,38 @@ rules:
   - id: "R-S3-001"
     type: FORBIDDEN_ACTION
     pattern: "narration_segments.json 缺少 hook 纯钩子验证"
-    positive: "第一个场景的 narration 必须是纯钩子（震撼数据/反问/强对比/悬念），不含信息性内容"
+    positive: "第一个场景的 narration 必须是纯钩子（震撼数据/反直觉/强对比/悬念），不含信息性内容"
     guardrail: "segments[0] 的 narration 包含项目介绍或功能描述"
     detection: {keywords: [], semantic_check: true}
     severity: HARD
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage3-scenes"
-    source: "stage3-scenes.md 节奏铁律"
+    source: "stage3-scenes.md 节奏铁律（5s 完播率 ≥44% 对应 36K 播放）"
+
+  - id: "R-S3-001b"
+    type: FORBIDDEN_ACTION
+    pattern: "hook 使用疑问/互动模式（平均播放仅 1,195）"
+    positive: "hook 使用反直觉/冲突（首选）或数字锚定模式，禁止疑问句式（'你知道…吗？''有没有想过…？'）"
+    guardrail: "segments[0] 的 narration 以疑问词开头或包含'你知道吗''有没有想过''猜猜'"
+    detection: {keywords: ["你知道吗", "有没有想过", "猜猜", "你知道"], semantic_check: false}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "2026-05-27 数据分析：疑问/互动模式平均 1,195 播放（最低）"
+
+  - id: "R-S3-001c"
+    type: FORBIDDEN_ACTION
+    pattern: "hook 前 5 秒包含项目名或功能描述"
+    positive: "前 5 秒只允许：震撼数据 / 反直觉陈述 / 强对比，项目名和功能描述从第 2 个场景开始"
+    guardrail: "segments[0] 的 narration 包含项目英文名或功能说明"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage3-scenes"
+    source: "2026-05-27 数据分析：5s 完播率 ≥44% 对应 36K 播放 vs <38% 仅 3.1K"
 
   - id: "R-S3-002"
     type: FORBIDDEN_ACTION

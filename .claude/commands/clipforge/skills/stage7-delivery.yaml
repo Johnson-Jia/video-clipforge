@@ -1,28 +1,38 @@
 skill:
   meta:
     id: "skill.clipforge.stage7-delivery"
-    version: "1.0.0"
+    version: "1.1.0"
     type: EXECUTIVE
     tags: ["delivery", "publish"]
     rigor: STANDARD
   intent:
-    objective: "生成封面、发布文案和最终交付物"
+    objective: "交付物就绪，封面和发布文案可发布"
     criteria:
-      - "cover.html 存在且遵循 7 层封面模板"
+      - "cover.html 存在且遵循封面模板"
       - "douyin.md 包含发布文案和标签"
       - "评论区格式正确（只列名称，不放链接）"
   boundary:
     rules:
       - ref: "R-G-*"
       - ref: "R-S7-*"
+    preferences:
+      - text: "封面设计基于 6 层模板，从内容推导而非套用"
+        weight: "HIGH"
+        source_pattern: "P-feedback-cover-design"
+      - text: "标签组合使用 broad + niche + trending 三层结构"
+        weight: "MEDIUM"
   guard:
     red_flags:
       - thought: "评论区放个链接方便用户"
         reality: "抖音审查禁止评论区放链接，只列项目名 + 搜索指引"
         trigger: "试图在评论区放完整 URL"
       - thought: "封面随便写个标题就行"
-        reality: "封面是第二眼看到的内容，必须严格遵循 7 层模板"
+        reality: "封面是第二眼看到的内容，必须严格遵循封面模板"
         trigger: "试图简化封面设计"
+    spirit_vs_letter:
+      - rule_ref: "R-S7-*"
+        mode: LETTER
+        intent: "发布格式规则必须精确遵守，平台审核敏感"
   gate:
     hard:
       - gate: file_exists

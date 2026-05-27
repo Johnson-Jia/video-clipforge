@@ -1,23 +1,28 @@
 skill:
   meta:
     id: "skill.clipforge.cleanup"
-    version: "1.0.0"
+    version: "1.2.0"
     type: UTILITY
     tags: ["cleanup"]
     rigor: LITE
   intent:
-    objective: "清理临时文件，保留必要产出物"
+    objective: "临时文件已清理，产出物完整保留"
     criteria:
       - "临时文件已删除"
       - "产出物完整保留"
   boundary:
     rules:
       - ref: "R-G-*"
+    preferences: []
   guard:
     red_flags:
       - thought: "这个文件看起来没用，删了吧"
         reality: "过度清理曾导致产出物丢失，只删除确认的临时文件"
         trigger: "试图删除不确定的文件"
+    spirit_vs_letter:
+      - rule_ref: "R-G-*"
+        mode: LETTER
+        intent: "清理规则是流程层硬约束：严格按保留清单操作，宁可少删不可误删，误删不可逆"
   gate:
     hard: []
     soft: []

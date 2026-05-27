@@ -41,7 +41,36 @@ def _auto_rewrite(pattern: str, rule_type: str) -> str:
         return "只描述能力，不说获取路径：说'能做什么'，不说'去哪下载/怎么安装'"
     if "诱导" in pattern or "点赞" in pattern:
         return "正文自然提及，不用命令式引导互动"
-    return f"遵守以下规范：{pattern}"
+    # 兜底：从 FORBIDDEN 模式提取核心意图并正向化，而非原样传递负向规则
+    return _fallback_rewrite(pattern)
+
+
+def _fallback_rewrite(pattern: str) -> str:
+    """兜底正向重述：从 FORBIDDEN_* 模式提取核心意图并正向化。
+
+    策略：去掉否定词后，将"禁止X"转为"确保非X"或直接陈述正向行为。
+    """
+    # 去掉常见否定前缀
+    cleaned = pattern
+    for neg in ("禁止", "不得", "不能", "不可", "不要", "避免", "拒绝"):
+        if cleaned.startswith(neg):
+            cleaned = cleaned[len(neg):]
+            break
+
+    # 根据核心动作生成正向表述
+    if "复制" in cleaned:
+        return f"确保内容原创，基于理解重新组织表达"
+    if "绕过" in cleaned or "跳过" in cleaned:
+        return f"按完整流程执行每一步，不省略任何环节"
+    if "虚构" in cleaned or "伪造" in cleaned:
+        return f"所有数据来源于真实 API 返回值，不编造任何信息"
+    if "绝对化" in cleaned or "极限" in cleaned:
+        return f"使用限定性语言表述，保持客观中立的语气"
+    if "忽略" in cleaned or "无视" in cleaned:
+        return f"逐一检查所有相关约束，确保每条都被遵守"
+
+    # 通用正向化：将禁止内容转为"确保..."
+    return f"确保：{cleaned.strip('，。、')}"
 
 
 def build_injection_segment(rules: list[Rule], include_guardrails: bool = False) -> str:

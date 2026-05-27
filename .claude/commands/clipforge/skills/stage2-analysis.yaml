@@ -1,12 +1,12 @@
 skill:
   meta:
     id: "skill.clipforge.stage2-analysis"
-    version: "1.0.0"
+    version: "1.1.0"
     type: EXECUTIVE
     tags: ["design", "analysis"]
     rigor: STANDARD
   intent:
-    objective: "分析内容并产出设计文档 design.md"
+    objective: "设计文档就绪，视觉方向和情绪曲线已明确"
     criteria:
       - "design.md 包含 style/mood/color_direction/storyboard"
       - "emotion_curve 为 6 元素数组"
@@ -15,6 +15,12 @@ skill:
       - ref: "R-G-*"
       - ref: "R-C-*"
       - ref: "R-S2-*"
+    preferences:
+      - text: "特效和组件从内容自主推导，不查表套用"
+        weight: "HIGH"
+        source_pattern: "P-feedback-template-reference"
+      - text: "emotion_curve 必须与内容节奏匹配，拒绝均匀填充"
+        weight: "HIGH"
   guard:
     red_flags:
       - thought: "design.md 写个大概就行"
@@ -23,6 +29,10 @@ skill:
       - thought: "emotion_curve 随便填个曲线"
         reality: "emotion_curve 直接决定场景间情绪起伏设计，必须基于内容节奏"
         trigger: "试图快速填充 emotion_curve"
+    spirit_vs_letter:
+      - rule_ref: "R-C-*"
+        mode: SPIRIT
+        intent: "视觉设计应传达内容精神，而非机械遵守格式要求"
   gate:
     hard:
       - gate: file_exists

@@ -4,12 +4,9 @@
 
 # ClipForge
 
-**基于 Claude Code 的通用 AI 短视频生产管线**
+**AI 短视频自进化生产管线 — 弱引导 · 强边界 · 双闭环反馈**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Claude Code Skills](https://img.shields.io/badge/Claude%20Code-Skills-orange)](https://docs.anthropic.com/en/docs/claude-code/skills)
-
-[中文](#概述) · [English](README_EN.md)
 
 从任意内容到抖音竖屏视频 — 全自动。
 
@@ -21,9 +18,14 @@
 
 ## 为什么选择 ClipForge
 
-大多数 AI 视频工具是带固定模板的 GUI 应用。ClipForge 采用不同方式：基于 Claude Code 技能系统构建的**代码原生管线**。每个阶段是自包含技能文件，有明确的输入、输出和错误恢复路径。DAG 依赖图在 `schema.yaml` 中定义一次，驱动所有调度、状态检测和重试逻辑。
+大多数 AI 视频工具是带固定模板的 GUI 应用。ClipForge 采用不同方式：基于 **Agent 自进化架构** 构建的代码原生管线。不是写死每一步"怎么做"，而是定义"不能做什么"和"做成什么样算合格"，把创造空间留给 Agent。
 
-**结果：** 可审计、可扩展、可在 cron 上无人值守运行的生产级视频管线。
+核心差异：
+
+1. **不教 Agent 怎么做，教它不能怎么做** — 负向约束 + 正向重述，定义边界而非路径
+2. **从失败和成功中自动进化** — 每次执行采集 trace，归因失败收紧规则，分析成功沉淀模式
+3. **数据驱动优化** — 基于 58 条抖音视频 + 30 条视频号 + 36 条小红书的真实播放数据优化技能
+4. **流程层零自由度，内容层最大自由度** — LETTER（流程）按字面精确执行，SPIRIT（内容）按意图灵活解释
 
 ### 为什么不直接用 HyperFrames？
 
@@ -38,17 +40,18 @@
 | **HTML 怎么写？** | 渲染你给的 HTML | Stage 5-6 三层架构（背景/内容/特效）+ 13 个可组合组件 + GSAP 动画编排 + A/V 门禁校验 |
 | **如何适配不同内容？** | 不涉及 | 分类系统（categories/）让每种内容有独立的数据源、音色、标签策略，无需改代码 |
 | **如何批量自动化？** | 不涉及 | DAG 编排 + SubAgent 批次调度 + cron 定时任务 + 自动续期，每天无人值守产出视频 |
+| **如何从数据中进化？** | 不涉及 | Trace 采集 → 归因引擎 → Delta Rule 增量更新 → 成功分析 → Pattern 沉淀，双闭环自进化 |
 | **出了问题怎么回退？** | 不涉及 | DAG 依赖图驱动的级联回退表，只回退到最小必要阶段 |
-| **磁盘会被撑爆吗？** | 不涉及 | 自动清理策略，每个项目交付后 < 30MB |
 
-**简而言之：** HyperFrames 是渲染引擎，ClipForge 是从内容到成品的完整编排层。HyperFrames 解决「怎么把 HTML 变成视频」，ClipForge 解决「这个视频的 HTML 从哪来、内容是什么、风格怎么定、音频怎么同步、如何批量生产」。
+---
 
 ## 概述
 
 ClipForge 将任意内容 — 文字、URL、PDF、GitHub 数据等 — 转换为竖屏短视频（1080x1920），包含：
 
 - **DAG 编排 8 阶段流水线** — 每个阶段是自包含技能文件，有明确的输入/输出和错误恢复路径
-- **分类系统** — 通过可插拔的分类配置文件定义内容特有规则（数据获取、风格、音色、标签等）
+- **Agent 自进化引擎** — 四原子模型（Intent/Boundary/Gate/Trace）+ 双闭环反馈（负向归因 + 正向分析）
+- **数据驱动优化** — 基于三平台真实播放数据的 hook 模式优先级、5s 完播率目标、跨平台发布策略
 - **三种视频模式** — 标准模式（45-55s）、单主题深度解析（45-60s）、电影解读（3-5min）
 - **音频内嵌** — 旁白和 BGM 通过 `<audio>` 嵌入 HTML，HyperFrames 原生混音
 - **分段精确 A/V 同步** — 分段 TTS + 每段时长追踪，消除音画漂移
@@ -70,6 +73,8 @@ ClipForge 将任意内容 — 文字、URL、PDF、GitHub 数据等 — 转换�
 | Stage 8 | cleanup | 删除中间产物 |
 
 DAG 定义在 [`schema.yaml`](.claude/commands/clipforge/schema.yaml) — artifact 依赖、条件阶段、可选阶段，一处定义。
+
+---
 
 ## 快速开始
 
@@ -97,7 +102,7 @@ claude
 /clipforge 从这篇文章生成视频：https://...
 ```
 
-Claude 逐步引导完成每个阶段，每步确认后继续。
+Agent 逐步引导完成每个阶段，每步确认后继续。
 
 ### 定时任务
 
@@ -109,15 +114,98 @@ Claude 逐步引导完成每个阶段，每步确认后继续。
 
 全自动化：数据采集（三源交叉验证）→ 视频生产 → 交付 → 清理 → 定时任务自动续期。
 
+---
+
 ## 架构设计
 
-遵循三个设计原则：
+### 设计哲学：弱引导 · 强边界
 
-1. **Schema 即真相** — `schema.yaml` 定义所有 artifact 依赖、产出和完成状态。状态检测基于文件存在（glob 模式匹配），无数据库。
-2. **技能自包含** — 每个阶段文件包含完整执行指导、Anti-rationalization 表格和红旗警告。
-3. **委托不重写** — HTML 编写和渲染委托 HyperFrames，音频混音由渲染器原生处理，无需 FFmpeg 后处理。
+参照 [Agent 自进化架构](docs/agent-self-evolution-architecture.md) 的九大设计原则（P1-P9）：
 
-### 核心子系统
+1. **Schema 即真相** — `schema.yaml` 定义所有 artifact 依赖、产出和完成状态。状态检测基于文件存在，无数据库
+2. **技能自包含** — 每个阶段文件包含完整执行指导、Anti-rationalization 表格和红旗警告
+3. **委托不重写** — HTML 编写和渲染委托 HyperFrames，音频混音由渲染器原生处理
+4. **双域分离** — 流程层零自由度（LETTER 按字面执行），内容层最大自由度（SPIRIT 按意图发挥）
+5. **双闭环反馈** — 失败 → 归因 → 收紧规则（负向闭环）+ 成功 → 分析 → 沉淀模式（正向闭环）
+
+### 四原子模型
+
+所有技能定义建立在一个基本观察上：对 Agent 的控制本质上是四个维度的问题。
+
+| 维度 | 回答的问题 | 概念 | 文件体现 |
+|------|-----------|------|---------|
+| 目标 | 要达成什么？ | **Intent** | `skills/stage*.yaml` 的 `intent` 段 |
+| 边界 | 不能做什么？ | **Boundary** | `rules/*.yaml` + `skills/*.yaml` 的 `boundary` 段 |
+| 合格 | 怎样算通过？ | **Gate** | `skills/*.yaml` 的 `gate` 段 → `engine/gate.py` 执行 |
+| 经验 | 如何改进？ | **Trace** | `engine/trace.py` 采集 → `engine/attribution.py` 归因 |
+
+### 自进化引擎
+
+引擎层（`engine/`）是 ClipForge 的"免疫系统"——不干预正常执行，只在违规和成功时介入。
+
+| 引擎 | 文件 | 职责 |
+|------|------|------|
+| 门禁引擎 | `gate.py` | HARD + SOFT 校验，SAFETY 门禁不可通过归因自动修复 |
+| 注入引擎 | `inject.py` | 将规则正向重述后注入 prompt，LETTER=流程约束，SPIRIT=内容引导 |
+| 归因引擎 | `attribution.py` | 强归因（规则命中）+ 弱归因（根因判定 + Delta 产出） |
+| 成功分析 | `success_analyzer.py` | 高分案例采集、经验模式提炼、P7 负向闭环否决权 |
+| 正向重述 | `lib/positive_rewrite.py` | 负向规则 → 正向表述（避免白熊效应），兜底重写覆盖未知模式 |
+| Delta 规则 | `lib/delta.py` | 增量规则变更（ADDED/REMOVED/DEPRECATED），shadow_validate 影子验证 |
+| Trace 采集 | `trace.py` | 执行轨迹记录，供归因和成功分析消费 |
+| 治理守卫 | `governance.py` | 规则生命周期管理 |
+
+**双闭环运转流程：**
+
+```
+执行 → Gate 校验 → [失败] → 归因引擎 → Delta Rule → 收紧规则
+                  → [成功] → 成功分析 → Pattern 沉淀 → 放宽偏好
+```
+
+**数据驱动验证（2026-05-27）：**
+
+| 发现 | 数据 | 对技能的影响 |
+|------|------|-------------|
+| 反直觉 hook 效果 8x | 平均 46,596 播放 vs 基线 5,363 | hook_templates 按优先级排序 |
+| 5s 完播率是播放量最强预测因子 | ≥44% → 36K 播放，<38% → 3.1K | 新增 R-S3-001b/c 门禁规则 |
+| 疑问句式效果最差 | 平均 1,195 播放 | 硬门禁禁止疑问 hook |
+| 视频号增长靠分享 | 分享率 4-5% 驱动 | 跨平台发布策略区分 |
+| 小红书收藏 >> 点赞 | 1.9 倍 | 内容定位为参考价值 |
+
+### 约束体系
+
+```
+rules/                          # 规则库（按领域分文件）
+├── 00-global-safety.yaml       # 全局安全规则（违禁词、URL 禁止）
+├── 01-content-spec.yaml        # 内容规范
+├── 02-render-safety.yaml       # 渲染安全（anim-in 禁用、三层架构）
+├── 03-audio.yaml               # 音频规则
+├── stage2-7.yaml               # 各阶段专属规则
+└── categories/github.yaml      # GitHub 分类规则
+
+skills/                         # 技能声明（四原子模型）
+├── stage0-env.yaml ~ stage7-delivery.yaml
+├── cleanup.yaml
+└── movie-clips.yaml
+
+patterns/                       # 经验模式（成功分析产出）
+├── github-highscore.yaml       # GitHub 高分模式（58 条视频数据支撑）
+├── cover-design.yaml           # 封面 7 层模板
+└── director-toolkit.yaml       # 导演思维工具包
+
+deltas/                         # Delta 规则（归因产出，增量变更）
+```
+
+### 渐进严谨
+
+| 级别 | 注入范围 | 适用场景 |
+|------|---------|---------|
+| LITE | 仅全局安全 + 个性化偏好 | 简单内容，Agent 创造空间最大 |
+| STANDARD | + 阶段规则 + LETTER 流程约束 | **默认级别**，平衡创造力和质量控制 |
+| STRICT | + SPIRIT 内容引导 + 全部 guardrail | 关键发布，最大化质量保证 |
+
+---
+
+## 核心子系统
 
 | 子系统 | 文件 | 作用 |
 |--------|------|------|
@@ -127,21 +215,13 @@ Claude 逐步引导完成每个阶段，每步确认后继续。
 | 分类配置 | `categories/github.md` | GitHub 分类特有的数据源、选取策略、音色、标签覆盖 |
 | 爆款案例库 | `_viral-cases/` | 已验证的爆款视频多维分析，可提取模式 |
 
-详见 [架构文档](docs/architecture.md)。
-
-## 设计哲学
-
-参照 [OpenSpec](https://github.com/nicholasgriffintn/openspec) 和 [Superpowers](https://github.com/nicholasgriffintn/superpowers) 的设计思想：
-
-- **Schema 即真相** — DAG 驱动的工作流，schema 是唯一事实来源
-- **Anti-rationalization** — 每个技能有明确的红旗警告和常见自我合理化，Token 预算保持技能聚焦
-
 ## 抖音合规
 
 - 视频画面和旁白文案**不出现 URL**，只展示项目名称
 - 不点名商业品牌（不说"GPT/DeepSeek"，说"大语言模型/AI 助手"）
 - 禁止广告敏感词（"必装/神器/赶紧/最强/免费领"）
 - 自动生成 3 套不同风格文案：爆款钩子型 / 信息差型 / 极简型
+- **跨平台差异化发布**：抖音（反直觉 hook）、视频号（分享驱动）、小红书（收藏价值）
 
 ## 依赖
 
@@ -164,7 +244,8 @@ Claude 逐步引导完成每个阶段，每步确认后继续。
 
 - **新内容源：** 添加 cron 文件（参照 `github-daily-trending.md`），获取数据并分派 SubAgent
 - **新分类：** 在 `categories/` 下创建配置文件，定义该分类特有的规则覆盖
-- **新阶段：** 在 `schema.yaml` 中添加 artifact，创建对应的 `stageN-xxx.md` 技能文件
+- **新规则：** 在 `rules/` 下添加 YAML 文件，引擎自动加载并注入
+- **新阶段：** 在 `schema.yaml` 中添加 artifact，创建对应的 `stageN-xxx.md` + `skills/stageN-xxx.yaml`
 - **新视频模式：** 在 stage 文件中定义模式规则，控制器根据内容自动选择
 
 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
@@ -175,11 +256,11 @@ Claude 逐步引导完成每个阶段，每步确认后继续。
 clipforge/
 ├── CLAUDE.md                              # AI 代理入口点
 ├── README.md                              # 中文说明（本文件）
-├── README_EN.md                           # English README
 ├── LICENSE                                # Apache 2.0
 ├── CONTRIBUTING.md                        # 贡献指南
 ├── docs/
 │   ├── architecture.md                    # DAG + 阶段流水线详解
+│   ├── agent-self-evolution-architecture.md  # Agent 自进化架构设计（P1-P9）
 │   └── getting-started.md                 # 安装与首次使用
 ├── .claude/commands/
 │   ├── clipforge.md                       # 主控制器（DAG 语义、模式选择、错误恢复）
@@ -188,68 +269,48 @@ clipforge/
 │   ├── github-weekly-zhihu.md             # 每周知乎文章
 │   └── clipforge/
 │       ├── schema.yaml                    # Artifact DAG（唯一事实源）
+│       ├── engine/                        # 自进化引擎（Python）
+│       │   ├── gate.py                    # 门禁引擎：HARD + SOFT 校验
+│       │   ├── inject.py                  # 注入引擎：正向重述 → prompt
+│       │   ├── attribution.py             # 归因引擎：强/弱归因 + Delta 产出
+│       │   ├── success_analyzer.py        # 成功分析：高分模式提炼 + P7 否决
+│       │   ├── trace.py                   # Trace 采集：执行轨迹记录
+│       │   ├── governance.py              # 治理守卫：规则生命周期
+│       │   └── lib/                       # 引擎核心库
+│       │       ├── models.py              # 数据模型（Rule, Violation, GateReport...）
+│       │       ├── rule_parser.py         # 规则/Skill YAML 解析器
+│       │       ├── positive_rewrite.py    # 正向重述引擎
+│       │       └── delta.py               # Delta Rule 管理 + shadow_validate
+│       ├── rules/                         # 约束规则库（YAML）
+│       │   ├── 00-global-safety.yaml      # 全局安全规则
+│       │   ├── 01-content-spec.yaml       # 内容规范
+│       │   ├── 02-render-safety.yaml      # 渲染安全
+│       │   ├── 03-audio.yaml              # 音频规则
+│       │   ├── stage2-7.yaml              # 各阶段规则
+│       │   └── categories/github.yaml     # 分类规则
+│       ├── skills/                        # 技能声明（四原子模型）
+│       │   ├── stage0-env.yaml            #   ~ stage7-delivery.yaml
+│       │   ├── cleanup.yaml
+│       │   └── movie-clips.yaml
+│       ├── patterns/                      # 经验模式（成功分析产出）
+│       │   ├── github-highscore.yaml      # GitHub 高分模式（数据驱动）
+│       │   ├── cover-design.yaml          # 封面 7 层模板
+│       │   └── director-toolkit.yaml      # 导演思维工具包
+│       ├── deltas/                        # Delta 规则（归因产出）
+│       ├── traces/                        # 执行轨迹（Trace 采集）
 │       ├── categories/                    # 分类配置
 │       │   ├── _category-schema.md        # 分类配置格式规范
 │       │   └── github.md                  # GitHub 分类
-│       ├── stage0-env.md                  # Stage 0: 环境检测
-│       ├── stage1-content.md              # Stage 1: 内容获取
-│       ├── stage2-analysis.md             # Stage 2: 导演思维 + 风格推导
-│       ├── stage3-scenes.md               # Stage 3: 场景拆解 + 旁白
-│       ├── stage4-audio.md                # Stage 4: TTS + BGM
-│       ├── stage5-assets.md               # Stage 5: 素材制备
-│       ├── stage6-components.md           # Stage 6: 组件库参考
-│       ├── stage6-production.md           # Stage 6: HTML 组装 + 渲染
-│       ├── stage7-delivery.md             # Stage 7: 封面 + 文案 + 交付
-│       ├── templates/                     # SubAgent prompt 模板
-│       │   ├── subagent-1-content.md      # 批次 1: 内容 + 设计 + 旁白
-│       │   ├── subagent-2-audio.md        # 批次 2: 音频 + 素材
-│       │   ├── subagent-3-video.md        # 批次 3: 视频渲染
-│       │   └── subagent-4-delivery.md     # 批次 4: 交付 + 清理
-│       ├── _shared-rules.md               # 内容规范（措辞/画面文字/CTA）
-│       ├── _cleanup-rules.md              # 文件保留规则
-│       ├── _cron-renew.md                 # 定时任务续期
-│       ├── _director-toolkit.md           # 导演思维工具包（5 必答题 + 视觉词汇）
-│       ├── _render-safety.md              # 渲染安全 + 三层架构规范
-│       ├── _movie-clips.md                # 电影片段提取（条件阶段）
-│       ├── _bgm-pixabay.md                # Pixabay BGM 下载工具
-│       ├── _viral-cases/                  # 爆款视频案例库
-│       │   └── 05-19-douyin.md            # 05-19 爆款复盘
-│       ├── scripts/                       # 工具脚本
-│       │   ├── github_trending.py         # GitHub Trending 抓取
-│       │   ├── generate_bgm.py            # MusicGen BGM 生成
-│       │   ├── tts_segments.py            # 分段 TTS 管线
-│       │   ├── tts_pipeline.sh            # TTS 流程脚本
-│       │   ├── bgm_pipeline.sh            # BGM 处理管线
-│       │   ├── bgm_gap_check.py           # BGM 缺口检测
-│       │   ├── loudnorm.sh                # loudnorm 响度归一化
-│       │   ├── polyphone_fix.py           # TTS 多音字预处理
-│       │   ├── assemble_final.sh          # TS concat 无损拼接
-│       │   ├── merge_video_audio.sh       # 音视频合并
-│       │   ├── merge_srt.py               # SRT 字幕合并
-│       │   ├── render_cover.sh            # 封面渲染
-│       │   ├── validate_cover.py          # 封面结构门禁
-│       │   ├── stage6_gate.sh             # Stage 6 A/V 门禁
-│       │   ├── director_gate.py           # 导演思维门禁
-│       │   ├── frame_analysis.py          # 帧分析工具
-│       │   ├── movie_narration.py         # 电影旁白合成
-│       │   ├── movie_xfade.sh             # 电影片段 xfade
-│       │   ├── env_check.sh               # 环境检测
-│       │   ├── cleanup_project.sh         # 项目清理
-│       │   └── validate_schema.py         # Schema 校验
+│       ├── stage0-env.md ~ stage7-delivery.md  # 阶段执行指南
+│       ├── _shared-rules.md               # 内容规范
+│       ├── _cleanup-rules.md              # 清理规则
+│       ├── _director-toolkit.md           # 导演思维工具包
+│       ├── _render-safety.md              # 渲染安全规范
+│       ├── _visual-phasing.md             # 视觉分相规则
+│       ├── _bgm-pixabay.md                # BGM 下载工具
+│       ├── _movie-clips.md                # 电影片段提取
+│       ├── scripts/                       # 工具脚本（20+）
 │       └── components/                    # 视觉组件库（13 个）
-│           ├── hero_card.html             # 首屏英雄卡片
-│           ├── project_full_card.html     # 项目完整信息卡
-│           ├── text_reveal.html           # 文字揭示动画
-│           ├── code_rain.html             # 代码雨特效
-│           ├── particle_burst.html        # 粒子爆发
-│           ├── pulse_orb.html             # 脉冲光球
-│           ├── star_counter.html          # 星标计数器
-│           ├── timeline_flow.html         # 时间线流动
-│           ├── compare_split.html         # 对比分屏
-│           ├── data_viz.html              # 数据可视化
-│           ├── speech_bubble.html         # 气泡对话
-│           ├── char_overlay.html          # 角色叠加
-│           └── three_scene.html           # Three.js 3D 场景
 ├── install.sh                             # 一键依赖安装
 └── workspace/                             # 输出目录（gitignored）
 ```

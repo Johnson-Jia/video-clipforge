@@ -5,7 +5,8 @@ from pathlib import Path
 from .models import (
     Rule, RuleType, Severity, RuleClass, Scope, Detection, Rigor,
     SkillDefinition, SkillMeta, SkillIntent, SkillBoundary, SkillGate,
-    SkillTrace, GateDefinition, GateType, CaptureLevel,
+    SkillTrace, GateDefinition, GateType, CaptureLevel, Preference,
+    SpiritLetterEntry, SpiritMode,
 )
 
 RULES_DIR = Path(__file__).parent.parent.parent / "rules"
@@ -103,6 +104,24 @@ def parse_skill(raw: dict) -> SkillDefinition:
         for rf in red_flags
     ]
 
+    spirit_entries = [
+        SpiritLetterEntry(
+            rule_ref=sl.get("rule_ref", ""),
+            mode=SpiritMode(sl.get("mode", "SPIRIT")),
+            intent=sl.get("intent", ""),
+        )
+        for sl in guard_raw.get("spirit_vs_letter", [])
+    ]
+
+    prefs = [
+        Preference(
+            text=p.get("text", ""),
+            weight=p.get("weight", "MEDIUM"),
+            source_pattern=p.get("source_pattern"),
+        )
+        for p in boundary_raw.get("preferences", [])
+    ]
+
     return SkillDefinition(
         meta=SkillMeta(
             id=meta_raw.get("id", ""),
@@ -118,6 +137,7 @@ def parse_skill(raw: dict) -> SkillDefinition:
         boundary=SkillBoundary(
             scene=boundary_raw.get("scene"),
             rule_refs=boundary_raw.get("rules", []),
+            preferences=prefs,
         ),
         gate=SkillGate(
             hard=hard_gates,
@@ -130,6 +150,7 @@ def parse_skill(raw: dict) -> SkillDefinition:
             sensitive_fields=trace_raw.get("sensitive_fields", []),
         ),
         guard_red_flags=red_flag_dicts,
+        spirit_vs_letter=spirit_entries,
     )
 
 

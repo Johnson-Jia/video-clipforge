@@ -36,8 +36,6 @@ class GateType(str, Enum):
     no_forbidden_speech = "no_forbidden_speech"
     no_url_in_output = "no_url_in_output"
     duration_in_range = "duration_in_range"
-    scene_count = "scene_count"
-    custom = "custom"
 
 
 class Rigor(str, Enum):
@@ -50,6 +48,18 @@ class CaptureLevel(str, Enum):
     FULL = "FULL"
     SUMMARY = "SUMMARY"
     NONE = "NONE"
+
+
+class SpiritMode(str, Enum):
+    SPIRIT = "SPIRIT"
+    LETTER = "LETTER"
+
+
+class DeltaOperation(str, Enum):
+    ADDED = "ADDED"
+    MODIFIED = "MODIFIED"
+    REMOVED = "REMOVED"
+    DEPRECATED = "DEPRECATED"
 
 
 @dataclass
@@ -117,9 +127,24 @@ class SkillIntent:
 
 
 @dataclass
+class Preference:
+    text: str
+    weight: str = "MEDIUM"  # LOW / MEDIUM / HIGH
+    source_pattern: str | None = None
+
+
+@dataclass
+class SpiritLetterEntry:
+    rule_ref: str
+    mode: SpiritMode = SpiritMode.SPIRIT
+    intent: str = ""
+
+
+@dataclass
 class SkillBoundary:
     scene: str | None = None
     rule_refs: list[str] = field(default_factory=list)
+    preferences: list[Preference] = field(default_factory=list)
 
 
 @dataclass
@@ -137,18 +162,15 @@ class SkillDefinition:
     gate: SkillGate
     trace: SkillTrace
     guard_red_flags: list[dict[str, str]] = field(default_factory=list)
+    spirit_vs_letter: list[SpiritLetterEntry] = field(default_factory=list)
 
     @property
     def skill_id(self) -> str:
         return self.meta.id
 
-
-@dataclass
-class ConstraintSet:
-    positive_prompts: list[str]
-    guardrails: list[Rule]
-    scope_summary: str
-    patterns: list[str] = field(default_factory=list)
+    @property
+    def rigor_level(self) -> Rigor:
+        return self.meta.rigor
 
 
 @dataclass
