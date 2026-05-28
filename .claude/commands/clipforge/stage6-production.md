@@ -134,8 +134,10 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 | 场景类型 | 常用组件 | 视觉方向参考 |
 |---------|---------|------------|
 | hook | HeroCard | 震撼开场：高力度视觉、聚焦元素 |
-| 数据/规模 | DataViz, CompareSplit | 数据呈现：结构化、清晰、有科技感 |
-| 对比/竞争 | CompareSplit | 双视角：冷暖分割、对冲视觉 |
+| 数据/规模 | DataViz, NumGrid, MarketBars | 数据呈现：结构化、清晰、有科技感 |
+| 对比/竞争 | CompareSplit, ScoreCompare | 双视角：冷暖分割、对冲视觉 |
+| 结论/摘要 | VerdictBox, RecStrip | 核心论点：border-left 高亮、分层推荐 |
+| 影响分析 | Spectrum | 层级分布：色带渐变 + 垂直条形图 |
 | 时间线/路径 | TimeLineFlow | 叙事推进：轨道感、节点连线 |
 | 突出/揭示 | TextReveal | 悬念展示：渐进揭示、聚光灯效果 |
 | 标准模式项目介绍 | ProjectFullCard | 单项目全屏 8 层信息 |
@@ -210,25 +212,32 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 2. timeline 必须 `{ paused: true }`
 3. 注册 key 匹配根元素的 `data-composition-id`
 4. **`data-composition-id` 只在根元素上**，scene div 不要加
-5. 根元素必须有 `data-start="0"`
+5. **每个场景包裹 div 必须有 `id="sN"`**（如 `id="s1"`、`id="s19"`）
+   - `id` 取自 `narration_segments.json` 的 `scene` 字段前缀（如 `"s1-hook"` → `id="s1"`）
+   - GSAP 动画使用 `#sN .xxx` 选择器，缺少 `id` 则动画静默丢失
+   - **事故教训（2026-05-28）：s1/s19 缺少 id，导致首尾两个最重要场景的动画全部丢失**
+   - **门禁自动校验**：`gate.py` 的 `scene_ids_match` 检查器会交叉验证 HTML 与 segments 的映射
+6. 根元素必须有 `data-start="0"`
 6. **`data-start` 和 `data-duration` 使用秒（不是毫秒）**
 7. **`window.__hf` 必须定义 + GSAP timeline 必须注册**
-   - 缺少 `__hf` 会导致白屏
+   - 缺少 `__hf` 会导致 HyperFrames 渲染在 62% 处崩溃（45s 超时白屏）
    - `window.__timelines = {};`（空对象）会导致空白渲染
+   - **事故教训（2026-05-28 + service-as-software）：遗漏 __hf 是最高频渲染致命错误**
    - 必须在 `</body>` 前添加：
      ```html
      <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
      <script>
      window.__timelines = {};
-     window.__hf = { duration: TOTAL_DURATION, seek: function(t) {} };
      const tl = gsap.timeline({paused: true});
-     // 每个场景的入场动画，offset 与 data-start 对齐
-     tl.from('.s-hook .title', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, 0.1)
-       .from('.s-what .card', {opacity:0, y:30, duration:0.3, ease:'power3.out', stagger:0.15}, HOOK_DURATION)
-     ;
+     // ... 场景动画 ...
+
+     // ★ 必须在 </script> 前注入 __hf — 从 segment_durations.json 计算总时长
+     const totalDuration = /* sum of all segment actual_duration */;
+     window.__hf = { duration: totalDuration, seek: function(t) { tl.time(t, false); } };
      window.__timelines["main"] = tl;
      </script>
      ```
+   - **门禁自动校验**：`gate.py` 的 `hf_api_present` 检查器会扫描 index.html 中的 `window.__hf` 声明、`duration` 字段和 `seek` 函数
 
 ### CSS 规则
 
@@ -275,7 +284,7 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 #### 整体品质检查
 
-渲染前对照清单：背景三层、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf` + GSAP、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition。
+渲染前对照清单：背景三层、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf`（duration + seek）、场景 id 映射、GSAP timeline、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition。
 
 ### 动画规则
 

@@ -1,0 +1,100 @@
+<!--
+  MarketBars — 市场对比条（水平进度条）
+  用途: 展示市场份额、增长对比、规模预测
+  情感目标: 直观对比、增长冲击力
+  适用场景类型: market, growth, comparison, forecast
+  padding: 无 — 嵌入 .layer-content，padding 由 .scene-wrap 统一管理
+-->
+<!-- HTML -->
+<div class="mbars-wrap">
+  <div class="mbars-title">
+    <span class="mbars-white">市场规模</span>
+    <span class="mbars-accent">增长预测</span>
+  </div>
+  <div class="mbars-sub">2025 vs 2030 对比 · 直观展示增长幅度</div>
+  <div class="mbars-group">
+    <div class="mbar-row">
+      <div class="mbar-header">
+        <div class="mbar-label">可穿戴 AI <span class="mbar-year">2025</span></div>
+        <div class="mbar-value mbar-cyan">$845 亿</div>
+      </div>
+      <div class="mbar-track"><div class="mbar-fill mbar-fill-cyan" data-width="48">48%</div></div>
+    </div>
+    <div class="mbar-row">
+      <div class="mbar-header">
+        <div class="mbar-label">可穿戴 AI <span class="mbar-year">2030</span></div>
+        <div class="mbar-value mbar-cyan">$1,767 亿</div>
+      </div>
+      <div class="mbar-track"><div class="mbar-fill mbar-fill-cyan" data-width="100">109% ↑</div></div>
+    </div>
+    <div class="mbar-row">
+      <div class="mbar-header">
+        <div class="mbar-label">养老机器人 <span class="mbar-year">2025</span></div>
+        <div class="mbar-value mbar-amber">$3 亿</div>
+      </div>
+      <div class="mbar-track"><div class="mbar-fill mbar-fill-amber" data-width="7">7%</div></div>
+    </div>
+    <div class="mbar-row">
+      <div class="mbar-header">
+        <div class="mbar-label">养老机器人 <span class="mbar-year">2035</span></div>
+        <div class="mbar-value mbar-amber">$45.7 亿</div>
+      </div>
+      <div class="mbar-track"><div class="mbar-fill mbar-fill-amber" data-width="100">1423% ↑</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.mbars-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; width: 100%;
+}
+.mbars-title { font-size: 36px; font-weight: 900; margin-bottom: 12px; text-align: center; }
+.mbars-white { color: var(--text-primary, #F9FAFB); }
+.mbars-accent {
+  background: linear-gradient(135deg, #06B6D4, #10B981);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mbars-sub { font-size: 18px; color: var(--text-dim, #6B7280); margin-bottom: 48px; }
+.mbars-group {
+  width: 100%; display: flex; flex-direction: column; gap: 32px;
+}
+.mbar-row { display: flex; flex-direction: column; gap: 8px; }
+.mbar-header { display: flex; justify-content: space-between; align-items: baseline; }
+.mbar-label { font-size: 20px; font-weight: 700; color: var(--text-primary, #F9FAFB); }
+.mbar-year { font-size: 16px; color: var(--text-dim, #6B7280); font-weight: 400; margin-left: 8px; }
+.mbar-value { font-size: 22px; font-weight: 900; }
+.mbar-cyan { color: #06B6D4; }
+.mbar-amber { color: #F59E0B; }
+.mbar-green { color: #10B981; }
+.mbar-purple { color: #8B5CF6; }
+.mbar-track {
+  width: 100%; height: 36px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px; overflow: hidden;
+}
+.mbar-fill {
+  height: 100%; border-radius: 10px;
+  display: flex; align-items: center;
+  justify-content: flex-end; padding-right: 14px;
+  font-size: 16px; font-weight: 800; color: white;
+  width: 0%;
+}
+.mbar-fill-cyan { background: linear-gradient(90deg, rgba(6,182,212,0.2), #06B6D4); }
+.mbar-fill-amber { background: linear-gradient(90deg, rgba(245,158,11,0.2), #F59E0B); }
+.mbar-fill-green { background: linear-gradient(90deg, rgba(16,185,129,0.2), #10B981); }
+.mbar-fill-purple { background: linear-gradient(90deg, rgba(139,92,246,0.2), #8B5CF6); }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+// Animate bars to their data-width values
+document.querySelectorAll('.mbar-fill').forEach(function(bar) {
+  var targetW = bar.getAttribute('data-width') + '%';
+  tl.to(bar, {width: targetW, duration: 0.8, ease:'power2.out'}, startTime + 0.3);
+});
+tl.from('.mbars-title', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime)
+  .from('.mbars-sub', {opacity:0, duration:0.3}, startTime + 0.15)
+  .from('.mbar-row', {opacity:0, x:-20, duration:0.3, stagger:0.1, ease:'power3.out'}, startTime + 0.2);
+</script>

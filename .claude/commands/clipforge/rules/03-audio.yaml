@@ -87,3 +87,16 @@ rules:
     class: EXPERIENTIAL
     scope: GLOBAL
     source: "stage4-audio.md + feedback-no-broadcast-voice.md"
+
+  - id: "R-A-008"
+    type: FORBIDDEN_ACTION
+    pattern: "bgm.wav 时长短于旁白总时长"
+    positive: "BGM 必须覆盖旁白总时长的 95% 以上。短于旁白时：(1) 差距 ≤3x 用 stream_loop 循环 (2) 差距 >3x 执行 bgm_pipeline.sh --extend 多首拼接（3s xfade 交叉淡入）"
+    guardrail: "bgm.wav 时长 < 旁白时长 × 0.95"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "事故: 2026-05-28 ai-training-impact BGM 仅 102s / 旁白 588s"

@@ -198,6 +198,215 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
 GATE_CHECKERS[GateType.hook_pattern_verified] = check_hook_pattern_verified
 
 
+def check_hf_api_present(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 index.html 包含 window.__hf 声明，防止 HyperFrames 渲染失败。
+
+    事故记录：2026-05-28 和此前 service-as-software 项目均因遗漏 __hf 导致
+    渲染在 62% 处崩溃（window.__hf not ready after 45000ms）。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    # 检查 window.__hf 存在
+    if "window.__hf" not in content:
+        return False, "index.html 缺少 window.__hf 声明，HyperFrames 渲染会失败（45s 超时）"
+
+    # 检查 duration 字段
+    dur_match = re.search(r"window\.__hf\s*=\s*\{[^}]*duration\s*:\s*([\d.]+)", content)
+    if not dur_match:
+        return False, "window.__hf 缺少 duration 字段"
+
+    # 检查 seek 函数
+    if "seek" not in content.split("window.__hf")[1].split("}")[0]:
+        return False, "window.__hf 缺少 seek 函数"
+
+    duration = float(dur_match.group(1))
+    return True, f"window.__hf 存在, duration={duration}s"
+
+
+def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 index.html 中每个场景都有对应的 id 属性，防止 GSAP 选择器失效。
+
+    事故记录：2026-05-28 ai-training-impact 项目中 s1 和 s19 缺少 id 属性，
+    导致 GSAP 动画选择器 #s1 .hero-badge 等找不到元素，首尾场景动画丢失。
+    """
+    html_file = project_dir / params.get("html_file", "index.html")
+    segs_file = project_dir / params.get("segments_file", "narration_segments.json")
+
+    if not html_file.exists():
+        return False, "index.html 缺失"
+    if not segs_file.exists():
+        return True, "narration_segments.json 缺失，跳过场景 ID 检查"
+
+    try:
+        data = json.loads(segs_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return True, "narration_segments.json 解析失败，跳过场景 ID 检查"
+
+    html_content = html_file.read_text(encoding="utf-8", errors="ignore")
+
+    # 收集 HTML 中所有 id="sN" 属性
+    html_ids = set(re.findall(r'id=["\']?(s\d+)', html_content))
+
+    # 兼容两种格式：顶层数组 或 {"segments": [...]}
+    if isinstance(data, list):
+        segments = data
+    elif isinstance(data, dict):
+        segments = data.get("segments", [])
+    else:
+        return True, "narration_segments.json 格式未知，跳过场景 ID 检查"
+
+    missing: list[str] = []
+    for seg in segments:
+        scene = seg.get("scene", "")
+        # 从 "s1-hook" 提取 "s1"
+        scene_id = scene.split("-")[0] if "-" in scene else scene
+        if scene_id.startswith("s") and scene_id not in html_ids:
+            missing.append(f"{scene} → 缺少 id=\"{scene_id}\"")
+
+    if missing:
+        return False, f"场景 ID 缺失（GSAP 动画将失效）: {'; '.join(missing)}"
+
+    return True, f"所有 {len(segments)} 个场景 ID 匹配"
+
+
+def check_composition_structure(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 index.html 包含 HyperFrames composition 结构。
+
+    事故记录：2026-05-28 ai-training-impact 项目缺少 data-composition-id 包裹、
+    __timelines 注册和 timeline {paused: true}，导致渲染后文字层层覆盖。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    issues: list[str] = []
+
+    # 1. data-composition-id 包裹层
+    if "data-composition-id" not in content:
+        issues.append("缺少 data-composition-id 包裹层")
+
+    # 2. window.__timelines 声明和注册
+    if "window.__timelines" not in content:
+        issues.append("缺少 window.__timelines 声明")
+    elif not re.search(r'__timelines\s*\[\s*["\']', content):
+        issues.append("__timelines 未注册任何 timeline")
+
+    # 3. GSAP timeline {paused: true}
+    if not re.search(r'gsap\.timeline\s*\(\s*\{[^}]*paused\s*:\s*true', content):
+        issues.append("GSAP timeline 未设置 {paused: true}")
+
+    if issues:
+        return False, f"composition 结构缺陷: {'; '.join(issues)}"
+
+    return True, "composition 结构完整（composition-id + __timelines + paused）"
+
+
+def check_output_no_bgm_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 output_no_bgm.mp4 不是黑屏。
+
+    事故记录：2026-05-28 ai-training-impact 项目使用 ffmpeg color=c=black 生成
+    output_no_bgm.mp4，导致纯黑屏。正确方式是从 output.mp4 取视频轨 + narration.mp3 音频轨。
+    """
+    bgm_file = project_dir / params.get("bgm_file", "output.mp4")
+    no_bgm_file = project_dir / params.get("no_bgm_file", "output_no_bgm.mp4")
+
+    if not bgm_file.exists():
+        return True, "output.mp4 不存在，跳过 no_bgm 检查"
+    if not no_bgm_file.exists():
+        return False, "output_no_bgm.mp4 缺失"
+
+    bgm_size = bgm_file.stat().st_size
+    no_bgm_size = no_bgm_file.stat().st_size
+
+    if bgm_size == 0:
+        return True, "output.mp4 为空文件，跳过大小比率检查"
+
+    ratio = no_bgm_size / bgm_size
+    min_ratio = params.get("min_size_ratio", 0.4)
+
+    if ratio < min_ratio:
+        return False, f"output_no_bgm.mp4 疑似黑屏（大小比率 {ratio:.1%} < {min_ratio:.0%}，正常应 >50%）"
+
+    return True, f"output_no_bgm.mp4 大小比率正常: {ratio:.1%}"
+
+
+GATE_CHECKERS[GateType.hf_api_present] = check_hf_api_present
+GATE_CHECKERS[GateType.scene_ids_match] = check_scene_ids_match
+GATE_CHECKERS[GateType.composition_structure] = check_composition_structure
+GATE_CHECKERS[GateType.output_no_bgm_valid] = check_output_no_bgm_valid
+
+
+def check_bgm_duration_covers(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 bgm.wav 时长是否覆盖旁白总时长。
+
+    事故记录：2026-05-28 ai-training-impact 项目 BGM 仅 102s 而旁白 588s，
+    导致后半段视频无背景音乐。bgm_pipeline.sh 未被执行。
+
+    对齐策略（按优先级）：
+    1. bgm.wav >= 旁白时长 → 通过
+    2. bgm.wav < 旁白时长 → 拒绝，需执行 bgm_pipeline.sh --extend 拼接
+    """
+    bgm_file = project_dir / params.get("bgm_file", "bgm.wav")
+    seg_file = project_dir / params.get("segments_file", "segment_durations.json")
+    narr_file = project_dir / params.get("narration_file", "narration.mp3")
+
+    if not bgm_file.exists():
+        return False, "bgm.wav 缺失"
+
+    # 获取旁白总时长：优先 segment_durations.json，兜底 ffprobe
+    narr_dur = 0.0
+    if seg_file.exists():
+        try:
+            data = json.loads(seg_file.read_text(encoding="utf-8"))
+            narr_dur = sum(s.get("actual_duration", 0) for s in data.get("segments", []))
+        except Exception:
+            pass
+
+    if narr_dur == 0 and narr_file.exists():
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(narr_file)],
+                capture_output=True, text=True, timeout=10,
+            )
+            narr_dur = float(result.stdout.strip())
+        except Exception:
+            return True, "无法获取旁白时长，跳过 BGM 覆盖检查"
+
+    if narr_dur == 0:
+        return True, "无旁白时长数据，跳过 BGM 覆盖检查"
+
+    # 获取 BGM 时长
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", str(bgm_file)],
+            capture_output=True, text=True, timeout=10,
+        )
+        bgm_dur = float(result.stdout.strip())
+    except Exception:
+        return False, "无法获取 bgm.wav 时长"
+
+    min_ratio = params.get("min_coverage_ratio", 0.95)
+    coverage = bgm_dur / narr_dur if narr_dur > 0 else 0
+
+    if coverage < min_ratio:
+        return False, (
+            f"BGM 时长不足: bgm={bgm_dur:.1f}s < 旁白={narr_dur:.1f}s "
+            f"(覆盖率 {coverage:.0%} < {min_ratio:.0%})。"
+            f"需执行 bgm_pipeline.sh --extend 拼接多首 BGM"
+        )
+
+    return True, f"BGM 覆盖充分: bgm={bgm_dur:.1f}s >= 旁白={narr_dur:.1f}s ({coverage:.0%})"
+
+
+GATE_CHECKERS[GateType.bgm_duration_covers] = check_bgm_duration_covers
+
+
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
 SAFETY_GATES = {
     GateType.no_forbidden_speech,

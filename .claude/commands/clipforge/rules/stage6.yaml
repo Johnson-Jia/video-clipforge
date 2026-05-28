@@ -71,3 +71,59 @@ rules:
     scope: SKILL
     skill: "stage6-production"
     source: "feedback-cleanup-overdeletion.md"
+
+  - id: "R-S6-009"
+    type: FORBIDDEN_ACTION
+    pattern: "index.html 缺少 window.__hf 声明"
+    positive: "在 </script> 前注入 window.__hf = { duration: TOTAL, seek: fn }，其中 TOTAL 从 segment_durations.json 计算"
+    guardrail: "HyperFrames 渲染时轮询 window.__hf（45s 超时），缺失则渲染崩溃"
+    detection:
+      keywords: ["window.__hf"]
+      regex: "window\\.__hf\\s*="
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "事故: 2026-05-28 ai-training-impact 渲染 62% 崩溃 + service-as-software 同类事故"
+
+  - id: "R-S6-010"
+    type: FORBIDDEN_ACTION
+    pattern: "场景包裹 div 缺少 id 属性导致 GSAP 选择器失效"
+    positive: "每个场景的包裹 div 必须有 id=\"sN\"（如 id=\"s1\"），与 narration_segments.json 的 scene 字段前缀对应"
+    guardrail: "GSAP 使用 #sN .xxx 选择器控制入场动画，缺少 id 则动画静默丢失"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "事故: 2026-05-28 ai-training-impact s1/s19 缺少 id 导致首尾动画丢失"
+
+  - id: "R-S6-011"
+    type: FORBIDDEN_ACTION
+    pattern: "index.html 缺少 HyperFrames composition 结构"
+    positive: "必须包含: (1) data-composition-id 包裹层 (2) window.__timelines 声明并注册 timeline (3) gsap.timeline({paused: true})"
+    guardrail: "缺少 composition 结构导致 HyperFrames 无法正确管理场景切换，渲染后文字层层覆盖"
+    detection:
+      keywords: ["data-composition-id", "__timelines", "paused"]
+      regex: "data-composition-id"
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "事故: 2026-05-28 ai-training-impact 缺少 composition 结构导致渲染文字重叠"
+
+  - id: "R-S6-012"
+    type: FORBIDDEN_ACTION
+    pattern: "output_no_bgm.mp4 使用 color=c=black 生成导致纯黑屏"
+    positive: "output_no_bgm.mp4 必须从 output.mp4 视频轨 + narration.mp3 音频轨合成: ffmpeg -i output.mp4 -i narration.mp3 -map 0:v -map 1:a -c:v copy -c:a aac"
+    guardrail: "黑屏 no_bgm 文件的大小比率通常 <30%，正常应 >50%"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "事故: 2026-05-28 ai-training-impact output_no_bgm.mp4 纯黑屏"

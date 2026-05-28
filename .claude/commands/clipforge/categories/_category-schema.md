@@ -59,7 +59,7 @@ id: "分类ID（与文件名一致，如 github、comics）"
 ## narration
 
 ### hook_templates
-钩子文案模板列表（如 ["今天涨星最快的N个项目", "这个项目直接霸榜了"]）
+钩子文案模板列表（如 ["{M}月{D}日涨星最快的N个项目", "这个项目直接霸榜了"]）
 
 ### special_rules
 分类特殊文案规则（如"老项目不重复展开"、"角色名必须标注配音"）
@@ -95,10 +95,10 @@ id: "分类ID（与文件名一致，如 github、comics）"
 评论区模板（如"在 GitHub 搜项目名"）
 
 ### cover_badge
-封面徽章文案（如"GitHub 今日热门"）
+封面徽章文案（如"GitHub 热门项目"）
 
 ### cover_scene_label
-封面场景标签（如"今日GitHub榜单"）
+封面场景标签（如"GitHub 榜单速览"）
 ```
 
 #### shared-rules 覆盖（可选）

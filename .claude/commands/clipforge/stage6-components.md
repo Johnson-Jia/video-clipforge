@@ -29,6 +29,12 @@
 | 11 | DataViz | 数据可视化柱状图卡片 | data, stats | `.claude/commands/clipforge/components/data_viz.html` |
 | 12 | TextReveal | 文字揭示动画（悬念展示） | reveal, surprise | `.claude/commands/clipforge/components/text_reveal.html` |
 | 13 | ProjectFullCard | 标准模式单项目全屏 8 层卡片 | project-card, listing | `.claude/commands/clipforge/components/project_full_card.html` |
+| 14 | VerdictBox | 核心结论框（border-left 高亮 + 标签） | conclusion, summary, thesis | `.claude/commands/clipforge/components/verdict_box.html` |
+| 15 | NumGrid | 2×2 数据矩阵（大数字网格） | data, stats, metrics | `.claude/commands/clipforge/components/num_grid.html` |
+| 16 | MarketBars | 市场对比条（水平进度条，data-width 驱动） | market, growth, comparison | `.claude/commands/clipforge/components/market_bars.html` |
+| 17 | Spectrum | 冲击光谱（色带 + 垂直条形图双形态） | impact, analysis, spectrum | `.claude/commands/clipforge/components/spectrum.html` |
+| 18 | ScoreCompare | 对比评分卡（A/B 双卡片 + WIN 徽章） | compare, versus, battle | `.claude/commands/clipforge/components/score_compare.html` |
+| 19 | RecStrip | 三档推荐条（优先级排列 + 结论框） | recommendation, ranking, priority | `.claude/commands/clipforge/components/rec_strip.html` |
 
 ---
 
