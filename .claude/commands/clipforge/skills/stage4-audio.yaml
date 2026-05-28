@@ -58,6 +58,12 @@ skill:
         params:
           file: "segment_durations.json"
           key: "meta.bgm_volume"
+      - gate: bgm_duration_covers
+        params:
+          bgm_file: "bgm.wav"
+          segments_file: "segment_durations.json"
+          narration_file: "narration.mp3"
+          min_coverage_ratio: 0.95
     soft: []
     max_retries: 2
   trace:

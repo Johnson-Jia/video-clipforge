@@ -32,6 +32,12 @@ skill:
       - thought: "padding 设两层更安全"
         reality: "双重 padding 是最常见的渲染事故，只设一层"
         trigger: "试图同时设置 scene-wrap 和 .phase 的 padding"
+      - thought: "window.__hf 是可选的，HyperFrames 会自动处理"
+        reality: "__hf 是 HyperFrames 渲染的必需 API，缺少会导致 45s 超时后渲染崩溃。已有 2 次事故记录"
+        trigger: "完成 HTML 编写但未注入 window.__hf"
+      - thought: "场景 div 不需要 id，用 class 选择器就行"
+        reality: "GSAP 动画使用 #sN .xxx 选择器，缺少 id 会导致场景动画静默丢失，尤其是首尾关键场景"
+        trigger: "场景包裹 div 未设置 id=\"sN\" 属性"
     spirit_vs_letter:
       - rule_ref: "R-S6-*"
         mode: LETTER
@@ -47,6 +53,20 @@ skill:
       - gate: file_exists
         params:
           files: ["index.html"]
+      - gate: hf_api_present
+        params:
+          file: "index.html"
+      - gate: scene_ids_match
+        params:
+          html_file: "index.html"
+          segments_file: "narration_segments.json"
+      - gate: composition_structure
+        params:
+          file: "index.html"
+      - gate: output_no_bgm_valid
+        params:
+          bgm_file: "output.mp4"
+          no_bgm_file: "output_no_bgm.mp4"
     soft: []
     max_retries: 2
   trace:

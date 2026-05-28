@@ -37,6 +37,11 @@ class GateType(str, Enum):
     no_url_in_output = "no_url_in_output"
     duration_in_range = "duration_in_range"
     hook_pattern_verified = "hook_pattern_verified"
+    hf_api_present = "hf_api_present"
+    scene_ids_match = "scene_ids_match"
+    composition_structure = "composition_structure"
+    output_no_bgm_valid = "output_no_bgm_valid"
+    bgm_duration_covers = "bgm_duration_covers"
 
 
 class Rigor(str, Enum):

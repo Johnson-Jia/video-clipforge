@@ -117,7 +117,10 @@ else
 fi
 
 # ── Step 3: BGM 时长对齐（以旁白总时长为基准） ──
-# 无论 BGM 长于或短于旁白，都通过 stream_loop 从头循环填充。
+# 策略选择：
+#   - BGM >= 旁白 95%：直接使用（裁剪到目标时长）
+#   - BGM < 旁白但差距 ≤ 3x：stream_loop 循环（同曲目自然重复）
+#   - BGM < 旁白且差距 > 3x：多首拼接（--extend 模式）
 # 静音尾段已在 Step 2.7 移除，此处 BGM 内容是纯净的音乐段落。
 echo "--- Step 3: BGM 时长对齐 ---"
 
@@ -136,7 +139,141 @@ FADE_START=$(python -c "print(round($TOTAL_DUR - 1, 2))")
 
 echo "旁白: ${TOTAL_DUR}s | BGM: ${BGM_DUR}s | 目标: ${TARGET_DUR}s"
 
-# 始终用 stream_loop 循环（BGM 已在 Step 2.7 裁掉尾段，内容是纯音乐）
+RATIO=$(python -c "print(round($TOTAL_DUR / $BGM_DUR, 1))" 2>/dev/null || echo "1")
+echo "旁白/BGM 比率: ${RATIO}x"
+
+# 检查是否指定了 --extend 模式（多首拼接）
+EXTEND_MODE=false
+EXTRA_BGMS=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --extend) EXTEND_MODE=true; shift ;;
+        --bgms) EXTRA_BGMS="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+if [ "$EXTEND_MODE" = true ] || [ "$(echo "$RATIO > 3" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+    # ── 多首拼接模式 ──
+    # 当 BGM 远短于旁白（> 3x），单纯循环同一首会听觉疲劳。
+    # 从 BGM 库中选取多首同风格曲目，用 xfade 交叉淡入拼接。
+    echo "--- Step 3a: 多首 BGM 拼接 ---"
+
+    BGM_LIB="${BGM_LIB_DIR:-workspace/bgm}"
+
+    # 获取当前 BGM 的风格标签
+    # 优先从 segment_durations.json 的 meta.bgm_source 提取（如 clean-corporate-1.mp3 → clean-corporate）
+    # 兜底从当前文件名提取
+    STYLE_TAG=$(python -c "
+import json, re
+try:
+    d = json.load(open('segment_durations.json'))
+    src = d.get('meta', {}).get('bgm_source', '')
+    if src:
+        base = re.sub(r'\.\w+$', '', src)
+        tag = re.sub(r'[\-_]?\d+$', '', base)
+        print(tag)
+except Exception:
+    pass
+" 2>/dev/null)
+    if [ -z "$STYLE_TAG" ]; then
+        BGM_BASENAME=$(basename "$BGM_FILE" | sed 's/\.\w*$//')
+        STYLE_TAG=$(echo "$BGM_BASENAME" | sed 's/[0-9]*$//' | sed 's/[-]$//')
+    fi
+
+    echo "当前 BGM 风格标签: ${STYLE_TAG}"
+
+    # 查找同风格的其他 BGM 文件
+    if [ -z "$EXTRA_BGMS" ]; then
+        EXTRA_BGMS=$(find "$BGM_LIB" -name "${STYLE_TAG}*" -not -name "$(basename "$BGM_FILE" .wav | sed 's/$/.*/')" 2>/dev/null | head -10)
+        # 也搜索 .mp3 和 .wav
+        if [ -z "$EXTRA_BGMS" ]; then
+            EXTRA_BGMS=$(find "$BGM_LIB" -name "${STYLE_TAG}*.mp3" -o -name "${STYLE_TAG}*.wav" 2>/dev/null | head -10)
+        fi
+    fi
+
+    if [ -z "$EXTRA_BGMS" ]; then
+        echo "WARNING: 未找到同风格 BGM，回退到 stream_loop 循环模式"
+    else
+        echo "找到候选 BGM:"
+        echo "$EXTRA_BGMS" | while read -r f; do echo "  $(basename "$f")"; done
+
+        # 将当前 BGM + 候选 BGM 转为统一格式并拼接
+        XFADE_DUR=3  # 交叉淡入时长 3 秒
+        PLAYLIST=""
+        IDX=0
+
+        # 首先加入当前 BGM
+        cp "$BGM_FILE" /tmp/bgm_part_00.wav
+        PLAYLIST="/tmp/bgm_part_00.wav"
+        IDX=1
+
+        # 依次加入候选 BGM，直到总时长超过目标
+        CURRENT_DUR=$BGM_DUR
+        echo "$EXTRA_BGMS" | while read -r candidate; do
+            if [ -z "$candidate" ] || [ ! -f "$candidate" ]; then
+                continue
+            fi
+
+            if [ "$(echo "$CURRENT_DUR >= $TARGET_DUR" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+                break
+            fi
+
+            # 转码为 WAV（统一格式）
+            PADDED_IDX=$(printf "%02d" $IDX)
+            ffmpeg -y -i "$candidate" -c:a pcm_s16le -ar 44100 "/tmp/bgm_part_${PADDED_IDX}.wav" 2>/dev/null
+            PART_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "/tmp/bgm_part_${PADDED_IDX}.wav")
+
+            # 使用 xfade 拼接
+            NEXT_IDX=$(printf "%02d" $((IDX + 1)))
+            if [ $IDX -eq 1 ]; then
+                # 第一次拼接：part_00 + part_01
+                OFFSET=$(python -c "print(round($CURRENT_DUR - $XFADE_DUR, 2))")
+                ffmpeg -y -i "/tmp/bgm_part_00.wav" -i "/tmp/bgm_part_01.wav" \
+                    -filter_complex "[0:a][1:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[aout]" \
+                    -map "[aout]" -c:a pcm_s16le "/tmp/bgm_merged_${NEXT_IDX}.wav" 2>/dev/null
+            else
+                PREV_MERGED=$(printf "/tmp/bgm_merged_%02d.wav" $IDX)
+                OFFSET=$(python -c "print(round($CURRENT_DUR - $XFADE_DUR, 2))")
+                ffmpeg -y -i "$PREV_MERGED" -i "/tmp/bgm_part_${PADDED_IDX}.wav" \
+                    -filter_complex "[0:a][1:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[aout]" \
+                    -map "[aout]" -c:a pcm_s16le "/tmp/bgm_merged_${NEXT_IDX}.wav" 2>/dev/null
+            fi
+
+            CURRENT_DUR=$(python -c "print(round($CURRENT_DUR + $PART_DUR - $XFADE_DUR, 2))")
+            echo "  拼接 $(basename "$candidate"): 累计 ${CURRENT_DUR}s / 目标 ${TARGET_DUR}s"
+            IDX=$((IDX + 1))
+        done
+
+        # 找到最终合并文件
+        FINAL_IDX=$(printf "%02d" $IDX)
+        FINAL_MERGED="/tmp/bgm_merged_${FINAL_IDX}.wav"
+
+        # 如果没有成功拼接（只有1首），使用原 BGM
+        if [ ! -f "$FINAL_MERGED" ]; then
+            # 回退到 stream_loop
+            echo "WARNING: 多首拼接未成功，回退到 stream_loop"
+        else
+            # 裁剪到目标时长 + 淡入淡出
+            ffmpeg -y -i "$FINAL_MERGED" \
+                -t "$TARGET_DUR" \
+                -af "afade=t=in:st=0:d=1.5,afade=t=out:st=${FADE_START}:d=2" \
+                -c:a pcm_s16le bgm_aligned.wav
+
+            mv "$BGM_FILE" bgm_orig.wav
+            mv bgm_aligned.wav "$BGM_FILE"
+
+            # 清理临时文件
+            rm -f /tmp/bgm_part_*.wav /tmp/bgm_merged_*.wav
+
+            echo "OK: 多首 BGM 拼接完成，总时长 ${TARGET_DUR}s（${IDX} 首，xfade ${XFADE_DUR}s）"
+            echo "=== BGM 管线完成 ==="
+            exit 0
+        fi
+    fi
+fi
+
+# ── 默认：stream_loop 循环模式 ──
 echo "循环对齐: ${BGM_DUR}s → ${TARGET_DUR}s"
 ffmpeg -y -stream_loop -1 -i "$BGM_FILE" \
     -t "$TARGET_DUR" \
