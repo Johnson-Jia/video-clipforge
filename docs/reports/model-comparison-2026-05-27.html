@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipForge 模型×架构 对比报告 — 2026-05-27</title>
+<style>
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-card: #111827;
+  --bg-card-alt: #0f1525;
+  --accent-cool: #00D4FF;
+  --accent-warm: #FF8C32;
+  --accent-green: #34D399;
+  --accent-purple: #A855F7;
+  --accent-red: #EF4444;
+  --accent-gold: #FBBF24;
+  --text-primary: #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-dim: #6B7280;
+  --border: rgba(255,255,255,0.08);
+  --border-accent: rgba(0,212,255,0.2);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 40px 32px 80px; }
+
+/* Header */
+.report-header { text-align: center; margin-bottom: 56px; padding-top: 24px; }
+.report-header h1 {
+  font-size: 36px; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-cool), var(--accent-warm));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+}
+.report-header .meta { font-size: 14px; color: var(--text-secondary); }
+
+/* Section */
+.section { margin-bottom: 56px; }
+.section-title {
+  font-size: 22px; font-weight: 700; margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title .num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(0,212,255,0.12); color: var(--accent-cool);
+  font-size: 14px; font-weight: 700;
+}
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+th {
+  background: var(--bg-card); color: var(--accent-cool);
+  font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+  position: sticky; top: 0;
+}
+tr:nth-child(even) { background: var(--bg-card-alt); }
+tr:hover { background: rgba(0,212,255,0.04); }
+td.center { text-align: center; }
+
+/* Badges */
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+}
+.badge-best { background: rgba(52,211,153,0.15); color: var(--accent-green); }
+.badge-warn { background: rgba(251,191,36,0.15); color: var(--accent-gold); }
+.badge-bad { background: rgba(239,68,68,0.12); color: var(--accent-red); }
+.badge-cool { background: rgba(0,212,255,0.12); color: var(--accent-cool); }
+.badge-warm { background: rgba(255,140,50,0.12); color: var(--accent-warm); }
+.badge-purple { background: rgba(168,85,247,0.12); color: var(--accent-purple); }
+
+/* Cards grid */
+.card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+}
+.card-label {
+  font-size: 12px; color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.card-value { font-size: 32px; font-weight: 800; }
+.card-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Score bar */
+.score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.score-bar {
+  flex: 1; height: 8px; background: rgba(255,255,255,0.06);
+  border-radius: 4px; overflow: hidden;
+}
+.score-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.score-num { font-size: 14px; font-weight: 700; min-width: 28px; text-align: right; }
+
+/* Comparison columns */
+.compare-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.compare-block {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px;
+}
+.compare-block h4 {
+  font-size: 15px; font-weight: 700; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.compare-block h4 .model-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+}
+.pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pros-cons h5 { font-size: 13px; margin-bottom: 8px; }
+.pros-cons ul { list-style: none; font-size: 13px; color: var(--text-secondary); }
+.pros-cons ul li { padding: 4px 0; }
+.pros-cons ul li::before { margin-right: 6px; }
+.pros ul li::before { content: "+"; color: var(--accent-green); font-weight: 700; }
+.cons ul li::before { content: "-"; color: var(--accent-red); font-weight: 700; }
+
+/* Narration compare */
+.narration-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.narration-block {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; font-size: 13px; line-height: 1.8;
+}
+.narration-block h4 { font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.narration-block .hook { color: var(--accent-warm); font-weight: 600; }
+
+/* Conclusion box */
+.conclusion-box {
+  background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(255,140,50,0.06));
+  border: 1px solid var(--border-accent);
+  border-radius: 16px; padding: 32px; margin-top: 16px;
+}
+.conclusion-box h3 {
+  font-size: 18px; margin-bottom: 16px;
+  color: var(--accent-cool);
+}
+.conclusion-box p { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+.conclusion-box strong { color: var(--text-primary); }
+
+/* Footer */
+.report-footer {
+  text-align: center; font-size: 12px; color: var(--text-dim);
+  margin-top: 48px; padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .card-grid, .compare-grid, .narration-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .card-grid, .compare-grid, .narration-grid, .pros-cons { grid-template-columns: 1fr; }
+  .container { padding: 24px 16px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ═══ Header ═══ -->
+<div class="report-header">
+  <h1>ClipForge 模型 x 架构 对比报告</h1>
+  <div class="meta">实验日期：2026-05-27 &nbsp;|&nbsp; 主题：Claude Code 深度解析 &nbsp;|&nbsp; 4 组对照实验</div>
+</div>
+
+<!-- ═══ 1. 实验说明 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">1</span> 实验设计</div>
+  <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">
+    同一视频主题（Claude Code 源码泄露深度解析），两个分支架构（main / qwen-upgrade）x 两个大模型（GLM-5.1 / Qwen3.7），共 4 组对照。
+    分支差异影响 Stage 技能文件的指令内容，模型差异影响内容生成质量。
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>实验组</th>
+        <th>分支</th>
+        <th>模型</th>
+        <th>工作目录</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>A</strong></td>
+        <td><span class="badge badge-warm">qwen-upgrade</span></td>
+        <td><span class="badge badge-purple">Qwen3.7</span></td>
+        <td style="font-family:monospace;font-size:13px;color:var(--text-dim)">claude-code-deep-dive-qwen-upgrade-qwen</td>
+      </tr>
+      <tr>
+        <td><strong>B</strong></td>
+        <td><span class="badge badge-warm">qwen-upgrade</span></td>
+        <td><span class="badge badge-cool">GLM-5.1</span></td>
+        <td style="font-family:monospace;font-size:13px;color:var(--text-dim)">claude-code-deep-dive-qwen-upgrade-glm</td>
+      </tr>
+      <tr>
+        <td><strong>C</strong></td>
+        <td><span class="badge badge-cool">main</span></td>
+        <td><span class="badge badge-cool">GLM-5.1</span></td>
+        <td style="font-family:monospace;font-size:13px;color:var(--text-dim)">claude-code-deep-dive-main-glm</td>
+      </tr>
+      <tr>
+        <td><strong>D</strong></td>
+        <td><span class="badge badge-cool">main</span></td>
+        <td><span class="badge badge-purple">Qwen3.7</span></td>
+        <td style="font-family:monospace;font-size:13px;color:var(--text-dim)">claude-code-main-qwen</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 2. 基本数据总览 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">2</span> 基本数据总览</div>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-label">A: qwen-upgrade + Qwen3.7</div>
+      <div class="card-value" style="color:var(--accent-warm)">75s</div>
+      <div class="card-sub">5.6 MB &nbsp;|&nbsp; BGM 0.06 &nbsp;|&nbsp; <span class="badge badge-bad">偏长</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">B: qwen-upgrade + GLM-5.1</div>
+      <div class="card-value" style="color:var(--accent-gold)">47s</div>
+      <div class="card-sub">9.0 MB &nbsp;|&nbsp; BGM 0.15 &nbsp;|&nbsp; <span class="badge badge-warn">偏短</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">C: main + GLM-5.1</div>
+      <div class="card-value" style="color:var(--accent-green)">55s</div>
+      <div class="card-sub">27 MB &nbsp;|&nbsp; BGM 0.12 &nbsp;|&nbsp; <span class="badge badge-best">理想</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">D: main + Qwen3.7</div>
+      <div class="card-value" style="color:var(--accent-green)">56s</div>
+      <div class="card-sub">34 MB &nbsp;|&nbsp; BGM 0.10 &nbsp;|&nbsp; <span class="badge badge-best">理想</span></div>
+    </div>
+  </div>
+  <table style="margin-top:20px;">
+    <thead>
+      <tr>
+        <th>指标</th>
+        <th class="center">A (qwen-upgrade + Qwen)</th>
+        <th class="center">B (qwen-upgrade + GLM)</th>
+        <th class="center">C (main + GLM)</th>
+        <th class="center">D (main + Qwen)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>视频时长</td>
+        <td class="center">75s</td>
+        <td class="center">47s</td>
+        <td class="center"><strong>55s</strong></td>
+        <td class="center"><strong>56s</strong></td>
+      </tr>
+      <tr>
+        <td>文件大小 (final.mp4)</td>
+        <td class="center">5.6 MB</td>
+        <td class="center">9.0 MB</td>
+        <td class="center">27 MB</td>
+        <td class="center">34 MB</td>
+      </tr>
+      <tr>
+        <td>场景数</td>
+        <td class="center">8</td>
+        <td class="center">8</td>
+        <td class="center">8</td>
+        <td class="center">8</td>
+      </tr>
+      <tr>
+        <td>HTML 行数</td>
+        <td class="center">617</td>
+        <td class="center">325</td>
+        <td class="center">457</td>
+        <td class="center">533</td>
+      </tr>
+      <tr>
+        <td>BGM 音量</td>
+        <td class="center">0.06</td>
+        <td class="center">0.15</td>
+        <td class="center">0.12</td>
+        <td class="center">0.10</td>
+      </tr>
+      <tr>
+        <td>旁白段落数</td>
+        <td class="center">8</td>
+        <td class="center">8</td>
+        <td class="center">8</td>
+        <td class="center">8</td>
+      </tr>
+      <tr>
+        <td>抖音文案版本数</td>
+        <td class="center"><strong>3 + 评论区 + 合规检查</strong></td>
+        <td class="center">3 + 跨平台</td>
+        <td class="center">3 + 跨平台</td>
+        <td class="center">1</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 3. 设计文档对比 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">3</span> 设计文档 (design.md) 对比</div>
+  <table>
+    <thead>
+      <tr>
+        <th>评估维度</th>
+        <th class="center">A: qwen-upgrade + Qwen</th>
+        <th class="center">B: qwen-upgrade + GLM</th>
+        <th class="center">C: main + GLM</th>
+        <th class="center">D: main + Qwen</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>文档格式</td>
+        <td class="center"><span class="badge badge-bad">裸 YAML，无结构</span></td>
+        <td class="center"><span class="badge badge-best">完整 Markdown</span></td>
+        <td class="center"><span class="badge badge-best">完整 Markdown</span></td>
+        <td class="center"><span class="badge badge-best">完整 Markdown</span></td>
+      </tr>
+      <tr>
+        <td>导演必答框架</td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-best">5 问 5 答</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+      </tr>
+      <tr>
+        <td>场景级规划</td>
+        <td class="center">仅 beat_mapping</td>
+        <td class="center">8 场景 + visual_concept</td>
+        <td class="center"><strong>8 场景 + 时长表 + 情绪注解</strong></td>
+        <td class="center">8 场景 + focus + visual_concept</td>
+      </tr>
+      <tr>
+        <td>配色规范</td>
+        <td class="center">hex 硬编码</td>
+        <td class="center">描述性文字</td>
+        <td class="center"><strong>hex + 使用规则 + 场景切换规则</strong></td>
+        <td class="center">描述性文字</td>
+      </tr>
+      <tr>
+        <td>幽默策略</td>
+        <td class="center">"技术类比"</td>
+        <td class="center">"dual-track"</td>
+        <td class="center"><strong>3 个具体梗示例</strong></td>
+        <td class="center">"narration-only"</td>
+      </tr>
+      <tr>
+        <td>评分</td>
+        <td class="center"><strong style="color:var(--accent-red)">2/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-gold)">3.5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-green)">5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">3/5</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 4. 旁白文案对比 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">4</span> 旁白文案 (narration.txt) 对比</div>
+
+  <div class="narration-grid">
+    <div class="narration-block">
+      <h4>A: qwen-upgrade + Qwen3.7 <span class="badge badge-best">最佳</span></h4>
+      <div class="hook">Hook: "51万行源码泄露，53个工具，7个隐藏功能"</div>
+      <p style="margin-top:8px;">
+        纯数据冲击开场，干净利落。<br>
+        "但你知道吗？" 转折自然。<br>
+        完整覆盖 hook→定位→门控→隐藏功能→竞品对比→洞察→CTA。<br>
+        竞品对比有具体价格数据（"$200一个月"）。<br>
+        <strong>节奏最紧凑，信息密度最高。</strong>
+      </p>
+    </div>
+    <div class="narration-block">
+      <h4>B: qwen-upgrade + GLM-5.1</h4>
+      <div class="hook">Hook: "51万行源码泄露，Anthropic藏得最深的秘密，暴露了"</div>
+      <p style="margin-top:8px;">
+        更戏剧化的开场。<br>
+        类比有力："比瑞士军刀还精密""终端里的拓麻歌子"。<br>
+        但缺失竞品对比具体数据。<br>
+        整体信息覆盖较全但不如 A 紧凑。
+      </p>
+    </div>
+    <div class="narration-block">
+      <h4>C: main + GLM-5.1</h4>
+      <div class="hook">Hook: "51万行源码泄露，Anthropic藏得最深的秘密，暴露了"</div>
+      <p style="margin-top:8px;">
+        类比最多最活：<br>
+        "手机上改完代码，到公司一看，已经在仓库里了"（具象场景）。<br>
+        覆盖最全：8 段含安全、全平台等。<br>
+        但信息密度不如 A，部分段落偏描述性。
+      </p>
+    </div>
+    <div class="narration-block">
+      <h4>D: main + Qwen3.7</h4>
+      <div class="hook">Hook: "不用任何黑客技术，51万行代码居然全泄露了"</div>
+      <p style="margin-top:8px;">
+        更口语化，降低理解门槛。<br>
+        技术细节扎实（"Bash自带安全检查器"）。<br>
+        CTA "聊聊AI工具那些事" 更有对话感。<br>
+        整体偏自然叙述，hook 冲击力略弱。
+      </p>
+    </div>
+  </div>
+
+  <table style="margin-top:20px;">
+    <thead>
+      <tr>
+        <th>文案指标</th>
+        <th class="center">A (qwen-upgrade + Qwen)</th>
+        <th class="center">B (qwen-upgrade + GLM)</th>
+        <th class="center">C (main + GLM)</th>
+        <th class="center">D (main + Qwen)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Hook 冲击力</td>
+        <td class="center"><strong>数据冲击型，最利落</strong></td>
+        <td class="center">戏剧悬念型</td>
+        <td class="center">戏剧悬念型</td>
+        <td class="center">口语反差型</td>
+      </tr>
+      <tr>
+        <td>信息密度</td>
+        <td class="center"><span class="badge badge-best">最高</span></td>
+        <td class="center">中等</td>
+        <td class="center">高</td>
+        <td class="center">中等</td>
+      </tr>
+      <tr>
+        <td>竞品对比数据</td>
+        <td class="center"><span class="badge badge-best">有价格/功能</span></td>
+        <td class="center"><span class="badge badge-bad">缺失</span></td>
+        <td class="center">有提及</td>
+        <td class="center">有提及</td>
+      </tr>
+      <tr>
+        <td>类比/幽默</td>
+        <td class="center">1 处</td>
+        <td class="center">2 处</td>
+        <td class="center"><span class="badge badge-best">3+ 处</span></td>
+        <td class="center">1 处</td>
+      </tr>
+      <tr>
+        <td>评分</td>
+        <td class="center"><strong style="color:var(--accent-green)">4.5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">3/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">4/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">3.5/5</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 5. HTML 视觉质量对比 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">5</span> HTML 视觉质量对比</div>
+  <table>
+    <thead>
+      <tr>
+        <th>评估维度</th>
+        <th class="center">A (qwen-upgrade + Qwen)</th>
+        <th class="center">B (qwen-upgrade + GLM)</th>
+        <th class="center">C (main + GLM)</th>
+        <th class="center">D (main + Qwen)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>CSS 变量体系</td>
+        <td class="center"><span class="badge badge-best">完整</span></td>
+        <td class="center"><span class="badge badge-best">完整</span></td>
+        <td class="center"><span class="badge badge-best">完整 + Google Fonts</span></td>
+        <td class="center"><span class="badge badge-best">完整</span></td>
+      </tr>
+      <tr>
+        <td>三层架构合规</td>
+        <td class="center"><span class="badge badge-best">合规</span></td>
+        <td class="center"><span class="badge badge-best">合规</span></td>
+        <td class="center"><span class="badge badge-best">合规</span></td>
+        <td class="center"><span class="badge badge-best">合规</span></td>
+      </tr>
+      <tr>
+        <td>特效类型数</td>
+        <td class="center">0 (仅静态圆点)</td>
+        <td class="center">0</td>
+        <td class="center"><span class="badge badge-best">6+ (射线/星星/飘浮球/代码雨/波浪/网格)</span></td>
+        <td class="center"><span class="badge badge-warm">5+ (射线/星星/飘浮球/代码雨/波浪/扫描线)</span></td>
+      </tr>
+      <tr>
+        <td>角色/气泡系统</td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-best">4 表情角色 + 语音气泡</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+      </tr>
+      <tr>
+        <td>Phase 切换</td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-best">有 (列表→金句)</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+      </tr>
+      <tr>
+        <td>场景配色差异化</td>
+        <td class="center">统一深蓝</td>
+        <td class="center">统一深蓝</td>
+        <td class="center"><span class="badge badge-warm">每场景微调</span></td>
+        <td class="center"><span class="badge badge-best">每场景独立配色</span></td>
+      </tr>
+      <tr>
+        <td>竞品对比组件</td>
+        <td class="center"><span class="badge badge-best">HTML table 5x3</span></td>
+        <td class="center"><span class="badge badge-bad">仅标签</span></td>
+        <td class="center">简化行</td>
+        <td class="center">简化行</td>
+      </tr>
+      <tr>
+        <td>隐藏功能展示</td>
+        <td class="center">卡片 + pill 标签</td>
+        <td class="center">2x2 grid 卡片</td>
+        <td class="center"><span class="badge badge-best">卡片列表 + phase 切换金句</span></td>
+        <td class="center">编号列表</td>
+      </tr>
+      <tr>
+        <td>GSAP 动画精细度</td>
+        <td class="center">逐场景定制</td>
+        <td class="center">循环统一</td>
+        <td class="center"><span class="badge badge-best">逐场景定制 + phase 动画</span></td>
+        <td class="center">逐场景定制</td>
+      </tr>
+      <tr>
+        <td><strong>视觉总分</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">3/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-red)">2/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-green)">5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">4/5</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 6. 抖音文案对比 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">6</span> 抖音文案 (douyin.md) 对比</div>
+  <table>
+    <thead>
+      <tr>
+        <th>评估维度</th>
+        <th class="center">A (qwen-upgrade + Qwen)</th>
+        <th class="center">B (qwen-upgrade + GLM)</th>
+        <th class="center">C (main + GLM)</th>
+        <th class="center">D (main + Qwen)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>文案版本数</td>
+        <td class="center"><span class="badge badge-best">3 版 + 评论 + 合规检查</span></td>
+        <td class="center"><span class="badge badge-best">3 版 + 跨平台策略</span></td>
+        <td class="center">3 版 + 跨平台</td>
+        <td class="center"><span class="badge badge-bad">1 版</span></td>
+      </tr>
+      <tr>
+        <td>合规自查</td>
+        <td class="center"><span class="badge badge-best">有 (5 项检查)</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+        <td class="center"><span class="badge badge-bad">无</span></td>
+      </tr>
+      <tr>
+        <td>跨平台适配</td>
+        <td class="center">无</td>
+        <td class="center"><span class="badge badge-best">抖音/视频号/小红书</span></td>
+        <td class="center">抖音/视频号/小红书</td>
+        <td class="center">无</td>
+      </tr>
+      <tr>
+        <td>评论区文案</td>
+        <td class="center"><span class="badge badge-best">有</span></td>
+        <td class="center">有</td>
+        <td class="center">有</td>
+        <td class="center">无</td>
+      </tr>
+      <tr>
+        <td>评分</td>
+        <td class="center"><strong style="color:var(--accent-green)">4.5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-green)">4.5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-cool)">3.5/5</strong></td>
+        <td class="center"><strong style="color:var(--accent-red)">2/5</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 7. 综合评分矩阵 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">7</span> 综合评分矩阵</div>
+  <table>
+    <thead>
+      <tr>
+        <th>维度 (满分 5)</th>
+        <th class="center">A (qwen-upgrade + Qwen)</th>
+        <th class="center">B (qwen-upgrade + GLM)</th>
+        <th class="center">C (main + GLM)</th>
+        <th class="center">D (main + Qwen)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>设计文档</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:40%;background:var(--accent-red)"></div></div><div class="score-num">2.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:70%;background:var(--accent-gold)"></div></div><div class="score-num">3.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent-green)"></div></div><div class="score-num">5.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:60%;background:var(--accent-cool)"></div></div><div class="score-num">3.0</div></div>
+        </td>
+      </tr>
+      <tr>
+        <td>旁白文案</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent-green)"></div></div><div class="score-num">4.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:60%;background:var(--accent-cool)"></div></div><div class="score-num">3.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:80%;background:var(--accent-cool)"></div></div><div class="score-num">4.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:70%;background:var(--accent-cool)"></div></div><div class="score-num">3.5</div></div>
+        </td>
+      </tr>
+      <tr>
+        <td>旁白分段 JSON</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:70%;background:var(--accent-cool)"></div></div><div class="score-num">3.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:70%;background:var(--accent-cool)"></div></div><div class="score-num">3.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent-green)"></div></div><div class="score-num">4.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:50%;background:var(--accent-gold)"></div></div><div class="score-num">2.5</div></div>
+        </td>
+      </tr>
+      <tr>
+        <td>HTML 视觉</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:60%;background:var(--accent-cool)"></div></div><div class="score-num">3.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:40%;background:var(--accent-red)"></div></div><div class="score-num">2.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent-green)"></div></div><div class="score-num">5.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:80%;background:var(--accent-cool)"></div></div><div class="score-num">4.0</div></div>
+        </td>
+      </tr>
+      <tr>
+        <td>FX/动画丰富度</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:40%;background:var(--accent-red)"></div></div><div class="score-num">2.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:30%;background:var(--accent-red)"></div></div><div class="score-num">1.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent-green)"></div></div><div class="score-num">5.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:80%;background:var(--accent-cool)"></div></div><div class="score-num">4.0</div></div>
+        </td>
+      </tr>
+      <tr>
+        <td>抖音文案</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent-green)"></div></div><div class="score-num">4.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent-green)"></div></div><div class="score-num">4.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:70%;background:var(--accent-cool)"></div></div><div class="score-num">3.5</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:40%;background:var(--accent-red)"></div></div><div class="score-num">2.0</div></div>
+        </td>
+      </tr>
+      <tr>
+        <td>时长合理性</td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:40%;background:var(--accent-red)"></div></div><div class="score-num">2.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:60%;background:var(--accent-gold)"></div></div><div class="score-num">3.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent-green)"></div></div><div class="score-num">5.0</div></div>
+        </td>
+        <td class="center">
+          <div class="score-bar-wrap"><div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent-green)"></div></div><div class="score-num">5.0</div></div>
+        </td>
+      </tr>
+      <tr style="background:rgba(0,212,255,0.06);">
+        <td><strong>总分 (满分 35)</strong></td>
+        <td class="center"><strong style="font-size:20px;color:var(--accent-cool)">21.5</strong></td>
+        <td class="center"><strong style="font-size:20px;color:var(--accent-cool)">21.0</strong></td>
+        <td class="center"><strong style="font-size:20px;color:var(--accent-green)">32.0</strong></td>
+        <td class="center"><strong style="font-size:20px;color:var(--accent-cool)">24.0</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 8. 模型评估 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">8</span> 模型评估：GLM-5.1 vs Qwen3.7</div>
+  <div class="compare-grid">
+    <div class="compare-block">
+      <h4>
+        <span style="font-size:20px;">GLM-5.1</span>
+        <span class="model-tag" style="background:rgba(0,212,255,0.12);color:var(--accent-cool)">视觉之王</span>
+      </h4>
+      <div class="pros-cons">
+        <div class="pros">
+          <h5 style="color:var(--accent-green)">擅长</h5>
+          <ul>
+            <li>HTML 视觉工程碾压级领先：角色系统、phase 切换、seeded 粒子</li>
+            <li>元数据结构化最完整：visual_phases、contrarian_angle、character_expression</li>
+            <li>设计文档深度最好：导演必答、精确配色规则</li>
+            <li>FX 动画类型最丰富（6+ 种 CSS 动画）</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h5 style="color:var(--accent-red)">弱点</h5>
+          <ul>
+            <li>旁白偶有遗漏（B 版缺失竞品对比数据）</li>
+            <li>抖音文案版本少、传播力设计不足</li>
+            <li>信息密度低于 Qwen</li>
+            <li>偏描述性，hook 冲击力略弱</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="compare-block">
+      <h4>
+        <span style="font-size:20px;">Qwen3.7</span>
+        <span class="model-tag" style="background:rgba(168,85,247,0.12);color:var(--accent-purple)">文案之王</span>
+      </h4>
+      <div class="pros-cons">
+        <div class="pros">
+          <h5 style="color:var(--accent-green)">擅长</h5>
+          <ul>
+            <li>旁白节奏最紧凑，hook 最抓人</li>
+            <li>信息密度最高：更少字传达更多数据</li>
+            <li>抖音文案多版本 + 合规自查</li>
+            <li>跨平台文案策略意识强</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h5 style="color:var(--accent-red)">弱点</h5>
+          <ul>
+            <li>HTML 视觉偏简单，特效层弱</li>
+            <li>无角色覆盖层、无语音气泡</li>
+            <li>设计文档结构偏薄（A 版仅裸 YAML）</li>
+            <li>main 分支下抖音文案反而最弱</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 9. 架构评估 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">9</span> 架构评估：main vs qwen-upgrade</div>
+  <table>
+    <thead>
+      <tr>
+        <th>维度</th>
+        <th>main 分支</th>
+        <th>qwen-upgrade 分支</th>
+        <th>差异归因</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Stage 指令框架</td>
+        <td><span class="badge badge-best">更丰富（导演必答、情绪注解、幽默策略）</span></td>
+        <td>较简</td>
+        <td>Stage 2 技能文件的指令差异</td>
+      </tr>
+      <tr>
+        <td>视觉产出复杂度</td>
+        <td><strong>明显更高</strong>（角色系统、phase 切换、seeded 粒子）</td>
+        <td>较简单（静态圆点或无特效）</td>
+        <td>Stage 6 的 HTML 指令深度差异</td>
+      </tr>
+      <tr>
+        <td>时长控制</td>
+        <td><span class="badge badge-best">55-56s（理想）</span></td>
+        <td><span class="badge badge-bad">47-75s（波动大）</span></td>
+        <td>Stage 3 分段策略差异</td>
+      </tr>
+      <tr>
+        <td>抖音文案质量</td>
+        <td>中偏弱</td>
+        <td><span class="badge badge-best">更强（多版本+合规+跨平台）</span></td>
+        <td>Stage 7 文案模板差异</td>
+      </tr>
+      <tr>
+        <td>设计文档结构</td>
+        <td><span class="badge badge-best">GLM 下最优</span></td>
+        <td>Qwen 下最差</td>
+        <td>模型+架构交叉影响</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:13px;color:var(--text-secondary);margin-top:12px;">
+    <strong>结论</strong>：main 分支在视觉产出上有明显优势，qwen-upgrade 在文案层面有优势。架构差异对视觉的影响（~2x 复杂度）大于对文案的影响（~10-20%），说明视觉质量对指令框架更敏感。
+  </p>
+</div>
+
+<!-- ═══ 10. 最终结论 ═══ -->
+<div class="section">
+  <div class="section-title"><span class="num">10</span> 最终结论</div>
+  <div class="conclusion-box">
+    <h3>综合排名</h3>
+    <table>
+      <thead>
+        <tr><th>排名</th><th>组合</th><th>总分</th><th>核心优势</th><th>核心短板</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--accent-gold);">1st</strong></td>
+          <td><span class="badge badge-cool">main</span> + <span class="badge badge-cool">GLM-5.1</span></td>
+          <td><strong>32.0/35</strong></td>
+          <td>视觉最震撼，时长最理想，元数据最完整</td>
+          <td>抖音文案不够丰富</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--text-secondary);">2nd</strong></td>
+          <td><span class="badge badge-cool">main</span> + <span class="badge badge-purple">Qwen3.7</span></td>
+          <td>24.0/35</td>
+          <td>场景配色差异化最好，动画库最完整，时长理想</td>
+          <td>抖音文案最弱，HTML 复杂度中等</td>
+        </tr>
+        <tr>
+          <td><strong style="color:#CD7F32;">3rd</strong></td>
+          <td><span class="badge badge-warm">qwen-upgrade</span> + <span class="badge badge-purple">Qwen3.7</span></td>
+          <td>21.5/35</td>
+          <td>旁白最佳，抖音文案最全（合规检查）</td>
+          <td>视觉简单，75s 偏长，设计文档最差</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--text-dim);">4th</strong></td>
+          <td><span class="badge badge-warm">qwen-upgrade</span> + <span class="badge badge-cool">GLM-5.1</span></td>
+          <td>21.0/35</td>
+          <td>跨平台文案策略最全</td>
+          <td>HTML 最简单，特效为 0，竞品对比数据缺失</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:28px;">关键发现</h3>
+    <p><strong>1. 模型差异 > 架构差异。</strong>同一分支下换模型的视觉差异达 2-3 倍，同一模型换分支的文案差异仅 10-20%。视觉质量高度依赖模型能力。</p>
+    <p><strong>2. GLM-5.1 是视觉引擎，Qwen3.7 是文案引擎。</strong>GLM 擅长 HTML 工程和动画系统，Qwen 擅长文案节奏和传播策略。两者能力互补。</p>
+    <p><strong>3. main 分支的指令框架更成熟。</strong>导演必答、情绪曲线注解、幽默策略等框架有效提升了 GLM 的产出上限，但对 Qwen 的提升有限（Qwen 在 main 下的抖音文案反而更弱）。</p>
+    <p><strong>4. 理想组合是拆不开的。</strong>GLM-5.1 做视觉 + Qwen3.7 做文案能产生最优结果，但当前管线是一个模型从头到尾执行。未来可探索模型分阶段调度。</p>
+  </div>
+</div>
+
+<!-- ═══ Footer ═══ -->
+<div class="report-footer">
+  ClipForge 对比报告 &nbsp;|&nbsp; 生成时间：2026-05-27 &nbsp;|&nbsp; 数据来源：磁盘文件实证分析
+</div>
+
+</div>
+</body>
+</html>

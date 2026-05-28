@@ -88,7 +88,7 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 |------|-----|------|
 | `data-track-index` | `1`（旁白）/ `2`（BGM） | HyperFrames 按轨分组混音 |
 | `data-volume` | 旁白 `1`，BGM 从 `segment_durations.json` 的 `meta.bgm_volume` 读取 | HyperFrames 混音时的音量系数 |
-| `loop` | 仅 BGM 添加 | BGM 循环播放直到视频结束 |
+| `loop` | 仅 BGM 添加 | BGM 循环播放直到视频结束（安全兜底，Stage 4 已预对齐时长） |
 | `preload="auto"` | 必须 | 确保 HyperFrames 预加载音频 |
 
 ### 电影解读模式
@@ -409,6 +409,18 @@ cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 
 # 从 segment_durations.json 读取 BGM 音量，写入 HTML
 BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json'))['meta'].get('bgm_volume', 0.15))")
+
+# BGM 音量预检
+if [ "$(echo "$BGM_VOL < 0.10" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+    echo "BLOCKED: bgm_volume=${BGM_VOL} < 0.10，BGM 不可听。回退 Stage 4 重新校准。"
+    exit 1
+fi
+if [ "$(echo "$BGM_VOL > 0.50" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+    echo "BLOCKED: bgm_volume=${BGM_VOL} > 0.50，BGM 过响。回退 Stage 4 重新校准。"
+    exit 1
+fi
+echo "OK: bgm_volume=${BGM_VOL}"
+
 sed -i "s/id=\"bgm\" data-volume=\"[^\"]*\"/id=\"bgm\" data-volume=\"${BGM_VOL}\"/" index.html
 echo "HTML BGM data-volume set to ${BGM_VOL}"
 ```
