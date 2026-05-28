@@ -319,8 +319,9 @@ scenes:
 5. **Phase 不足视为 Stage 3 未完成**，Stage 6 gate 会拦截
 6. **layout_hint.density** 可选，控制元素间距密度：`compact`（条目多/时间紧）、`standard`（默认）、`generous`（元素少/强调留白）。不指定时 Stage 6 从 visual_type 自动推导
 
-同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）：
-```
+同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）。
+
+**格式强制**：`narration.txt` 必须恰好 N 行（N = 场景数），每行对应一个场景的旁白文本。禁止将所有旁白合并为单段落。禁止在行内使用换行符。校验：`wc -l narration.txt` 必须等于场景数。
 今天涨星最快的几个项目，直接炸了
 第一个项目，这个框架跑起来比我外卖还快
 这个项目一周涨了五千星，比我的发际线退得还快

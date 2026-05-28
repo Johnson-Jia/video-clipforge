@@ -77,11 +77,13 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 **阶段 B — BGM 管线**（选曲完成后全自动）：
 
 ```bash
-# BGM 管线：音量校验 → 查表校准 → 峰值间距 → 循环扩展（全自动）
+# BGM 管线：音量校验 → 查表校准 → 峰值间距 → 时长对齐（全自动）
 bash .claude/commands/clipforge/scripts/bgm_pipeline.sh
 ```
 
-> `bgm_pipeline.sh` 自动执行：音量守恒校验 → 查表获取推荐 volume → 峰值间距双向校验 → 写入 `segment_durations.json` → BGM 循环扩展。无需手动查表或写 JSON。
+> `bgm_pipeline.sh` 自动执行：音量守恒校验 → 查表获取推荐 volume → 峰值间距双向校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，循环或裁剪 + 淡入淡出）。无需手动查表或写 JSON。
+>
+> **时长对齐保证：** Step 3 将 bgm.wav 对齐到旁白时长 + 1s 缓冲，添加 1.5s 淡入 + 2s 淡出。无论 BGM 原始时长长短，产出物与视频时长精确匹配，消除 HyperFrames 循环机制的不确定性。
 
 ### 来源优先级（唯一权威）
 
@@ -160,6 +162,16 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 >
 > **双重衰减防护**：bgm.wav 保持原始音量，所有音量控制通过 HTML `data-volume` 完成。预衰减 + data-volume = 几乎静音。
 
+### BGM 音量守恒铁律
+
+- `bgm_volume` 必须 ≥ 0.10 且 ≤ 0.50。`bgm_pipeline.sh` Step 2.5 自动校验此范围。
+- **禁止手动设置 `bgm_volume`**，只能由 `bgm_pipeline.sh` 通过 `bgm_gap_check.py` 查表自动确定。
+- `bgm_pipeline.sh` 执行后，必须验证 `segment_durations.json` 的 `meta.bgm_volume` 在 [0.10, 0.50] 范围内。
+
+> **Red Flag — bgm_volume < 0.10**：BGM 全程听不见，等于没有配乐。上次事故（2026-05-28）就是 SubAgent 手动写入 0.06 导致 BGM 全程被旁白掩盖。
+>
+> **Red Flag — 跳过 bgm_pipeline.sh**：手动写 volume 值违反"禁止预衰减"原则，且没有经过峰值间距校验。
+
 ## 4.3 电影音频处理（电影解读模式）
 
 > **仅在电影解读模式触发。** 当场景中包含 `video_clip` 类型时执行。
@@ -193,5 +205,11 @@ python .claude/commands/clipforge/scripts/movie_narration.py
 ## 约束声明
 
 **Iron Law:** 旁白未经 loudnorm 校验通过 = 音频阶段未完成。BGM 音量未写入 `segment_durations.json` = 音频阶段未完成。
+
+**TTS 分段顺序校验：** TTS 生成必须按 `narration_segments.json` 的场景顺序执行，输出的 `segment_durations.json` 中各段顺序必须与 `narration_segments.json` 一致。校验：segment_durations.json 第 N 段的 scene 字段 = narration_segments.json 第 N 个对象的 scene 字段。
+
+| 当你产生这个念头 | 现实是 | 触发行为 |
+|---|---|---|
+| "TTS 分段顺序无所谓，HTML 用时间戳定位" | 顺序混乱导致审核时无法按场景检查旁白，且与 narration.srt 字幕时间轴不匹配 | 按 narration_segments.json 顺序逐个生成 |
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage4-audio` 获取完整约束 prompt。
