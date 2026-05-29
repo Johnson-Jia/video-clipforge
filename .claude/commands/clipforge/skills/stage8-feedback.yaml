@@ -29,7 +29,7 @@ skill:
     hard:
       - gate: file_exists
         params:
-          files: ["workspace/feedback.yaml"]
+          files: ["feedback.yaml"]
     soft: []
     max_retries: 1
   trace:

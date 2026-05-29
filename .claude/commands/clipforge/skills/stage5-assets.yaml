@@ -25,7 +25,7 @@ skill:
     hard:
       - gate: file_exists
         params:
-          files: ["workspace/assets/manifest.md"]
+          files: ["assets/manifest.md"]
     soft: []
     max_retries: 1
   trace:
