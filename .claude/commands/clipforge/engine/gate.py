@@ -149,8 +149,16 @@ GATE_CHECKERS = {
 HOOK_FORBIDDEN_STARTS = ("你知道吗", "有没有想过", "猜猜", "你知道", "大家知道")
 # hook 高优模式关键词（数据驱动：反直觉/冲突平均 46,596 播放）
 HOOK_HIGH_VALUE_KEYWORDS = ("不用", "却能", "居然", "竟然", "竟然能", "只要", "不需要")
-# hook 数字锚定关键词（数据驱动：平均 42,783 播放）— 注意避免子串误匹配
-HOOK_NUMBER_ANCHORS = ("涨星最快", "N 个项目", "天涨近", "千星", "万星", "单日涨", "最高涨星", "涨星最多")
+# hook 数字锚定关键词 — 默认为空，由分类配置 narration.hook_anchors 提供
+_DEFAULT_HOOK_NUMBER_ANCHORS: tuple[str, ...] = ()
+
+
+def _get_hook_anchors(params: dict) -> tuple[str, ...]:
+    """从 params 中获取 hook_anchors，或使用默认值。"""
+    anchors = params.get("hook_anchors")
+    if anchors:
+        return tuple(anchors)
+    return _DEFAULT_HOOK_NUMBER_ANCHORS
 
 
 def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
@@ -184,7 +192,8 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
 
     # 检查是否命中高优或数字锚定
     is_high_value = any(kw in hook_text for kw in HOOK_HIGH_VALUE_KEYWORDS)
-    is_number_anchor = any(kw in hook_text for kw in HOOK_NUMBER_ANCHORS)
+    hook_anchors = _get_hook_anchors(params)
+    is_number_anchor = any(kw in hook_text for kw in hook_anchors) if hook_anchors else False
 
     if is_high_value:
         return True, f"hook 命中反直觉/冲突模式（平均 46,596 播放）: {hook_text[:30]}"

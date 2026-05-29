@@ -18,7 +18,7 @@
 **核心原则：**
 - 用"我发现"、"最近看到"、"有个项目"这种分享式开头
 - 描述功能和特点，不评价优劣，让用户自己判断
-- 可以用数据说话（"33K Star"），但不用主观夸张（"太强了"）
+- 可以用数据说话（如"{{shared_rules.data_example|核心数据}}"），但不用主观夸张（"太强了"）
 - 保持信息密度，去掉情绪注水
 - **不点名商业产品/品牌名称**：不说"GPT"、"DeepSeek"、"通义千问"等具体品牌，改说技术类别（如"大语言模型"、"AI 助手"）。点名品牌会被判定为商业推广/软广
 
@@ -89,11 +89,11 @@
 - 钩子句 ≤ 12 个字，口语化，一击即中
 - "正文"（项目介绍、功能说明等）从第 2 个场景开始，绝不提前
 - 钩子句参考案例（不是模板，从内容中寻找最有力的一击）：
-  - 数据震撼："{M}月{D}日涨星最猛的 N 个项目"、"N 个热门项目，AI 占了一半"
+  - 数据震撼："{{shared_rules.hook_data_example|{内容中最震撼的数据}}}"
   - 反直觉描述："你见过用 WiFi 信号感知人体的吗"
   - 强对比："别人还在 XX，这个已经 YY"
   - 悬念留白："这个项目，三天涨了两万星"
-  - 情绪表达："{M}月{D}日涨星直接炸了"
+  - 情绪表达："{{shared_rules.hook_emotion_example|{情绪化的震撼表达}}}"
 
 ### 5.2 画面视觉
 
@@ -127,18 +127,19 @@
 | > 40 秒 | ⌈duration / 14⌉ 个 phase | 按此公式计算最少 phase 数 |
 
 - **Phase** = clip 内的一次视觉内容切换（不是新 clip，不拆分音频）
-- Phase 间切换由 GSAP timeline 驱动（详见 `_render-safety.md` §1.1a 和 `stage6-production.md` §6.4a）
+- Phase 间切换由 GSAP timeline 驱动（详见 `shared/render-safety.md` §1.1a 和 `stages/stage6-production.md` §6.4a）
 - Phase 切换 ≠ 硬切：使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0（完全消失，避免重叠重影），新 phase 从 0 渐显到 1
 - **相邻 phase 的 visual_type 不应重复**（视觉多样性）
-- **Phase 断点必须与旁白话题转换对齐，禁止时间均分**——每个场景逐段分析旁白文本，找到与 visual_phases focus 匹配的话题边界，按字数比例换算为时间戳。详见 `stage6-production.md` §6.4b
+- **Phase 断点必须与旁白话题转换对齐，禁止时间均分**——每个场景逐段分析旁白文本，找到与 visual_phases focus 匹配的话题边界，按字数比例换算为时间戳。详见 `stages/stage6-production.md` §6.4b
 
 ## 7. 渲染安全 + 三层架构
 
-> **详见 `clipforge/_render-safety.md`。** 此处仅列出核心禁令。
+> **详见 `clipforge/shared/render-safety.md`。** 此处仅列出核心禁令。
 
 - **禁止 `.anim-in` / CSS `opacity:0` 入场**——HyperFrames seek 不执行 CSS animation
 - **禁止 HTML 实体字符**——改用 Unicode 直接输入（`★` 而非 `&#9733;`）
-- **安全区 padding `180px 80px 220px 80px` 只设一层**（`.scene-wrap` 或 `.phase` 二选一，禁止双重——详见 `_render-safety.md` §1.4a）
+- **安全区 padding `180px 80px 220px 80px` 只设一层**（`.scene-wrap` 或 `.phase` 二选一，禁止双重——详见 `shared/render-safety.md` §1.4a）
+- **`.clip` 必须 `inset:0` 铺满全画幅**，禁止 top/right/bottom/left 偏移（会导致背景裁剪 → 黑边，详见 `shared/render-safety.md` §1.3a）
 - **`.phase` 统一使用 `display:flex;flex-direction:column;justify-content:center` 垂直居中**——不需要手动加 inline style，CSS class 已包含
 - **渲染前移除非 index.html 的 HTML 文件**——避免 multiple_root_compositions 冲突
 - **每个场景必须三层**：`.layer-bg`(z:1) + `.layer-fx`(z:2) + `.layer-content`(z:3)

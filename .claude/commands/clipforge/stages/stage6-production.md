@@ -93,7 +93,7 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 
 ### 电影解读模式
 
-电影模式使用 `narration_new.mp3`（含静音填充），并在电影片段场景使用 `<video>` 元素（见 `_movie-clips` 的嵌入规则）。
+电影模式使用 `narration_new.mp3`（含静音填充），并在电影片段场景使用 `<video>` 元素（见 `shared/movie-clips` 的嵌入规则）。
 
 ### 对齐机制
 
@@ -164,7 +164,7 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 > **目的**：像导演审看每日样片，逐场景检查 HTML 是否实现了导演决策。这是最后一道"导演看监视器"关卡。
 
-读取 `_director-toolkit.md` 的"导演 5 个必答题"，逐 `.clip` 场景自审：
+读取 `shared/director-toolkit.md` 的"导演 5 个必答题"，逐 `.clip` 场景自审：
 
 | # | 必答题 | 检查点 |
 |---|--------|--------|
@@ -185,7 +185,7 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 ## 6.4a 视觉分镜（Visual Phasing）
 
-> **当场景时长 >15 秒时必须使用。** 完整规范见 `clipforge/_visual-phasing`。
+> **当场景时长 >15 秒时必须使用。** 完整规范见 `clipforge/shared/visual-phasing`。
 
 ### 降级触发条件
 
@@ -203,8 +203,8 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 > **以下全部规则同样适用于 HyperFrames 委托模式产出的 HTML。**
 
-0. **内容安全规范**遵守 `clipforge/_shared-rules` 全部条款。
-0. **渲染安全规范**遵守 `clipforge/_render-safety` 全部条款（Stage 6 必读）。
+0. **内容安全规范**遵守 `clipforge/shared/shared-rules` 全部条款。
+0. **渲染安全规范**遵守 `clipforge/shared/render-safety` 全部条款（Stage 6 必读）。
 
 ### 结构规则
 
@@ -241,9 +241,9 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 ### CSS 规则
 
-> **CSS 渲染安全规则全部在 `_render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
+> **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
-8. **`.clip` 只设 `position: absolute` + 尺寸**，不要加其他样式（上140 / 右90 / 下260 / 左70）
+8. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.scene-wrap` 或组件的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
 
 ### 视觉设计规则（必须遵守）
 
@@ -284,7 +284,7 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 #### 整体品质检查
 
-渲染前对照清单：背景三层、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf`（duration + seek）、场景 id 映射、GSAP timeline、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition。
+渲染前对照清单：背景三层、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf`（duration + seek）、场景 id 映射、GSAP timeline、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition、**`.clip` 必须是 `inset:0`（禁止 top/right/bottom/left 偏移 → 黑边）**。
 
 ### 动画规则
 
@@ -372,7 +372,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 
 # 1. 确认音频文件存在
-ls -la narration.mp3 bgm.mp3
+ls -la narration.mp3 bgm.wav
 
 # 2. 导演门禁 — HTML 设计意图验证（Layer 1）
 python3 .claude/commands/clipforge/scripts/director_gate.py .

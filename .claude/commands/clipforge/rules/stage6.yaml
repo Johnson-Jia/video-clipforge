@@ -21,7 +21,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage6-production"
-    source: "_shared-rules.md §6"
+    source: "shared/shared-rules.md §6"
 
   - id: "R-S6-005"
     type: FORBIDDEN_METHOD
@@ -58,7 +58,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "_render-safety.md §1.5"
+    source: "shared/render-safety.md §1.5"
 
   - id: "R-S6-008"
     type: FORBIDDEN_ACTION

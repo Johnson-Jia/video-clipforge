@@ -9,7 +9,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_shared-rules.md §1"
+    source: "shared/shared-rules.md §1"
 
   - id: "R-G-002"
     type: FORBIDDEN_ACTION
@@ -22,7 +22,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_shared-rules.md §4"
+    source: "shared/shared-rules.md §4"
 
   - id: "R-G-003"
     type: FORBIDDEN_SPEECH
@@ -34,7 +34,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_shared-rules.md §4.1"
+    source: "shared/shared-rules.md §4.1"
 
   - id: "R-G-004"
     type: FORBIDDEN_SPEECH
@@ -46,7 +46,7 @@ rules:
     severity: SOFT
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §1"
+    source: "shared/shared-rules.md §1"
 
   - id: "R-G-005"
     type: FORBIDDEN_SPEECH
@@ -58,7 +58,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_shared-rules.md §1"
+    source: "shared/shared-rules.md §1"
 
   - id: "R-G-006"
     type: FORBIDDEN_ACTION
@@ -70,7 +70,7 @@ rules:
     severity: SOFT
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §3"
+    source: "shared/shared-rules.md §3"
 
   - id: "R-G-007"
     type: FORBIDDEN_SPEECH
@@ -83,4 +83,4 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §2"
+    source: "shared/shared-rules.md §2"

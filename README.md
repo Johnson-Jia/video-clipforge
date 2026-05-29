@@ -81,6 +81,28 @@ ClipForge 不限于技术视频。它的核心能力是把**信息**变成**视�
 
 ---
 
+## 这个项目是怎么来的 ✨
+
+我一直觉得，开源精神是最接近理想主义的互联网文化——好的代码，不该只待在 GitHub 的角落里无人知晓 💎
+
+那些真正改变效率的开源项目，每天在 GitHub Trending 上冲榜、拿星 ⭐，但大多数人根本不知道它们的存在。于是我想做一件事：**每天把最火的开源项目，用最短的时间告诉所有人** 🔥 一个人通过开源影响周围的小团体，几万人甚至几百万人这么做，对整个社会效率的提升是巨大的 🌍
+
+想法很简单，执行很痛苦 😅
+
+为了做这件事，我尝试了各种视频制作工具，甚至自己上手剪视频——剪了半个多月。但视频创作、脚本设计、分镜节奏这些专业知识，我真的是一窍不通。（手残，没学会。狗头保命 🐶）
+
+转折出现在几个月后。我发现了一个开源项目 **HyperFrames**——通过写 HTML 代码就能生成视频 💡
+
+代码？这我懂啊 💪
+
+但实际用下来发现，HyperFrames 能生成视频，排版布局却不完全符合竖屏短视频的需求。让它和 AI 一点点磨？太慢了，每个视频都要反复调整，根本不可能做到"每天一期" 🐌
+
+所以——**ClipForge 诞生了** 🎬🎉
+
+它把"写 HTML 生成视频"这个能力，包装成了一套完整的自动化管线：内容采集 → 场景设计 → 旁白配音 → BGM 配乐 → 视频渲染 → 封面生成 → 机器评分。指定一个分类，剩下的全自动完成 ⚡
+
+---
+
 ## 它是怎么做到的
 
 整个过程可以理解成三步：
@@ -119,18 +141,53 @@ claude          # 启动 Claude Code，技能自动加载
 | 命令 | 用途 |
 |------|------|
 | `/clipforge` | 交互式视频制作 — 告诉它你想做什么 |
-| `/github-daily-trending` | 每日 GitHub 趋势视频（全自动，定时触发） |
-| `/github-weekly-trending` | 每周 GitHub 趋势汇总（全自动） |
-| `/github-weekly-zhihu` | 每周 GitHub 知乎长文（全自动） |
+| `/clipforge-category-setup` | 引导创建新分类配置 + 可选定时任务 — 只需回答几个问题 |
+| `/clipforge-feedback` | 分析播放数据，校准机器评分 — 进入自进化 |
 
-## 8 阶段管线
+> 定时任务（如每日/每周自动执行）由 `/clipforge-category-setup` 引导生成，属于个人配置，不入 git。
+
+## 自进化反馈
+
+ClipForge 不是一个固定输出的工具 — 它会从播放数据中学习，持续进化。
+
+**工作原理：**
 
 ```
-内容获取 → 导演设计 → 旁白文案 → 音频制备 → 素材制备 → 视频渲染 → 交付输出 → 自动清理
+制作视频 → 机器评分 → 发布 → 你导入播放数据 → 机器对比预测 vs 实际 → 自动调整规则
+```
+
+1. 每条视频制作完成后，ClipForge 自动生成**机器预测评分**（`score_report.json`）
+2. 视频发布 1-2 天后，你从各平台导出播放数据
+3. ClipForge 对比「机器预测」vs「实际播放表现」，发现偏差并产出校准信号
+4. 校准信号经人工确认后写入规则库，让下一次预测更准确
+
+**如何导入数据：**
+
+将平台导出文件放到 `workspace/sources/视频数据/YYYY-MM-DD/` 目录：
+
+| 平台 | 导出路径 |
+|------|----------|
+| 抖音 | 创作者中心 → 数据中心 → 作品分析 → 投稿作品 → 投稿列表 → 选择全部 → 导出 |
+| B站 | 创作中心 → 数据概览 → 近期稿件对比 → 导出（每次10条，多次导出） |
+| 视频号 | 视频号助手 → 数据中心 → 视频数据 → 单篇视频 → 下载表格 |
+| 小红书 | 创作服务平台 → 数据看板 → 内容分析 → 笔记数据 → 全部 → 导出 |
+
+**三种触发方式：**
+
+- **自动**：每次制作完视频，ClipForge 自动检测是否有新数据，提示你分析
+- **手动**：运行 `/clipforge-feedback`，选择项目进行评分校准
+- **引导**：直接告诉 ClipForge「分析一下最近的播放数据」，它会自动走完流程
+
+## 管线
+
+```
+内容获取 → 导演设计 → 旁白文案 → 音频制备 → 素材制备 → 视频渲染 → 交付输出 → 机器评分 → 自动清理
+                                                                       └→ 反馈校准（可选）
 ```
 
 | 阶段 | 产出 | 说明 |
 |------|------|------|
+| Stage 0 | env-check | 依赖检测与自动安装 |
 | Stage 1 | content | 文字 / URL / PDF / GitHub 数据 / 任何你能提供的素材 |
 | Stage 2 | design | 情感内核 → 配色 → 沉浸模式 → 故事板 |
 | Stage 3 | narration | 场景拆解 + 分段旁白文案 |
@@ -138,7 +195,9 @@ claude          # 启动 Claude Code，技能自动加载
 | Stage 5 | assets | 视觉素材制备（可选） |
 | Stage 6 | video | HTML + 组件 + 动画 → HyperFrames 渲染 |
 | Stage 7 | delivery | 封面 + 文案 + 双版本输出（含 BGM / 纯旁白） |
-| Stage 8 | cleanup | 删除中间产物 |
+| — | machine-scoring | 交付后自动运行 gate 全量校验，记录机器预测评分 |
+| Stage 8 | feedback | 播放数据 + 人类评分 → 机器评分校准（发布后手动触发，可选） |
+| — | cleanup | 按保留策略删除中间产物 |
 
 DAG 定义在 [`schema.yaml`](.claude/commands/clipforge/schema.yaml)。中断后重新运行自动跳过已完成阶段。
 
@@ -152,34 +211,15 @@ DAG 定义在 [`schema.yaml`](.claude/commands/clipforge/schema.yaml)。中断�
 
 ## 在你的领域启动
 
-ClipForge 内置了 GitHub 开源项目的完整分类配置。要覆盖新领域，只需两步：
+ClipForge 内置了 GitHub 开源项目的完整分类配置。覆盖新领域只需一个命令：
 
-**1. 创建分类配置**（定义数据源、风格、音色、标签等）
-
-```markdown
-# categories/finance.md
----
-name: "财经日更"
-description: "每日市场热点视频"
-id: "finance"
----
-
-## content
-### data_source
-东方财富 API / 新浪财经数据
-
-## audio
-### default_voice
-zh-CN-YunjianNeural
-
-## delivery
-### hashtags
-["#财经", "#投资", "#A股"]
+```
+/clipforge-category-setup
 ```
 
-**2. 创建定时编排**（可选，用于全自动化）
+它会引导你回答几个问题（领域名称、数据来源、风格偏好、标签），然后自动生成完整的分类配置文件。大部分字段有合理默认值，你只需要提供你熟悉的那部分。
 
-参照 `github-daily-trending.md`，把数据获取和分类 ID 换成你的即可。
+如果后续需要全自动化，`/clipforge-category-setup` 可以同时生成定时任务编排文件。
 
 详见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [架构文档](docs/架构设计.md)。
 
@@ -188,12 +228,13 @@ zh-CN-YunjianNeural
 ```
 .claude/commands/
 ├── clipforge.md                   # 主控制器（DAG、模式选择、错误恢复）
-├── github-*.md                    # 定时任务编排
+├── github-*.md                    # 定时任务编排（个人配置，不入 git）
 └── clipforge/
     ├── schema.yaml                # Artifact DAG（唯一真相源）
-    ├── stage0-env.md ~ stage7-delivery.md  # 阶段执行指南
+    ├── stages/                    # 阶段执行指南（stage0 ~ stage8）
+    ├── shared/                    # 共享技能（渲染安全、清理规则等）
     ├── categories/                # 分类配置（GitHub、漫画等）
-    ├── components/                # 视觉组件库（13 个）
+    ├── components/                # 视觉组件库（19 个 HTML 模板）
     ├── scripts/                   # 工具脚本
     ├── engine/                    # 自进化引擎（门禁/归因/Trace）
     ├── rules/                     # 约束规则库
@@ -203,8 +244,8 @@ zh-CN-YunjianNeural
 
 ## 扩展点
 
-- **新内容源：** 添加 cron 文件，参照 `github-daily-trending.md`
-- **新分类：** 在 `categories/` 下创建配置文件，一个领域一个 `.md`
+- **新内容源：** 运行 `/clipforge-category-setup`，引导生成分类配置 + 定时任务
+- **新分类：** 运行 `/clipforge-category-setup` 引导生成，或手动在 `categories/` 下创建配置文件
 - **新规则：** 在 `rules/` 下添加 YAML，引擎自动加载
 - **新阶段：** 更新 `schema.yaml` + 创建 stage 文件
 - **新组件：** 在 `components/` 下添加 HTML+CSS+JS 模板

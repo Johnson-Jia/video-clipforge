@@ -25,6 +25,8 @@ ClipForge 视频采用 **纯 CSS/HTML** 渲染，不依赖外部图片素材：
 
 ---
 
+> 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage5-assets` 获取完整约束 prompt。
+
 ## Red Flags（停止信号）
 
 | 信号 | 说明 |

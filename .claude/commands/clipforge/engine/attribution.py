@@ -13,9 +13,25 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from engine.lib.category_config import load_category_config, get as _cfg_get
+
+# hook 数字锚定关键词 — 由分类配置 narration.hook_anchors 提供
+_hook_anchors_cache: tuple[str, ...] | None = None
+
+
+def _get_hook_anchors() -> tuple[str, ...]:
+    global _hook_anchors_cache
+    if _hook_anchors_cache is not None:
+        return _hook_anchors_cache
+    import os
+    cat_id = os.environ.get("CLIPFORGE_CATEGORY")
+    cfg = load_category_config(cat_id)
+    anchors = _cfg_get(cfg, "narration.hook_anchors", [])
+    _hook_anchors_cache = tuple(anchors) if anchors else ()
+    return _hook_anchors_cache
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
 from engine.lib.models import Rule, Severity, RuleClass, Platform, PerformanceRecord
-from engine.lib.delta import create_delta, save_delta
+from engine.lib.delta import create_delta, save_delta, shadow_validate
 
 
 def _evidence_confidence(violation: dict, trace: dict | None = None) -> float:
@@ -104,11 +120,13 @@ def weak_attribution(
     violation: dict,
     trace: dict | None = None,
     produce_delta: bool = True,
+    rules_dir: Path | None = None,
 ) -> dict:
     """弱归因：根因判定 + Delta 产出。
 
     证据驱动置信度 + rule_missing 时自动调用 create_delta。
     """
+    rules_dir = rules_dir or RULES_DIR
     violation_pattern = violation.get("details", violation.get("rule_pattern", ""))
     confidence = _evidence_confidence(violation, trace)
 
@@ -143,6 +161,17 @@ def weak_attribution(
                 new_rule_raw=candidate,
                 reason=f"归因发现规则缺失: {violation_pattern[:100]}",
             )
+            # shadow_validate before saving
+            rules = load_all_rules(rules_dir)
+            traces_dir = Path(rules_dir).parent / "traces"
+            traces = []
+            if traces_dir.exists():
+                for f in traces_dir.glob("*.json"):
+                    traces.append(json.loads(f.read_text(encoding="utf-8")))
+            validation = shadow_validate(delta, rules, traces)
+            if not validation.get("safe", True):
+                delta["shadow_validation"] = validation
+                delta["requires_human_review"] = True
             delta_path = save_delta(delta)
 
     elif root == "behavior_violation":
@@ -212,6 +241,11 @@ _XHS_THRESHOLDS = {
     "save_to_like_ratio_high": 1.5,
 }
 
+_BILIBILI_THRESHOLDS = {
+    "bounce_3s_rate_high": 0.40,
+    "interaction_rate_low": 0.02,
+}
+
 
 def _classify_hook_type(hook_text: str) -> str:
     """分类 hook 文本模式。"""
@@ -223,7 +257,7 @@ def _classify_hook_type(hook_text: str) -> str:
     for kw in ("不用", "却能", "居然", "竟然", "不需要"):
         if kw in hook_text:
             return "contrarian_conflict"
-    for kw in ("涨星最快", "N 个项目", "天涨近", "千星", "万星", "单日涨", "最高涨星"):
+    for kw in _get_hook_anchors():
         if kw in hook_text:
             return "number_anchor"
     if any(hook_text.startswith(w) for w in ("这个", "今天", "注意")):
@@ -235,6 +269,7 @@ def performance_attribution(
     performance: dict,
     narration_file: Path | None = None,
     produce_delta: bool = True,
+    rules_dir: Path | None = None,
 ) -> dict:
     """从播放数据反推失败根因。
 
@@ -246,6 +281,7 @@ def performance_attribution(
     Returns:
         归因结果，包含 root_cause、evidence、delta_path 等
     """
+    rules_dir = rules_dir or RULES_DIR
     platform = performance.get("platform", "")
     causes: list[dict] = []
     evidence: list[str] = []
@@ -292,6 +328,27 @@ def performance_attribution(
             causes.append({"cause": "low_save_to_like", "severity": "MEDIUM",
                            "detail": f"收藏/点赞比 {save_rate/like_rate:.1f} < {_XHS_THRESHOLDS['save_to_like_ratio_high']}，小红书收藏驱动"})
             evidence.append(f"收藏/点赞比 {save_rate/like_rate:.1f}")
+
+    # ── B站归因 ──
+    elif platform in (Platform.BILIBILI.value, "bilibili"):
+        bounce_3s = performance.get("bounce_3s_rate", 0)
+        interaction = performance.get("interaction_rate", 0)
+        plays_b = performance.get("plays", 0)
+
+        if bounce_3s > 0 and bounce_3s > _BILIBILI_THRESHOLDS["bounce_3s_rate_high"]:
+            causes.append({"cause": "high_3s_bounce", "severity": "HIGH",
+                           "detail": f"3秒跳出率 {bounce_3s:.1%} > {_BILIBILI_THRESHOLDS['bounce_3s_rate_high']:.0%}，B站推荐依赖前期留存"})
+            evidence.append(f"3秒跳出率 {bounce_3s:.1%}")
+
+        if interaction > 0 and interaction < _BILIBILI_THRESHOLDS["interaction_rate_low"]:
+            causes.append({"cause": "low_interaction", "severity": "MEDIUM",
+                           "detail": f"互动率 {interaction:.1%} < {_BILIBILI_THRESHOLDS['interaction_rate_low']:.0%}，B站权重依赖互动指标"})
+            evidence.append(f"互动率 {interaction:.1%}")
+
+        if 0 < plays_b < 200:
+            causes.append({"cause": "low_plays", "severity": "HIGH",
+                           "detail": f"播放量 {plays_b} < 200（B站基线）"})
+            evidence.append(f"播放量 {plays_b}")
 
     # ── Hook 文本分析（如果提供了 narration 文件）──
     hook_type = ""
@@ -350,6 +407,17 @@ def performance_attribution(
             new_rule_raw=candidate,
             reason=f"播放数据归因: {primary['detail'][:80]}",
         )
+        # shadow_validate before saving
+        rules = load_all_rules(rules_dir)
+        traces_dir = Path(rules_dir).parent / "traces"
+        traces = []
+        if traces_dir.exists():
+            for f in traces_dir.glob("*.json"):
+                traces.append(json.loads(f.read_text(encoding="utf-8")))
+        validation = shadow_validate(delta, rules, traces)
+        if not validation.get("safe", True):
+            delta["shadow_validation"] = validation
+            delta["requires_human_review"] = True
         delta_path = save_delta(delta)
 
     return {
@@ -363,6 +431,153 @@ def performance_attribution(
         "candidate_rule": candidate,
         "delta_path": str(delta_path) if delta_path else None,
         "requires_human_review": confidence < 0.55,
+    }
+
+
+def calibrate_machine_scoring(
+    score_report: dict,
+    performance: dict,
+    human_scores: dict | None = None,
+    narration_file: Path | None = None,
+    produce_delta: bool = True,
+) -> dict:
+    """对比机器预测 vs 实际表现，产出校准信号。
+
+    Args:
+        score_report: score_report.json 的内容（machine_scoring 段）
+        performance: 播放数据 {platform, plays, completion_5s_rate, ...}
+        human_scores: 人类评分 {hook, density, visual, audio, overall, weakest_link}
+        narration_file: narration_segments.json 路径（可选）
+        produce_delta: 是否产出校准 Delta
+
+    Returns:
+        校准结果 {verdict, diagnosis, action, delta_path}
+    """
+    machine_score = score_report.get("overall_soft_score", 0.5)
+
+    # 机器预测分类
+    if machine_score >= 0.8:
+        prediction = "HIGH"
+    elif machine_score >= 0.5:
+        prediction = "MEDIUM"
+    else:
+        prediction = "LOW"
+
+    # 实际表现分类（复用 performance_attribution 的逻辑）
+    perf_result = performance_attribution(performance, narration_file, produce_delta=False)
+    perf_causes = perf_result.get("causes", [])
+
+    has_high_cause = any(c.get("severity") == "HIGH" for c in perf_causes)
+    has_any_cause = len(perf_causes) > 0
+
+    if has_high_cause:
+        outcome = "LOW"
+    elif has_any_cause:
+        outcome = "MEDIUM"
+    else:
+        outcome = "HIGH"
+
+    # 人类评分交叉验证
+    human_signal = ""
+    weakest_stage = ""
+    if human_scores:
+        overall_human = human_scores.get("overall", 3)
+        weakest = human_scores.get("weakest_link", "")
+        if overall_human <= 2:
+            outcome = "LOW"
+            human_signal = f"人类整体评分 {overall_human}/5"
+        elif overall_human == 3:
+            if outcome == "HIGH":
+                outcome = "MEDIUM"
+            human_signal = f"人类整体评分 {overall_human}/5"
+
+        # 从最薄弱环节映射到 stage
+        weakest_map = {
+            "hook": "stage3-scenes",
+            "文案": "stage3-scenes",
+            "配音": "stage4-audio",
+            "画面": "stage6-production",
+            "节奏": "stage3-scenes",
+        }
+        weakest_stage = weakest_map.get(weakest, "")
+
+    # 判定校准方向
+    prediction_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+    diff = prediction_rank.get(prediction, 2) - prediction_rank.get(outcome, 2)
+
+    if diff > 0:
+        verdict = "OVERESTIMATED"
+    elif diff < 0:
+        verdict = "UNDERESTIMATED"
+    else:
+        verdict = "CONSISTENT"
+
+    # 诊断
+    diagnosis_parts = []
+    diagnosis_parts.append(f"机器预测 {prediction}（score={machine_score:.2f}），实际 {outcome}")
+    if human_signal:
+        diagnosis_parts.append(human_signal)
+    if weakest_stage:
+        diagnosis_parts.append(f"最薄弱环节: {human_scores.get('weakest_link', '')} → {weakest_stage}")
+
+    # 找偏差最大的 stage
+    phases = score_report.get("phases", {})
+    stage_diagnosis = ""
+    if verdict != "CONSISTENT" and phases:
+        min_stage = min(phases.items(), key=lambda x: x[1].get("soft_score", 1.0))
+        stage_diagnosis = f"最低 stage: {min_stage[0]}（soft_score={min_stage[1].get('soft_score', 1.0):.2f}）"
+
+    diagnosis = "；".join(diagnosis_parts)
+    if stage_diagnosis:
+        diagnosis += "；" + stage_diagnosis
+
+    # 校准动作
+    action = None
+    delta_path = None
+    if verdict == "OVERESTIMATED" and produce_delta:
+        # 机器高估 → 收紧规则
+        target = weakest_stage or "gate_checker"
+        action = {
+            "type": "STRENGTHEN_RULE",
+            "target": target,
+            "detail": f"机器高估（{prediction}→{outcome}），需收紧 {target} 的 gate 阈值/权重",
+        }
+        delta = create_delta(
+            operation="ADDED",
+            source="calibrate_machine_scoring",
+            confidence=0.70,
+            target_rule_id=f"R-CAL-{target}",
+            new_rule_raw={
+                "id": f"R-CAL-{target}",
+                "type": "FORBIDDEN_LOGIC",
+                "pattern": f"{target} 的 gate checker 评分偏高，需校准阈值",
+                "positive": f"校准 {target} 的 gate checker 阈值，使其更准确反映实际表现",
+                "severity": "SOFT",
+                "class": "EXPERIENTIAL",
+                "scope": "SKILL",
+            },
+            reason=f"机器评分校准: {diagnosis[:100]}",
+        )
+        delta["requires_human_review"] = True
+        delta_path = str(save_delta(delta))
+
+    elif verdict == "UNDERESTIMATED" and produce_delta:
+        # 机器低估 → 放松过严规则（仅 EXPERIENTIAL）
+        target = weakest_stage or "gate_checker"
+        action = {
+            "type": "DEPRECATED",
+            "target": target,
+            "detail": f"机器低估（{prediction}→{outcome}），{target} 可能过严",
+        }
+
+    return {
+        "machine_prediction": prediction,
+        "actual_outcome": outcome,
+        "verdict": verdict,
+        "diagnosis": diagnosis,
+        "action": action,
+        "delta_path": delta_path,
+        "requires_human_review": verdict != "CONSISTENT",
     }
 
 

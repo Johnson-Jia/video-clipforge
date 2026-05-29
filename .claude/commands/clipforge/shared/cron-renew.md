@@ -6,13 +6,16 @@
 
 从 memory 的 `cron-schedules.md` 读取对应任务的 cron 表达式。如果 memory 中无配置，使用编排文件中指定的默认值。
 
-## 任务关键词映射
+## 任务关键词匹配
 
-| 任务关键词 | COMMAND |
-|-----------|---------|
-| `github-daily-trending` | `/github-daily-trending` |
-| `github-weekly-trending` | `/github-weekly-trending` |
-| `github-weekly-zhihu` | `/github-weekly-zhihu` |
+> 动态匹配：在 CronList 结果中搜索 `prompt` 字段包含 `<任务关键词>` 的 job。
+> 任务关键词由调用方传入（如 `github-daily-trending`、`finance-weekly` 等），不在此处硬编码。
+
+**匹配规则**：
+1. CronList 列出所有定时任务
+2. 在每个 job 的 `prompt` 字段中搜索包含任务关键词的条目
+3. 如找到多个同关键词 job，全部标记为旧 job 待清理
+4. 创建新 job 后删除所有旧 job，确保最终只剩 1 个
 
 ## 模式（先创建后删除，保证原子性）
 
@@ -20,13 +23,17 @@
 
 ```
 1. 从 memory cron-schedules.md 读取对应任务的 cron 表达式
+   - 如 memory 中无配置，使用编排文件中指定的默认值
+   - 如也无默认值，报错终止
 2. CronList 列出所有定时任务
+   - 如 CronList 失败或返回空，记录警告并重试（最多 2 次）
 3. 找到 prompt 包含 "<任务关键词>" 的所有旧 job
 4. CronCreate 创建新任务（使用读到的 cron 表达式，durable: true）
 5. 确认新 job 创建成功（记录 new_job_id）
 6. 逐个 CronDelete 删除步骤 3 找到的旧 job（排除刚创建的 new_job_id）
 7. 再次 CronList 确认只有 1 个该类型任务存在
-8. 如果确认时发现 > 1 个同关键词任务，重复步骤 6-7
+8. 如果确认时发现 > 1 个同关键词任务，重复步骤 6-7（最多 3 轮）
+9. 超过重试上限后仍有重复，记录错误并终止
 ```
 
 ## 输出模板

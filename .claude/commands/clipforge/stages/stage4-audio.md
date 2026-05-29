@@ -11,7 +11,7 @@
 bash .claude/commands/clipforge/scripts/tts_pipeline.sh "$VOICE" "$RATE"
 ```
 
-> 如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。未指定时默认 `zh-CN-YunjianNeural` +25%。
+> 音色：`{{audio.default_voice|zh-CN-YunjianNeural}}`，语速：`{{audio.default_rate|+25%}}`。分类配置优先，未指定时用默认值。
 >
 > **禁止使用播报腔音色。** `zh-CN-YunyangNeural`（新闻主播风）禁止用于任何短视频项目。
 
@@ -60,7 +60,7 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 
 ### 声音选择
 
-> **如果分类配置中指定了 `audio.default_voice` 和 `audio.default_rate`，优先使用分类配置。** 未指定时默认 `zh-CN-YunjianNeural` +25%。
+> **音色：`{{audio.default_voice|zh-CN-YunjianNeural}}`，语速：`{{audio.default_rate|+25%}}`。** 分类配置优先，未指定时用默认值。
 
 > **禁止使用播报腔音色。** 短视频需要"我在跟你聊/分析"的叙事感，不是"我在念稿子"的播报感。`zh-CN-YunyangNeural`（新闻主播风）禁止用于任何短视频项目。
 
@@ -81,9 +81,9 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 bash .claude/commands/clipforge/scripts/bgm_pipeline.sh
 ```
 
-> `bgm_pipeline.sh` 自动执行：音量守恒校验 → 查表获取推荐 volume → 峰值间距双向校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，循环或裁剪 + 淡入淡出）。无需手动查表或写 JSON。
+> `bgm_pipeline.sh` 自动执行：音量守恒校验 → 查表获取推荐 volume → 峰值间距双向校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，concat 拼接 + 裁剪 + 淡入淡出）。无需手动查表或写 JSON。
 >
-> **时长对齐保证：** Step 3 将 bgm.wav 对齐到旁白时长 + 1s 缓冲，添加 1.5s 淡入 + 2s 淡出。无论 BGM 原始时长长短，产出物与视频时长精确匹配，消除 HyperFrames 循环机制的不确定性。
+> **时长对齐保证：** Step 3 将 bgm.wav 对齐到旁白时长 + 1s 缓冲，添加 1.5s 淡入 + 2s 淡出。使用 concat 拼接（非 stream_loop），确保 WAV 格式下 100% 有声覆盖。
 
 ### 来源优先级（唯一权威）
 
@@ -124,7 +124,7 @@ ffmpeg -y -i bgm_source.wav -ss 10 -to 35 -af "afade=t=in:st=0:d=2,afade=t=out:s
 
 ### 方法 B：Pixabay 批量下载（推荐）
 
-> **详细流程见 `clipforge/_bgm-pixabay`。** 以下为快速操作指引。
+> **详细流程见 `clipforge/shared/bgm-pixabay`。** 以下为快速操作指引。
 
 **核心原理：** Pixabay CDN 直链需 `Referer: https://pixabay.com/` 头，否则 403。通过浏览器搜索页提取 CDN URL，curl 批量下载。
 
@@ -143,7 +143,7 @@ curl -sL -o workspace/bgm/<主题名>-1.mp3 \
   "https://cdn.pixabay.com/audio/YYYY/MM/DD/audio_xxxxxx.mp3"
 ```
 
-> **批量补全：** 对每个需要的风格执行「导航→提取→下载」三步，每个风格 5 首。详见 `clipforge/_bgm-pixabay`。
+> **批量补全：** 对每个需要的风格执行「导航→提取→下载」三步，每个风格 5 首。详见 `clipforge/shared/bgm-pixabay`。
 
 ### 方法 C：其他音乐库
 
@@ -172,10 +172,32 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 >
 > **Red Flag — 跳过 bgm_pipeline.sh**：手动写 volume 值违反"禁止预衰减"原则，且没有经过峰值间距校验。
 
+### BGM 全程有声门禁（IRON LAW — 每次必须执行）
+
+> **事故复盘（2026-05-29）：** BGM 在 28s 后完全静音，导致视频后半段没有配乐。根因：SubAgent 生成 bgm.wav 时截取错误，且未正确执行 bgm_pipeline.sh 的静音尾段检测。此问题已反复出现多次。
+
+**bgm.wav 生成后、进入 Stage 6 之前，必须执行此门禁：**
+
+```bash
+# 获取旁白总时长
+NARR_DUR=$(python -c "import json; d=json.load(open('segment_durations.json')); print(sum(s['actual_duration'] for s in d['segments']))")
+
+# 执行全程有声门禁
+python .claude/commands/clipforge/scripts/bgm_silence_check.py bgm.wav "$NARR_DUR"
+```
+
+**通过条件（全部满足才可通过）：**
+- 旁白时长范围内无连续 >= 3 秒静音段（< -45 dB）
+- 音频覆盖率 >= 80%
+
+**不通过 = 禁止进入 Stage 6。** 必须更换 BGM 源文件或修复 bgm.wav 后重新检测。
+
+> 此门禁独立于 `bgm_pipeline.sh` 的 Step 2.7，是最后一道防线。即使 bgm_pipeline.sh 已执行，也必须再跑此门禁。SubAgent 不得跳过。
+
 ## 4.3 电影音频处理（电影解读模式）
 
 > **仅在电影解读模式触发。** 当场景中包含 `video_clip` 类型时执行。
-> **依赖 `_movie-clips` 阶段产出的 `clip_durations.json`。**
+> **依赖 `shared/movie-clips` 阶段产出的 `clip_durations.json`。**
 
 ### 旁白静音填充
 
@@ -198,13 +220,13 @@ python .claude/commands/clipforge/scripts/movie_narration.py
 
 ### movie_audio.wav
 
-**由 `_movie-clips` 阶段产出，本阶段不消费。** Stage 6 处理电影原音的三路混音。
+**由 `shared/movie-clips` 阶段产出，本阶段不消费。** Stage 6 处理电影原音的三路混音。
 
 ---
 
 ## 约束声明
 
-**Iron Law:** 旁白未经 loudnorm 校验通过 = 音频阶段未完成。BGM 音量未写入 `segment_durations.json` = 音频阶段未完成。
+**Iron Law:** 旁白未经 loudnorm 校验通过 = 音频阶段未完成。BGM 音量未写入 `segment_durations.json` = 音频阶段未完成。**BGM 未通过全程有声门禁 = 音频阶段未完成。**
 
 **TTS 分段顺序校验：** TTS 生成必须按 `narration_segments.json` 的场景顺序执行，输出的 `segment_durations.json` 中各段顺序必须与 `narration_segments.json` 一致。校验：segment_durations.json 第 N 段的 scene 字段 = narration_segments.json 第 N 个对象的 scene 字段。
 

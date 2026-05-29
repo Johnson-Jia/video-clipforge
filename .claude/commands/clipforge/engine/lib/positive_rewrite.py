@@ -20,7 +20,7 @@ def _auto_rewrite(pattern: str, rule_type: str) -> str:
     if "URL" in pattern or "网址" in pattern or "链接" in pattern:
         return "只展示项目名称/产品名称，链接放评论区"
     if "播报腔" in pattern or "播报" in pattern or "Yunyang" in pattern:
-        return "使用叙事感音色（YunjianNeural），保持'我在跟你聊'的自然口吻"
+        return "使用分类配置指定的叙事感音色，保持'我在跟你聊'的自然口吻"
     if "淡入" in pattern:
         return "音频从第一帧立即全音量播放，确保 hook 冲击力"
     if "anim-in" in pattern or "opacity:0" in pattern or "CSS 入场" in pattern:

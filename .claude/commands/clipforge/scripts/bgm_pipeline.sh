@@ -210,7 +210,7 @@ except Exception:
 
         # 依次加入候选 BGM，直到总时长超过目标
         CURRENT_DUR=$BGM_DUR
-        echo "$EXTRA_BGMS" | while read -r candidate; do
+        while read -r candidate; do
             if [ -z "$candidate" ] || [ ! -f "$candidate" ]; then
                 continue
             fi
@@ -243,7 +243,7 @@ except Exception:
             CURRENT_DUR=$(python -c "print(round($CURRENT_DUR + $PART_DUR - $XFADE_DUR, 2))")
             echo "  拼接 $(basename "$candidate"): 累计 ${CURRENT_DUR}s / 目标 ${TARGET_DUR}s"
             IDX=$((IDX + 1))
-        done
+        done < <(echo "$EXTRA_BGMS")
 
         # 找到最终合并文件
         FINAL_IDX=$(printf "%02d" $IDX)
@@ -273,16 +273,32 @@ except Exception:
     fi
 fi
 
-# ── 默认：stream_loop 循环模式 ──
-echo "循环对齐: ${BGM_DUR}s → ${TARGET_DUR}s"
-ffmpeg -y -stream_loop -1 -i "$BGM_FILE" \
+# ── 默认：concat 拼接模式（取代 stream_loop，WAV 格式可靠） ──
+# stream_loop 对 WAV 文件不可靠：RIFF 头声明 data chunk 大小后，
+# seek 回去再读会超过声明长度，ffmpeg 输出静音。
+# 改用 concat 协议：将 BGM 复制足够份数拼接，再截取目标时长。
+echo "拼接对齐: ${BGM_DUR}s × N → ${TARGET_DUR}s"
+
+COPIES=$(python -c "import math; print(math.ceil($TARGET_DUR / $BGM_DUR + 0.5))")
+echo "需要 ${COPIES} 份拼接（${BGM_DUR}s × ${COPIES} = $(python -c "print(round($BGM_DUR * $COPIES, 1))")s）"
+
+# 生成 concat 清单
+BGM_ABS=$(python -c "import os; print(os.path.abspath('$BGM_FILE'))")
+> _bgm_concat.txt
+for _i in $(seq 1 "$COPIES"); do
+    echo "file '${BGM_ABS}'" >> _bgm_concat.txt
+done
+
+ffmpeg -y -f concat -safe 0 -i _bgm_concat.txt \
     -t "$TARGET_DUR" \
     -af "afade=t=in:st=0:d=1.5,afade=t=out:st=${FADE_START}:d=2" \
     -c:a pcm_s16le bgm_aligned.wav
 
+rm -f _bgm_concat.txt
+
 mv "$BGM_FILE" bgm_orig.wav
 mv bgm_aligned.wav "$BGM_FILE"
-echo "OK: BGM 已对齐到 ${TARGET_DUR}s（含 1s 缓冲 + 淡入 1.5s + 淡出 2s）"
+echo "OK: BGM 已拼接对齐到 ${TARGET_DUR}s（${COPIES} 份 concat + 淡入 1.5s + 淡出 2s）"
 
 echo "=== BGM 管线完成 ==="
 echo "segment_durations.json meta.bgm_volume 已更新"

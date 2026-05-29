@@ -1,0 +1,48 @@
+rules:
+  - id: "R-FB-001"
+    type: FORBIDDEN_ACTION
+    pattern: "跳过即时机器评分直接进入 cleanup"
+    positive: "delivery 后必须运行 gate 全量校验并记录 score_report.json"
+    guardrail: "score_report.json 缺失但 .cleaned 已存在"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage8-feedback"
+    source: "两阶段评分设计"
+
+  - id: "R-FB-002"
+    type: FORBIDDEN_METHOD
+    pattern: "伪造播放数据或人类评分"
+    positive: "数据必须来自平台 API 或真实用户交互"
+    guardrail: "feedback.yaml 中的数据无法追溯来源"
+    detection: {keywords: [], semantic_check: true}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage8-feedback"
+    source: "两阶段评分设计"
+
+  - id: "R-FB-003"
+    type: FORBIDDEN_LOGIC
+    pattern: "机器评分与实际表现显著偏离时不校准"
+    positive: "预测偏差超过阈值时必须产出校准信号"
+    guardrail: "calibration.verdict 非 CONSISTENT 但无对应 Delta"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage8-feedback"
+    source: "两阶段评分设计"
+
+  - id: "R-FB-004"
+    type: FORBIDDEN_ACTION
+    pattern: "仅用播放数据校准，忽略人类评分信号"
+    positive: "校准必须同时参考播放数据和人类评分（交互模式下）"
+    guardrail: "calibration 诊断未提及人类评分的最薄弱环节"
+    detection: {keywords: [], semantic_check: true}
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage8-feedback"
+    source: "两阶段评分设计"

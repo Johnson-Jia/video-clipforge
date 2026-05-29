@@ -59,7 +59,7 @@ def read_design_style(project_dir):
     return meta
 
 
-def generate_cover_html(project_dir, title, design_meta):
+def generate_cover_html(project_dir, title, design_meta, scene_label=""):
     """生成 6 层封面 HTML"""
     style = design_meta.get('style', '科技赛博')
     accent_cool = '#00f5d4' if '赛博' in style or '科技' in style else '#4cc9f0'
@@ -180,7 +180,7 @@ def generate_cover_html(project_dir, title, design_meta):
   <div class="glow-cool"></div>
   <div class="container">
     <div class="date">{date_text}</div>
-    <div class="scene-label">GitHub星探</div>
+    <div class="scene-label">{scene_label}</div>
     <div class="badge">{badge_text}</div>
     <div class="main-title">{title}</div>
     <div class="divider"></div>
@@ -199,6 +199,7 @@ def main():
     parser = argparse.ArgumentParser(description='生成封面 HTML 6 层模板')
     parser.add_argument('--project-dir', default='.', help='项目目录')
     parser.add_argument('--title', default=None, help='覆盖标题')
+    parser.add_argument('--scene-label', default='', help='场景标签（如频道名）')
     args = parser.parse_args()
 
     project_dir = os.path.abspath(args.project_dir)
@@ -214,7 +215,7 @@ def main():
     else:
         title = '精彩内容'
 
-    html = generate_cover_html(project_dir, title, design_meta)
+    html = generate_cover_html(project_dir, title, design_meta, scene_label=args.scene_label)
 
     output_path = os.path.join(project_dir, 'cover.html')
     with open(output_path, 'w', encoding='utf-8') as f:

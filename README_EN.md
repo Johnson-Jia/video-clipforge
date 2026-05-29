@@ -47,7 +47,7 @@ Most AI video tools are GUI apps with fixed templates. ClipForge takes a differe
 
 ClipForge converts any content — text, URLs, PDFs, GitHub trending data, and more — into vertical short videos (1080x1920) with:
 
-- **DAG-orchestrated 8-stage pipeline** — each stage is a self-contained skill with explicit inputs/outputs
+- **DAG-orchestrated pipeline** — each stage is a self-contained skill with explicit inputs/outputs
 - **Category system** — content-specific rules (data, style, voice, hashtags) via pluggable category profiles
 - **Three video modes** — standard multi-topic (45-55s), deep-dive single topic (45-60s), movie commentary (3-5min)
 - **Embedded audio** — narration and BGM embedded in HTML via `<audio>`, mixed natively by HyperFrames
@@ -67,7 +67,9 @@ ClipForge converts any content — text, URLs, PDFs, GitHub trending data, and m
 | 5 | assets | Visual asset preparation (optional, pure CSS/HTML) |
 | 6 | video | Three-layer HTML + 13 components + GSAP animation → HyperFrames rendering |
 | 7 | delivery | Cover frame embedding + cover image + 3 Douyin copy styles + dual-version output |
-| 8 | cleanup | Intermediate file removal |
+| — | machine-scoring | Post-delivery gate check + machine prediction score |
+| 8 | feedback | Playback data + human rating → machine scoring calibration (manual trigger, optional) |
+| — | cleanup | Intermediate file removal per retention policy |
 
 The DAG is defined in [`schema.yaml`](.claude/commands/clipforge/schema.yaml) — artifact dependencies, conditional stages, optional stages, all in one place.
 
@@ -99,6 +101,14 @@ First run auto-detects and installs dependencies (HyperFrames).
 
 Claude guides you through each stage with confirmation at every step.
 
+### Data Feedback
+
+```
+/clipforge-feedback
+```
+
+Analyze playback data and calibrate machine scoring. See below for details.
+
 ### Cron Automation
 
 | Task | Command | Description |
@@ -121,13 +131,46 @@ ClipForge follows three design principles:
 
 | Subsystem | File | Purpose |
 |-----------|------|---------|
-| Director's Toolkit | `_director-toolkit.md` | 5 must-answer questions + visual vocabulary + viral case studies; required before Stage 2/3/6 |
-| Render Safety | `_render-safety.md` | HyperFrames incident post-mortems: no CSS anim-in, three-layer architecture, safe area padding |
-| Content Norms | `_shared-rules.md` | Phrasing, on-screen text language, CTA timing, URL prohibition, golden 3-second rule |
+| Director's Toolkit | `shared/director-toolkit.md` | 5 must-answer questions + visual vocabulary + viral case studies; required before Stage 2/3/6 |
+| Render Safety | `shared/render-safety.md` | HyperFrames incident post-mortems: no CSS anim-in, three-layer architecture, safe area padding |
+| Content Norms | `shared/shared-rules.md` | Phrasing, on-screen text language, CTA timing, URL prohibition, golden 3-second rule |
+| Machine Scoring | `shared/machine-scoring.md` | Post-delivery gate check producing machine prediction score |
+| Visual Phasing | `shared/visual-phasing.md` | Phase splitting rules for scenes > 15s |
 | Category Config | `categories/github.md` | GitHub-specific data source, selection strategy, voice, hashtag overrides |
-| Viral Case Library | `_viral-cases/` | Multi-dimensional analysis of proven viral videos with extractable patterns |
 
 See [Architecture Guide](docs/架构设计.md) for the full DAG semantics, SubAgent dispatch, and error recovery strategy.
+
+## Self-Evolution
+
+ClipForge doesn't produce fixed output — it learns from playback data and continuously evolves.
+
+**How it works:**
+
+```
+Produce video → Machine scoring → Publish → You import playback data → Compare prediction vs actual → Auto-adjust rules
+```
+
+1. After each video is produced, ClipForge automatically generates a **machine prediction score** (`score_report.json`)
+2. 1-2 days after publishing, export playback data from each platform
+3. ClipForge compares "machine prediction" vs "actual performance", identifies deviations and produces calibration signals
+4. Calibration signals are written to the rule library after human confirmation, making the next prediction more accurate
+
+**How to import data:**
+
+Place platform export files in `workspace/sources/视频数据/YYYY-MM-DD/`:
+
+| Platform | Export path |
+|----------|-------------|
+| Douyin | Creator Center → Data Center → Video Analysis → Published → List → Select All → Export |
+| Bilibili | Creator Center → Data Overview → Recent Videos Comparison → Export (10 per export, repeat as needed) |
+| WeChat Video | Video Account Assistant → Data Center → Video Data → Single Video → Download |
+| Xiaohongshu | Creator Platform → Data Dashboard → Content Analysis → Note Data → All → Export |
+
+**Three trigger methods:**
+
+- **Automatic**: After producing a video, ClipForge auto-detects new data and prompts you to analyze
+- **Manual**: Run `/clipforge-feedback` to select a project for scoring calibration
+- **Guided**: Simply tell ClipForge "analyze recent playback data" and it handles the full flow
 
 ## Design Philosophy
 
@@ -157,7 +200,7 @@ ClipForge is inspired by two open-source projects:
 
 - **New content source:** Add a cron file (like `github-daily-trending.md`) that fetches data and dispatches SubAgents
 - **New category:** Create a config file in `categories/` defining category-specific rule overrides
-- **New stage:** Add an artifact to `schema.yaml` and create a corresponding `stageN-xxx.md` skill file
+- **New stage:** Add an artifact to `schema.yaml` and create a corresponding `stages/stageN-xxx.md` skill file
 - **New video mode:** Define mode rules in the stage files; the controller auto-selects based on content
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -181,68 +224,17 @@ clipforge/
 │   ├── github-weekly-zhihu.md             # Weekly article cron
 │   └── clipforge/
 │       ├── schema.yaml                    # Artifact DAG (single source of truth)
+│       ├── stages/                        # Stage execution guides (stage0 ~ stage8)
+│       ├── shared/                        # Shared skills (render safety, cleanup, etc.)
 │       ├── categories/                    # Category profiles
 │       │   ├── _category-schema.md        # Category config format spec
 │       │   └── github.md                  # GitHub category
-│       ├── stage0-env.md                  # Stage 0: Environment check
-│       ├── stage1-content.md              # Stage 1: Content acquisition
-│       ├── stage2-analysis.md             # Stage 2: Director's thinking + style
-│       ├── stage3-scenes.md               # Stage 3: Scene breakdown + narration
-│       ├── stage4-audio.md                # Stage 4: TTS + BGM
-│       ├── stage5-assets.md               # Stage 5: Asset preparation
-│       ├── stage6-components.md           # Stage 6: Component library reference
-│       ├── stage6-production.md           # Stage 6: HTML assembly + rendering
-│       ├── stage7-delivery.md             # Stage 7: Cover + copywriting + delivery
-│       ├── templates/                     # SubAgent prompt templates
-│       │   ├── subagent-1-content.md      # Batch 1: Content + design + narration
-│       │   ├── subagent-2-audio.md        # Batch 2: Audio + assets
-│       │   ├── subagent-3-video.md        # Batch 3: Video rendering
-│       │   └── subagent-4-delivery.md     # Batch 4: Delivery + cleanup
-│       ├── _shared-rules.md               # Content norms (phrasing/text/CTA)
-│       ├── _cleanup-rules.md              # File retention rules
-│       ├── _cron-renew.md                 # Cron self-renewal
-│       ├── _director-toolkit.md           # Director's toolkit (5 questions + visual vocab)
-│       ├── _render-safety.md              # Render safety + three-layer architecture
-│       ├── _movie-clips.md                # Movie clip extraction (conditional)
-│       ├── _bgm-pixabay.md                # Pixabay BGM download helper
-│       ├── _viral-cases/                  # Viral video case library
-│       │   └── 05-19-douyin.md            # 05-19 viral case review
+│       ├── engine/                        # Self-evolution engine (gates/attribution/trace)
+│       ├── rules/                         # Constraint rules (YAML)
+│       ├── skills/                        # Skill declarations (four-atom model)
+│       ├── patterns/                      # Empirical patterns (data-driven)
 │       ├── scripts/                       # Tool scripts
-│       │   ├── github_trending.py         # GitHub Trending scraper
-│       │   ├── generate_bgm.py            # MusicGen BGM generator
-│       │   ├── tts_segments.py            # Segmented TTS pipeline
-│       │   ├── tts_pipeline.sh            # TTS workflow script
-│       │   ├── bgm_pipeline.sh            # BGM processing pipeline
-│       │   ├── bgm_gap_check.py           # BGM gap detection
-│       │   ├── loudnorm.sh                # loudnorm normalization
-│       │   ├── polyphone_fix.py           # TTS polyphone preprocessing
-│       │   ├── assemble_final.sh          # TS concat lossless assembly
-│       │   ├── merge_video_audio.sh       # Audio/video merge
-│       │   ├── merge_srt.py               # SRT subtitle merge
-│       │   ├── render_cover.sh            # Cover rendering
-│       │   ├── validate_cover.py          # Cover structure gate
-│       │   ├── stage6_gate.sh             # Stage 6 A/V gate
-│       │   ├── director_gate.py           # Director's thinking gate
-│       │   ├── frame_analysis.py          # Frame analysis tool
-│       │   ├── movie_narration.py         # Movie narration synthesis
-│       │   ├── movie_xfade.sh             # Movie clip xfade
-│       │   ├── env_check.sh               # Environment check
-│       │   ├── cleanup_project.sh         # Project cleanup
-│       │   └── validate_schema.py         # Schema validation
 │       └── components/                    # Visual component library (13 total)
-│           ├── hero_card.html             # Hero card
-│           ├── project_full_card.html     # Full project info card
-│           ├── text_reveal.html           # Text reveal animation
-│           ├── code_rain.html             # Code rain effect
-│           ├── particle_burst.html        # Particle burst
-│           ├── pulse_orb.html             # Pulse orb
-│           ├── star_counter.html          # Star counter
-│           ├── timeline_flow.html         # Timeline flow
-│           ├── compare_split.html         # Compare split
-│           ├── data_viz.html              # Data visualization
-│           ├── speech_bubble.html         # Speech bubble
-│           ├── char_overlay.html          # Character overlay
-│           └── three_scene.html           # Three.js 3D scene
 ├── install.sh                             # One-shot dependency installer
 └── workspace/                             # Output (gitignored)
 ```

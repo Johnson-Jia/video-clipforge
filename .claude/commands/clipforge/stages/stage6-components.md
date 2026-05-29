@@ -1,7 +1,8 @@
 # Stage 6 视觉组件参考手册
 
-> Stage 6 编写 HTML 组合时的组件库参考。每个组件包含 HTML 结构、CSS 样式和 GSAP 动画模板。
-> 所有组件遵循 HyperFrames 渲染安全规范：默认 opacity:1，入场由 GSAP .from() 驱动。
+> **此文件不是独立 stage，是 `stage6-production.md` 的参考附录。** schema.yaml 只引用 `stages/stage6-production`，本文件由 Stage 6 执行时按需加载。
+>
+> 组件库参考。每个组件包含 HTML 结构、CSS 样式和 GSAP 动画模板。所有组件遵循 HyperFrames 渲染安全规范：默认 opacity:1，入场由 GSAP .from() 驱动。
 
 ## 通用规则
 
@@ -52,7 +53,7 @@ tl.add('breath-start')
 ## 视觉设计：格言 + 反面清单
 
 > **你是导演，不是操作员。** 读内容，想画面，用工具箱实现，不碰红线。不查表、不套公式、每个场景独立思考。
-> 执行前读取 `_director-toolkit` 获取导演思维工具——5 个必答题帮你从内容推导视觉，视觉词汇表是你的工具箱，导演笔记校准直觉。
+> 执行前读取 `shared/director-toolkit` 获取导演思维工具——5 个必答题帮你从内容推导视觉，视觉词汇表是你的工具箱，导演笔记校准直觉。
 
 ### 设计格言（5 条正面引导）
 
@@ -90,7 +91,7 @@ tl.add('breath-start')
 
 ### 角色选择原则
 
-- 角色从 `char-effect-library.html` 中标记为 SELECTED 的样例中选取
+- 角色从 `char_overlay.html` 组件中选取预设样式
 - 一个视频内使用**同一个角色**（保持一致性）
 - 角色大小约 120-150px，放在不遮挡核心内容的位置
 - 角色带 idle 动画（idleBounce/idleSway/idleBreathe），保持画面活力

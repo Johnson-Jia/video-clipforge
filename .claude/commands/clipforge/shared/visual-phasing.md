@@ -1,6 +1,6 @@
 # 视觉分镜（Visual Phasing）参考
 
-> **当场景时长 >15 秒时必须使用。** 将一个 `.clip` 拆分为多个视觉阶段（phase），每 phase 8-15 秒，通过 GSAP timeline 控制渐进揭示。遵守 `_shared-rules` §6 的切换频率规则。
+> **当场景时长 >15 秒时必须使用。** 将一个 `.clip` 拆分为多个视觉阶段（phase），每 phase 8-15 秒，通过 GSAP timeline 控制渐进揭示。遵守 `shared/shared-rules` §6 的切换频率规则。
 
 ## 核心原理
 
@@ -17,7 +17,7 @@
 
 ```html
 <div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
-  <!-- scene-wrap 不设 padding — padding 由 .phase 统一管理（单层 padding 原则，见 _render-safety §1.4a） -->
+  <!-- scene-wrap 不设 padding — padding 由 .phase 统一管理（单层 padding 原则，见 shared/render-safety §1.4a） -->
   <div class="scene-wrap">
     <!-- 三层架构不变 -->
     <div class="layer-bg"><!-- 背景渐变 + 光晕 --></div>
@@ -42,7 +42,7 @@
 - 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，自带 `padding: 180px 80px 220px 80px; display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中（不需要手动加 inline flex）
 - **scene-wrap 不设 padding** — padding 统一由 `.phase` 提供（单层 padding 原则）
 - **禁止** scene-wrap 和 .phase 同时设置 padding（双重 padding 事故：内容偏左上，可用宽度仅 74%）
-- Phase 1 是 CSS 默认可见（opacity:1），遵守 `_render-safety.md` §1.1
+- Phase 1 是 CSS 默认可见（opacity:1），遵守 `shared/render-safety.md` §1.1
 - Phase 2+ **不在 CSS 中设 opacity:0**，由 GSAP `.set()` 在运行时初始化（遵守 §1.1a 豁免）
 - 所有 phase 共享同一个 `.layer-bg` 和 `.layer-fx`（背景和特效不随 phase 切换）
 
