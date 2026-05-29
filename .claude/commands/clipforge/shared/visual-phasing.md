@@ -136,12 +136,12 @@ S.forEach((sc, i) => {
 
 | visual_type | 画面布局 | 参考组件 |
 |------------|---------|---------|
-| `hero` | 大标题 + 关键数字 + 副标题 | HeroCard 风格 |
+| `hero` | 大标题 + 关键数字 + 副标题 | `components/content/hero_card.html` |
 | `list` | 标题 + 带序号的卡片列表 | — |
-| `data` | 标题 + 数据行（label + value） | DataViz 风格 |
-| `compare` | 标题 + 双栏对比 | CompareSplit 风格 |
-| `timeline` | 标题 + 步骤节点 | TimeLineFlow 风格 |
-| `highlight` | 大号结论文字 + 强调色 | TextReveal 风格 |
+| `data` | 标题 + 数据行（label + value） | `components/content/data_viz.html` |
+| `compare` | 标题 + 双栏对比 | `components/content/compare_split.html` |
+| `timeline` | 标题 + 步骤节点 | `components/content/timeline_flow.html` |
+| `highlight` | 大号结论文字 + 强调色 | `components/content/text_reveal.html` |
 
 每种类型的具体 HTML/CSS 骨架见 `stage6-components.md` 的「Phase 视觉模板」章节。
 
@@ -164,11 +164,11 @@ tl.to('.current-scene .scene-content', { scale: 1.02, duration: 0.15, ease: 'pow
 
 | 沉浸模式 | Canvas 效果 | Three.js 3D |
 |---------|------------|-------------|
-| hyper-pace | CodeRain + ParticleBurst | 否 |
-| hidden-gem | PulseOrb | 否 |
-| mega-update | ParticleBurst | ThreeScene(旋转立方体群) |
-| versus | PulseOrb | 否 |
+| hyper-pace | `components/fx/code_rain.html` + `components/fx/particle_burst.html` | 否 |
+| hidden-gem | `components/fx/pulse_orb.html` | 否 |
+| mega-update | `components/fx/particle_burst.html` | `components/fx/three_scene.html`(旋转立方体群) |
+| versus | `components/fx/pulse_orb.html` | 否 |
 | story-time | — | 否 |
-| fun-tool | ParticleBurst | 否 |
+| fun-tool | `components/fx/particle_burst.html` | 否 |
 
 Three.js 使用 `window.__hfThreeTime` 驱动，注册到 GSAP timeline 的 seek 回调。详见 `stage6-components.md` 的 ThreeScene 组件。
