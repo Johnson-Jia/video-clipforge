@@ -187,15 +187,22 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 ## 6.4b 特效工坊（组件匹配 + 新特效创建）
 
-> **触发条件：** Stage 6 正式开始时，读取 `component_manifest.md`。如果存在 `new` 条目则启动工坊；否则跳过。
+> **两阶段触发：**
+> 1. §6.4 step 3a 负责生成 manifest — 如果 `component_manifest.md` 不存在，执行下方匹配流程
+> 2. 本节负责处理 `new` 条目 — 如果已生成的 manifest 含 `new` 标记，启动工坊创建新特效；否则跳过
 
 ### 匹配流程
 
 1. **读取 visual_intent** — 从 `narration_segments.json` 中每个场景的 `visual_intent` 字段获取导演意图
 2. **读取 registry.yaml** — 加载 `components/registry.yaml` 组件注册表
-3. **粗筛** — 按 layer/tags/emotion_range/complexity 过滤候选组件
+3. **粗筛** — 按 layer/tags/emotion_range/complexity 过滤候选组件（匹配方式：AI 语义理解，允许词形变体如 warm↔warmth、excitement↔energy）
 4. **精排** — AI 语义理解：读取 visual_intent + 候选组件 description + 相邻场景已选组件，选择最佳匹配
-5. **输出 component_manifest.md** — 每个场景 × 每层 = 使用组件 + 来源(library/new) + 参数变体
+5. **回退规则（按层）：**
+   - **bg 层**：bg 组件本质是渐变+光晕，通过调色即可覆盖绝大多数场景。粗筛为空时，按 `color_hint` 色温方向选最近的 bg 组件（暖色→light_field，冷色→gradient_mesh），**不标记 `new`**
+   - **fx 层**：粗筛为空时先考虑 fx:null（不使用特效），仅当场景明确需要动态装饰且无候选时才标记 `new`
+   - **content 层**：粗筛为空时，回退到 §6.4 "场景→组件参考" 表的经验映射
+6. **处理 null 场景** — `visual_intent` 为 null 的短场景（≤4s），manifest 中写 `auto`，表示 AI 自主推导，不指定组件
+7. **输出 component_manifest.md** — 每个场景 × 每层 = 使用组件 + 来源(library/new/auto) + 参数变体
 
 ### 新特效创建（手动模式）
 
