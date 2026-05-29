@@ -1,21 +1,18 @@
 <div align="center">
 
 # ClipForge · 把知识变成短视频
-
 告诉它你想讲什么，它帮你写稿、配音、做画面、出成片。 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 </div>
 
 <div align="center">
 
-| | | | | |
-|:---:|:---:|:---:|:---:|:---:|
-| <img src="docs/images/showcase/cover-daily.png" width="140"> | <img src="docs/images/showcase/cover-spotlight.png" width="140"> | <img src="docs/images/showcase/cover-tech-dispatch.png" width="140"> | <img src="docs/images/showcase/cover-internet-reports.png" width="140"> | <img src="docs/images/showcase/cover-weekly.png" width="140"> |
-| GitHub 星探 · 每日热门 | 开源亮点 · 单项目深度 | 科技速递 · 行业趋势 | 互联网报告 · 深度解读 | 周度汇总 · 一周精选 |
-
-▲ 以上每一条视频，都是 ClipForge 自动生成的。不是 PPT 翻页，不是图片拼接 — 有动画、有旁白、有配乐，是真正的短视频。
-
+|                                                              | | | | |
+|:------------------------------------------------------------:|:---:|:---:|:---:|:---:|
+| <img src="docs/images/showcase/cover-daily.png" width="160"> | <img src="docs/images/showcase/cover-spotlight.png" width="160"> | <img src="docs/images/showcase/cover-tech-dispatch.png" width="160"> | <img src="docs/images/showcase/cover-internet-reports.png" width="160"> | <img src="docs/images/showcase/cover-weekly.png" width="160"> |
+|                       GitHub 星探 · 每日热门                       | 开源亮点 · 单项目深度 | 科技速递 · 行业趋势 | 互联网报告 · 深度解读 | 周度汇总 · 一周精选 |
 </div>
+▲ 以上每一条视频，都是 ClipForge 自动生成的。不是 PPT 翻页，不是图片拼接 — 有动画、有旁白、有配乐，是真正的短视频。
 
 ---
 
