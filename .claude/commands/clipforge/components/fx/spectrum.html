@@ -1,0 +1,132 @@
+<!--
+@ComponentMeta
+name: spectrum
+layer: fx
+tags: [spectrum, impact, analysis, gradient, levels, color-strip]
+emotion_range: [analysis, depth]
+visual_density: medium
+complexity: css-only
+description: 冲击光谱特效，色带 + 垂直条形图，展示影响程度分布或能力层级分析
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="spectrum-wrap">
+  <div class="spectrum-heading">
+    <span class="spectrum-white">冲击光谱</span><br>
+    <span class="spectrum-accent">从轻度变化到颠覆替代</span>
+  </div>
+  <div class="spectrum-sub">4 个层级的 AI 冲击程度分布</div>
+
+  <!-- 色带模式 -->
+  <div class="spectrum-card">
+    <div class="spectrum-card-title">冲击光谱色带</div>
+    <div class="spectrum-strip">
+      <span class="sp sp-1"></span>
+      <span class="sp sp-2"></span>
+      <span class="sp sp-3"></span>
+      <span class="sp sp-4"></span>
+    </div>
+    <div class="spectrum-labels">
+      <span>培训什么</span><span>怎么培训</span><span>谁来培训</span><span>用什么工具</span>
+    </div>
+    <div class="spectrum-ends">
+      <span class="spectrum-low">← 轻度变化</span>
+      <span class="spectrum-high">颠覆式替代 →</span>
+    </div>
+  </div>
+
+  <!-- 垂直条形图模式 -->
+  <div class="spectrum-bars">
+    <div class="spec-row">
+      <div class="spec-label" style="color:#10B981">培训内容</div>
+      <div class="spec-track"><div class="spec-fill" data-width="30" style="background:linear-gradient(90deg,rgba(16,185,129,0.3),#10B981)"></div></div>
+      <div class="spec-pct" style="color:#10B981">30%</div>
+      <div class="spec-desc">轻度变化</div>
+    </div>
+    <div class="spec-row">
+      <div class="spec-label" style="color:#06B6D4">培训方式</div>
+      <div class="spec-track"><div class="spec-fill" data-width="55" style="background:linear-gradient(90deg,rgba(6,182,212,0.3),#06B6D4)"></div></div>
+      <div class="spec-pct" style="color:#06B6D4">55%</div>
+      <div class="spec-desc">中度影响</div>
+    </div>
+    <div class="spec-row">
+      <div class="spec-label" style="color:#3B82F6">培训师资</div>
+      <div class="spec-track"><div class="spec-fill" data-width="75" style="background:linear-gradient(90deg,rgba(59,130,246,0.3),#3B82F6)"></div></div>
+      <div class="spec-pct" style="color:#3B82F6">75%</div>
+      <div class="spec-desc">重度重构</div>
+    </div>
+    <div class="spec-row">
+      <div class="spec-label" style="color:#8B5CF6">培训工具</div>
+      <div class="spec-track"><div class="spec-fill" data-width="95" style="background:linear-gradient(90deg,rgba(139,92,246,0.3),#8B5CF6)"></div></div>
+      <div class="spec-pct" style="color:#8B5CF6">95%</div>
+      <div class="spec-desc">颠覆替代</div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.spectrum-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; width: 100%;
+}
+.spectrum-heading { font-size: 36px; font-weight: 900; margin-bottom: 12px; text-align: center; line-height: 1.3; }
+.spectrum-white { color: var(--text-primary, #F9FAFB); }
+.spectrum-accent {
+  background: linear-gradient(135deg, #8B5CF6, #F43F5E);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.spectrum-sub { font-size: 18px; color: var(--text-dim, #6B7280); margin-bottom: 36px; }
+.spectrum-card {
+  width: 100%;
+  background: rgba(17,24,39,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px; padding: 32px;
+  margin-bottom: 32px;
+}
+.spectrum-card-title {
+  font-size: 16px; font-weight: 700; color: var(--text-dim, #6B7280);
+  text-transform: uppercase; letter-spacing: 2px; margin-bottom: 24px;
+}
+.spectrum-strip {
+  display: flex; height: 20px; border-radius: 10px; overflow: hidden; gap: 3px;
+  margin-bottom: 16px;
+}
+.spectrum-strip .sp { height: 100%; border-radius: 6px; }
+.sp-1 { flex: 1; background: #10B981; opacity: 0.4; }
+.sp-2 { flex: 1.5; background: #06B6D4; opacity: 0.6; }
+.sp-3 { flex: 2; background: #3B82F6; opacity: 0.8; }
+.sp-4 { flex: 2.5; background: #8B5CF6; }
+.spectrum-labels { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.spectrum-labels span { font-size: 14px; color: var(--text-secondary, #9CA3AF); }
+.spectrum-ends { display: flex; justify-content: space-between; }
+.spectrum-low { font-size: 14px; color: #10B981; }
+.spectrum-high { font-size: 14px; color: #8B5CF6; }
+
+.spectrum-bars {
+  width: 100%; display: flex; flex-direction: column; gap: 20px;
+}
+.spec-row { display: flex; align-items: center; gap: 14px; }
+.spec-label { font-size: 18px; font-weight: 700; width: 140px; text-align: right; }
+.spec-track {
+  flex: 1; height: 32px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px; overflow: hidden;
+}
+.spec-fill { height: 100%; border-radius: 8px; width: 0%; }
+.spec-pct { font-size: 18px; font-weight: 800; width: 60px; }
+.spec-desc { font-size: 14px; color: var(--text-dim, #6B7280); width: 100px; }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.spectrum-heading', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime)
+  .from('.spectrum-card', {opacity:0, scale:0.95, duration:0.4, ease:'power3.out'}, startTime + 0.15)
+  .from('.sp', {scaleX:0, duration:0.6, ease:'power2.out', stagger:0.08, transformOrigin:'left center'}, startTime + 0.3)
+  .from('.spec-row', {opacity:0, x:-20, duration:0.3, stagger:0.1, ease:'power3.out'}, startTime + 0.5);
+document.querySelectorAll('.spec-fill').forEach(function(bar) {
+  var w = bar.getAttribute('data-width') + '%';
+  tl.to(bar, {width: w, duration: 0.7, ease:'power2.out'}, startTime + 0.6);
+});
+</script>
