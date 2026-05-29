@@ -112,7 +112,7 @@ claude          # 启动 Claude Code，技能自动加载
 /clipforge 制作一个关于 XXX 的视频
 ```
 
-**前置依赖：** Node.js >= 22、FFmpeg、edge-tts、yt-dlp。详见 [安装指南](docs/getting-started.md)。
+**前置依赖：** Node.js >= 22、FFmpeg、edge-tts、yt-dlp。详见 [安装指南](docs/快速开始.md)。
 
 ## 使用方式
 
@@ -181,7 +181,7 @@ zh-CN-YunjianNeural
 
 参照 `github-daily-trending.md`，把数据获取和分类 ID 换成你的即可。
 
-详见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [架构文档](docs/architecture.md)。
+详见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [架构文档](docs/架构设计.md)。
 
 ## 项目结构
 
