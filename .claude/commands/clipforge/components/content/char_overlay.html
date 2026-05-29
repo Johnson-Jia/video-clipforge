@@ -1,0 +1,47 @@
+<!--
+@ComponentMeta
+name: char_overlay
+layer: content
+tags: [character, reaction, emotion, avatar, expression]
+emotion_range: [neutral, amusement, shock, excitement]
+visual_density: low
+complexity: css-only
+description: 码力角色覆盖层，6 种表情 SVG（shock/think/cool/explode/tease/moved），根据 narration 的 character_expression 选择
+parameters:
+  expression: { default: "explode", range: ["shock", "think", "cool", "explode", "tease", "moved"] }
+/ComponentMeta
+-->
+<!-- HTML (explode 表情示例) -->
+<div class="char-overlay" data-expression="explode">
+  <svg class="char-svg" viewBox="0 0 200 280" width="180" height="250">
+    <!-- 身体 -->
+    <rect x="60" y="140" width="80" height="100" rx="16" fill="#4a4a6a"/>
+    <!-- 头 -->
+    <circle cx="100" cy="90" r="55" fill="#6a6a8a"/>
+    <!-- 眼睛 — explode: 星星眼 -->
+    <text x="78" y="95" font-size="24" fill="#f0b429">★</text>
+    <text x="112" y="95" font-size="24" fill="#f0b429">★</text>
+    <!-- 嘴 — explode: 大张嘴 -->
+    <ellipse cx="100" cy="120" rx="18" ry="14" fill="#2a2a4a"/>
+    <!-- 头发 — explode: 爆炸发型 -->
+    <path d="M55,55 L40,20 L70,45 L60,10 L90,40 L85,5 L110,38 L120,10 L130,45 L140,20 L145,55"
+          stroke="#f0b429" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<!-- CSS -->
+<style>
+.char-overlay {
+  position: absolute; bottom: 200px; left: 60px;
+  z-index: 10;
+}
+.char-svg { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.char-overlay', {
+  opacity:0, x:-40, duration:0.4,
+  ease:'back.out(1.5)'
+}, startTime);
+</script>

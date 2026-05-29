@@ -1,0 +1,59 @@
+<!--
+@ComponentMeta
+name: timeline_flow
+layer: content
+tags: [timeline, history, steps, roadmap, evolution]
+emotion_range: [progress, anticipation]
+visual_density: standard
+complexity: css-only
+description: 时间线叙事，竖直节点链展示项目发展历程或版本迭代
+parameters:
+  node_gap: { default: 60, range: [40, 80] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="timeline-flow">
+  <div class="timeline-line"></div>
+  <div class="timeline-node" data-index="0">
+    <div class="node-dot"></div>
+    <div class="node-content">
+      <div class="node-date">2024.01</div>
+      <div class="node-text">项目启动</div>
+    </div>
+  </div>
+  <!-- 更多节点... -->
+</div>
+
+<!-- CSS -->
+<style>
+.timeline-flow {
+  position: relative; width: 100%;
+  display: flex; flex-direction: column; gap: 60px;
+}
+.timeline-line {
+  position: absolute; left: 60px; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent-cool), var(--accent-warm));
+  opacity: 0.5;
+}
+.timeline-node {
+  display: flex; align-items: center; gap: 40px;
+  margin-left: 60px;
+}
+.node-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent-cool);
+  box-shadow: 0 0 20px var(--accent-cool);
+  flex-shrink: 0;
+}
+.node-date { font-size: 24px; color: var(--accent-warm); font-weight: 700; }
+.node-text { font-size: 32px; color: #fff; margin-top: 8px; }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.timeline-node', {
+  opacity:0, x:-30, duration:0.3,
+  ease:'power3.out', stagger:0.2
+}, startTime);
+</script>
