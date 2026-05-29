@@ -9,8 +9,8 @@
 
 |                                                              | | | | |
 |:------------------------------------------------------------:|:---:|:---:|:---:|:---:|
-| <img src="docs/images/showcase/cover-daily.png" width="160"> | <img src="docs/images/showcase/cover-spotlight.png" width="160"> | <img src="docs/images/showcase/cover-tech-dispatch.png" width="160"> | <img src="docs/images/showcase/cover-internet-reports.png" width="160"> | <img src="docs/images/showcase/cover-weekly.png" width="160"> |
-|                       GitHub 星探 · 每日热门                       | 开源亮点 · 单项目深度 | 科技速递 · 行业趋势 | 互联网报告 · 深度解读 | 周度汇总 · 一周精选 |
+| <img src="covers/cover-daily.png" width="150"> | <img src="covers/cover-spotlight.png" width="150"> | <img src="covers/cover-tech-dispatch.png" width="150"> | <img src="covers/cover-internet-reports.png" width="150"> | <img src="covers/cover-weekly.png" width="150"> |
+| GitHub 星探<br>每日热门 | 开源亮点<br>单项目深度 | 科技速递<br>行业趋势 | 互联网报告<br>深度解读 | 周度汇总<br>一周精选 |
 </div>
 ▲ 以上每一条视频，都是 ClipForge 自动生成的。不是 PPT 翻页，不是图片拼接 — 有动画、有旁白、有配乐，是真正的短视频。
 
