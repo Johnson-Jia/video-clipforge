@@ -1,0 +1,111 @@
+<!--
+@ComponentMeta
+name: score_compare
+layer: content
+tags: [compare, versus, battle, score, ab_test, winner]
+emotion_range: [tension, excitement]
+visual_density: medium
+complexity: css-only
+description: 对比评分卡（A/B 双卡片），竞品对比或胜负判定，带 WIN 标签和统计行
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="sc-wrap">
+  <div class="sc-badge">HEAD TO HEAD</div>
+  <div class="sc-title">
+    <span class="sc-white">实测</span><span class="sc-accent">对比</span>
+  </div>
+  <div class="sc-divider"></div>
+  <div class="sc-cards">
+    <div class="sc-card sc-winner">
+      <div class="sc-win-tag">WIN</div>
+      <div class="sc-number sc-green">32</div>
+      <div class="sc-label">GLM-5.1 最高分</div>
+      <div class="sc-sub">编码能力实测</div>
+    </div>
+    <div class="sc-card">
+      <div class="sc-number sc-amber">21</div>
+      <div class="sc-label">Qwen3.7 最低分</div>
+      <div class="sc-sub">编码能力实测</div>
+    </div>
+  </div>
+  <div class="sc-stats">
+    <div class="sc-stat sc-stat-green">
+      <div class="sc-stat-val">4/4</div>
+      <div class="sc-stat-desc">GLM 胜出项目</div>
+    </div>
+    <div class="sc-stat sc-stat-red">
+      <div class="sc-stat-val">0/4</div>
+      <div class="sc-stat-desc">Qwen 胜出项目</div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.sc-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; width: 100%;
+}
+.sc-badge {
+  font-size: 18px; font-weight: 700;
+  background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.25));
+  border: 2px solid rgba(6,182,212,0.4); border-radius: 100px;
+  padding: 10px 36px; color: #06B6D4;
+  letter-spacing: 4px; margin-bottom: 36px;
+}
+.sc-title { font-size: 48px; font-weight: 900; margin-bottom: 20px; }
+.sc-white { color: var(--text-primary, #F9FAFB); }
+.sc-accent { color: #F59E0B; text-shadow: 0 0 30px rgba(255,140,50,0.3); }
+.sc-divider {
+  width: 300px; height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, #06B6D4, #F59E0B);
+  margin-bottom: 48px;
+}
+.sc-cards { display: flex; gap: 28px; width: 100%; margin-bottom: 36px; }
+.sc-card {
+  flex: 1;
+  background: rgba(20,20,50,0.85);
+  border-radius: 24px; padding: 40px 32px;
+  text-align: center;
+  border: 2px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+.sc-card.sc-winner {
+  border-color: rgba(16,185,129,0.3);
+  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(20,20,50,0.85));
+}
+.sc-win-tag {
+  position: absolute; top: -12px; right: 24px;
+  background: #10B981; color: #000;
+  font-size: 12px; font-weight: 900;
+  padding: 4px 14px; border-radius: 6px;
+}
+.sc-number { font-size: 72px; font-weight: 900; letter-spacing: -2px; }
+.sc-green { color: #10B981; }
+.sc-amber { color: #F59E0B; }
+.sc-label { font-size: 20px; color: var(--text-secondary, #9CA3AF); margin-top: 8px; }
+.sc-sub { font-size: 16px; color: var(--text-dim, #6B7280); margin-top: 4px; }
+.sc-stats { display: flex; gap: 20px; width: 100%; }
+.sc-stat {
+  flex: 1; border-radius: 14px; padding: 20px;
+  text-align: center;
+}
+.sc-stat-green { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15); }
+.sc-stat-red { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.1); }
+.sc-stat-val { font-size: 28px; font-weight: 900; }
+.sc-stat-green .sc-stat-val { color: #10B981; }
+.sc-stat-red .sc-stat-val { color: #EF4444; }
+.sc-stat-desc { font-size: 14px; color: var(--text-dim, #6B7280); margin-top: 4px; }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.sc-badge', {opacity:0, scale:0.8, duration:0.3, ease:'back.out(1.5)'}, startTime)
+  .from('.sc-title', {opacity:0, duration:0.3}, startTime + 0.1)
+  .from('.sc-divider', {scaleX:0, duration:0.4, ease:'power2.out', transformOrigin:'center'}, startTime + 0.2)
+  .from('.sc-card', {opacity:0, y:30, duration:0.4, ease:'power3.out', stagger:0.15}, startTime + 0.4)
+  .from('.sc-win-tag', {opacity:0, scale:0, duration:0.3, ease:'back.out(2)'}, startTime + 0.8)
+  .from('.sc-stat', {opacity:0, y:20, duration:0.3, stagger:0.1}, startTime + 0.9);
+</script>

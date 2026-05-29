@@ -1,0 +1,41 @@
+<!--
+@ComponentMeta
+name: text_reveal
+layer: content
+tags: [reveal, surprise, highlight, cta, punchline]
+emotion_range: [surprise, warmth]
+visual_density: generous
+complexity: css-only
+description: 文字揭示动画，从下方滑入的大号文字，用于悬念揭示或关键信息展示
+parameters:
+  text_size: { default: 140, range: [100, 160] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="text-reveal">
+  <div class="reveal-mask">
+    <div class="reveal-text">58K Star</div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.text-reveal {
+  display: flex; align-items: center; justify-content: center;
+}
+.reveal-mask {
+  overflow: hidden;
+}
+.reveal-text {
+  font-size: 140px; font-weight: 900;
+  color: var(--accent-warm);
+  text-shadow: 0 0 80px rgba(240,180,41,0.6);
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.reveal-text', {
+  y:'100%', duration:0.6, ease:'power4.out'
+}, startTime);
+</script>

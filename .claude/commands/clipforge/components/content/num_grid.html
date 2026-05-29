@@ -1,0 +1,84 @@
+<!--
+@ComponentMeta
+name: num_grid
+layer: content
+tags: [data, stats, metrics, grid, matrix, kpi]
+emotion_range: [curiosity, confidence]
+visual_density: compact
+complexity: css-only
+description: 数据矩阵（2x2 大数字网格），展示核心指标或关键数据点，突出量级差异
+parameters:
+  columns: { default: 2, range: [2, 3] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="numgrid-wrap">
+  <div class="numgrid-title">核心数据</div>
+  <div class="numgrid-subtitle">
+    4 个关键指标一览<br>突出 <strong>量级差异</strong> 的数据展示
+  </div>
+  <div class="num-grid">
+    <div class="num-item">
+      <div class="num-val cyan">700万</div>
+      <div class="num-desc">Meta Ray-Ban 年销量</div>
+    </div>
+    <div class="num-item">
+      <div class="num-val amber">3.2亿</div>
+      <div class="num-desc">中国 60+ 岁人口</div>
+    </div>
+    <div class="num-item">
+      <div class="num-val green">7,390万</div>
+      <div class="num-desc">腕戴设备出货量</div>
+    </div>
+    <div class="num-item">
+      <div class="num-val purple">30%</div>
+      <div class="num-desc">养老机器人 CAGR</div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.numgrid-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; width: 100%;
+}
+.numgrid-title {
+  font-size: 40px; font-weight: 900; margin-bottom: 16px;
+  background: linear-gradient(135deg, #06B6D4, #3B82F6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.numgrid-subtitle {
+  font-size: 22px; color: var(--text-secondary, #9CA3AF);
+  text-align: center; line-height: 1.6; margin-bottom: 48px;
+}
+.numgrid-subtitle strong { color: #F59E0B; font-weight: 700; }
+.num-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  width: 100%;
+}
+.num-item {
+  background: rgba(17,24,39,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px; padding: 36px 28px;
+  text-align: center;
+}
+.num-val { font-size: 64px; font-weight: 900; line-height: 1; }
+.num-val.cyan { color: #06B6D4; }
+.num-val.blue { color: #3B82F6; }
+.num-val.amber { color: #F59E0B; }
+.num-val.green { color: #10B981; }
+.num-val.purple { color: #8B5CF6; }
+.num-val.rose { color: #F43F5E; }
+.num-desc { font-size: 20px; color: var(--text-secondary, #9CA3AF); margin-top: 12px; }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.numgrid-title', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime)
+  .from('.numgrid-subtitle', {opacity:0, duration:0.3}, startTime + 0.15)
+  .from('.num-item', {
+    opacity:0, scale:0.85, duration:0.4, ease:'back.out(1.2)',
+    stagger:{each:0.1, from:'center'}
+  }, startTime + 0.3);
+</script>

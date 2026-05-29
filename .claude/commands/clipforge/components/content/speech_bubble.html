@@ -1,0 +1,47 @@
+<!--
+@ComponentMeta
+name: speech_bubble
+layer: content
+tags: [humor, commentary, bubble, character, reaction]
+emotion_range: [amusement, sarcasm]
+visual_density: low
+complexity: css-only
+description: 角色吐槽气泡，白色圆角气泡 + 尾巴，适合幽默点评或角色反应叠加
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="speech-bubble">
+  <div class="bubble-text">涨星比发际线退得还快</div>
+  <div class="bubble-tail"></div>
+</div>
+
+<!-- CSS -->
+<style>
+.speech-bubble {
+  position: absolute; bottom: 280px; right: 60px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 24px; padding: 24px 36px;
+  max-width: 500px; z-index: 10;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.bubble-text {
+  font-size: 30px; font-weight: 700;
+  color: #1a1a2e; line-height: 1.4;
+}
+.bubble-tail {
+  position: absolute; bottom: -12px; right: 60px;
+  width: 0; height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 16px solid rgba(255,255,255,0.95);
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.speech-bubble', {
+  opacity:0, scale:0.5, y:20,
+  duration:0.3, ease:'back.out(2)'
+}, startTime);
+</script>
