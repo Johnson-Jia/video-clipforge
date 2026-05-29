@@ -1,0 +1,29 @@
+<!--
+@ComponentMeta
+name: gradient_mesh
+layer: bg
+tags: [gradient, background, ambient, wave, sway]
+emotion_range: [calm, mystery, depth]
+visual_density: low
+complexity: css-only
+description: 2-3 条半透明渐变色带缓慢旋转摇摆，提供氛围感但不抢内容
+parameters:
+  band_count: { default: 2, range: [2, 3] }
+  band_height: { default: 300, range: [200, 350] }
+  sway_period: { default: 22, range: [18, 30] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes waveSway {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<div style="position:absolute;top:20%;left:0;width:100%;height:300px;
+  background:linear-gradient(90deg,transparent,hsla(220,60%,40%,0.15),transparent);
+  transform:rotate(-8deg);animation:waveSway 20s ease-in-out infinite 0s"></div>
+<div style="position:absolute;top:55%;left:0;width:100%;height:250px;
+  background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.12),transparent);
+  transform:rotate(5deg);animation:waveSway 25s ease-in-out infinite 5s"></div>
