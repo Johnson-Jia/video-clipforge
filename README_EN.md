@@ -87,7 +87,7 @@ claude
 
 First run auto-detects and installs dependencies (HyperFrames).
 
-**Prerequisites:** Node.js >= 22, FFmpeg, edge-tts, yt-dlp. See [Getting Started](docs/getting-started.md) for full setup.
+**Prerequisites:** Node.js >= 22, FFmpeg, edge-tts, yt-dlp. See [Getting Started](docs/快速开始.md) for full setup.
 
 ## Usage
 
@@ -127,7 +127,7 @@ ClipForge follows three design principles:
 | Category Config | `categories/github.md` | GitHub-specific data source, selection strategy, voice, hashtag overrides |
 | Viral Case Library | `_viral-cases/` | Multi-dimensional analysis of proven viral videos with extractable patterns |
 
-See [Architecture Guide](docs/architecture.md) for the full DAG semantics, SubAgent dispatch, and error recovery strategy.
+See [Architecture Guide](docs/架构设计.md) for the full DAG semantics, SubAgent dispatch, and error recovery strategy.
 
 ## Design Philosophy
 
@@ -172,8 +172,8 @@ clipforge/
 ├── LICENSE                                # Apache 2.0
 ├── CONTRIBUTING.md                        # Contribution guidelines
 ├── docs/
-│   ├── architecture.md                    # DAG + stage pipeline deep dive
-│   └── getting-started.md                 # Setup and first video
+│   ├── 架构设计.md                           # DAG + stage pipeline deep dive
+│   └── 快速开始.md                          # Setup and first video
 ├── .claude/commands/
 │   ├── clipforge.md                       # Main controller (DAG, modes, error recovery)
 │   ├── github-daily-trending.md           # Daily cron
