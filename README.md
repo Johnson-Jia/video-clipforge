@@ -1,12 +1,8 @@
 <div align="center">
 
-# ClipForge
+# ClipForge · 把知识变成短视频
 
-### 把知识变成短视频
-
-告诉它你想讲什么，它帮你写稿、配音、做画面、出成片。
-
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+告诉它你想讲什么，它帮你写稿、配音、做画面、出成片。 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 </div>
 
