@@ -1,0 +1,79 @@
+<!--
+@ComponentMeta
+name: particle_burst
+layer: fx
+tags: [celebration, burst, confetti, climax, particles]
+emotion_range: [excitement, climax]
+visual_density: low
+complexity: canvas-js
+description: 粒子爆发庆祝特效，80-120 全色相粒子从中心向外爆射，适合高潮/庆祝场景
+parameters:
+  particle_count: { default: "80-120", description: "随机粒子数范围" }
+/ComponentMeta
+-->
+<!-- HTML -->
+<canvas class="particle-canvas" width="1080" height="1920"></canvas>
+
+<!-- CSS -->
+<style>
+.particle-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+</style>
+
+<!-- JS (GSAP + Canvas) -->
+<script>
+const pCanvas = document.querySelector('.particle-canvas');
+const pCtx = pCanvas.getContext('2d');
+const PARTICLE_COUNT = 80 + Math.floor(Math.random() * 40); // 80-120
+let particles = [];
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const angle = (Math.PI * 2 * i) / PARTICLE_COUNT + Math.random() * 0.5;
+    const speed = 3 + Math.random() * 8;
+    // 每个粒子独立 HSL 颜色（全色相），保证视觉多样性
+    const h = Math.random() * 360;
+    const s = 70 + Math.random() * 30;
+    const l = 50 + Math.random() * 25;
+    particles.push({
+      x: 540, y: 960,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: 3 + Math.random() * 10, // 3-13px
+      color: `hsl(${h},${s}%,${l}%)`,
+      life: 1
+    });
+  }
+}
+
+function drawParticles(progress) {
+  pCtx.clearRect(0, 0, 1080, 1920);
+  if (progress < 0.1) return;
+  const t = (progress - 0.1) / 0.9;
+  particles.forEach(p => {
+    p.life = Math.max(0, 1 - t);
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    if (p.life > 0) {
+      pCtx.globalAlpha = p.life;
+      pCtx.fillStyle = p.color;
+      pCtx.beginPath();
+      pCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      pCtx.fill();
+    }
+  });
+  pCtx.globalAlpha = 1;
+}
+
+initParticles();
+const burstProgress = { val: 0 };
+tl.to(burstProgress, {
+  val: 1, duration: 2,
+  onUpdate: () => drawParticles(burstProgress.val)
+}, startTime);
+</script>

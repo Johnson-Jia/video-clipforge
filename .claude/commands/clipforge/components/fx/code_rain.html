@@ -1,0 +1,53 @@
+<!--
+@ComponentMeta
+name: code_rain
+layer: fx
+tags: [tech, coding, matrix, rain, background, hacker]
+emotion_range: [tension, focus]
+visual_density: low
+complexity: canvas-js
+description: 代码雨背景特效，字符瀑布式下落，科技感场景背景，低透明度不遮挡内容
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<canvas class="code-rain-canvas" width="1080" height="1920"></canvas>
+
+<!-- CSS -->
+<style>
+.code-rain-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  opacity: 0.15; pointer-events: none;
+}
+</style>
+
+<!-- JS (GSAP + Canvas) -->
+<script>
+const rainCanvas = document.querySelector('.code-rain-canvas');
+const rainCtx = rainCanvas.getContext('2d');
+const rainCols = Math.floor(1080 / 20);
+const rainDrops = Array(rainCols).fill(0);
+const rainChars = '01{}[]<>/=;:fnvarletconstreturnifelse'.split('');
+
+function drawRain(progress) {
+  rainCtx.fillStyle = 'rgba(8,8,24,0.1)';
+  rainCtx.fillRect(0, 0, 1080, 1920);
+  rainCtx.fillStyle = '#00e5a0';
+  rainCtx.font = '14px monospace';
+  const step = Math.floor(progress * 200);
+  for (let i = 0; i < step % 50; i++) {
+    const char = rainChars[Math.floor(Math.random() * rainChars.length)];
+    const x = Math.floor(Math.random() * rainCols) * 20;
+    const y = (rainDrops[i] * 20) % 1920;
+    rainCtx.fillText(char, x, y);
+    rainDrops[i] = (rainDrops[i] + 1) % 96;
+  }
+}
+
+const rainProgress = { val: 0 };
+tl.to(rainProgress, {
+  val: 1, duration: sceneDuration,
+  onUpdate: () => drawRain(rainProgress.val)
+}, sceneStart);
+</script>
