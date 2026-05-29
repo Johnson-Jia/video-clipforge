@@ -220,7 +220,12 @@ scenes:
     "selling_points": null,
     "commentary": null,
     "contrarian_angle": null,
-    "visual_phases": []
+    "visual_phases": [],
+    "visual_intent": {
+      "bg": { "mood": "warm, energetic, inviting", "color_hint": "golden glow, deep dark base", "density": "generous" },
+      "fx": { "emotion": "excitement, anticipation", "motion_style": "expanding, radiating", "complexity": "css-only" },
+      "content": { "visual_type": "hero", "focus": "stunning opening hook", "layout_hint": { "density": "generous" } }
+    }
   },
   {
     "scene": "topic1",
@@ -233,7 +238,12 @@ scenes:
     "selling_points": "极速响应·本地运行·隐私优先",
     "commentary": "一天涨了三千星，开发者用脚投票",
     "contrarian_angle": "完全离线运行的大语言模型，不需要显卡",
-    "visual_phases": []
+    "visual_phases": [],
+    "visual_intent": {
+      "bg": { "mood": "tech, focused, cool", "color_hint": "deep blue, cyan accents", "density": "low" },
+      "fx": { "emotion": "focus, curiosity", "motion_style": "steady, scanning", "complexity": "canvas-js" },
+      "content": { "visual_type": "list", "focus": "project highlights with star count", "layout_hint": { "density": "compact" } }
+    }
   },
   {
     "scene": "market",
@@ -265,7 +275,12 @@ scenes:
         "key_data": ["35%成年人已使用", "渗透率快速增长", "确定性极高的赛道"],
         "layout_hint": { "density": "generous" }
       }
-    ]
+    ],
+    "visual_intent": {
+      "bg": { "mood": "analytical, confident", "color_hint": "dark teal, subtle gradient", "density": "low" },
+      "fx": null,
+      "content": { "visual_type": "data", "focus": "market data visualization", "layout_hint": { "density": "compact" } }
+    }
   },
   {
     "scene": "cta",
@@ -278,7 +293,12 @@ scenes:
     "selling_points": null,
     "commentary": null,
     "contrarian_angle": null,
-    "visual_phases": []
+    "visual_phases": [],
+    "visual_intent": {
+      "bg": { "mood": "warm, inviting, grateful", "color_hint": "warm amber fade", "density": "generous" },
+      "fx": null,
+      "content": { "visual_type": "highlight", "focus": "follow CTA", "layout_hint": { "density": "generous" } }
+    }
   }
 ]
 ```
@@ -295,6 +315,7 @@ scenes:
 | `commentary` | string/null | 感性评语（仅标准模式项目场景），≤12 字，数据惊叹或场景感慨 |
 | `contrarian_angle` | string/null | 反直觉角度（仅标准模式项目场景），用于旁白钩子和发布文案 |
 | `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)、`layout_hint`(可选，布局微调)。时长 ≤15s 的场景可传空数组 `[]` |
+| `visual_intent` | object/null | **导演视觉意图**。每场景 × 三层（bg/fx/content）的视觉指导，供 Stage 6 §6.4b 组件匹配使用。短场景（≤4s）可传 null |
 
 ### visual_phases 类型定义
 
@@ -315,6 +336,32 @@ scenes:
 4. **focus 是该 phase 的内容主题**，Stage 6 据此生成画面标题
 5. **Phase 不足视为 Stage 3 未完成**，Stage 6 gate 会拦截
 6. **layout_hint.density** 可选，控制元素间距密度：`compact`（条目多/时间紧）、`standard`（默认）、`generous`（元素少/强调留白）。不指定时 Stage 6 从 visual_type 自动推导
+
+### visual_intent 编写规则
+
+为每个场景的三层分别描述导演的视觉意图，供 Stage 6 §6.4b 组件匹配使用。
+
+**结构：** 每层一个对象，不需要的层传 `null`。
+
+| 层 | 字段 | 说明 |
+|----|------|------|
+| `bg` | `mood` | 情绪关键词（英文逗号分隔），如 "warm, energetic" |
+| | `color_hint` | 色彩方向建议，如 "golden glow, deep dark base" |
+| | `density` | 视觉密度：`low` / `standard` / `generous` |
+| `fx` | `emotion` | 期望传达的情感，如 "excitement, anticipation" |
+| | `motion_style` | 运动风格，如 "expanding, radiating" / "steady, scanning" |
+| | `complexity` | 复杂度预算：`css-only`（优先）/ `canvas-js` / `three-js` |
+| `content` | `visual_type` | 主内容组件类型（复用 visual_phases 的类型名：hero/list/data/compare/timeline/highlight） |
+| | `focus` | 内容焦点描述 |
+| | `layout_hint` | 可选，同 visual_phases 的 layout_hint |
+
+**规则：**
+
+1. **bg 和 fx 可传 null** — 不需要背景特效或视觉特效时省略，Stage 6 使用默认黑色背景
+2. **content.visual_type 是组件匹配的首选信号** — Stage 6 优先匹配 visual_type，再用 tags 辅助
+3. **complexity 是预算不是要求** — 标 `css-only` 表示优先简单实现，不代表禁用 canvas
+4. **短场景（≤4s）整个 visual_intent 可传 null** — 不值得分配视觉设计预算
+5. **与 visual_phases 互补** — visual_phases 描述长场景的视觉分镜拆分，visual_intent 描述整体视觉方向。两者独立填写，不要求一致
 
 同时生成 `narration.txt`（完整旁白，一行一段，顺序与场景一致）。
 
@@ -383,7 +430,7 @@ scenes:
 ### 产出
 
 1. 场景拆解表（YAML，含时间轴 + 每场景旁白段落 + 情感标记）
-2. `narration_segments.json`（分段旁白，含 emotion/humor_type/character_expression）
+2. `narration_segments.json`（分段旁白，含 emotion/humor_type/character_expression/visual_intent）
 3. `narration.txt`（完整旁白，一行一段，顺序与场景一致）
 
 **交付物：** 展示场景表和旁白文案（含情感标记和幽默元素），用户确认后进入音频制作。
