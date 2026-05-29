@@ -13,6 +13,13 @@ Thumbs.db
 .env
 .env.local
 
+# 个人定时任务配置（通过 /clipforge-category-setup 生成）
+.claude/commands/github-daily-trending.md
+.claude/commands/github-weekly-trending.md
+.claude/commands/github-weekly-zhihu.md
+.claude/commands/*-daily-*.md
+.claude/commands/*-weekly-*.md
+
 .idea/
 
 .idea/agents/

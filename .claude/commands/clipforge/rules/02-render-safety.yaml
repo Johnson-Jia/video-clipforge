@@ -10,7 +10,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.1"
+    source: "shared/render-safety.md §1.1"
 
   - id: "R-R-002"
     type: FORBIDDEN_METHOD
@@ -22,7 +22,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.2"
+    source: "shared/render-safety.md §1.2"
 
   - id: "R-R-003"
     type: FORBIDDEN_ACTION
@@ -35,7 +35,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.4a"
+    source: "shared/render-safety.md §1.4a"
 
   - id: "R-R-004"
     type: FORBIDDEN_ACTION
@@ -48,7 +48,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.3"
+    source: "shared/render-safety.md §1.3"
 
   - id: "R-R-005"
     type: FORBIDDEN_ACTION
@@ -61,7 +61,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.5"
+    source: "shared/render-safety.md §1.5"
 
   - id: "R-R-006"
     type: FORBIDDEN_ACTION
@@ -74,7 +74,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.7"
+    source: "shared/render-safety.md §1.7"
 
   - id: "R-R-007"
     type: FORBIDDEN_ACTION
@@ -87,7 +87,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §2"
+    source: "shared/render-safety.md §2"
 
   - id: "R-R-008"
     type: FORBIDDEN_ACTION
@@ -100,7 +100,7 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_render-safety.md §2.4"
+    source: "shared/render-safety.md §2.4"
 
   - id: "R-R-009"
     type: FORBIDDEN_METHOD
@@ -113,7 +113,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.8"
+    source: "shared/render-safety.md §1.8"
 
   - id: "R-R-010"
     type: FORBIDDEN_ACTION
@@ -126,4 +126,4 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "_render-safety.md §1.6"
+    source: "shared/render-safety.md §1.6"

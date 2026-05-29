@@ -106,7 +106,7 @@ if [ -f "index.html" ]; then
   # ── layer-content height 检查（防止 Phase 塌陷到顶部）──
   LAYER_CONTENT_CSS=$(grep -A3 '\.layer-content\s*{' index.html 2>/dev/null)
   echo "$LAYER_CONTENT_CSS" | grep -q 'height' || {
-    echo "FAIL: .layer-content 缺少 height（Phase 内容会塌陷到顶部，见 _render-safety.md §2.2）"
+    echo "FAIL: .layer-content 缺少 height（Phase 内容会塌陷到顶部，见 shared/render-safety.md §2.2）"
     FAIL=1
   }
 fi

@@ -18,10 +18,19 @@ skill:
       - text: "环境检查失败时给出具体安装命令，而非泛泛提示"
         weight: "HIGH"
   guard:
-    red_flags: []
+    red_flags:
+      - thought: "之前的视频跑过了，不用再检查环境"
+        reality: "环境可能被更新或卸载破坏，标记文件不存在 = 必须重新检查"
+        trigger: "试图跳过环境检测"
+      - thought: "跳过环境检测，直接开始制作"
+        reality: "一个缺失依赖就能导致 30 分钟后的渲染失败"
+        trigger: "试图跳过 env_check.sh"
     spirit_vs_letter: []
   gate:
-    hard: []
+    hard:
+      - gate: file_exists
+        params:
+          files: ["workspace/.env-checked"]
     soft: []
     max_retries: 1
   trace:

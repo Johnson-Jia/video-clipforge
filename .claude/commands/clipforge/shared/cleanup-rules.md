@@ -1,4 +1,6 @@
-# ClipForge 项目清理规则（Stage 8）
+# ClipForge 项目清理规则
+
+> delivery + machine-scoring 完成后自动执行。清理中间产物，保留核心产出。
 
 当 `final.mp4` 已存在且项目目录未清理时触发。清理中间产物，保留核心产出。
 
@@ -32,7 +34,7 @@
 
 ## 执行时机
 
-- **视频项目**：Stage 7 交付 final.mp4 后
+- **视频项目**：Stage 7 交付 + machine-scoring 完成后
 - **文章项目**：文章生成 + 封面完成后
 - **定时任务**：全自动流程末尾自动执行
 - **手动触发**：用户说"清理"、"整理"时执行
@@ -55,6 +57,7 @@
 | `narration.txt` | 完整旁白文案 | 改文案必需 |
 | `segment_durations.json` | 分段实际时长 | A/V 同步校准必需 |
 | `douyin.md` | 抖音发布文案 | 核心产出物 |
+| `score_report.json` | 机器评分报告 | Stage 8 反馈校准输入 |
 | `content.md` | 内容摘要（如有） | 重新理解项目内容 |
 
 ### 文章项目保留清单

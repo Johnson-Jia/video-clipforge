@@ -4,6 +4,71 @@ description: "GitHub Trending 热门项目盘点和深度解析视频"
 id: "github"
 ---
 
+<!-- CONFIG-START: 机器可解析的配置值，供 render_stage.py 和引擎模块加载 -->
+audio:
+  default_voice: "zh-CN-YunjianNeural"
+  default_rate: "+25%"
+  voice_override: true
+
+narration:
+  hook_example: "{M}月{D}日涨星最快的几个项目，直接炸了"
+  topic_example: "这周 GitHub 涨星最快的项目是..."
+  hook_json_example: "{M}月{D}日涨星最快的几个项目，直接炸了"
+  cta_purpose: "开源信息"
+  word_count_range: [250, 380]
+  hook_anchors:
+    - "涨星最快"
+    - "N 个项目"
+    - "天涨近"
+    - "千星"
+    - "万星"
+    - "单日涨"
+    - "最高涨星"
+    - "涨星最多"
+  metric_layer: "| 6. 星标增量 | 单日涨星数 | 强调色（橙/金） | \"+3941 ★\" |"
+  contrarian_questions: |
+    对每个项目回答以下问题，提取反直觉角度：
+    1. **非常规手段**：是否用不常见的技术做常见的事？
+    2. **离线/本地替代**：是否在本地完成通常需要云端的功能？
+    3. **平民化专业能力**：是否让普通人能做专业级的事？
+    4. **领域跨界**：是否把 A 领域的技术用在了 B 领域？
+  narration_txt_example: |
+    {M}月{D}日涨星最快的几个项目，直接炸了
+    第一个项目，{项目描述}
+    {后续项目旁白}
+    关注我，下期见
+
+delivery:
+  hashtags: "#GitHub热门 #程序员 #开源 #AI #科技"
+  cover_badge: "GitHub 热门项目"
+  cover_scene_label: "GitHub 榜单速览"
+  cover_data_examples: "+3973 最高涨星 / 198K 最高总星"
+  hook_template_example: "{M}月{D}日涨星最猛的 6 个项目，AI 占了一半"
+  tag_strategy: |
+    | 核心圈标签 | #GitHub | 命中目标受众 |
+    | 领域标签 | #开源 | 命中开源圈 |
+    | 热点标签 | #AI | 命中当前热点圈层 |
+    | 身份标签 | #程序员 | 命中职业身份圈 |
+    | 泛流量标签 | #科技 | 获取泛流量触达 |
+  comment_template: |
+    评论区格式：
+    1. 项目英文名（每行一个）
+    2. "在 GitHub 搜项目名就能找到"
+    3. 不放完整链接
+
+design:
+  default_style: "暗色科技风"
+  color_bias: "冷色为主（深蓝/深紫），强调色用暖色（橙色/金色）"
+
+content:
+  optional_deps: ["gh"]
+
+shared_rules:
+  data_example: "33K Star"
+  hook_data_example: "{M}月{D}日涨星最猛的 N 个项目"
+  hook_emotion_example: "{M}月{D}日涨星直接炸了"
+<!-- CONFIG-END -->
+
 # GitHub 分类配置
 
 ## content
@@ -132,6 +197,65 @@ gh api repos/{owner}/{repo}/contents/ --jq '.[].name'
 2. **继续流程不中断**：数据缺失不应阻塞视频制作，可在旁白中用定性描述替代精确数字（如"这个项目最近涨星很快"替代"+500 Star"）
 3. **记录告警**：在 `design.md` 末尾记录 `> ⚠️ GitHub 数据获取失败，使用估算值`，供后续阶段知晓数据可靠性
 
+### data_validation — 三源交叉验证
+
+数据采集时必须通过至少两个独立数据源交叉验证：
+
+| 数据源 | 方式 | 用途 |
+|--------|------|------|
+| Python 脚本（主） | `scripts/github_trending.py --output-dir DIR --date DATE --since daily\|weekly` | 无缓存直连抓取，输出 `raw_trending.json` |
+| web-reader MCP（验证） | `mcp__web_reader__webReader`，url: `https://github.com/trending`，**必须 `no_cache: true`** | 交叉确认主数据源 |
+| 昨日数据（比对） | 读取前一天 `raw_trending.json`（如果存在） | 检测缓存命中 |
+
+**验证规则**：
+- 主数据源与验证源项目名交集 >= 80% → 通过
+- daily 模式：与昨日数据完全相同 → 告警缓存命中，停止执行
+- weekly 模式：Weekly 页面与日榜交集 >= 60% 为正常
+
+### quality_gates — 数据质量门禁
+
+以下任一条件不满足则**停止执行并报错**：
+
+| 条件 | daily | weekly |
+|------|-------|--------|
+| 最低项目数 | >= 8 | >= 15 |
+| 与昨日不完全相同（如存在） | 必须 | — |
+| 活跃度（30 天内有更新） | >= 80% | >= 80% |
+
+### monthly_inventory — 月度清单管理
+
+每日数据抓取后立即写入月度清单（在 DAG 长流程之前，避免 context 压缩丢失）：
+
+- **文件路径**：`workspace/sources/github-trending/${MONTH}.md`（如 `2026-05.md`）
+- **追加格式**：日期标题 `### YYYY-MM-DD` + 项目表格（项目名 / Star / 今日涨幅 / 语言 / 描述）
+- **写入后验证**：必须确认当日日期标题已存在
+
+### weekly_mode — 周汇总模式规则
+
+当内容模式为"周汇总"时（weekly trending 或知乎文章），适用以下规则：
+
+**选取与分组**：
+- 选取 12-15 个项目（按周涨幅排序）
+- 按编程语言/领域分组，每组 3-4 个项目
+- 不同分类可用不同色彩区分（AI 冷色系、前端暖色系等），整体保持协调
+
+**场景与文案**：
+- 场景数 6-7 个：hook → 分类1 → 分类2 → 分类3 → 分类4 → 趋势总结 → CTA
+- 字数 300-450 字，时长 45-60 秒
+
+**数据标注**：
+- 仅在 Weekly 页面出现但不在日榜中的项目标注为"本周新上榜"
+- 从日榜数据中提取各项目"连续上榜天数"作为持续热门标签
+
+### preparation_rules — 内容整理规则
+
+将原始数据整理为中文短视频素材时遵循：
+
+- 项目名保留英文（如 `facebook/react`）
+- 描述翻译成中文（简洁口语化）
+- 按热度排序
+- 开头用震撼数据做钩子（如"一天涨近四千星"）
+
 ## design
 
 ### default_style
@@ -230,6 +354,98 @@ true — GitHub 系列视频固定使用 YunjianNeural +25%，不需要查通用
 ### cover_scene_label
 
 "GitHub 榜单速览"
+
+### zhihu_article — 知乎文章模式
+
+当输出为知乎文章（非视频）时，遵循以下规则：
+
+**文章结构**：
+```markdown
+# YYYY年M月第N周 GitHub 热门开源项目盘点
+
+> 一句话导语（本周趋势概括）
+
+## 本周趋势速览
+| 趋势 | 说明 |
+|------|------|
+| 最大赢家 | 涨星最多的项目 + 数据 |
+| 新面孔 | 首次上榜的项目 |
+| 持续热门 | 连续多周上榜的项目 |
+
+## 项目详细解读
+（按分类分组，每组 2-4 个项目）
+
+### 分类名称（如"AI & 智能体"）
+
+#### N. owner/repo
+
+**项目简介：** 2-3 句话说明项目是做什么的、解决什么问题。
+
+**核心亮点：**
+- 亮点1（具体功能/特性）
+- 亮点2（性能/架构优势）
+- 亮点3（适用场景）
+
+**快速上手：** 安装/使用命令
+
+**适合人群：** XX方向开发者
+
+> Star: XX,XXX | Fork: X,XXX | 协议: MIT | 语言: Python | 本周涨幅: +X,XXX
+
+## 本周总结
+- 2-3 句话总结本周开源趋势
+- 推荐 1-2 个最值得关注的项目及理由
+```
+
+**写作要求**：
+1. **深度优先** — 每个项目至少 150 字解读，不是简单罗列
+2. **实用导向** — 尽量包含安装命令、使用示例、适用场景
+3. **数据说话** — 用 Star 数、Fork 数、Issues 数量化项目热度
+4. **中性客观** — 描述功能和特点，不使用"最强"、"必装"等极限词
+5. **搜索友好** — 标题和正文包含"GitHub"、"开源"、"项目"等搜索高频词
+6. **不点名商业产品/品牌** — 不提 GPT、DeepSeek 等品牌名，用"大语言模型"、"AI 助手"等类别词。但项目名本身包含品牌名（如 DeepSeek-TUI）可如实引用
+7. **项目链接可放** — 知乎不像抖音限制 URL，每个项目标题直接超链接到 GitHub
+8. **数据来源透明** — 文章末尾注明数据来源，标注周涨幅以 Weekly 页面为准
+
+**分类策略**：
+
+| 分类关键词 | 分类名 |
+|-----------|--------|
+| ai, ml, llm, deep-learning | AI & 机器学习 |
+| web, frontend, react, vue | 前端开发 |
+| api, server, backend, database | 后端 & 基础设施 |
+| devops, ci/cd, kubernetes, docker | DevOps & 云原生 |
+| game, 3d, engine | 游戏开发 |
+| education, learning, course | 学习资源 |
+| security, privacy | 安全 |
+| mobile, ios, android | 移动开发 |
+| 其他 | 开发工具 |
+
+### zhihu_cover_template — 知乎封面模板
+
+**设计规范**：
+- 尺寸：1920×1080（16:9 横版，知乎文章封面标准比例）
+- 风格：GitHub Dark 主题（`#0d1117` 底色 + `#00e5a0` 强调色 + `#f0883e` 星标色）
+- 字体：Inter / JetBrains Mono / PingFang SC
+
+**封面布局**：
+```
+┌──────────────────────────────────────────┐
+│  [网格背景 + 渐变光晕]                      │
+│                                          │
+│  YYYY年M月第N周                            │
+│  GitHub 热门开源项目盘点                    │
+│                                          │
+│  ┌─────┐  ┌─────┐  ┌─────┐              │
+│  │TOP1 │  │TOP2 │  │TOP3 │   ← 涨星前三  │
+│  │★数  │  │★数  │  │★数  │              │
+│  └─────┘  └─────┘  └─────┘              │
+│                                          │
+│  本周热度 N★ | X 个项目 | Y 个分类         │
+└──────────────────────────────────────────┘
+```
+
+**实现**：在项目目录创建 `cover.html`，用 Puppeteer 或 HyperFrames 截图生成 `cover.png`。
 
 ## narrative
 

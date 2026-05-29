@@ -11,7 +11,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage7-delivery"
-    source: "stage7-delivery.md + _shared-rules.md §4"
+    source: "stage7-delivery.md + shared/shared-rules.md §4"
 
   - id: "R-S7-002"
     type: FORBIDDEN_ACTION
@@ -35,12 +35,12 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage7-delivery"
-    source: "_shared-rules.md §2"
+    source: "shared/shared-rules.md §2"
 
   - id: "R-S7-005"
     type: FORBIDDEN_ACTION
     pattern: "未执行 cleanup 阶段"
-    positive: "delivery 完成后必须执行 _cleanup-rules，删除临时文件"
+    positive: "delivery 完成后必须执行 shared/cleanup-rules，删除临时文件"
     guardrail: "项目目录中残留大量临时文件（.renderbak, debug_*.html 等）"
     detection: {keywords: [], semantic_check: true}
     severity: HARD

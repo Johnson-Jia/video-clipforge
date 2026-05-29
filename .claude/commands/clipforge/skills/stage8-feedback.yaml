@@ -1,0 +1,38 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage8-feedback"
+    version: "1.0.0"
+    type: INTERACTIVE
+    tags: ["feedback", "scoring", "calibration"]
+    rigor: STANDARD
+  intent:
+    objective: "用播放数据和人类评分校准机器评分能力"
+    criteria:
+      - "播放数据已回填到 trace"
+      - "人类评分已记录（交互模式）"
+      - "校准结果已写入 feedback.yaml"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+      - ref: "R-FB-*"
+    preferences: []
+  guard:
+    red_flags:
+      - thought: "机器评分够了，不需要人类评分"
+        reality: "没有人类评分，机器无法校准自己的预测偏差"
+        trigger: "试图跳过人类评分步骤"
+      - thought: "播放数据随便填一下就行"
+        reality: "伪造数据会导致校准信号错误，污染规则库"
+        trigger: "试图使用不真实的播放数据"
+    spirit_vs_letter: []
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["workspace/feedback.yaml"]
+    soft: []
+    max_retries: 1
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []

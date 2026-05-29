@@ -85,6 +85,8 @@ def apply_delta_to_rules(rules: list[Rule], delta: dict) -> list[Rule]:
     elif op == "DEPRECATED" and target:
         for r in result:
             if r.id == target:
+                if r.rule_class == RuleClass.SAFETY:
+                    continue  # SAFETY 规则不可降级
                 r.severity = Severity.SOFT
     return result
 

@@ -179,6 +179,11 @@ PLATFORM_THRESHOLDS = {
         "high_threshold": 1.5,
         "medium_threshold": 1.0,
     },
+    Platform.BILIBILI.value: {
+        "key_metric": "interaction_rate",
+        "high_threshold": 0.05,
+        "medium_threshold": 0.02,
+    },
 }
 
 

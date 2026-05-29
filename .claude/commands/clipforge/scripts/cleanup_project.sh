@@ -40,6 +40,7 @@ RETAIN_FILES=(
   narration_segments.json narration.txt
   segment_durations.json
   douyin.md narration.mp3
+  score_report.json
   content.md content_summary.md
 )
 
@@ -140,4 +141,5 @@ if [ "$DRY_RUN" = true ]; then
   echo "去掉 --dry-run 参数以执行清理"
 else
   echo "=== 清理完成 ==="
+  touch .cleaned
 fi

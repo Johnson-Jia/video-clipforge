@@ -37,10 +37,10 @@ skill:
     hard:
       - gate: file_exists
         params:
-          files: ["douyin.md"]
+          files: ["workspace/final.mp4", "workspace/cover.png", "workspace/douyin.md"]
       - gate: no_url_in_output
         params:
-          files: ["douyin.md"]
+          files: ["workspace/douyin.md"]
     soft: []
     max_retries: 2
   trace:

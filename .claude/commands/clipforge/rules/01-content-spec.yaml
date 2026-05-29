@@ -10,7 +10,7 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §5.1"
+    source: "shared/shared-rules.md §5.1"
 
   - id: "R-C-002"
     type: FORBIDDEN_ACTION
@@ -23,7 +23,7 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §5.1"
+    source: "shared/shared-rules.md §5.1"
 
   - id: "R-C-003"
     type: FORBIDDEN_ACTION
@@ -36,7 +36,7 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §5.3"
+    source: "shared/shared-rules.md §5.3"
 
   - id: "R-C-004"
     type: FORBIDDEN_ACTION
@@ -49,7 +49,7 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §6"
+    source: "shared/shared-rules.md §6"
 
   - id: "R-C-005"
     type: FORBIDDEN_METHOD
@@ -62,4 +62,4 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "_shared-rules.md §6 + _render-safety.md §1.1a"
+    source: "shared/shared-rules.md §6 + shared/render-safety.md §1.1a"

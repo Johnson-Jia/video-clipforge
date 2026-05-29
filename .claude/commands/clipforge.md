@@ -10,18 +10,20 @@ description: ClipForge — 从任意内容出发，编排带配乐的抖音短�
 ## 全局原则
 
 1. **短视频优先。** 目标时长 45-55 秒（标准模式），单项目深度解析 45-60 秒，电影解读模式 3-5 分钟。前 3 秒必须有钩子，单个画面元素停留不超过 3 秒。
-   - **黄金 3 秒法则**：hook 场景必须是纯钩子，正文从第 2 个场景开始。完整规则见 `_shared-rules` §5，HTML 实现见 Stage 6。
+   - **黄金 3 秒法则**：hook 场景必须是纯钩子，正文从第 2 个场景开始。完整规则见 `shared/shared-rules` §5，HTML 实现见 Stage 6。
 2. **委托，不重写。** HTML 编写委托 `/hyperframes`，渲染委托 `/hyperframes-cli`。能用 Skill 工具就自行触发，否则提示用户调用斜杠命令。
 3. **状态即文件。** Artifact 完成状态 = `schema.yaml` 中 `generates` 声明的文件是否存在。不依赖 `stage-handoff.json`。
 4. **依赖是使能者不是门禁。** `requires` 只表示"输入就绪"，不阻塞跳过已完成的工作。已完成 artifact 扫描到 `generates` 文件存在即跳过。
 5. **每步确认（交互模式）。** 每个阶段展示结果并确认，不默认推进。编排文件可覆盖此原则（如设置为全自动模式），以编排文件指令为准。
 6. **先内容后形式。** 先理解内容，再决定视觉和音乐。
 7. **渐进加载。** 只在进入某阶段时读取对应的阶段文件，不一次性加载全部。
-8. **共享规范优先。** 内容措辞、画面语言、定时续期等共享规范统一在 `clipforge/_shared-rules`、`clipforge/_cron-renew` 中定义。各阶段文件仅保留阶段特有的规则，通过引用共享文件避免重复。
+8. **共享规范优先。** 内容措辞、画面语言、定时续期等共享规范统一在 `clipforge/shared/shared-rules`、`clipforge/shared/cron-renew` 中定义。各阶段文件仅保留阶段特有的规则，通过引用共享文件避免重复。
 9. **音频内嵌。** 旁白和 BGM 通过 `<audio>` 元素嵌入 HTML，由 HyperFrames 原生混音和封装，无需 FFmpeg 手动合并音轨。
-10. **清理不可跳过。** delivery 完成后，必须立即执行 cleanup（读取 `_cleanup-rules` 并按规则清理中间产物）。
+10. **清理不可跳过。** delivery 完成后，必须立即执行 cleanup（读取 `shared/cleanup-rules` 并按规则清理中间产物）。
 11. **双版本输出不可省略。** video stage 必须产出 `output.mp4`（含 BGM）和 `output_no_bgm.mp4`（仅旁白）两个文件，delivery stage 必须产出对应的 `final.mp4` 和 `final_no_bgm.mp4`。无论项目类型或时长，缺少任一文件视为阶段未完成。
 12. **引擎驱动约束。** 每个 stage 执行前由约束引擎注入正向规则，执行后由门禁引擎校验产出物。引擎规则（`rules/`）是机器可校验的结构化层，与 stage 文件中的文本规则并行生效。
+13. **即时评分不可跳过。** delivery 后、cleanup 前，必须运行 gate 全量校验并产出 `score_report.json`。这是机器的预测分数，后续会用播放数据验证。
+14. **延迟反馈校准机器。** 发布后补充播放数据和人类主观评分（Stage 8），用机器预测 vs 实际表现的偏差校准 gate 能力。反馈为可选，不阻塞 cleanup。
 
 ## 模式
 
@@ -86,19 +88,19 @@ clipforge/categories/
 
 | 共享文件 | 内容 | 引用阶段 |
 |---------|------|---------|
-| `clipforge/_shared-rules` | 措辞规范、画面文字语言规范、CTA 时间规范、URL 禁止、黄金 3 秒 | Stage 1/3/6/7 |
-| `clipforge/_render-safety` | HyperFrames 渲染安全规范 + 三层架构（重型参考） | Stage 6 |
-| `clipforge/_cron-renew` | 定时任务自续期模式与参数 | 所有自动编排文件 |
-| `clipforge/_cleanup-rules` | 项目完成后的文件保留/清理规则 | cleanup |
-| `clipforge/_movie-clips` | 电影片段提取与拼接（仅电影解读模式） | narration → audio 之间 |
-| `clipforge/_bgm-pixabay` | Pixabay BGM 批量下载（CDN 直链提取 + curl 下载） | audio 或独立执行 |
-| `clipforge/_director-toolkit` | 导演思维工具包（5 个必答题 + 视觉词汇表 + 爆款导演笔记） | Stage 2/3/6 |
-| `clipforge/_viral-cases/{file}` | 爆款视频案例库（多维度分析 + 可提取模式） | Stage 2/3/7 按需参考 |
+| `clipforge/shared/shared-rules` | 措辞规范、画面文字语言规范、CTA 时间规范、URL 禁止、黄金 3 秒 | Stage 1/3/6/7 |
+| `clipforge/shared/render-safety` | HyperFrames 渲染安全规范 + 三层架构（重型参考） | Stage 6 |
+| `clipforge/shared/cron-renew` | 定时任务自续期模式与参数 | 所有自动编排文件 |
+| `clipforge/shared/cleanup-rules` | 项目完成后的文件保留/清理规则 | cleanup |
+| `clipforge/shared/movie-clips` | 电影片段提取与拼接（仅电影解读模式） | narration → audio 之间 |
+| `clipforge/shared/bgm-pixabay` | Pixabay BGM 批量下载（CDN 直链提取 + curl 下载） | audio 或独立执行 |
+| `clipforge/shared/director-toolkit` | 导演思维工具包（5 个必答题 + 视觉词汇表 + 爆款导演笔记） | Stage 2/3/6 |
+| `clipforge/shared/machine-scoring` | 即时机器评分（delivery 后自动运行 gate 全量校验） | delivery → cleanup 之间 |
 | `clipforge/categories/{id}` | 分类配置（数据获取、风格、音色、标签等覆盖规则） | 各 stage 按需读取 |
 
 **共享规范按需加载（不全文加载）：**
 
-| Stage | `_shared-rules` 章节 | `_director-toolkit` | `_render-safety` |
+| Stage | `shared/shared-rules` 章节 | `shared/director-toolkit` | `shared/render-safety` |
 |-------|---------------------|--------------------|-----------------|
 | Stage 1 | §1 措辞 + §2 语言 | — | — |
 | Stage 2 | — | 第 2 层 视觉词汇表 | — |
@@ -108,7 +110,7 @@ clipforge/categories/
 
 > 每个共享规范文件顶部有章节号，只读取该 stage 需要的章节，不全文加载。引擎注入已包含结构化规则覆盖，共享规范提供"为什么这样做"的上下文。
 
-**有分类配置时，各 stage 还需读取 `clipforge/categories/{id}.md` 获取分类特定的覆盖规则。分类配置优先于通用 stage 文件中的默认值。**
+**有分类配置时，stage 执行前通过 `engine/render_stage.py` 将分类配置值确定性替换到通用 stage 模板中。LLM 读到的是已合并的完整文件，无需自行做配置合并。分类配置文件中 CONFIG-END 后的详细指南仍需 LLM 读取（数据获取策略、选取规则等长文内容）。**
 
 ## 引擎层
 
@@ -171,9 +173,9 @@ python engine/attribution.py --trace traces/github-trending/trace.json --skill s
 ### DAG 依赖图
 
 ```
-env-check → content → design ─┬→ narration → audio ──┬→ video → delivery → cleanup
-                               │                assets ┘
-                               └→ assets
+env-check → content → design ─┬→ narration → audio ──┬→ video → delivery → machine-scoring → cleanup
+                               │                assets ┘                        ↓
+                               └→ assets                                feedback（可选）
                                                   narration → movie-clips（条件）
 ```
 
@@ -187,19 +189,42 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
   → 逐个执行 ready artifact：
      1. 引擎注入：运行 python engine/inject.py --skill <stage-id> [--category <cat>]
         → 将输出（Intent + 正向规则 + 经验模式 + Guard Red Flags）拼入 stage prompt 前段
-     2. 读取对应 stage 技能文件（如 clipforge/stage0-env）
-     3. 执行 stage 技能内容
-     4. 引擎门禁：运行 python engine/gate.py --skill <stage-id> --project-dir <dir>
+     2. 模板渲染：运行 python engine/render_stage.py --stage stages/<stage-file> --category <cat>
+        → 将分类配置的值确定性替换到通用 stage 模板中（音色、标签、关键词等）
+        → 无分类时用默认值，LLM 读到的是已合并的完整文件
+     3. 读取渲染后的 stage 内容（而非原始模板）
+     4. 如有分类，同时读取 clipforge/categories/{id}.md 的详细指南（CONFIG-END 后的内容）
+     5. 执行 stage 技能内容
+     6. 引擎门禁：运行 python engine/gate.py --skill <stage-id> --project-dir <dir>
         → HARD 门禁失败：展示违规项，要求修复后重新执行此 stage
         → SOFT 门禁失败：展示警告，由用户决定是否接受
         → 全部通过：继续
-     5. 轨迹记录：运行 python engine/trace.py record --skill <stage-id> --project-dir <dir> --result pass/fail --score <N>
-     6. 展示结果并确认
+     7. 轨迹记录：运行 python engine/trace.py record --skill <stage-id> --project-dir <dir> --result pass/fail --score <N>
+     8. 展示结果并确认
   → 完成后重新扫描状态，更新队列
-  → 全部完成 → 触发 cleanup → 结束
+  → 全部完成 → 触发 cleanup
+  → 自动检测播放数据 → 结束
 ```
 
 > **引擎命令基础路径**：`cd .claude/commands/clipforge && python engine/<tool>.py`
+
+**自动检测播放数据**：cleanup 完成后，检查 `workspace/sources/视频数据/` 是否存在未处理的数据文件。如果存在，自动运行数据采集并提示用户是否进入 Stage 8 反馈校准：
+
+```bash
+# 检测是否有新数据（对比最近一次采集时间）
+python scripts/collect_performance.py --scan --dry-run --json
+# 如果有匹配结果，提示用户：
+#   "检测到新的播放数据（N 条），已匹配到 M 个项目。是否现在分析数据并校准机器评分？"
+#   用户确认后：python scripts/collect_performance.py --scan --backfill
+#   然后进入 Stage 8 流程（参见 stages/stage8-feedback.md）
+```
+
+**注册播放数据提醒**：无论当前是否检测到数据，确保每日播放数据新鲜度检查任务已注册：
+
+1. CronList 查找 prompt 包含 `playback-reminder` 的任务
+2. 如已存在 → 跳过
+3. 如不存在 → CronCreate(recurring=true, durable=true, cron="30 10 * * *")，prompt 内联检查逻辑（参见 `shared/playback-reminder.md`）
+4. 提醒逻辑：扫描 `workspace/sources/视频数据/` 最新日期，超过 3 天未更新则催促用户导出平台数据（抖音、小红书、哔哩哔哩、微信视频号）
 
 ### 自动化模式（cron 编排文件）
 
@@ -214,7 +239,8 @@ Controller 读取 schema.yaml
      → HARD 门禁失败：SubAgent 自动修复并重试（最多 2 次）
      → 轨迹记录：trace.py record --skill <stage-id> --result pass/fail
      → 通过则下一批次
-  → 全部完成 → 调用 _cron-renew 续期
+  → 全部完成 → 调用 shared/cron-renew 续期
+  → 自动检测播放数据（同交互模式）
 ```
 
 ### SubAgent 批次分组
@@ -225,13 +251,13 @@ Controller 读取 schema.yaml
 | SubAgent-1b | movie-clips（条件：仅当 narration 含 video_clip 场景时） | 插入 narration 之后、audio 之前 |
 | SubAgent-2 | audio + assets（并行） | audio 依赖 narration（若 movie-clips 触发则等其完成），assets 依赖 design |
 | SubAgent-3 | video | 等待 audio 完成（assets 为 optional，不阻塞） |
-| SubAgent-4 | delivery → cleanup | 收尾顺序执行 |
+| SubAgent-4 | delivery → machine-scoring → cleanup | 收尾顺序执行 |
 
 ### SubAgent prompt 组装
 
 每个 SubAgent 的 prompt 由两部分拼装：
 
-1. `clipforge/stageN-xxx.md` — 具体 stage 技能内容（包含执行步骤、规则、Anti-rationalization）
+1. `clipforge/stages/stageN-xxx.md` — 具体 stage 技能内容（包含执行步骤、规则、Anti-rationalization）
 2. 项目上下文 — 数据文件路径、视频模式、内容类型等运行时参数
 
 ## 项目目录结构

@@ -21,7 +21,9 @@ fi
 | FFmpeg | 任意 | 音视频处理 | 是 | 提示安装 |
 | edge-tts | 任意 | TTS 旁白（推荐） | 是 | 提示安装 |
 | yt-dlp | 任意 | 从 YouTube 下载免费音乐 | 是 | 提示安装 |
-| GitHub CLI (`gh`) | 任意 | GitHub 项目实时数据获取 | 推荐 | 提示安装 |
+{{IF:content.optional_deps}}
+| 分类专有工具 | — | 分类要求 | 推荐 | 提示安装 |
+{{ENDIF}}
 | jq | 任意 | loudnorm 两遍精确音量标准化 | 推荐 | 提示安装（缺失时降级单遍处理） |
 | HyperFrames Skills | 最新 | 视频编排技能组 | 是 | **自动安装** |
 | Python | >= 3.12 | MusicGen BGM（仅二创时需要） | 否 | 跳过 |
@@ -63,6 +65,8 @@ bash .claude/commands/clipforge/scripts/env_check.sh
 - **MusicGen 缺失** → 不影响，使用音乐库 + yt-dlp 下载现成曲目
 
 ---
+
+> 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage0-env` 获取完整约束 prompt。
 
 ## Red Flags（停止信号）
 

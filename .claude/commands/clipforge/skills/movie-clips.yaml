@@ -8,7 +8,7 @@ skill:
   intent:
     objective: "影视片段剪辑就绪，时间线已标注"
     criteria:
-      - "clips_timeline.json 存在且格式正确"
+      - "clip_durations.json 存在且格式正确"
   boundary:
     rules:
       - ref: "R-G-*"

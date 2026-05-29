@@ -18,6 +18,16 @@
 
 **获取后：** 提炼核心信息点，准备进入 Stage 2 风格推导。
 
+## 完成标记
+
+内容整理完成后，创建阶段完成标记：
+
+```bash
+touch content_ready.txt
+```
+
+此文件是 `schema.yaml` 中 content artifact 的 `generates` 声明，后续阶段通过检测此文件判断 content 是否完成。
+
 ## 分类数据获取（当有分类配置时）
 
 当用户指定了内容分类（如 GitHub、漫画、小说等），读取对应的分类配置文件获取数据获取策略：

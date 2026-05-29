@@ -22,7 +22,7 @@
 - **禁止在 CSS 样式表中写 `.phase-2 { opacity: 0 }`**，必须通过 GSAP timeline 的 `.set()` 调用实现
 - 原因：CSS `opacity:0` 在 HyperFrames seek 时不会被清除，而 GSAP `.set()` 会被正确回放
 - Phase 间切换使用 `.to({opacity: 0})` 淡化旧阶段（完全消失，避免重叠重影）+ `.to({opacity: 1})` 显示新阶段
-- **Phase 断点计算禁止均分**——`gap = duration / phase_count` 会导致旁白与画面严重不同步（偏差 5-12 秒）。必须逐场景分析旁白文本话题转换点，按字数比例换算时间戳。方法见 `stage6-production.md` §6.4b
+- **Phase 断点计算禁止均分**——`gap = duration / phase_count` 会导致旁白与画面严重不同步（偏差 5-12 秒）。必须逐场景分析旁白文本话题转换点，按字数比例换算时间戳。方法见 `stages/stage6-production.md` §6.4b
 
 ### 1.8 特效元素默认可见规则
 
@@ -44,6 +44,14 @@
 - 每个场景**必须有四方向安全区 padding**，推荐值：`padding: 180px 80px 220px 80px`（上 180px，右 80px，下 220px，左 80px）
 - **padding 只设在一层**，由场景使用的模式决定（见 §1.4b 分类）
 - 缺少 padding 会导致内容贴边缘或渲染塌陷；双重 padding 会导致内容偏左上、可用宽度仅 74%
+
+### 1.3a 背景铺满全画幅（铁律）
+
+- **`.layer-bg` 必须铺满整个 1080×1920 画面**，禁止被 `.clip` 或任何父元素裁剪
+- 实现方式：`.clip` 使用 `position:absolute; inset:0`（与 composition 同尺寸），不做空间偏移
+- **禁止** `.clip` 设置 `top/right/bottom/left` 偏移值（如 `top:140px`），这会把背景关在 clip 内，clip 外全是黑色 → 四面黑边
+- 安全区内缩**只能**通过 `.scene-wrap` 或组件的 padding 实现，不能通过 `.clip` 的定位
+- **事故复盘（2026-05-29）**：`.clip` 设置 `top:140 right:90 bottom:260 left:70`，背景只覆盖 920×1520 区域，四周露出黑色 body 背景
 
 ### 1.4 水平安全边距规则（抖音竖屏）
 
@@ -93,9 +101,9 @@
 
 ### 1.6 音频文件必须在项目目录内
 
-- `<audio src="bgm.mp3">` 引用的文件**必须存在于 index.html 同级目录**
+- `<audio src="bgm.wav">` 引用的文件**必须存在于 index.html 同级目录**
 - HyperFrames 渲染时通过 FileServer 提供文件，路径错误会导致 404 静音
-- **渲染前检查：** `ls -la bgm.mp3 narration.mp3` 确认两个音频文件都存在
+- **渲染前检查：** `ls -la bgm.wav narration.mp3` 确认两个音频文件都存在
 
 ### 1.7 GSAP timeline 注册是强制要求
 

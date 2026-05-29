@@ -13,7 +13,7 @@ Thanks for your interest in improving ClipForge. This guide covers how to contri
 ### Add a New Stage
 
 1. Define the artifact in `schema.yaml` with `generates`, `requires`, and `template` fields
-2. Create `stageN-name.md` in `.claude/commands/clipforge/` following the existing pattern:
+2. Create `stageN-name.md` in `.claude/commands/clipforge/stages/` following the existing pattern:
    - CSO `description` (trigger condition, not workflow summary)
    - Execution steps with explicit file reads/writes
    - Anti-rationalization table (Red Flags + Common Rationalizations)
@@ -57,7 +57,7 @@ All artifact dependencies and outputs are defined in `schema.yaml`. If you need 
 
 ### Skills are Self-Contained
 
-Each stage file (`stageN-xxx.md`) must include everything needed to execute that stage:
+Each stage file (`stages/stageN-xxx.md`) must include everything needed to execute that stage:
 - What to read (input files from upstream artifacts)
 - What to do (execution steps)
 - What to write (output files declared in `generates`)

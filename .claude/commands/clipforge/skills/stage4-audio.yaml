@@ -16,7 +16,11 @@ skill:
       - ref: "R-G-*"
       - ref: "R-A-*"
       - ref: "R-C-*"
-    preferences: []
+    preferences:
+      - text: "BGM 选曲优先考虑纯音乐（无人声），避免与 TTS 旁白冲突"
+        weight: "HIGH"
+      - text: "科技类内容倾向电子/氛围乐，人文类倾向钢琴/弦乐"
+        weight: "MEDIUM"
   guard:
     red_flags:
       - thought: "预估时长够用了"

@@ -113,16 +113,78 @@ id: "分类ID（与文件名一致，如 github、comics）"
 对通用内容安全规范的补充或覆盖
 ```
 
+## CONFIG 段（机器可解析配置）
+
+在 front matter 和正文之间，新增 `CONFIG-START` / `CONFIG-END` 标记的 YAML 段。这段内容由 `engine/render_stage.py` 和引擎模块解析，用于**确定性替换**通用 stage 文件中的模板变量。
+
+```markdown
+<!-- CONFIG-START: 机器可解析的配置值 -->
+audio:
+  default_voice: "zh-CN-YunjianNeural"
+  default_rate: "+25%"
+
+narration:
+  hook_example: "{M}月{D}日涨星最快的几个项目，直接炸了"
+  hook_anchors:
+    - "涨星最快"
+    - "千星"
+  metric_layer: "| 6. 星标增量 | 单日涨星数 | 强调色 | \"+3941 ★\" |"
+
+delivery:
+  hashtags: "#GitHub热门 #程序员 #开源"
+  cover_badge: "GitHub 热门项目"
+<!-- CONFIG-END -->
+```
+
+### 可用字段参考
+
+| 段 | 字段 | 类型 | 说明 |
+|----|------|------|------|
+| `audio` | `default_voice` | string | TTS 声音名称（如 `zh-CN-YunjianNeural`） |
+| `audio` | `default_rate` | string | TTS 语速（如 `+25%`） |
+| `audio` | `voice_override` | bool | true=固定此音色，不查通用声音表 |
+| `narration` | `hook_example` | string | 钩子文案示例 |
+| `narration` | `topic_example` | string | 正文示例 |
+| `narration` | `hook_json_example` | string | JSON 示例中的 hook 文案 |
+| `narration` | `cta_purpose` | string | CTA 场景用途描述 |
+| `narration` | `word_count_range` | [int, int] | 文案字数范围 |
+| `narration` | `hook_anchors` | list[str] | hook 数字锚定关键词（供 gate.py 检测） |
+| `narration` | `metric_layer` | string | 8 层信息表的领域专用层（markdown 表格行） |
+| `narration` | `contrarian_questions` | string | 反直觉角度挖掘问题（多行文本） |
+| `narration` | `narration_txt_example` | string | narration.txt 示例（多行文本） |
+| `delivery` | `hashtags` | string | 标签（空格分隔） |
+| `delivery` | `cover_badge` | string | 封面徽章文案 |
+| `delivery` | `cover_scene_label` | string | 封面场景标签 |
+| `delivery` | `cover_data_examples` | string | 封面数据卡片示例 |
+| `delivery` | `hook_template_example` | string | 文案模板钩子示例 |
+| `delivery` | `tag_strategy` | string | 标签策略表格（多行 markdown） |
+| `delivery` | `comment_template` | string | 评论区模板 |
+| `design` | `default_style` | string | 默认风格方向 |
+| `design` | `color_bias` | string | 配色偏好 |
+| `content` | `optional_deps` | list[str] | 分类专有可选依赖 |
+| `shared_rules` | `data_example` | string | 数据示例 |
+| `shared_rules` | `hook_data_example` | string | 钩子数据示例 |
+| `shared_rules` | `hook_emotion_example` | string | 钩子情绪示例 |
+
+### 模板指令语法
+
+通用 stage 文件中使用三种指令：
+
+| 指令 | 语法 | 用途 |
+|------|------|------|
+| 简单替换 | `{{section.field\|默认值}}` | 替换单值，无分类时用默认值 |
+| 块注入 | `{{INJECT:section.field}}` | 注入多行内容（表格、列表等） |
+| 条件块 | `{{IF:section.field}}...{{ENDIF}}` | 仅分类有此字段时显示 |
+
 ## 设计原则
 
 1. **覆盖而非重写。** 分类配置只声明与通用规则不同的部分。通用 stage 文件的规则始终作为基线。
-2. **分类配置由 SubAgent 在执行时读取。** SubAgent prompt 中会包含"读取 `categories/{id}.md` 获取分类配置"的指令。
+2. **配置合并由代码完成。** `engine/render_stage.py` 在执行前将 CONFIG 段的值确定性替换到通用 stage 模板中。LLM 读到的是已合并的完整文件，无需自行做配置路由。
 3. **一个分类一个文件。** 不要跨分类引用，每个文件自包含。
 4. **分类 ID 用英文小写。** 文件名 = 分类 ID = cron 文件中的引用键。
 
 ## 如何添加新分类
 
-1. 复制本文件作为模板参考
-2. 创建 `categories/{id}.md`，填写该分类的覆盖规则
-3. 创建对应的 cron 编排文件（如 `commands/{id}-daily.md`）
-4. 测试：手动 `/clipforge` 指定分类，验证各 stage 正确读取分类配置
+1. 运行 `/clipforge-category-setup`，引导式创建分类配置 + 可选定时代时任务
+2. 或手动：复制本文件作为模板参考，创建 `categories/{id}.md`
+3. 测试：手动 `/clipforge` 指定分类，验证各 stage 正确读取分类配置
