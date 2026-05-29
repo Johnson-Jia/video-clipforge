@@ -14,28 +14,49 @@
 ## 组件索引
 
 > **按需加载：** 只在需要某个组件时，用 Read 工具读取对应文件。不要一次性加载全部组件。
+> **统一索引：** `components/registry.yaml` 是所有 21 个组件的元数据汇总，支持按 layer/tags/emotion_range 粗筛。
+
+### 背景层 (bg/)
+
+> 嵌入 `.layer-bg`，提供渐变、光晕等氛围基底。一个场景选 0-1 个 bg 组件。
 
 | # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
 |---|--------|-----------|-------------|---------|
-| 1 | HeroCard | 项目首屏展示，震撼开场 | hook, intro | `.claude/commands/clipforge/components/hero_card.html` |
-| 2 | StarCounter | Star 数动态计数动画 | stats, reveal | `.claude/commands/clipforge/components/star_counter.html` |
-| 3 | CodeRain | 代码雨背景（Canvas seek 驱动） | tech, coding | `.claude/commands/clipforge/components/code_rain.html` |
-| 4 | PulseOrb | 脉冲光球能量装饰 | data, focus | `.claude/commands/clipforge/components/pulse_orb.html` |
-| 5 | CompareSplit | 双栏对比布局 | compare, versus | `.claude/commands/clipforge/components/compare_split.html` |
-| 6 | TimeLineFlow | 时间线叙事（节点依次出现） | timeline, history | `.claude/commands/clipforge/components/timeline_flow.html` |
-| 7 | ParticleBurst | 粒子爆发庆祝效果 | climax, celebration | `.claude/commands/clipforge/components/particle_burst.html` |
-| 8 | ThreeScene | 3D 场景容器（需引入 Three.js） | immersive, spatial | `.claude/commands/clipforge/components/three_scene.html` |
-| 9 | SpeechBubble | 角色吐槽气泡 | humor, commentary | `.claude/commands/clipforge/components/speech_bubble.html` |
-| 10 | CharOverlay | 码力角色覆盖层（6 种表情） | reaction, emotion | `.claude/commands/clipforge/components/char_overlay.html` |
-| 11 | DataViz | 数据可视化柱状图卡片 | data, stats | `.claude/commands/clipforge/components/data_viz.html` |
-| 12 | TextReveal | 文字揭示动画（悬念展示） | reveal, surprise | `.claude/commands/clipforge/components/text_reveal.html` |
-| 13 | ProjectFullCard | 标准模式单项目全屏 8 层卡片 | project-card, listing | `.claude/commands/clipforge/components/project_full_card.html` |
-| 14 | VerdictBox | 核心结论框（border-left 高亮 + 标签） | conclusion, summary, thesis | `.claude/commands/clipforge/components/verdict_box.html` |
-| 15 | NumGrid | 2×2 数据矩阵（大数字网格） | data, stats, metrics | `.claude/commands/clipforge/components/num_grid.html` |
-| 16 | MarketBars | 市场对比条（水平进度条，data-width 驱动） | market, growth, comparison | `.claude/commands/clipforge/components/market_bars.html` |
-| 17 | Spectrum | 冲击光谱（色带 + 垂直条形图双形态） | impact, analysis, spectrum | `.claude/commands/clipforge/components/spectrum.html` |
-| 18 | ScoreCompare | 对比评分卡（A/B 双卡片 + WIN 徽章） | compare, versus, battle | `.claude/commands/clipforge/components/score_compare.html` |
-| 19 | RecStrip | 三档推荐条（优先级排列 + 结论框） | recommendation, ranking, priority | `.claude/commands/clipforge/components/rec_strip.html` |
+| 1 | GradientMesh | 渐变色带缓慢摇摆 | ambient, background | `components/bg/gradient_mesh.html` |
+| 2 | LightField | 高斯模糊光球 + 渐变背景 | atmosphere, depth | `components/bg/light_field.html` |
+
+### 特效层 (fx/)
+
+> 嵌入 `.layer-fx`，提供动态视觉装饰。一个场景选 0-2 个 fx 组件。
+
+| # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
+|---|--------|-----------|-------------|---------|
+| 1 | CodeRain | 代码雨背景（Canvas seek 驱动） | tech, coding | `components/fx/code_rain.html` |
+| 2 | PulseOrb | 脉冲光球能量装饰 | data, focus | `components/fx/pulse_orb.html` |
+| 3 | ParticleBurst | 粒子爆发庆祝效果 | climax, celebration | `components/fx/particle_burst.html` |
+| 4 | ThreeScene | 3D 场景容器（需引入 Three.js） | immersive, spatial | `components/fx/three_scene.html` |
+| 5 | Spectrum | 冲击光谱（色带 + 垂直条形图双形态） | impact, analysis, spectrum | `components/fx/spectrum.html` |
+
+### 内容层 (content/)
+
+> 嵌入 `.layer-content`，承载文字、数据、卡片等信息。一个场景选 1-2 个 content 组件。
+
+| # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
+|---|--------|-----------|-------------|---------|
+| 1 | HeroCard | 项目首屏展示，震撼开场 | hook, intro | `components/content/hero_card.html` |
+| 2 | StarCounter | Star 数动态计数动画 | stats, reveal | `components/content/star_counter.html` |
+| 3 | CompareSplit | 双栏对比布局 | compare, versus | `components/content/compare_split.html` |
+| 4 | TimeLineFlow | 时间线叙事（节点依次出现） | timeline, history | `components/content/timeline_flow.html` |
+| 5 | DataViz | 数据可视化柱状图卡片 | data, stats | `components/content/data_viz.html` |
+| 6 | TextReveal | 文字揭示动画（悬念展示） | reveal, surprise | `components/content/text_reveal.html` |
+| 7 | SpeechBubble | 角色吐槽气泡 | humor, commentary | `components/content/speech_bubble.html` |
+| 8 | CharOverlay | 码力角色覆盖层（6 种表情） | reaction, emotion | `components/content/char_overlay.html` |
+| 9 | ProjectFullCard | 标准模式单项目全屏 8 层卡片 | project-card, listing | `components/content/project_full_card.html` |
+| 10 | VerdictBox | 核心结论框（border-left 高亮 + 标签） | conclusion, summary, thesis | `components/content/verdict_box.html` |
+| 11 | NumGrid | 2×2 数据矩阵（大数字网格） | data, stats, metrics | `components/content/num_grid.html` |
+| 12 | MarketBars | 市场对比条（水平进度条，data-width 驱动） | market, growth, comparison | `components/content/market_bars.html` |
+| 13 | ScoreCompare | 对比评分卡（A/B 双卡片 + WIN 徽章） | compare, versus, battle | `components/content/score_compare.html` |
+| 14 | RecStrip | 三档推荐条（优先级排列 + 结论框） | recommendation, ranking, priority | `components/content/rec_strip.html` |
 
 ---
 
