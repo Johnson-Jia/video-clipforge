@@ -1,0 +1,175 @@
+# ClipForge 组件注册表
+# 由组件文件头 @ComponentMeta 汇总生成
+# 匹配算法的粗筛索引
+
+components:
+  # ── 背景层 ──
+  - name: gradient_mesh
+    layer: bg
+    file: bg/gradient_mesh.html
+    tags: [gradient, background, ambient, wave, sway]
+    emotion_range: [calm, mystery, depth]
+    visual_density: low
+    complexity: css-only
+
+  - name: light_field
+    layer: bg
+    file: bg/light_field.html
+    tags: [glow, orbs, ambient, background, atmosphere]
+    emotion_range: [warmth, mystery, depth, calm]
+    visual_density: low
+    complexity: css-only
+
+  # ── 特效层 ──
+  - name: code_rain
+    layer: fx
+    file: fx/code_rain.html
+    tags: [tech, coding, matrix, rain, background, hacker]
+    emotion_range: [tension, focus]
+    visual_density: low
+    complexity: canvas-js
+
+  - name: pulse_orb
+    layer: fx
+    file: fx/pulse_orb.html
+    tags: [energy, pulse, glow, focus, orb, ambient]
+    emotion_range: [focus, energy]
+    visual_density: low
+    complexity: css-only
+
+  - name: particle_burst
+    layer: fx
+    file: fx/particle_burst.html
+    tags: [celebration, burst, confetti, climax, particles]
+    emotion_range: [excitement, climax]
+    visual_density: low
+    complexity: canvas-js
+
+  - name: three_scene
+    layer: fx
+    file: fx/three_scene.html
+    tags: [3d, immersive, spatial, cubes, three-js]
+    emotion_range: [immersion, wonder]
+    visual_density: low
+    complexity: three-js
+
+  - name: spectrum
+    layer: fx
+    file: fx/spectrum.html
+    tags: [spectrum, impact, analysis, gradient, levels, color-strip]
+    emotion_range: [analysis, depth]
+    visual_density: medium
+    complexity: css-only
+
+  # ── 内容层 ──
+  - name: hero_card
+    layer: content
+    file: content/hero_card.html
+    tags: [hook, intro, hero, opening, stunning]
+    emotion_range: [shock, excitement, curiosity]
+    visual_density: generous
+    complexity: css-only
+
+  - name: star_counter
+    layer: content
+    file: content/star_counter.html
+    tags: [stats, reveal, counting, growth, star]
+    emotion_range: [pride, excitement]
+    visual_density: medium
+    complexity: css-only
+
+  - name: compare_split
+    layer: content
+    file: content/compare_split.html
+    tags: [compare, versus, dual, split]
+    emotion_range: [tension, surprise]
+    visual_density: medium
+    complexity: css-only
+
+  - name: timeline_flow
+    layer: content
+    file: content/timeline_flow.html
+    tags: [timeline, history, steps, roadmap, evolution]
+    emotion_range: [progress, anticipation]
+    visual_density: standard
+    complexity: css-only
+
+  - name: data_viz
+    layer: content
+    file: content/data_viz.html
+    tags: [data, stats, chart, metrics, bar]
+    emotion_range: [curiosity, confidence]
+    visual_density: compact
+    complexity: css-only
+
+  - name: text_reveal
+    layer: content
+    file: content/text_reveal.html
+    tags: [reveal, surprise, highlight, cta, punchline]
+    emotion_range: [surprise, warmth]
+    visual_density: generous
+    complexity: css-only
+
+  - name: speech_bubble
+    layer: content
+    file: content/speech_bubble.html
+    tags: [humor, commentary, bubble, character, reaction]
+    emotion_range: [amusement, sarcasm]
+    visual_density: low
+    complexity: css-only
+
+  - name: char_overlay
+    layer: content
+    file: content/char_overlay.html
+    tags: [character, reaction, emotion, avatar, expression]
+    emotion_range: [neutral, amusement, shock, excitement]
+    visual_density: low
+    complexity: css-only
+
+  - name: project_full_card
+    layer: content
+    file: content/project_full_card.html
+    tags: [project-card, listing, full-screen, single-project]
+    emotion_range: [confidence, interest]
+    visual_density: compact
+    complexity: css-only
+
+  - name: verdict_box
+    layer: content
+    file: content/verdict_box.html
+    tags: [conclusion, summary, thesis, verdict, key-point]
+    emotion_range: [certainty, conviction]
+    visual_density: standard
+    complexity: css-only
+
+  - name: num_grid
+    layer: content
+    file: content/num_grid.html
+    tags: [data, stats, metrics, grid, matrix, kpi]
+    emotion_range: [curiosity, confidence]
+    visual_density: compact
+    complexity: css-only
+
+  - name: market_bars
+    layer: content
+    file: content/market_bars.html
+    tags: [market, growth, comparison, progress, forecast]
+    emotion_range: [progress, confidence]
+    visual_density: compact
+    complexity: css-only
+
+  - name: score_compare
+    layer: content
+    file: content/score_compare.html
+    tags: [compare, versus, battle, score, ab_test, winner]
+    emotion_range: [tension, excitement]
+    visual_density: medium
+    complexity: css-only
+
+  - name: rec_strip
+    layer: content
+    file: content/rec_strip.html
+    tags: [recommendation, ranking, priority, verdict, tier]
+    emotion_range: [certainty, guidance]
+    visual_density: standard
+    complexity: css-only
