@@ -27,6 +27,7 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 | `storyboard.narrative_template` | 叙事模板 → 影响场景布局选择 |
 | `storyboard.humor_style` | 幽默策略 → 是否添加 SpeechBubble 组件 |
 | `storyboard.character_presence` | 角色出场 → 是否添加 CharOverlay 组件 |
+| `narration_segments.json` 的 `visual_intent` | 每场景 × 每层的导演视觉意图（bg/fx/content 三层） |
 
 **沉浸模式 → CSS 变量映射：** 从 `stage6-components.md` 的「沉浸模式配色速查」表获取具体色值，写入 `:root` CSS 变量。
 
@@ -119,6 +120,7 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 1. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 3. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
+3a. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4b 的匹配流程生成
 4. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
@@ -182,6 +184,61 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 - hook 缺乏冲击力 → 加强光晕/字号/对比度
 
 **发现偏差立即修复。自审不通过的禁止渲染。**
+
+## 6.4b 特效工坊（组件匹配 + 新特效创建）
+
+> **触发条件：** Stage 6 正式开始时，读取 `component_manifest.md`。如果存在 `new` 条目则启动工坊；否则跳过。
+
+### 匹配流程
+
+1. **读取 visual_intent** — 从 `narration_segments.json` 中每个场景的 `visual_intent` 字段获取导演意图
+2. **读取 registry.yaml** — 加载 `components/registry.yaml` 组件注册表
+3. **粗筛** — 按 layer/tags/emotion_range/complexity 过滤候选组件
+4. **精排** — AI 语义理解：读取 visual_intent + 候选组件 description + 相邻场景已选组件，选择最佳匹配
+5. **输出 component_manifest.md** — 每个场景 × 每层 = 使用组件 + 来源(library/new) + 参数变体
+
+### 新特效创建（手动模式）
+
+当匹配标记为 `new` 时：
+
+1. **读取该场景的 visual_intent** — 情感内核 + 视觉意图
+2. **读取已匹配的 library 组件** — 确保新特效与已有方案协调
+3. **AI 推导新特效** — 生成 CSS/Canvas/Three.js 实现
+4. **生成样本 HTML** — 独立可运行文件，写入 `fx_workshop/` 目录
+
+### 样本预览
+
+- **纯 CSS 特效** → 浏览器直接打开样本 HTML
+- **Canvas/Three.js 特效** → `npx hyperframes render` 渲染为短视频片段
+- 用户标记：使用/不使用 + 入库/不入库
+- 不满意可重新推导（最多 3 轮）
+
+### 入库流程
+
+用户勾选入库的特效：
+1. 复制到 `components/{layer}/` 正式目录
+2. 补充 @ComponentMeta 元数据（如果 AI 未自动生成）
+3. 更新 `registry.yaml` 添加新条目
+
+### 自动模式
+
+自动模式下跳过预览，AI 直接选择并使用。值得复用的特效写入 `components/auto_candidates/{layer}/`，下次手动模式时提示用户审阅。
+
+### component_manifest.md 格式
+
+```markdown
+# Component Manifest — <project-name>
+
+## Scene: s1-hook
+- **bg**: gradient_mesh (library) — color_hint: warm gold
+- **fx**: particle_burst (library) — emotion: excitement
+- **content**: hero_card (library) — params: {title_size: 120px}
+
+## Scene: s2-solution
+- **bg**: light_field (library) — color_hint: cool blue
+- **fx**: code_rain (new) — emotion: tension, tech
+- **content**: project_full_card (library) — params: {rank: 1}
+```
 
 ## 6.4a 视觉分镜（Visual Phasing）
 
