@@ -5,8 +5,8 @@ layer: fx
 tags: [scan, sweep, tech, detection, analysis, alert]
 emotion_range: [tension, analysis, focus, tech]
 visual_density: low
-complexity: css-only
-description: 水平扫描线从上到下扫过屏幕，科技感/检测感，适合数据分析/安全扫描/系统检测场景
+complexity: gsap
+description: 水平扫描线从上到下扫过屏幕，科技感/检测感。GSAP 驱动，HyperFrames seek 兼容
 parameters:
   color: { default: "rgba(0,229,255,0.6)", description: "扫描线颜色" }
   speed: { default: 3, range: [2, 6], description: "扫描周期(秒)" }
@@ -14,15 +14,17 @@ parameters:
   glow_size: { default: 40, range: [20, 80], description: "辉光范围(px)" }
 /ComponentMeta
 -->
-<!-- CSS keyframes (全局共享) -->
-<!--
-@keyframes fxScanLine {
-  0% { top: -5%; }
-  100% { top: 105%; }
-}
--->
 <!-- HTML (嵌入 .layer-fx) -->
-<div style="position:absolute;left:0;width:100%;height:2px;
+<!-- 扫描线：初始 top:10%（可见），由 GSAP 驱动上下循环 -->
+<div class="scanline" style="position:absolute;left:0;top:10%;width:100%;height:2px;
   background:linear-gradient(90deg,transparent 5%,rgba(0,229,255,0.6) 30%,rgba(0,229,255,0.9) 50%,rgba(0,229,255,0.6) 70%,transparent 95%);
   box-shadow:0 0 40px rgba(0,229,255,0.4),0 0 10px rgba(0,229,255,0.6);
-  animation:fxScanLine 3s linear infinite;z-index:10;pointer-events:none"></div>
+  z-index:10;pointer-events:none"></div>
+
+<!-- JS (GSAP) — 持续扫描动画 -->
+<script>
+// 入场：从顶部淡入
+// tl.from('#sN .scanline', {opacity: 0, top: '0%', duration: 0.5, ease: 'power2.out'}, sceneStart)
+// 持续：上下循环扫描
+// tl.to('#sN .scanline', {top: '90%', duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 0.5)
+</script>

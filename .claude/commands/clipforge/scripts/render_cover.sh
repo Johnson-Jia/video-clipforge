@@ -30,11 +30,20 @@ if [ -s cover.html ]; then
 fi
 
 # ── 方案 A: HyperFrames 隔离渲染 ──
+# 从 cover.html 检测封面尺寸
+COVER_W=$(grep -oP 'width:\s*\K\d+' cover.html | head -1)
+COVER_H=$(grep -oP 'height:\s*\K\d+' cover.html | head -1)
+COVER_W=${COVER_W:-2160}
+COVER_H=${COVER_H:-3840}
+# 输出尺寸 = 封面尺寸 / 2
+OUT_W=$((COVER_W / 2))
+OUT_H=$((COVER_H / 2))
+
 TMPDIR="${TEMP:-/tmp}/cover-render"
 mkdir -p "$TMPDIR"
 cp cover.html "$TMPDIR/index.html" 2>/dev/null || true
 if npx hyperframes render "$TMPDIR" --output "$TMPDIR/cover.mp4" --video-bitrate 5M 2>/dev/null; then
-  ffmpeg -y -i "$TMPDIR/cover.mp4" -vf "select=eq(n\,0),scale=1080:1920:flags=lanczos" -vframes 1 -update 1 cover.png 2>/dev/null
+  ffmpeg -y -i "$TMPDIR/cover.mp4" -vf "select=eq(n\,0),scale=${OUT_W}:${OUT_H}:flags=lanczos" -vframes 1 -update 1 cover.png 2>/dev/null
   rm -rf "$TMPDIR"
   if [ -s cover.png ]; then
     echo "[render_cover] 方案A成功: HyperFrames 隔离渲染"
@@ -65,7 +74,7 @@ if [ ! -s cover.png ]; then
             args: ['--no-sandbox', '--disable-gpu']
           });
           const page = await browser.newPage();
-          await page.setViewport({ width: 2160, height: 3840, deviceScaleFactor: 1 });
+          await page.setViewport({ width: ${COVER_W}, height: ${COVER_H}, deviceScaleFactor: 1 });
           await page.goto('file:///${COVER_ABS}', { waitUntil: 'networkidle0', timeout: 30000 });
           await page.evaluate(() => document.fonts.ready);
           await new Promise(r => setTimeout(r, 2000));
@@ -78,7 +87,7 @@ if [ ! -s cover.png ]; then
         }
       })();
     " 2>/dev/null && \
-    ffmpeg -y -i cover_raw.png -vf "scale=1080:1920:flags=lanczos" -q:v 2 cover.png 2>/dev/null && \
+    ffmpeg -y -i cover_raw.png -vf "scale=${OUT_W}:${OUT_H}:flags=lanczos" -q:v 2 cover.png 2>/dev/null && \
     rm -f cover_raw.png
 
     if [ -s cover.png ]; then

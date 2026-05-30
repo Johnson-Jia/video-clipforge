@@ -110,6 +110,28 @@ tl.add('breath-start')
 ✗ **特效元素 opacity > 0.6** — 抢了内容的视觉权重，主次颠倒
 ✗ **一个场景堆 3+ 种特效** — 像 PowerPoint 动画集锦，不是专业视频
 
+### 组件创建指南
+
+当组件库中没有匹配当前场景视觉意图的特效时，创建新特效：
+
+1. **从内容推导**：这段场景在说什么？观众该感受到什么？什么动态视觉能强化这个感受？
+2. **选择技术实现**：
+   - CSS + GSAP：光球、射线、渐变带、边框脉冲等（推荐，简单可靠）
+   - Canvas + GSAP：粒子系统、代码雨、数据流等（适合复杂动态）
+3. **遵守约束**：
+   - CSS 初始状态必须可见（opacity ≥ 0.15）
+   - 必须有 GSAP 动画（持续 `repeat:-1` 或入场 `.from()`）
+   - 不依赖 CSS animation 做入场（HyperFrames seek 不执行）
+4. **封装为组件**（可选，高质量的特效建议入库）：
+   - 文件头添加 `@ComponentMeta`（name, layer, tags, emotion_range, description）
+   - 更新 `registry.yaml`
+   - 向用户展示样例 HTML，由用户决定是否入库
+5. **GSAP 动画模板**：
+   - 持续脉冲：`tl.to('#sN .fx-el', {scale:1.2, opacity:0.6, duration:2, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart)`
+   - 持续漂浮：`tl.to('#sN .fx-el', {y:'-=30', duration:3, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart)`
+   - 持续旋转：`tl.to('#sN .fx-el', {rotation:360, duration:8, repeat:-1, ease:'none'}, sceneStart)`
+   - 入场动画：`tl.from('#sN .fx-el', {scale:0, opacity:0, duration:0.5, ease:'back.out(1.7)'}, sceneStart)`
+
 ### CSS 特效参考库
 
 > 已验证可在 HyperFrames + H.264 中正确渲染的特效模板。直接用、改参数、组合、变体、或自创——都可以，只要不触碰反面清单和渲染安全约束。

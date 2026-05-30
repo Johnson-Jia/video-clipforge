@@ -51,6 +51,11 @@ class GateType(str, Enum):
     bgm_silence_valid = "bgm_silence_valid"
     data_duration_source_valid = "data_duration_source_valid"
     estimation_accuracy_valid = "estimation_accuracy_valid"
+    fx_animation_present = "fx_animation_present"
+    root_attributes_complete = "root_attributes_complete"
+    portrait_typography_valid = "portrait_typography_valid"
+    phase_timings_valid = "phase_timings_valid"
+    phase_anchor_coverage = "phase_anchor_coverage"
 
 
 class Rigor(str, Enum):

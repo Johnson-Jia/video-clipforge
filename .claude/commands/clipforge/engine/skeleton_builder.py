@@ -116,16 +116,29 @@ def _build_css_variables(design: dict) -> str:
     return lines
 
 
-def _compute_phase_breakpoints(segment: dict) -> list[float]:
-    """为多 phase 场景计算断点（内容对齐）。
+def _compute_phase_breakpoints(segment: dict, phase_timings: dict | None = None) -> list[float]:
+    """为多 phase 场景计算断点。
 
-    按旁白文本中每个 phase 的 focus 关键词位置，
-    将场景时长按比例切分为若干 phase 断点。
+    优先使用 phase_timings.json（TTS 句子锚点校准，精度 ±50ms），
+    回退到文本比例估算。
     """
     phases = segment.get("visual_phases", [])
     if len(phases) <= 1:
         return []
 
+    scene_name = segment.get("scene", "")
+
+    # 优先：从 phase_timings.json 获取精确校准时间
+    if phase_timings:
+        for sc in phase_timings.get("scenes", []):
+            if sc.get("scene") == scene_name:
+                bps = []
+                for p in sc.get("phases", []):
+                    if p["phase"] > 1:
+                        bps.append(p["start_offset"])
+                return bps
+
+    # 回退：按旁白文本比例估算
     duration = segment.get("duration", segment.get("dur", 10))
     text = segment.get("text", segment.get("narration_segment", ""))
 
@@ -167,6 +180,10 @@ def build_scene_skeletons(project_dir: Path) -> list[SceneSkeleton]:
     dur_data = _load_json(dur_path)
     dur_segments = dur_data.get("segments", []) if isinstance(dur_data, dict) else dur_data
 
+    # 加载 phase 校准数据（TTS 句子锚点）
+    pt_path = project_dir / "phase_timings.json"
+    phase_timings = _load_json(pt_path) if pt_path.exists() else None
+
     # 构建时长映射：scene_name -> {start, duration}
     duration_map: dict[str, dict[str, float]] = {}
     cumulative = 0.0
@@ -186,8 +203,8 @@ def build_scene_skeletons(project_dir: Path) -> list[SceneSkeleton]:
         start = dur_info.get("start", seg.get("start", 0))
         duration = dur_info.get("duration", seg.get("duration", seg.get("dur", 10)))
 
-        # Phase 断点
-        phase_breakpoints = _compute_phase_breakpoints(seg)
+        # Phase 断点（优先 phase_timings.json，回退文本比例估算）
+        phase_breakpoints = _compute_phase_breakpoints(seg, phase_timings)
 
         # 构建创意插槽
         slots: list[CreativeSlot] = []
@@ -312,6 +329,11 @@ def render_skeleton(
     # 计算总时长
     total_duration = sum(s.duration for s in skeletons)
 
+    # 加载 phase_timings.json 供模板注入
+    pt_path = project_dir / "phase_timings.json"
+    phase_timings_data = _load_json(pt_path) if pt_path.exists() else {}
+    phase_timings_json = json.dumps(phase_timings_data, ensure_ascii=False)
+
     # 准备场景数据（Jinja2 模板所需的扁平结构）
     scenes: list[dict] = []
     for sk in skeletons:
@@ -341,6 +363,7 @@ def render_skeleton(
         scenes=scenes,
         bgm_volume=bgm_volume,
         total_duration=total_duration,
+        phase_timings_json=phase_timings_json,
     )
 
     if output_path:

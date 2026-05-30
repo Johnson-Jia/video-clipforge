@@ -2,18 +2,18 @@
 @ComponentMeta
 name: scan_grid
 layer: bg
-tags: [grid, scan, tech, cyber, digital, futuristic]
+tags: [grid, scan, tech, cyber, digital, futuristic, glass]
 emotion_range: [tension, focus, tech, analysis]
 visual_density: medium
 complexity: css-only
-description: 扫描网格 + 移动扫描线 + 渐变底色，科技感数字环境，适合技术分析/数据/编码场景
+description: 扫描网格 + 移动扫描线 + 玻璃折射叠层，科技感数字环境，适合技术/编码场景
 parameters:
   grid_size: { default: 80, range: [60, 120] }
   scan_speed: { default: 8, range: [5, 15], description: "扫描线周期(秒)" }
   accent_color: { default: "rgba(0,229,255,0.08)", description: "网格/扫描线颜色" }
 /ComponentMeta
 -->
-<!-- CSS keyframes (全局共享) -->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
 <!--
 @keyframes scanLine {
   0% { top: -10%; }
@@ -22,6 +22,10 @@ parameters:
 @keyframes gridPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.08; }
 }
 -->
 <!-- HTML (嵌入 .layer-bg) -->
@@ -33,3 +37,11 @@ parameters:
 <div style="position:absolute;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,rgba(0,229,255,0.3),rgba(0,229,255,0.5),rgba(0,229,255,0.3),transparent);box-shadow:0 0 20px rgba(0,229,255,0.3);animation:scanLine 8s linear infinite"></div>
 <!-- 辉光球 -->
 <div style="position:absolute;top:40%;left:50%;width:400px;height:400px;border-radius:50%;background:rgba(0,150,200,0.1);filter:blur(100px);transform:translate(-50%,-50%)"></div>
+<!-- 玻璃折射叠层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(120deg,rgba(255,255,255,0.015) 0%,transparent 30%,transparent 70%,rgba(255,255,255,0.02) 100%);
+  animation:glassShimmer 8s ease-in-out infinite"></div>
+<!-- 棱镜色散微光 -->
+<div style="position:absolute;top:60%;right:-8%;width:50%;height:200px;opacity:0.03;
+  background:linear-gradient(90deg,rgba(0,255,200,0.5),rgba(200,0,255,0.4),rgba(0,200,255,0.5));
+  filter:blur(70px);border-radius:50%"></div>

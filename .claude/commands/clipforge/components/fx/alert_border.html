@@ -5,8 +5,8 @@ layer: fx
 tags: [alert, border, warning, pulse, frame, critical]
 emotion_range: [tension, warning, urgency, alert]
 visual_density: low
-complexity: css-only
-description: 脉动警告边框 + 角标，呼吸式闪烁警示效果，适合风险/警告/关键发现场景
+complexity: gsap
+description: 脉动警告边框 + 角标，GSAP 驱动呼吸式闪烁警示效果，适合风险/警告/关键发现场景
 parameters:
   color: { default: "rgba(255,60,60,0.7)", description: "边框颜色" }
   pulse_speed: { default: 2, range: [1, 4], description: "脉动周期(秒)" }
@@ -14,24 +14,29 @@ parameters:
   corner_size: { default: 30, range: [20, 50], description: "角标长度(px)" }
 /ComponentMeta
 -->
-<!-- CSS keyframes (全局共享) -->
-<!--
-@keyframes alertPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
--->
 <!-- HTML (嵌入 .layer-fx) -->
-<!-- 顶部边 -->
-<div style="position:absolute;top:20px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite;pointer-events:none"></div>
-<!-- 底部边 -->
-<div style="position:absolute;bottom:20px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite 0.5s;pointer-events:none"></div>
-<!-- 左边 -->
-<div style="position:absolute;top:20px;bottom:20px;left:20px;width:2px;background:linear-gradient(180deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite 0.25s;pointer-events:none"></div>
-<!-- 右边 -->
-<div style="position:absolute;top:20px;bottom:20px;right:20px;width:2px;background:linear-gradient(180deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite 0.75s;pointer-events:none"></div>
+<!-- 四边：初始 opacity 0.5（可见），由 GSAP 驱动脉冲 -->
+<div class="ab ab-top" style="position:absolute;top:20px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));opacity:0.5;pointer-events:none"></div>
+<div class="ab ab-bot" style="position:absolute;bottom:20px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));opacity:0.5;pointer-events:none"></div>
+<div class="ab ab-left" style="position:absolute;top:20px;bottom:20px;left:20px;width:2px;background:linear-gradient(180deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));opacity:0.5;pointer-events:none"></div>
+<div class="ab ab-right" style="position:absolute;top:20px;bottom:20px;right:20px;width:2px;background:linear-gradient(180deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));opacity:0.5;pointer-events:none"></div>
 <!-- 四角标 -->
-<div style="position:absolute;top:14px;left:14px;width:30px;height:30px;border-top:3px solid rgba(255,60,60,0.9);border-left:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite;pointer-events:none"></div>
-<div style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-top:3px solid rgba(255,60,60,0.9);border-right:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite 0.5s;pointer-events:none"></div>
-<div style="position:absolute;bottom:14px;left:14px;width:30px;height:30px;border-bottom:3px solid rgba(255,60,60,0.9);border-left:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite 0.25s;pointer-events:none"></div>
-<div style="position:absolute;bottom:14px;right:14px;width:30px;height:30px;border-bottom:3px solid rgba(255,60,60,0.9);border-right:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite 0.75s;pointer-events:none"></div>
+<div class="ab ab-c1" style="position:absolute;top:14px;left:14px;width:30px;height:30px;border-top:3px solid rgba(255,60,60,0.9);border-left:3px solid rgba(255,60,60,0.9);opacity:0.6;pointer-events:none"></div>
+<div class="ab ab-c2" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-top:3px solid rgba(255,60,60,0.9);border-right:3px solid rgba(255,60,60,0.9);opacity:0.6;pointer-events:none"></div>
+<div class="ab ab-c3" style="position:absolute;bottom:14px;left:14px;width:30px;height:30px;border-bottom:3px solid rgba(255,60,60,0.9);border-left:3px solid rgba(255,60,60,0.9);opacity:0.6;pointer-events:none"></div>
+<div class="ab ab-c4" style="position:absolute;bottom:14px;right:14px;width:30px;height:30px;border-bottom:3px solid rgba(255,60,60,0.9);border-right:3px solid rgba(255,60,60,0.9);opacity:0.6;pointer-events:none"></div>
+
+<!-- JS (GSAP) — 入场 + 持续脉冲 -->
+<script>
+// 入场：边框从 0 淡入
+// tl.from('#sN .ab', {opacity: 0, duration: 0.3, stagger: 0.05, ease: 'power2.out'}, sceneStart)
+// 持续：四边交错脉冲（不同 delay 模拟 CSS animation-delay）
+// tl.to('#sN .ab-top', {opacity: 1, duration: 1, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 0.5)
+// tl.to('#sN .ab-bot', {opacity: 1, duration: 1, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 1.0)
+// tl.to('#sN .ab-left', {opacity: 1, duration: 1, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 0.75)
+// tl.to('#sN .ab-right', {opacity: 1, duration: 1, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 1.25)
+// tl.to('#sN .ab-c1', {opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 0.5)
+// tl.to('#sN .ab-c2', {opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 1.0)
+// tl.to('#sN .ab-c3', {opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 0.75)
+// tl.to('#sN .ab-c4', {opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 1.25)
+</script>

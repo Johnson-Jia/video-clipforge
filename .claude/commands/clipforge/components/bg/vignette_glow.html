@@ -2,24 +2,39 @@
 @ComponentMeta
 name: vignette_glow
 layer: bg
-tags: [vignette, center, glow, warm, elegant, focused]
-emotion_range: [warmth, focus, calm, conclusion]
-visual_density: medium
+tags: [vignette, glow, focus, warmth, center, soft]
+emotion_range: [warmth, focus, conclusion]
+visual_density: low
 complexity: css-only
-description: 暗角聚光 + 中心辉光 + 渐变底色，观众视线聚焦中心，适合总结/结论/CTA/温暖场景
+description: 四周径向暗角（模拟镜头暗角）+ 中心柔和暖色辉光，引导视线聚焦中心，适合总结、CTA、温暖收尾场景
 parameters:
-  glow_color: { default: "rgba(255,200,0,0.2)", description: "中心辉光色" }
-  edge_darkness: { default: 0.6, range: [0.4, 0.8], description: "暗角强度" }
-  bg_color_a: { default: "#0a0a0a", description: "底色A" }
-  bg_color_b: { default: "#1a1000", description: "底色B" }
+  glow_intensity: { default: 0.12, range: [0.06, 0.18] }
+  vignette_opacity: { default: 0.6, range: [0.4, 0.8] }
 /ComponentMeta
 -->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes vignettePulse {
+  0%, 100% { opacity: 0.10; }
+  50% { opacity: 0.16; }
+}
+@keyframes warmBreath {
+  0%, 100% { transform: scale(1); opacity: 0.08; }
+  50% { transform: scale(1.06); opacity: 0.14; }
+}
+-->
 <!-- HTML (嵌入 .layer-bg) -->
-<!-- 渐变底色 -->
-<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0a0a,#1a1000,#0a0a0a)"></div>
-<!-- 中心辉光 -->
-<div style="position:absolute;top:30%;left:20%;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(255,200,0,0.18) 0%,rgba(255,150,0,0.08) 40%,transparent 70%);filter:blur(60px)"></div>
-<!-- 暗角 -->
-<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 25%,rgba(0,0,0,0.6) 100%)"></div>
-<!-- 微粒纹理 -->
-<div style="position:absolute;inset:0;opacity:0.03;background-image:radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px);background-size:40px 40px"></div>
+<!-- 深色底 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(170deg, #0c0c14 0%, #141420 50%, #0a0a12 100%)"></div>
+<!-- 中心暖辉光 -->
+<div style="position:absolute;top:30%;left:25%;width:600px;height:500px;border-radius:50%;
+  background:radial-gradient(ellipse,hsla(38,70%,55%,0.12),hsla(25,50%,40%,0.04),transparent 70%);
+  filter:blur(100px);animation:warmBreath 12s ease-in-out infinite 0s"></div>
+<!-- 径向暗角 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 45%, transparent 30%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.75) 100%)"></div>
+<!-- 中心微光呼吸 -->
+<div style="position:absolute;top:35%;left:30%;width:480px;height:360px;border-radius:50%;
+  background:radial-gradient(ellipse,hsla(45,80%,65%,0.06),transparent 60%);
+  filter:blur(60px);animation:vignettePulse 8s ease-in-out infinite 3s"></div>

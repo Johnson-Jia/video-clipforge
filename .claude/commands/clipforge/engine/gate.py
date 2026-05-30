@@ -315,6 +315,50 @@ def check_composition_structure(project_dir: Path, params: dict) -> tuple[bool, 
     return True, "composition 结构完整（composition-id + __timelines + paused）"
 
 
+def check_root_attributes_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """根组合必须包含 data-width 和 data-height，audio 必须包含 data-start。
+
+    事故记录：2026-05-30 VibeCoding 大赏视频 index.html 根组合缺少 data-width/data-height，
+    HyperFrames viewport 设置错误 → 100% 黑帧（174s 全黑，21kbps）。
+    cover.html 有尺寸属性正常渲染，A/B 实验确认根因。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    issues: list[str] = []
+
+    # 检查根组合 data-width/data-height
+    root_pattern = r'<div[^>]*data-composition-id="main"[^>]*>'
+    match = re.search(root_pattern, content)
+    if not match:
+        return False, '未找到 data-composition-id="main" 的根组合'
+
+    root_tag = match.group(0)
+    missing = []
+    if 'data-width="' not in root_tag:
+        missing.append("data-width")
+    if 'data-height="' not in root_tag:
+        missing.append("data-height")
+    if missing:
+        issues.append(f"根组合缺少 {', '.join(missing)} → HyperFrames viewport 错误 → 黑帧")
+
+    # 检查 audio 元素的 data-start
+    audio_tags = re.findall(r'<audio[^>]*>', content)
+    audio_missing = []
+    for i, tag in enumerate(audio_tags, 1):
+        if 'data-start="' not in tag:
+            audio_missing.append(f"audio#{i}")
+    if audio_missing:
+        issues.append(f'<audio> 元素缺少 data-start="0": {", ".join(audio_missing)}')
+
+    if issues:
+        return False, "; ".join(issues)
+
+    return True, "根组合尺寸属性完整（data-width + data-height + audio data-start）"
+
+
 def check_output_no_bgm_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 output_no_bgm.mp4 不是黑屏。
 
@@ -347,6 +391,7 @@ def check_output_no_bgm_valid(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.hf_api_present] = check_hf_api_present
 GATE_CHECKERS[GateType.scene_ids_match] = check_scene_ids_match
 GATE_CHECKERS[GateType.composition_structure] = check_composition_structure
+GATE_CHECKERS[GateType.root_attributes_complete] = check_root_attributes_complete
 GATE_CHECKERS[GateType.output_no_bgm_valid] = check_output_no_bgm_valid
 
 
@@ -597,6 +642,120 @@ def check_estimation_accuracy(project_dir: Path, params: dict) -> tuple[bool, st
 
 GATE_CHECKERS[GateType.data_duration_source_valid] = check_data_duration_source
 GATE_CHECKERS[GateType.estimation_accuracy_valid] = check_estimation_accuracy
+
+
+def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 phase_timings.json 的完整性：phase 时间覆盖完整场景时长，无间隙/重叠。
+
+    事故记录：手工 GSAP 硬编码断点导致旁白与画面不同步（偏差 5-12 秒），
+    phase_calibrator.py 自动校准后通过本门禁确保产出完整无遗漏。
+
+    检查项：
+    1. phase_timings.json 存在且可解析
+    2. 每个 scene 的 phases 覆盖完整 duration（间隙 > max_gap 秒判定为失败）
+    3. phase 起止时间无重叠（后一 phase start_offset < 前一 phase end_offset）
+    4. 首个 phase start_offset=0，末个 phase end_offset=duration
+    """
+    pt_file = project_dir / params.get("file", "phase_timings.json")
+    max_gap = params.get("max_gap", 0.5)
+
+    if not pt_file.exists():
+        return True, "phase_timings.json 不存在（无多 phase 场景或未启用校准，跳过）"
+
+    try:
+        pt_data = json.loads(pt_file.read_text(encoding="utf-8"))
+    except Exception as e:
+        return False, f"phase_timings.json 解析失败: {e}"
+
+    scenes = pt_data.get("scenes", [])
+    if not scenes:
+        return True, "phase_timings.json 无场景数据，跳过"
+
+    issues: list[str] = []
+
+    for sc in scenes:
+        scene_name = sc.get("scene", "?")
+        duration = sc.get("duration", 0)
+        phases = sc.get("phases", [])
+
+        if not phases:
+            continue
+
+        # 首个 phase 应从 0 开始
+        if phases[0].get("start_offset", -1) != 0:
+            issues.append(f"{scene_name}: 首个 phase start_offset={phases[0].get('start_offset')} (应为 0)")
+
+        # 末个 phase 应覆盖到 duration
+        last_end = phases[-1].get("end_offset", 0)
+        if duration > 0 and abs(last_end - duration) > max_gap:
+            issues.append(f"{scene_name}: 末 phase end_offset={last_end:.2f}s != duration={duration:.2f}s")
+
+        # 逐 phase 检查间隙/重叠
+        for i in range(len(phases) - 1):
+            cur_end = phases[i].get("end_offset", 0)
+            nxt_start = phases[i + 1].get("start_offset", 0)
+            gap = nxt_start - cur_end
+            if gap > max_gap:
+                issues.append(f"{scene_name}: phase {i+1}→{i+2} 间隙 {gap:.2f}s > {max_gap}s")
+            elif gap < -0.1:
+                issues.append(f"{scene_name}: phase {i+1}→{i+2} 重叠 {-gap:.2f}s")
+
+    if issues:
+        return False, f"phase_timings 校验失败: {'; '.join(issues[:6])}"
+
+    return True, f"phase_timings 完整: {len(scenes)} 场景, 间隙 <{max_gap}s"
+
+
+def check_phase_anchor_coverage(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 phase 校准覆盖率：auto-split 场景占比过高时发出 SOFT 警告。
+
+    narration_anchor 是 Stage 3 人工标注的句子索引，phase_calibrator.py
+    据此精确定位断点（±50ms）。无 anchor 时回退为按句子数等分（±30%），
+    精度大幅下降。本门禁确保 anchor 覆盖率达标。
+
+    检查项：
+    1. 统计 anchor_calibrated vs auto_split 场景数
+    2. auto_split 占比 > max_auto_ratio（默认 50%）→ SOFT 警告
+    """
+    pt_file = project_dir / params.get("file", "phase_timings.json")
+    max_auto_ratio = params.get("max_auto_ratio", 0.5)
+
+    if not pt_file.exists():
+        return True, "phase_timings.json 不存在，跳过 anchor 覆盖检查"
+
+    try:
+        pt_data = json.loads(pt_file.read_text(encoding="utf-8"))
+    except Exception:
+        return True, "phase_timings.json 解析失败，跳过 anchor 覆盖检查"
+
+    stats = pt_data.get("stats", {})
+    anchor_count = stats.get("anchor_calibrated", 0)
+    auto_count = stats.get("auto_split", 0)
+    total = anchor_count + auto_count
+
+    if total == 0:
+        return True, "无 phase 校准场景，跳过"
+
+    auto_ratio = auto_count / total
+
+    if auto_count > 0 and auto_ratio > max_auto_ratio:
+        return True, (
+            f"SOFT: anchor 覆盖率不足: {anchor_count}/{total} 校准, "
+            f"{auto_count}/{total} auto-split ({auto_ratio:.0%} > {max_auto_ratio:.0%})。"
+            f"建议在 narration_segments.json 的 visual_phases 中添加 narration_anchor"
+        )
+
+    if auto_count > 0:
+        return True, (
+            f"anchor 覆盖率可接受: {anchor_count} 校准 + {auto_count} auto-split "
+            f"(auto 比率 {auto_ratio:.0%} <= {max_auto_ratio:.0%})"
+        )
+
+    return True, f"全部 {total} 场景均为 anchor 校准（精度 ±50ms）"
+
+
+GATE_CHECKERS[GateType.phase_timings_valid] = check_phase_timings_valid
+GATE_CHECKERS[GateType.phase_anchor_coverage] = check_phase_anchor_coverage
 
 
 def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
@@ -852,7 +1011,7 @@ def check_adjacent_bg_diversity(project_dir: Path, params: dict) -> tuple[bool, 
 
 
 def check_fx_layer_not_empty(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-R-008: fx 层禁止为空或仅含不可见元素。"""
+    """R-R-008: fx 层禁止为空或仅含不可见元素。含 opacity 下限和元素数量检查。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -866,15 +1025,157 @@ def check_fx_layer_not_empty(project_dir: Path, params: dict) -> tuple[bool, str
         if not fx.strip():
             continue
         if not _has_visible_content(fx):
-            violations.append(sid)
+            violations.append(f"{sid}(空)")
+            continue
+        # 检查 fx 元素数量（至少 2 个子 div）
+        fx_child_divs = len(re.findall(r'<div\b', fx)) - 1  # 减去 layer-fx 自身
+        if fx_child_divs < 2:
+            violations.append(f"{sid}(仅{fx_child_divs}元素)")
+            continue
+        # 检查是否存在全局低 opacity（所有 fx 元素 opacity < 0.10）
+        opacity_vals = re.findall(r'opacity:\s*([0-9.]+)', fx)
+        if opacity_vals and all(float(v) < 0.10 for v in opacity_vals):
+            violations.append(f"{sid}(opacity过低)")
     if violations:
-        return False, f"R-R-008: {len(violations)} 个场景 fx 层为空/不可见 ({', '.join(violations[:6])})"
+        return False, f"R-R-008: {len(violations)} 个场景 fx 不合格 ({', '.join(violations[:6])})"
     return True, f"{len(scenes)} 场景 fx 层合格"
 
 
 GATE_CHECKERS[GateType.bg_visual_diversity] = check_bg_visual_diversity
 GATE_CHECKERS[GateType.adjacent_bg_diversity] = check_adjacent_bg_diversity
 GATE_CHECKERS[GateType.fx_layer_not_empty] = check_fx_layer_not_empty
+
+
+def check_fx_animation_present(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-R-013: fx 层元素必须有 GSAP 动画目标。
+
+    事故记录：2026-05-30 VibeCoding 大赏视频 20/22 场景 fx 无动画，全是静态 div。
+    根因：无规则要求 fx 有 GSAP 动画，门禁只检查"非空"。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+    scenes = _split_into_scenes(html)
+    if not scenes:
+        return True, "无场景可检查"
+
+    violations = []
+    for sid, scene_html in scenes:
+        fx = _extract_layer_chunk(scene_html, "layer-fx")
+        if not fx.strip():
+            continue  # 空 fx 由 R-R-008 检查
+
+        # 检查 fx 层中是否有子元素
+        fx_children = re.findall(r'<div\b[^>]*>', fx)
+        if len(fx_children) <= 1:  # 只有 layer-fx 自身
+            continue
+
+        # 在整个 HTML 中查找该场景的 GSAP timeline 代码
+        # 提取该场景相关的 GSAP 动画调用
+        scene_timeline = _extract_scene_timeline(html, sid) if '_extract_scene_timeline' in dir() else ""
+
+        # 如果没有专门的提取函数，用正则在全文搜索
+        if not scene_timeline:
+            # 查找 window.__timelines 或 <script> 中包含该场景 id 的 GSAP 调用
+            # 匹配 tl.to/tl.from/tl.fromTo 中包含 #sN 的选择器
+            gsap_pattern = rf'tl\.\w+\(\s*["\'][^"\']*{re.escape(sid)}[^"\']*["\']'
+            gsap_calls = re.findall(gsap_pattern, html)
+
+            # 也匹配 .layer-fx 直接选择器
+            fx_gsap_pattern = rf'tl\.\w+\(\s*["\'][^"\']*layer-fx[^"\']*["\']'
+            fx_gsap_calls = re.findall(fx_gsap_pattern, html)
+
+            # 匹配场景内常见 fx 元素类的 GSAP 调用
+            fx_class_pattern = rf'tl\.\w+\(\s*["\'][^"\']*{re.escape(sid)}\s+\.(?:orb|ray|particle|streak|ring|pulse|glow|beam|wave|scan|border|drop|char|line)[^"\']*["\']'
+            fx_class_calls = re.findall(fx_class_pattern, html)
+
+            has_fx_animation = bool(gsap_calls) or bool(fx_gsap_calls) or bool(fx_class_calls)
+        else:
+            has_fx_animation = bool(scene_timeline)
+
+        if not has_fx_animation:
+            violations.append(sid)
+
+    if violations:
+        return False, f"R-R-013: {len(violations)} 个场景 fx 层无 GSAP 动画 ({', '.join(violations[:6])})"
+    return True, f"{len(scenes)} 场景 fx 动画合格"
+
+
+GATE_CHECKERS[GateType.fx_animation_present] = check_fx_animation_present
+
+
+def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-R-015/R-R-016: 竖屏排版门禁 — 检查字号最低标准 + 禁用 section-tag 小徽章。
+
+    事故记录：2026-05-30 VibeCoding 大赏视频正文 18-28px，手机端完全不可读。
+    根因：无字号门禁，导演工具包字号体系未区分竖屏/横屏。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+
+    # 检测画布方向
+    width_match = re.search(r'data-width="(\d+)"', html)
+    height_match = re.search(r'data-height="(\d+)"', html)
+    is_portrait = True  # 默认竖屏
+    if width_match and height_match:
+        w, h = int(width_match.group(1)), int(height_match.group(1))
+        is_portrait = h > w
+
+    if not is_portrait:
+        # 横屏字号底线（1920×1080 在手机横屏播放时缩放比 ~2.67x）
+        min_title = 56
+        min_body = 32
+        min_annotation = 24
+    else:
+        min_title = 64
+        min_body = 36
+        min_annotation = 28
+
+    violations = []
+
+    # 1. 检查 section-tag 小徽章（R-R-016）
+    # 兼容单引号和双引号的 class 属性
+    section_tag_pattern = r'''class=['"][^'"]*section-tag[^'"]*['"]'''
+    section_tags = re.findall(section_tag_pattern, html)
+    if section_tags:
+        violations.append(f"R-R-016: 发现 {len(section_tags)} 个 section-tag 小徽章（禁止作为场景标题）")
+
+    # 2. 检查字号最低标准（R-R-015）
+    # 使用 min_body 作为全局最低阈值：content 层主要都是可读文字，
+    # 正文（36px）是可读性底线，标注（28px）允许少量辅助信息例外。
+    # 因此以 min_body 为门禁阈值，确保正文可读性被强制执行。
+    min_readable = min_body  # 36px(竖屏) / 32px(横屏)
+    scenes = _split_into_scenes(html)
+    small_text_violations = []
+    for sid, scene_html in scenes:
+        content = _extract_layer_chunk(scene_html, "layer-content")
+        if not content.strip():
+            continue
+        content_sizes = [int(s) for s in re.findall(r'font-size\s*:\s*(\d+)px', content)]
+        if not content_sizes:
+            continue
+        visible_sizes = [s for s in content_sizes if s >= 10]
+        if visible_sizes:
+            min_visible = min(visible_sizes)
+            if min_visible < min_readable:
+                small_text_violations.append(f"{sid}(最小{min_visible}px<{min_readable}px)")
+
+    if small_text_violations:
+        violations.append(
+            f"R-R-015: {len(small_text_violations)} 个场景文字过小 "
+            f"({'竖屏' if is_portrait else '横屏'}最低{min_readable}px): "
+            f"{', '.join(small_text_violations[:6])}"
+        )
+
+    if violations:
+        return False, "; ".join(violations)
+    return True, f"{'竖屏' if is_portrait else '横屏'}排版合格（标题≥{min_title}px, 正文≥{min_body}px, 标注≥{min_annotation}px）"
+
+
+GATE_CHECKERS[GateType.portrait_typography_valid] = check_portrait_typography
 
 
 def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, str]:

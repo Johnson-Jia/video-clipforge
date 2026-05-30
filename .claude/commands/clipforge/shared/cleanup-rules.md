@@ -56,6 +56,8 @@
 | `narration_segments.json` | 分段旁白定义 | 改旁白/TTS 必需 |
 | `narration.txt` | 完整旁白文案 | 改文案必需 |
 | `segment_durations.json` | 分段实际时长 | A/V 同步校准必需 |
+| `sentence_timestamps.json` | 句子级时间戳（Edge TTS SRT） | Phase 时间校准的测量源数据 |
+| `phase_timings.json` | Phase 精确切换时间 | GSAP timeline 自动注入的数据源 |
 | `douyin.md` | 抖音发布文案 | 核心产出物 |
 | `score_report.json` | 机器评分报告 | Stage 8 反馈校准输入 |
 | `content.md` | 内容摘要（如有） | 重新理解项目内容 |
@@ -169,6 +171,8 @@ workspace/<YYYY>/<MM>/<DD>/<项目名>/
 ├── narration_segments.json # 分段旁白定义
 ├── narration.txt          # 旁白文案
 ├── segment_durations.json # 分段时长
+├── sentence_timestamps.json # 句子级时间戳
+├── phase_timings.json    # Phase 切换时间
 ├── narration.mp3          # 合并旁白（可选）
 └── douyin.md              # 抖音文案
 ```

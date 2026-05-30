@@ -139,7 +139,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.8"
+    source: "shared/render-safety.md §1.1b"
 
   - id: "R-R-010"
     type: FORBIDDEN_ACTION
@@ -153,3 +153,55 @@ rules:
     class: SAFETY
     scope: GLOBAL
     source: "shared/render-safety.md §1.6"
+
+  - id: "R-R-013"
+    type: FORBIDDEN_ACTION
+    pattern: ".layer-fx 中特效元素无 GSAP 动画（纯静态 div）"
+    positive: "每个 fx 元素必须有 GSAP 动画（持续 repeat:-1 或入场 .from()）。动画类型不限，由内容推导。组件库无匹配时创建新特效"
+    guardrail: "场景有 fx 子元素但 GSAP timeline 中无对应 .to()/.from() 调用"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: QUALITY
+    scope: GLOBAL
+    source: "shared/render-safety.md §2.5 — 2026-05-30 VibeCoding 大赏视频 20/22 场景 fx 无动画事故"
+
+  - id: "R-R-014"
+    type: FORBIDDEN_ACTION
+    pattern: "根组合 div 缺少 data-width 或 data-height 属性"
+    positive: "根组合必须包含 data-width=\"1080\" data-height=\"1920\"，audio 必须包含 data-start=\"0\""
+    guardrail: "根组合无 data-width/data-height，或 <audio> 无 data-start"
+    detection:
+      keywords: ["data-composition-id"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "feedback-missing-dims-black-screen.md — 2026-05-30 VibeCoding 视频 100% 黑帧事故"
+
+  - id: "R-R-015"
+    type: FORBIDDEN_ACTION
+    pattern: "竖屏内容层文字字号低于正文最低标准（竖屏<36px / 横屏<24px）"
+    positive: "竖屏(1080×1920)字号最低标准：标题≥64px、正文≥36px、标注≥28px。横屏(1920×1080)：标题≥48px、正文≥24px、标注≥18px"
+    guardrail: ".layer-content 内存在 font-size 低于正文最低标准（36px/24px）的文字元素"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: QUALITY
+    scope: GLOBAL
+    source: "shared/render-safety.md §3.1 — 2026-05-30 竖屏文字手机端不可读事故"
+
+  - id: "R-R-016"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 section-tag 小徽章标签作为场景标题（20-24px 带背景色小标签）"
+    positive: "场景标题使用标题层字号（竖屏≥64px/横屏≥48px），用字重/颜色/位置区分层级"
+    guardrail: "HTML 中存在 class=\"section-tag\" 的元素"
+    detection:
+      keywords: ["section-tag"]
+      regex: "class=['\"][^'\"]*section-tag[^'\"]*['\"]"
+    severity: HARD
+    class: QUALITY
+    scope: GLOBAL
+    source: "shared/render-safety.md §3.2 — 2026-05-30 用户反馈小标签视觉廉价"

@@ -21,18 +21,20 @@ echo "[assemble_final] 封面嵌入视频第一帧..."
 [ -s output.mp4 ] || { echo "FAIL: output.mp4 缺失"; exit 1; }
 [ -s output_no_bgm.mp4 ] || { echo "FAIL: output_no_bgm.mp4 缺失"; exit 1; }
 
-# ── 从 output.mp4 读取编码参数 ──
+# ── 从 output.mp4 读取编码参数 + 分辨率 ──
 FPS=$(ffprobe -v quiet -show_entries stream=r_frame_rate -select_streams v -of csv=p=0 output.mp4 | head -1)
 FPS_NUM=$(echo "$FPS" | cut -d/ -f1)
 PROFILE=$(ffprobe -v quiet -show_entries stream=profile -select_streams v -of csv=p=0 output.mp4 | head -1)
 SOURCE_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 output.mp4)
 FRAME_DUR=$(awk "BEGIN {printf \"%.6f\", 1/$FPS_NUM}")
-echo "[assemble_final] 源视频: ${SOURCE_DUR}s, ${FPS}fps, profile=${PROFILE}, 封面帧长: ${FRAME_DUR}s"
+VIDEO_W=$(ffprobe -v quiet -show_entries stream=width -select_streams v -of csv=p=0 output.mp4 | head -1)
+VIDEO_H=$(ffprobe -v quiet -show_entries stream=height -select_streams v -of csv=p=0 output.mp4 | head -1)
+echo "[assemble_final] 源视频: ${SOURCE_DUR}s, ${FPS}fps, profile=${PROFILE}, ${VIDEO_W}x${VIDEO_H}, 封面帧长: ${FRAME_DUR}s"
 
 # ── 封面片段制备（1 帧，TS 格式，匹配源视频参数）──
 ffmpeg -y -loop 1 -t $FRAME_DUR -framerate $FPS -i cover.png \
   -c:v libx264 -profile:v $PROFILE -pix_fmt yuv420p \
-  -vf "scale=1080:1920" \
+  -vf "scale=${VIDEO_W}:${VIDEO_H}" \
   -frames:v 1 \
   -f mpegts cover.ts 2>/dev/null
 

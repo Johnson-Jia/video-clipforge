@@ -68,13 +68,14 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 在 composition 根元素内添加 `<audio>` 元素：
 
 ```html
-<div class="composition" data-composition-id="main" data-start="0">
+<div class="composition" data-composition-id="main"
+     data-width="1080" data-height="1920" data-start="0" data-duration="TOTAL">
   <!-- 旁白音轨（track 1）：单条 narration.mp3，从 t=0 播放到结束 -->
-  <audio data-track-index="1" data-volume="1"
+  <audio data-track-index="1" data-volume="1" data-start="0"
          src="narration.mp3" preload="auto"></audio>
 
   <!-- BGM 音轨（track 2）：bgm.wav 循环播放，音量由 Stage 4 分析结果决定 -->
-  <audio data-track-index="2" data-volume="0.06"
+  <audio data-track-index="2" data-volume="0.06" data-start="0"
          src="bgm.wav" preload="auto" loop></audio>
 
   <!-- 场景 div ... -->
@@ -87,6 +88,9 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 
 | 属性 | 值 | 说明 |
 |------|-----|------|
+| `data-width` | `1080` | **必需**。视频宽度（px），HyperFrames 用此设置 viewport，缺少会导致 100% 黑帧 |
+| `data-height` | `1920` | **必需**。视频高度（px），缺少会导致 100% 黑帧 |
+| `data-start` (audio) | `0` | **必需**。音频起始时间，缺少会导致音频不播放 |
 | `data-track-index` | `1`（旁白）/ `2`（BGM） | HyperFrames 按轨分组混音 |
 | `data-volume` | 旁白 `1`，BGM 从 `segment_durations.json` 的 `meta.bgm_volume` 读取 | HyperFrames 混音时的音量系数 |
 | `loop` | 仅 BGM 添加 | BGM 循环播放直到视频结束（安全兜底，Stage 4 已预对齐时长） |
@@ -201,14 +205,33 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 1. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 3. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
-3a. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4b 的匹配流程生成
-4. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
+4. **读取 `segment_durations.json`** — 动画断点强制使用 actual_duration（非 estimated_duration）：
+   - 用 `actual_duration` 计算 BP 断点数组（见 `visual-phasing.md`）
+   - GSAP timeline 中所有时间偏移量基于 BP 断点，不使用任何预估时长
+   - `data-duration` 属性直接使用 `actual_duration` 值
+5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4a 的匹配流程生成
+6. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
    - 对照反面清单（10 条红线），确保不踩雷
    - 用 CSS 特效参考库的工具实现你的构思
    - **不查表、不套公式、每个场景独立思考**
-5. **装配 HTML** — 按 HyperFrames composition 结构组装
+6a. **特效组件匹配/创建**（每个场景独立执行）：
+    a) 读取 `narration_segments.json` 该场景的 `visual_intent`
+    b) 根据内容情绪和视觉意图，在 `components/registry.yaml` 中搜索匹配的 fx 组件
+       - 按 `emotion_range` 和 `tags` 粗筛
+       - 读取匹配组件文件，确认其 GSAP 动画是否适合当前场景
+    c) 匹配成功 → 使用该组件，按场景参数调整
+    d) 匹配不到或现有组件不合适 → **创建新特效**：
+       - 从内容自主推导视觉表达（不是查表）
+       - 编写新特效的 HTML + CSS + GSAP 动画
+       - 新特效必须遵守 `render-safety.md` 全部约束
+       - 新特效必须有 GSAP 动画（持续 `repeat:-1` 或入场 `.from()`）
+    e) **新组件入库**：如果新特效质量高、可复用，封装为组件：
+       - 创建 `components/fx/<name>.html`，包含 `@ComponentMeta` 头
+       - 更新 `components/registry.yaml` 添加元数据
+       - 向用户展示新组件 HTML 样例，由用户决定是否入库
+7. **装配 HTML** — 按 HyperFrames composition 结构组装
 
 ### 场景 → 组件参考
 
@@ -226,7 +249,7 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 | 标准模式项目介绍 | ProjectFullCard | 单项目全屏 8 层信息 |
 | CTA | TextReveal | 收束聚焦：温暖引导、行动号召 |
 
-> **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（§13），一个项目占满一屏，包含 8 层信息。数据来自 `narration_segments.json` 的 `selling_points`、`commentary` 字段和 content 数据。
+> **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（`components/content/project_full_card.html`），一个项目占满一屏，包含 8 层信息。数据来自 `narration_segments.json` 的 `selling_points`、`commentary` 字段和 content 数据。
 
 ### 角色和幽默组件插入
 
@@ -322,10 +345,10 @@ tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
 - LLM 也可以完全不使用组件库，从零创作
 - 组件库是"工具箱和灵感来源"，不是约束
 
-## 6.4b 特效工坊（组件匹配 + 新特效创建）
+## 6.4a 特效工坊（组件匹配 + 新特效创建）
 
 > **两阶段触发：**
-> 1. §6.4 step 3a 负责生成 manifest — 如果 `component_manifest.md` 不存在，执行下方匹配流程
+> 1. §6.4 step 5 负责运行组件匹配 — 如果 `component_manifest.md` 不存在，执行下方匹配流程
 > 2. 本节负责处理 `new` 条目 — 如果已生成的 manifest 含 `new` 标记，启动工坊创建新特效；否则跳过
 
 ### 匹配流程
@@ -384,7 +407,7 @@ tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
 - **content**: project_full_card (library) — params: {rank: 1}
 ```
 
-## 6.4a 视觉分镜（Visual Phasing）
+## 6.4b 视觉分镜（Visual Phasing）
 
 > **当场景时长 >15 秒时必须使用。** 完整规范见 `clipforge/shared/visual-phasing`。
 
@@ -404,8 +427,8 @@ tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
 
 > **以下全部规则同样适用于 HyperFrames 委托模式产出的 HTML。**
 
-0. **内容安全规范**遵守 `clipforge/shared/shared-rules` 全部条款。
-0. **渲染安全规范**遵守 `clipforge/shared/render-safety` 全部条款（Stage 6 必读）。
+- **内容安全规范**遵守 `clipforge/shared/shared-rules` 全部条款。
+- **渲染安全规范**遵守 `clipforge/shared/render-safety` 全部条款（Stage 6 必读）。
 
 ### 结构规则
 
@@ -419,8 +442,8 @@ tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
    - **事故教训（2026-05-28）：s1/s19 缺少 id，导致首尾两个最重要场景的动画全部丢失**
    - **门禁自动校验**：`gate.py` 的 `scene_ids_match` 检查器会交叉验证 HTML 与 segments 的映射
 6. 根元素必须有 `data-start="0"`
-6. **`data-start` 和 `data-duration` 使用秒（不是毫秒）**
-7. **`window.__hf` 必须定义 + GSAP timeline 必须注册**
+7. **`data-start` 和 `data-duration` 使用秒（不是毫秒）**
+8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**
    - 缺少 `__hf` 会导致 HyperFrames 渲染在 62% 处崩溃（45s 超时白屏）
    - `window.__timelines = {};`（空对象）会导致空白渲染
    - **事故教训（2026-05-28 + service-as-software）：遗漏 __hf 是最高频渲染致命错误**
@@ -444,7 +467,7 @@ tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
 
 > **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
-8. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.scene-wrap` 或组件的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
+9. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.scene-wrap` 或组件的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
 
 ### 视觉设计规则（必须遵守）
 
@@ -464,7 +487,7 @@ hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（�
 
 #### 背景：多元素组合（≥3 种视觉类型）
 
-每个场景的 bg 层必须包含 **至少 2 种不同类型的视觉元素**（仅 glow+grid 组合不满足要求）。允许的类型：
+每个场景的 bg 层必须包含 **至少 3 种不同类型的视觉元素**（含渐变底色，仅 glow+grid 组合不满足要求）。允许的类型：
 
 | 类型 | 实现方式 | 组件参考 |
 |------|---------|---------|
@@ -492,11 +515,11 @@ hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（�
 
 #### 项目卡片设计
 
-展示项目的卡片必须包含：排名数字（≥40px）、项目名（等宽 34-42px）、中文描述（浅灰 26-32px）、语言标签（药丸 20-24px）、星数（右对齐 28-32px）。
+展示项目的卡片必须包含：排名数字（竖屏≥52px/横屏≥40px）、项目名（等宽 竖屏≥42px/横屏≥32px）、中文描述（竖屏≥36px/横屏≥32px）、语言标签（药丸 竖屏≥28px/横屏≥24px）、星数（右对齐 竖屏≥36px/横屏≥32px）。
 
 #### CTA 场景
 
-CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个标签药丸。
+CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标题（竖屏 36px+ / 横屏 32px+）+ 3-4 个标签药丸。
 
 #### 整体品质检查
 
@@ -504,32 +527,54 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 ### 动画规则
 
-8. 入场动画时长 **0.3-0.7 秒**（"快入+静止"模式）
-9. stagger 间隔 **0.2-0.3 秒**
-10. easing: `power3.out` 用于入场
-11. 场景间由框架 transitions 处理，不手动 exit
-12. **动画设计原则：** 每个场景的动画在 1 秒内完成入场，之后保持最终状态静止直到 `data-duration` 结束。
+10. 入场动画时长 **0.3-0.7 秒**（"快入+静止"模式）
+11. stagger 间隔 **0.2-0.3 秒**
+12. easing: `power3.out` 用于入场
+13. 场景间由框架 transitions 处理，不手动 exit
+14. **动画设计原则：** 每个场景的动画在 1 秒内完成入场，之后保持最终状态静止直到 `data-duration` 结束。
+15. **fx 动画密度**：每个场景的 `.layer-fx` 中，每个特效元素至少有 1 个 GSAP 动画调用。不限动画类型——脉冲、漂浮、旋转、闪烁、扫描、缩放、位移动画都可以。纯静态 fx 元素（div 在 timeline 中无 GSAP 目标）视为违规。
 
 ### 字体规则
 
-12. 优先使用 HyperFrames 内置字体映射
-13. **中文渲染**：先渲染一帧验证，异常时用 `font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif`
+15. 优先使用 HyperFrames 内置字体映射
+16. **中文渲染**：先渲染一帧验证，异常时用 `font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif`
 
 ### 渲染规则
 
-14. 渲染传目录路径（`.`），不传文件路径
-15. 渲染前确保 `lint` 通过
-16. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
+17. 渲染传目录路径（`.`），不传文件路径
+18. 渲染前确保 `lint` 通过
+19. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
-## 6.5 默认竖屏
+## 6.5 画布方向
 
-默认输出 **竖屏（1080×1920）**。如用户要求横屏再额外生成。
+默认输出**竖屏（1080×1920）**。用户明确要求横屏时输出 **横屏（1920×1080）**。
+
+方向判定：根组合 `data-width` / `data-height` — `h > w` 为竖屏，`w > h` 为横屏。所有字号、padding、布局按方向自动切换（详见 `director-toolkit.md` 排版表和 `render-safety.md §1.3`）。
+
+### 横屏视觉增强（强制性）
+
+横屏（1920×1080）比竖屏有 1.78 倍的水平空间，但也更容易显得空和单调。以下规则横屏视频**必须遵守**：
+
+1. **每个场景必须有 fx 层动画**（R-R-008/013 HARD）。横屏空间大，纯静态 bg 会显得廉价。每个场景至少 2 个有 GSAP 动画的 fx 元素（粒子、光束、脉冲、扫描线、漂浮物等）。
+2. **标题文字使用渐变或高对比配色**。纯白文字在横屏宽幅画面上显得平淡。推荐技法：
+   - `linear-gradient(90deg, #color1, #color2)` + `background-clip:text` + `transparent fill-color`
+   - 标题 ≥56px 时渐变效果最佳
+   - 渐变色从场景主题色推导（暖色场景用金→橙，冷色场景用青→紫）
+3. **bg 层不可只用纯色渐变**。横屏画幅更大，纯色渐变 bg 在 H.264 编码后呈现为平坦色块。必须叠加纹理元素（等高线、光束、扫描线、噪点等），与竖屏 bg 层质量标准一致。
+4. **相邻场景 bg 必须有可区分的视觉差异**（R-R-012 HARD），横屏尤甚——同质化在宽幅画面上更明显。
 
 ### 动画设计原则（HyperFrames 时长模型）
 
 采用"快入+静止"动画策略：入场 0.3-0.7s，之后静止到场景结束。
 
-竖屏字号参考：hero 约 80-100px、title 约 56-72px、body 约 36-44px、tag 约 26-34px。
+字号参考（与 director-toolkit.md 排版表对齐）：
+
+| 层级 | 竖屏 (1080×1920) | 横屏 (1920×1080) |
+|------|-----------------|-----------------|
+| impact | 120-220px | 88-160px |
+| title | 64-96px | 56-80px |
+| body | 36-48px | 32-44px |
+| annotation | 28-36px | 24-32px |
 
 ### 竖屏垂直居中规则
 
@@ -575,10 +620,19 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 
 ### 平台安全区域
 
-- 顶部危险区：上 200px
-- 底部危险区：下 300px
-- 水平安全边距：左 80px / 右 80px（兼容抖音/小红书/微信视频号三平台）
+**竖屏（1080×1920）：**
+- 顶部危险区：上 180px
+- 底部危险区：下 220px
+- 水平安全边距：左 80px / 右 80px
 - 安全内容区：180px ~ 1700px（垂直），80px ~ 1000px（水平）
+- padding：`180px 80px 220px 80px`
+
+**横屏（1920×1080）：**
+- 顶部危险区：上 60px
+- 底部危险区：下 60px
+- 水平安全边距：左 120px / 右 120px
+- 安全内容区：60px ~ 1020px（垂直），120px ~ 1800px（水平）
+- padding：`60px 120px 60px 120px`
 
 ## 6.6 渲染
 
@@ -724,7 +778,7 @@ rm -f cover_clip.mp4
 
 > **封面帧仅增加 1/30 秒（~33ms），对音画同步无感知影响。** `cover.png` 仍作为独立封面图上传平台。
 
-## 6.10 Stage 6 完成门禁
+## 6.9 Stage 6 完成门禁
 
 ```bash
 # ── Stage 6 完成门禁 ──

@@ -7,31 +7,23 @@ components:
   - name: gradient_mesh
     layer: bg
     file: bg/gradient_mesh.html
-    tags: [gradient, background, ambient, wave, sway]
+    tags: [gradient, background, ambient, wave, sway, glass]
     emotion_range: [calm, mystery, depth]
-    visual_density: low
+    visual_density: medium
     complexity: css-only
 
   - name: light_field
     layer: bg
     file: bg/light_field.html
-    tags: [glow, orbs, ambient, background, atmosphere]
+    tags: [glow, orbs, ambient, background, atmosphere, glass]
     emotion_range: [warmth, mystery, depth, calm]
-    visual_density: low
-    complexity: css-only
-
-  - name: noise_field
-    layer: bg
-    file: bg/noise_field.html
-    tags: [noise, texture, grain, static, atmospheric, depth]
-    emotion_range: [tension, mystery, depth, unease]
     visual_density: medium
     complexity: css-only
 
   - name: contour_lines
     layer: bg
     file: bg/contour_lines.html
-    tags: [contour, topographic, lines, data, analysis, structured]
+    tags: [contour, topographic, lines, data, analysis, structured, glass]
     emotion_range: [analysis, depth, focus, precision]
     visual_density: medium
     complexity: css-only
@@ -39,7 +31,7 @@ components:
   - name: radial_beams
     layer: bg
     file: bg/radial_beams.html
-    tags: [beams, rays, radial, light, dramatic, epic]
+    tags: [beams, rays, radial, light, dramatic, epic, glass]
     emotion_range: [shock, excitement, climax, revelation]
     visual_density: medium
     complexity: css-only
@@ -47,25 +39,33 @@ components:
   - name: scan_grid
     layer: bg
     file: bg/scan_grid.html
-    tags: [grid, scan, tech, cyber, digital, futuristic]
+    tags: [grid, scan, tech, cyber, digital, futuristic, glass]
     emotion_range: [tension, focus, tech, analysis]
-    visual_density: medium
-    complexity: css-only
-
-  - name: vignette_glow
-    layer: bg
-    file: bg/vignette_glow.html
-    tags: [vignette, center, glow, warm, elegant, focused]
-    emotion_range: [warmth, focus, calm, conclusion]
     visual_density: medium
     complexity: css-only
 
   - name: wave_ripple
     layer: bg
     file: bg/wave_ripple.html
-    tags: [wave, ripple, pulse, organic, calm, flow]
+    tags: [wave, ripple, pulse, organic, calm, flow, glass]
     emotion_range: [calm, mystery, depth, transition]
     visual_density: medium
+    complexity: css-only
+
+  - name: noise_field
+    layer: bg
+    file: bg/noise_field.html
+    tags: [noise, texture, svg, turbulence, atmospheric, grain]
+    emotion_range: [tension, mystery, atmospheric]
+    visual_density: medium
+    complexity: css-only
+
+  - name: vignette_glow
+    layer: bg
+    file: bg/vignette_glow.html
+    tags: [vignette, glow, focus, warmth, center, soft]
+    emotion_range: [warmth, focus, conclusion]
+    visual_density: low
     complexity: css-only
 
   # ── 特效层 ──
@@ -83,7 +83,7 @@ components:
     tags: [energy, pulse, glow, focus, orb, ambient]
     emotion_range: [focus, energy]
     visual_density: low
-    complexity: css-only
+    complexity: gsap
 
   - name: particle_burst
     layer: fx
@@ -115,7 +115,7 @@ components:
     tags: [scan, sweep, tech, detection, analysis, alert]
     emotion_range: [tension, analysis, focus, tech]
     visual_density: low
-    complexity: css-only
+    complexity: gsap
 
   - name: alert_border
     layer: fx
@@ -123,7 +123,7 @@ components:
     tags: [alert, border, warning, pulse, frame, critical]
     emotion_range: [tension, warning, urgency, alert]
     visual_density: low
-    complexity: css-only
+    complexity: gsap
 
   - name: float_particles
     layer: fx
@@ -131,7 +131,7 @@ components:
     tags: [particles, float, drift, ambient, dreamy, ethereal]
     emotion_range: [calm, mystery, wonder, depth]
     visual_density: low
-    complexity: css-only
+    complexity: gsap
 
   - name: light_streak
     layer: fx
@@ -139,7 +139,7 @@ components:
     tags: [light, streak, diagonal, band, cinematic, dramatic]
     emotion_range: [excitement, shock, climax, dynamic]
     visual_density: low
-    complexity: css-only
+    complexity: gsap
 
   - name: data_stream
     layer: fx
@@ -147,9 +147,7 @@ components:
     tags: [data, stream, flow, binary, code, matrix, tech]
     emotion_range: [tech, tension, focus, analysis]
     visual_density: medium
-    complexity: canvas-js
-
-  # ── 内容层 ──
+    complexity: canvas-gsap
   - name: hero_card
     layer: content
     file: content/hero_card.html

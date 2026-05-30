@@ -5,8 +5,8 @@ layer: fx
 tags: [data, stream, flow, binary, code, matrix, tech]
 emotion_range: [tech, tension, focus, analysis]
 visual_density: medium
-complexity: canvas-js
-description: 垂直数据流线条（类 Matrix 但更含蓄），seek 驱动的持续流动效果，适合数据/技术/AI 主题
+complexity: canvas-gsap
+description: 垂直数据流线条（类 Matrix 但更含蓄），GSAP 驱动持续流动，HyperFrames seek 兼容，适合数据/技术/AI 主题
 parameters:
   line_count: { default: 15, range: [8, 25], description: "数据线条数" }
   color: { default: "rgba(0,200,150,0.3)", description: "数据流颜色" }
@@ -15,64 +15,39 @@ parameters:
 /ComponentMeta
 -->
 <!-- HTML (嵌入 .layer-fx) -->
-<canvas id="dataStreamCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.5"></canvas>
+<canvas class="ds-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.5"></canvas>
+
+<!-- JS (GSAP + Canvas) — GSAP 驱动进度，onUpdate 重绘 canvas -->
 <script>
-(function(){
-  var canvas = document.getElementById('dataStreamCanvas');
-  if(!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var columns = 15;
-  var chars = '01';
-  var fontSize = 14;
-  var drops = [];
-
-  function resize(){
-    canvas.width = canvas.parentElement.offsetWidth || 1080;
-    canvas.height = canvas.parentElement.offsetHeight || 1920;
-    var colWidth = canvas.width / columns;
-    drops = [];
-    for(var i = 0; i < columns; i++){
-      drops.push({
-        x: i * colWidth + colWidth/2,
-        y: Math.random() * canvas.height,
-        speed: 0.5 + Math.random() * 1.0,
-        chars: [],
-        len: 8 + Math.floor(Math.random() * 12)
-      });
-      for(var j = 0; j < drops[i].len; j++){
-        drops[i].chars.push(chars[Math.floor(Math.random() * chars.length)]);
-      }
-    }
-  }
-
-  resize();
-  window.addEventListener('resize', resize);
-
-  function draw(){
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = fontSize + 'px monospace';
-    for(var i = 0; i < drops.length; i++){
-      var d = drops[i];
-      for(var j = 0; j < d.len; j++){
-        var alpha = 1 - j/d.len;
-        ctx.fillStyle = 'rgba(0,200,150,' + (alpha * 0.25).toFixed(2) + ')';
-        ctx.fillText(d.chars[j], d.x, d.y - j * fontSize);
-      }
-      d.y += d.speed * 1.5;
-      if(d.y - d.len * fontSize > canvas.height){
-        d.y = -d.len * fontSize;
-        d.speed = 0.5 + Math.random() * 1.0;
-        for(var j = 0; j < d.len; j++){
-          d.chars[j] = chars[Math.floor(Math.random() * chars.length)];
-        }
-      }
-      if(Math.random() < 0.05){
-        var idx = Math.floor(Math.random() * d.len);
-        d.chars[idx] = chars[Math.floor(Math.random() * chars.length)];
-      }
-    }
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
+// 替换选择器为场景内元素：
+// var canvas = document.querySelector('#sN .ds-canvas');
+// var ctx = canvas.getContext('2d');
+// var W = 1080, H = 1920; canvas.width = W; canvas.height = H;
+// var columns = 15, fontSize = 14, chars = '01';
+// var drops = [];
+// for (var i = 0; i < columns; i++) {
+//   var colW = W / columns;
+//   var len = 8 + Math.floor(Math.random() * 12);
+//   var d = { x: i * colW + colW/2, y: Math.random() * H, speed: 0.5 + Math.random(), chars: [], len: len };
+//   for (var j = 0; j < len; j++) d.chars.push(chars[Math.floor(Math.random() * 2)]);
+//   drops.push(d);
+// }
+// var dsProgress = { val: 0 };
+// function drawStream() {
+//   ctx.clearRect(0, 0, W, H);
+//   ctx.font = fontSize + 'px monospace';
+//   for (var i = 0; i < drops.length; i++) {
+//     var d = drops[i];
+//     for (var j = 0; j < d.len; j++) {
+//       var alpha = (1 - j/d.len) * 0.25;
+//       ctx.fillStyle = 'rgba(0,200,150,' + alpha.toFixed(2) + ')';
+//       ctx.fillText(d.chars[j], d.x, d.y - j * fontSize);
+//     }
+//     d.y += d.speed * 1.5;
+//     if (d.y - d.len * fontSize > H) { d.y = -d.len * fontSize; d.speed = 0.5 + Math.random(); }
+//     if (Math.random() < 0.05) d.chars[Math.floor(Math.random() * d.len)] = chars[Math.floor(Math.random() * 2)];
+//   }
+// }
+// 入场 + 持续流动（repeat:-1，GSAP 驱动每帧重绘）
+// tl.to(dsProgress, {val: 1, duration: 0.1, repeat: -1, ease: 'none', onUpdate: drawStream}, sceneStart)
 </script>

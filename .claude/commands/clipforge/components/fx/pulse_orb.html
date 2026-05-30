@@ -5,8 +5,8 @@ layer: fx
 tags: [energy, pulse, glow, focus, orb, ambient]
 emotion_range: [focus, energy]
 visual_density: low
-complexity: css-only
-description: 脉冲光球特效，核心发光体 + 三层扩散环，适合数据展示或聚焦场景的能量装饰
+complexity: gsap
+description: 脉冲光球特效，核心发光体 + 三层扩散环 + 持续脉冲动画，适合数据展示或聚焦场景
 parameters: {}
 /ComponentMeta
 -->
@@ -44,10 +44,16 @@ parameters: {}
 .ring-3 { width: 400px; height: 400px; opacity: 0.1; }
 </style>
 
-<!-- JS (GSAP) -->
+<!-- JS (GSAP) — 入场 + 持续脉冲 -->
 <script>
-tl.from('.orb-core', {scale:0, duration:0.5, ease:'elastic.out(1, 0.5)'}, startTime)
-  .from('.ring-1', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.2)
-  .from('.ring-2', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.3)
-  .from('.ring-3', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.4);
+// 入场：弹性缩放
+// tl.from('#sN .orb-core', {scale:0, duration:0.5, ease:'elastic.out(1, 0.5)'}, sceneStart)
+//   .from('#sN .ring-1', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, sceneStart + 0.2)
+//   .from('#sN .ring-2', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, sceneStart + 0.3)
+//   .from('#sN .ring-3', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, sceneStart + 0.4)
+// 持续：核心脉冲 + 扩散环呼吸
+// tl.to('#sN .orb-core', {scale:1.15, duration:2, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 0.6)
+// tl.to('#sN .ring-1', {scale:1.1, opacity:0.4, duration:2.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 0.8)
+// tl.to('#sN .ring-2', {scale:1.08, opacity:0.3, duration:3, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 1)
+// tl.to('#sN .ring-3', {scale:1.05, opacity:0.15, duration:3.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 1.2)
 </script>
