@@ -49,6 +49,8 @@ class GateType(str, Enum):
     html_no_css_visibility = "html_no_css_visibility"
     cover_layers_present = "cover_layers_present"
     bgm_silence_valid = "bgm_silence_valid"
+    data_duration_source_valid = "data_duration_source_valid"
+    estimation_accuracy_valid = "estimation_accuracy_valid"
 
 
 class Rigor(str, Enum):

@@ -72,7 +72,16 @@ skill:
         params:
           bgm_file: "bgm.wav"
           segments_file: "segment_durations.json"
-    soft: []
+      - gate: duration_in_range
+        params:
+          file: "segment_durations.json"
+    soft:
+      - gate: estimation_accuracy_valid
+        params:
+          narration_file: "narration_segments.json"
+          segments_file: "segment_durations.json"
+          segment_threshold: 0.30
+          total_threshold: 0.20
     max_retries: 2
   trace:
     capture: true
