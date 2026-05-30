@@ -1,0 +1,39 @@
+{# scene.html.j2 — 单个场景的 HTML 骨架
+
+  重要：每个 CREATIVE_SLOT 不是单一元素容器，而是注入点标记。
+  LLM 可以在每个层中放入任意数量的子元素：
+  - bg 层：多个渐变叠加、多个光晕、Canvas 粒子、SVG 纹理...自由组合
+  - fx 层：多个特效同时运行（代码雨 + 光带 + 脉冲球...）
+  - content 层：多个文字块、卡片、标签、数据可视化元素...
+  元素数量、叠加方式完全没有限制。
+#}
+<div class="clip" id="{{ scene.scene_id }}"
+     data-start="{{ scene.start }}" data-duration="{{ scene.duration }}">
+
+  {# ── 背景层（可叠加任意数量的背景元素：渐变、光晕、纹理、Canvas...） ── #}
+  <div class="layer-bg">
+    <!-- CREATIVE_SLOT:{{ scene.scene_id }}-bg-html -->
+  </div>
+
+  {# ── 特效层（可叠加任意数量的特效元素：Canvas、CSS动画、光效...） ── #}
+  <div class="layer-fx">
+    <!-- CREATIVE_SLOT:{{ scene.scene_id }}-fx-html -->
+  </div>
+
+  {# ── 内容层 ── #}
+  <div class="layer-content">
+    {% if scene.visual_phases | length <= 1 %}
+    {# 单 phase：直接渲染内容插槽，可放任意数量的内容元素 #}
+    <div class="phase phase-1">
+      <!-- CREATIVE_SLOT:{{ scene.scene_id }}-content-html -->
+    </div>
+    {% else %}
+    {# 多 phase：为每个 phase 创建独立容器，每个 phase 内仍可放多个元素 #}
+    {% for phase in scene.visual_phases %}
+    <div class="phase phase-{{ loop.index }}">
+      <!-- CREATIVE_SLOT:{{ scene.scene_id }}-phase{{ loop.index }}-html -->
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>

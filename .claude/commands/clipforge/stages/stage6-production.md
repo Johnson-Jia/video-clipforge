@@ -102,9 +102,90 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 
 HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>` 时长，`mediaDurationFloor` 确保视频时间线不短于音频。
 
-## 6.4 编写 HTML 组合（组件装配模式）
+## 6.4 编写 HTML 组合（骨架 + 创意插槽模式）
 
-**调用 `/hyperframes` 技能**，传入：视觉风格方向、故事板、design.md 路径、`stage6-components.md` 组件库、`segment_durations.json` 时长、`narration_segments.json` 情感标记、音频嵌入参数。
+> **核心思路：代码引擎生成 HTML 骨架（三层架构、composition 注册、audio 嵌入、GSAP 框架），LLM 只在创意插槽中自由编写 CSS/HTML/GSAP 代码。** 骨架保证结构性正确，LLM 保证视觉创意。
+
+### §6.4-0 骨架生成（代码引擎自动执行）
+
+> **这一步由代码引擎完成，LLM 不参与。** 输出为包含 `CREATIVE_SLOT` 标记的 HTML 骨架。
+
+```bash
+cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
+
+# 1. 生成 HTML 骨架 + 插槽清单
+python .claude/commands/clipforge/scripts/generate_skeleton.py \
+  --project-dir . \
+  --output index_skeleton.html \
+  --slots-json skeleton_slots.json
+
+# 2. 验证骨架结构完整性
+python .claude/commands/clipforge/scripts/validate_skeleton.py \
+  --html index_skeleton.html
+```
+
+骨架包含：
+- 完整 HTML 文档结构（DOCTYPE、head、body）
+- 三层 div 架构（bg / fx / content），每层都有 `CREATIVE_SLOT` 标记
+- `<audio>` 嵌入（旁白 + BGM，音量从 segment_durations.json 自动读取）
+- GSAP timeline 初始化 + `window.__hf` 注册
+- Phase 初始化和切换占位
+- 每个 scene div 的 `id`、`data-start`、`data-duration` 已精确设置
+
+### §6.4-1 视觉节奏上下文（代码引擎自动执行）
+
+> **这一步由代码引擎完成。** 为每个场景生成视觉上下文 JSON，LLM 创作前**必须读取**。
+
+```bash
+# 生成视觉节奏上下文（emotion curve + 前序场景指纹 + 节奏引导）
+python .claude/commands/clipforge/scripts/generate_visual_context.py \
+  --project-dir . \
+  --output visual_context.json
+```
+
+`visual_context.json` 为每个场景提供：
+
+```json
+{
+  "scene_id": "s3",
+  "emotion_curve_position": 0.22,
+  "emotion_intensity": 0.55,
+  "intensity_label": "平稳推进 — 视觉力度适中：保持节奏，可做小变化",
+  "visual_theme": {
+    "color_temperature": "cold-warm-contrast",
+    "accent_colors": ["#00d4ff", "#ff6b35"],
+    "immersion_mode": "hyper-pace"
+  },
+  "prev_scene_summary": {
+    "scene_id": "s2",
+    "dominant_colors": ["#FFD700", "#0a0a0f"],
+    "bg_element_types": ["gradient", "glow", "noise"],
+    "fx_types": ["canvas"]
+  },
+  "next_scene_summary": { "...": "..." },
+  "rhythm_guidance": "推进阶段：视觉随内容展开\n前序场景主色: #FFD700\n → 保留一个色调族，其他维度制造差异"
+}
+```
+
+**LLM 如何使用这些上下文：**
+- `emotion_intensity` → 决定视觉力度（高=浓烈/低=收敛）
+- `prev_scene_summary.dominant_colors` → 保留一个色调族（不突兀），替换其他色（不单调）
+- `prev_scene_summary.bg_element_types` → 保留一种元素类型（连贯感），替换其余（新鲜感）
+- `rhythm_guidance` → 直接的创作引导文字
+
+### §6.4-2 创意填充（LLM 自由创作）
+
+> **LLM 在此获得完全创作自由。** 骨架已经保证了结构性正确（三层、composition、audio、__hf），LLM 只需为每个插槽编写创意内容。创作前读取 `visual_context.json`，在自由创作中自然融入节奏感。
+
+**LLM 输出的不是完整 HTML，而是创意内容——逐场景的 CSS + HTML + GSAP 动画。**
+
+**读取以下文件作为创作输入：**
+- `index_skeleton.html` — 骨架结构（了解有哪些插槽需要填充）
+- `skeleton_slots.json` — 插槽清单（每个插槽的 scene_id、layer、类型）
+- `visual_context.json` — 视觉节奏上下文（不单调、不突兀的引导）
+- `design.md` — 视觉风格方向、storyboard、配色方案
+- `narration_segments.json` — 每段的旁白内容、情感标记、visual_phases
+- `stage6-components.md` — 组件库参考（可选，不是唯一来源）
 
 如果 Stage 5 已制备素材，将 `assets/manifest.md` 中列出的文件路径作为 prompt 上下文传入 HyperFrames，让其在 HTML 中嵌入：
 
@@ -184,6 +265,62 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 - hook 缺乏冲击力 → 加强光晕/字号/对比度
 
 **发现偏差立即修复。自审不通过的禁止渲染。**
+
+### §6.4-3 组装与验证（代码引擎自动执行）
+
+LLM 完成所有插槽的创意内容后，由代码引擎组装为最终 HTML：
+
+```bash
+cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
+
+# 1. 注入创意内容到骨架
+python .claude/commands/clipforge/scripts/inject_creative.py \
+  --skeleton index_skeleton.html \
+  --creative creative_output.json \
+  --output index.html
+
+# 2. 验证所有插槽已填充
+python .claude/commands/clipforge/scripts/validate_skeleton.py \
+  --html index.html --strict
+
+# 3. 运行导演门禁（重用现有 gate 检查）
+python3 .claude/commands/clipforge/scripts/director_gate.py .
+```
+
+如果 gate 检查失败，仅修复失败的部分（不需要重写整个 HTML）。修复后重新注入或直接编辑 `index.html`。
+
+**LLM 输出格式（两种任选）：**
+
+**格式 A：结构化 JSON**
+```json
+[
+  {"slot_id": "s1-css", "content": "#s1 .layer-bg { background: radial-gradient(...); }"},
+  {"slot_id": "s1-bg-html", "content": "<div class='nebula'>...</div>"},
+  {"slot_id": "s1-fx-html", "content": "<canvas id='particles-s1'>...</canvas>"},
+  {"slot_id": "s1-content-html", "content": "<h1 style='font-size:100px;...'>震撼标题</h1>"},
+  {"slot_id": "s1-gsap", "content": "tl.from('#s1 h1', {x:-400, opacity:0, duration:0.8}, 0.3);"}
+]
+```
+
+**格式 B：带标记的代码片段（更自由）**
+```html
+<!-- CREATIVE_SLOT:s1-bg-html -->
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 70%, rgba(75,0,130,0.8), transparent);">
+  <div style="position:absolute;width:300px;height:300px;border-radius:50%;filter:blur(40px);"></div>
+</div>
+<!-- END_SLOT:s1-bg-html -->
+
+<!-- CREATIVE_SLOT:s1-gsap -->
+tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
+<!-- END_SLOT:s1-gsap -->
+```
+
+**创意自由度声明：**
+- LLM 可以自由发明任何 CSS 效果（渐变、动画、滤镜、混合模式...）
+- LLM 可以使用 Canvas/WebGL 编写全新特效
+- LLM 可以引用组件库中的组件作为基础并修改
+- LLM 也可以完全不使用组件库，从零创作
+- 组件库是"工具箱和灵感来源"，不是约束
 
 ## 6.4b 特效工坊（组件匹配 + 新特效创建）
 
