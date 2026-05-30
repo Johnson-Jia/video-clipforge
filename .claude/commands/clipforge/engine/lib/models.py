@@ -254,3 +254,60 @@ class TraceRecord:
     gate_report: GateReport | None = None
     attribution: dict[str, Any] | None = None
     performance: dict[str, Any] | None = None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Creative Execution Engine — 骨架 + 创意插槽数据模型
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@dataclass
+class CreativeSlot:
+    """骨架中的创意插槽 — LLM 在此注入自由创作的 CSS/HTML/GSAP 代码。
+
+    每个插槽只是 HTML 注释标记（注入点），不是容器边界。
+    LLM 可以往里面塞任意数量的子元素（多层渐变叠加、多个特效组合等）。
+    """
+    slot_id: str           # 格式: "{scene_id}-{layer}-{type}" 如 "s1-bg-html"
+    scene_id: str          # 场景 ID，如 "s1"
+    layer: str             # bg / fx / content / all
+    slot_type: str         # css / html / gsap
+    marker: str            # HTML 注释标记，如 "<!-- CREATIVE_SLOT:s1-bg-html -->"
+
+    # ── 本场景上下文 ──
+    scene_duration: float = 0.0
+    emotion_tags: list[str] = field(default_factory=list)
+    visual_intent: dict = field(default_factory=dict)
+    narration_text: str = ""
+
+    # ── 视觉节奏上下文（解决"不单调、不突兀"） ──
+
+    # emotion_curve 位置（0.0~1.0）
+    emotion_curve_position: float = 0.0
+    # 情感强度值
+    emotion_intensity: float = 0.5
+
+    # 前序场景视觉指纹
+    prev_scene_summary: dict = field(default_factory=dict)
+    # 后续场景视觉指纹
+    next_scene_summary: dict = field(default_factory=dict)
+
+    # 全片视觉主题
+    visual_theme: dict = field(default_factory=dict)
+    # 节奏引导文字
+    rhythm_guidance: str = ""
+
+    # 可选：组件库参考
+    suggested_components: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SceneSkeleton:
+    """单个场景的骨架数据。"""
+    scene_id: str          # s1, s2, ...
+    scene_name: str        # s1-hook, s2-top1, ...
+    start: float           # data-start 秒
+    duration: float        # data-duration 秒
+    visual_phases: list[dict] = field(default_factory=list)
+    phase_breakpoints: list[float] = field(default_factory=list)
+    slots: list[CreativeSlot] = field(default_factory=list)
