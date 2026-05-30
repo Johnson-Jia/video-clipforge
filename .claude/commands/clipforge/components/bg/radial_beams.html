@@ -2,11 +2,11 @@
 @ComponentMeta
 name: radial_beams
 layer: bg
-tags: [beams, rays, radial, light, dramatic, epic]
+tags: [beams, rays, radial, light, dramatic, epic, glass]
 emotion_range: [shock, excitement, climax, revelation]
 visual_density: medium
 complexity: css-only
-description: 径向光束射线从中心发散 + 渐变底色 + 光晕，适合震撼开场/重大揭示/高潮场景
+description: 径向光束射线从中心发散 + 玻璃棱镜色散 + 渐变底色，适合震撼/揭示/高潮场景
 parameters:
   beam_count: { default: 12, range: [8, 16] }
   beam_color: { default: "rgba(255,200,0,0.06)", description: "光束颜色" }
@@ -14,11 +14,15 @@ parameters:
   center_y: { default: "35%", description: "射线中心Y" }
 /ComponentMeta
 -->
-<!-- CSS keyframes (全局共享) -->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
 <!--
 @keyframes beamRotate {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.04; }
+  50% { opacity: 0.10; }
 }
 -->
 <!-- HTML (嵌入 .layer-bg) -->
@@ -29,5 +33,13 @@ parameters:
   background:repeating-conic-gradient(from 0deg,transparent 0deg,rgba(255,200,0,0.05) 2deg,transparent 4deg,transparent 28deg)"></div>
 <!-- 中心光晕 -->
 <div style="position:absolute;top:15%;left:30%;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(255,200,0,0.25) 0%,transparent 60%);filter:blur(80px)"></div>
+<!-- 玻璃折射高光 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(160deg,rgba(255,255,255,0.03) 0%,transparent 25%,transparent 75%,rgba(255,255,255,0.02) 100%);
+  animation:glassShimmer 7s ease-in-out infinite"></div>
+<!-- 棱镜色散环 -->
+<div style="position:absolute;top:5%;left:15%;width:700px;height:700px;border-radius:50%;opacity:0.025;
+  background:conic-gradient(from 0deg,rgba(255,50,50,0.5),rgba(255,200,50,0.4),rgba(50,255,100,0.5),rgba(50,100,255,0.5),rgba(200,50,255,0.4),rgba(255,50,50,0.5));
+  filter:blur(60px)"></div>
 <!-- 暗角 -->
 <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,transparent 30%,rgba(0,0,0,0.5) 100%)"></div>

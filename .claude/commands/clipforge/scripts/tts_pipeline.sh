@@ -62,5 +62,14 @@ with open('segment_durations.json', 'w') as f:
 print(f'meta: voice=${VOICE}, rate=${RATE}')
 "
 
+# ── Step 7: Phase 时间校准 ──
+echo "--- Step 7: Phase 时间校准 ---"
+if [ -f "sentence_timestamps.json" ]; then
+    python .claude/commands/clipforge/scripts/phase_calibrator.py
+    echo "OK: phase_timings.json 已生成"
+else
+    echo "SKIP: sentence_timestamps.json 不存在，跳过 phase 校准"
+fi
+
 echo "=== TTS 管线完成 ==="
-echo "产出: narration.mp3, narration.srt, segment_durations.json"
+echo "产出: narration.mp3, narration.srt, segment_durations.json, sentence_timestamps.json, phase_timings.json"

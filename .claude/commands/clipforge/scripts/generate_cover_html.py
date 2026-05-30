@@ -132,7 +132,7 @@ def generate_cover_html(project_dir, title, design_meta, scene_label=""):
   }}
   /* Layer 2: 场景标签 */
   .scene-label {{
-    font-size: 28px; color: {accent_cool};
+    font-size: 32px; color: {accent_cool};
     letter-spacing: 6px; text-transform: uppercase;
     margin-bottom: 30px; font-weight: 400;
   }}
@@ -142,7 +142,7 @@ def generate_cover_html(project_dir, title, design_meta, scene_label=""):
     padding: 12px 36px;
     border: 2px solid {accent_cool};
     border-radius: 50px;
-    font-size: 24px; color: {accent_cool};
+    font-size: 28px; color: {accent_cool};
     letter-spacing: 3px; margin-bottom: 60px;
   }}
   /* Layer 4: 主标题 */
@@ -161,7 +161,7 @@ def generate_cover_html(project_dir, title, design_meta, scene_label=""):
   }}
   /* Layer 6: 数据说明 */
   .data-subtitle {{
-    font-size: 32px; color: rgba(255,255,255,0.7);
+    font-size: 36px; color: rgba(255,255,255,0.7);
     font-weight: 300; margin-bottom: 30px;
   }}
   .cards {{
@@ -171,7 +171,7 @@ def generate_cover_html(project_dir, title, design_meta, scene_label=""):
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 16px; padding: 24px 32px;
-    font-size: 26px; color: rgba(255,255,255,0.8);
+    font-size: 28px; color: rgba(255,255,255,0.8);
   }}
 </style>
 </head>

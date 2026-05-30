@@ -8,7 +8,7 @@ skill:
   intent:
     objective: "旁白文案就绪，场景拆分和节奏设计完成"
     criteria:
-      - "narration_segments.json 存在且含 segments 数组"
+      - "narration_segments.json 存在且为合法 JSON 数组"
       - "hook 场景为纯钩子"
       - "总字数在目标范围内"
   boundary:
@@ -45,7 +45,6 @@ skill:
       - gate: json_valid
         params:
           files: ["narration_segments.json"]
-          required_keys: ["segments"]
       - gate: hook_pattern_verified
         params:
           file: "narration_segments.json"

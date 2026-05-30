@@ -80,40 +80,78 @@ tl.to('.s-biz-elderly .phase-3', {opacity: 0, duration: 0.3}, SCENE_START + BP3)
 - **Phase 断点必须与旁白话题转换对齐，禁止均分**（见下方）
 - Phase 间 GSAP 动画offset：`SCENE_START + BP[i][n-1] + offset`（BP 为内容对齐断点数组）
 
-## Phase 断点计算（内容对齐，禁止均分）
+## Phase 断点计算（自动校准，禁止手工估算）
 
-> **事故复盘**：均分 gap 导致旁白与画面严重不同步——观众听到话题 A，画面已显示话题 B，偏差达 5-12 秒。
+> **事故复盘**：手工估算 + 均分 gap 导致旁白与画面严重不同步——观众听到话题 A，画面已显示话题 B，偏差达 5-12 秒。
+>
+> **根治方案**：Edge TTS 按 SRT 输出句子级时间戳（精度 ±10ms），配合 `narration_anchor` 自动校准，取代一切手工断点。
 
-**禁止**：`const gap = sc.d / sc.p`（时间均分）
+**禁止**：手工在 GSAP 中硬编码 `tl.to(..., 176.0, ...)` 绝对时间戳
 
-**必须**：逐场景分析旁白文本，按话题转换点计算断点。
+**必须**：由 `phase_timings.json`（`phase_calibrator.py` 自动产出）驱动 GSAP timeline
 
-**计算步骤**：
+### 自动校准流程
 
-1. 读取该场景的 `narration_segments.json` 中的 `text` 和 `visual_phases`
-2. 在 `text` 中找到与每个 `visual_phases[n].focus` 对应的文本段落边界
-3. 计算字数比例：`ratio_n = boundary_char_position / total_chars`
-4. 转换为时间戳：`bp_n = ratio_n * actual_duration`
-5. 结果存入 BP 数组
+```
+Stage 3 → narration_segments.json（visual_phases[].narration_anchor 标注句子索引）
+    ↓
+Stage 4 → tts_segments.py
+    ├→ narration_seg_N.srt（Edge TTS 按句输出时间戳）
+    └→ sentence_timestamps.json（解析 SRT 后的句子时间戳聚合）
+    ↓
+phase_calibrator.py（自动执行，无需手工干预）
+    输入: narration_segments.json + sentence_timestamps.json
+    输出: phase_timings.json
+    ↓
+Stage 6 → skeleton_builder 读取 phase_timings.json → 注入 GSAP timeline
+```
 
-**代码模板**：
+### phase_timings.json 格式
 
-```js
-// GSAP timeline 中定义断点数组
-const BP = [
-  [3.21, 16.72],    // 0: scene_name — P1:topic(XX%) P2:topic(XX%) P3:topic(XX%)
-  [15.25, 21.57],   // 1: scene_name — P1:topic(XX%) P2:topic(XX%) P3:topic(XX%)
-  // ... 每个场景一行
-];
+```json
+{
+  "meta": { "voice": "zh-CN-YunjianNeural", "rate": "+25%", "calibration_source": "edge-tts-srt" },
+  "scenes": [
+    {
+      "scene": "s3_pipeline_overview",
+      "segment_index": 7,
+      "global_start": 141.14,
+      "duration": 34.54,
+      "phases": [
+        { "phase": 1, "start_offset": 0.0, "end_offset": 8.16, "sentences": [0, 1], "calibration": "sentence-anchor" },
+        { "phase": 2, "start_offset": 8.16, "end_offset": 34.54, "sentences": [2, 3, 4], "calibration": "sentence-anchor" }
+      ]
+    }
+  ]
+}
+```
 
-S.forEach((sc, i) => {
-  const bp1 = BP[i][0];  // Phase 1→2 断点
-  const bp2 = BP[i][1];  // Phase 2→3 断点
-  // 所有 Phase 切换使用 bp1/bp2 替代 gap/gap*2
+### 校准精度
+
+| 校准方式 | 精度 | 条件 |
+|---------|------|------|
+| `sentence-anchor` | ±50ms | visual_phases 含 narration_anchor |
+| `auto-split` | ±30% | 无 narration_anchor，按句子等分（SOFT 警告） |
+
+### GSAP 自动注入（Stage 6 skeleton_builder）
+
+```javascript
+// phase_timings.json 由 skeleton_builder 注入为 PHASE_TIMINGS 全局变量
+const PT = PHASE_TIMINGS;
+
+PT.scenes.forEach(sc => {
+  const baseTime = sc.global_start;
+  sc.phases.forEach((p, i) => {
+    if (i === 0) return; // phase-1 不需要切换（CSS 默认可见）
+    const t = baseTime + p.start_offset;
+    // 淡出上一个 phase，淡入当前 phase
+    tl.to(`#${sc.scene} .phase-${i}`, { opacity: 0, duration: 0.3 }, t);
+    tl.to(`#${sc.scene} .phase-${i + 1}`, { opacity: 1, duration: 0.4 }, t + 0.1);
+  });
 });
 ```
 
-**验证标准**：观看视频时，Phase N 的视觉内容与对应时间段内的旁白文本语义匹配，偏差 ≤ 2 秒。
+**验证标准**：phase_timings.json 中每个 phase 的 `calibration` 字段必须为 `sentence-anchor`（HARD）。`auto-split` 触发 SOFT 警告。
 
 ## Phase 内容来源
 

@@ -50,6 +50,21 @@ skill:
       - thought: "渲染成功就代表视频没问题"
         reality: "黑屏视频（所有帧相同颜色）码率极低（<500 kbps），HyperFrames 不报错但产出的视频无内容。必须检查码率"
         trigger: "HyperFrames 渲染完成后未验证视频质量"
+      - thought: "fx 层放了几个 div 就够了，不需要动画"
+        reality: "纯静态 fx 元素在 H.264 编码后与背景融为一体，观众看不到任何特效。每个 fx 元素必须有 GSAP 动画（R-R-013 HARD）。组件库匹配不到就从内容推导创建新特效"
+        trigger: "试图在 layer-fx 中放置无 GSAP 动画的静态 div"
+      - thought: "用 section-tag 小标签标注场景类型，既清晰又省空间"
+        reality: "section-tag 小徽章（20-24px）看起来廉价，不符合竖屏视频的视觉冲击力。场景标题必须用标题层字号（竖屏≥64px），用字重和颜色区分（R-R-016 HARD）"
+        trigger: "试图添加 class='section-tag' 的小徽章标题"
+      - thought: "文字小一点没关系，反正内容都在"
+        reality: "竖屏 1080px 宽 ÷ 3 DPR ≈ 360px 手机宽度，36px 以下在手机端只有 9-12px 完全不可读（R-R-015 HARD）。字号是可读性底线，不是审美偏好"
+        trigger: "试图在竖屏内容层使用低于 36px 的字号"
+      - thought: "横屏空间大，字体可以小一些"
+        reality: "横屏在手机端播放时缩放比 ~2.67x，24px 在手机上只有 9px。横屏正文最低 32px，低于此值门禁拒绝（R-R-015 HARD）"
+        trigger: "试图在横屏内容层使用低于 32px 的字号"
+      - thought: "横屏纯白文字就够了，不需要渐变"
+        reality: "纯白/纯色文字在横屏宽幅画面上视觉平淡。标题应使用渐变色（background-clip:text）或高对比配色，横屏空间大必须用色彩丰富度弥补"
+        trigger: "横屏场景标题使用纯白色"
     spirit_vs_letter:
       - rule_ref: "R-S6-*"
         mode: LETTER
@@ -73,6 +88,9 @@ skill:
           html_file: "index.html"
           segments_file: "narration_segments.json"
       - gate: composition_structure
+        params:
+          file: "index.html"
+      - gate: root_attributes_complete
         params:
           file: "index.html"
       - gate: output_no_bgm_valid
@@ -100,7 +118,21 @@ skill:
           html_file: "index.html"
           segments_file: "segment_durations.json"
           tolerance: 0.5
-    soft: []
+      - gate: fx_animation_present
+        params:
+          file: "index.html"
+      - gate: portrait_typography_valid
+        params:
+          file: "index.html"
+      - gate: phase_timings_valid
+        params:
+          file: "phase_timings.json"
+          max_gap: 0.5
+    soft:
+      - gate: phase_anchor_coverage
+        params:
+          file: "phase_timings.json"
+          max_auto_ratio: 0.5
     max_retries: 2
   trace:
     capture: true

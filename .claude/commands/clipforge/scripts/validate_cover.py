@@ -128,6 +128,12 @@ def validate_render(png_path: str) -> bool:
     elif w == 2160 and h == 3840:
         min_size = 600_000
         size_label = "600KB"
+    elif w == 1920 and h == 1080:
+        min_size = 280_000
+        size_label = "280KB"
+    elif w == 3840 and h == 2160:
+        min_size = 500_000
+        size_label = "500KB"
     else:
         min_size = 250_000
         size_label = "250KB"

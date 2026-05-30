@@ -2,11 +2,11 @@
 @ComponentMeta
 name: gradient_mesh
 layer: bg
-tags: [gradient, background, ambient, wave, sway]
+tags: [gradient, background, ambient, wave, sway, glass]
 emotion_range: [calm, mystery, depth]
-visual_density: low
+visual_density: medium
 complexity: css-only
-description: 2-3 条半透明渐变色带缓慢旋转摇摆，提供氛围感但不抢内容
+description: 2-3 条半透明渐变色带缓慢旋转摇摆 + 毛玻璃折射层 + 棱镜色散，提供氛围感和玻璃质感
 parameters:
   band_count: { default: 2, range: [2, 3] }
   band_height: { default: 300, range: [200, 350] }
@@ -19,11 +19,28 @@ parameters:
   0%, 100% { transform: rotate(-5deg); }
   50% { transform: rotate(5deg); }
 }
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.08; }
+}
 -->
 <!-- HTML (嵌入 .layer-bg) -->
+<!-- 渐变底色 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(160deg, var(--bg-dark, #080818) 0%, var(--bg-mid, #001a33) 100%)"></div>
+<!-- 色带 1 -->
 <div style="position:absolute;top:20%;left:0;width:100%;height:300px;
   background:linear-gradient(90deg,transparent,hsla(220,60%,40%,0.15),transparent);
   transform:rotate(-8deg);animation:waveSway 20s ease-in-out infinite 0s"></div>
+<!-- 色带 2 -->
 <div style="position:absolute;top:55%;left:0;width:100%;height:250px;
   background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.12),transparent);
   transform:rotate(5deg);animation:waveSway 25s ease-in-out infinite 5s"></div>
+<!-- 玻璃折射层：半透明毛玻璃叠加 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 40%,rgba(255,255,255,0.03) 60%,transparent 100%);
+  animation:glassShimmer 8s ease-in-out infinite"></div>
+<!-- 棱镜色散：细微的彩虹光带 -->
+<div style="position:absolute;top:30%;left:-10%;width:120%;height:200px;opacity:0.04;
+  background:linear-gradient(90deg,transparent,rgba(255,100,100,0.5),rgba(100,255,100,0.5),rgba(100,100,255,0.5),transparent);
+  filter:blur(60px);transform:rotate(-3deg)"></div>

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=1080">
+  <meta name="viewport" content="width={{ canvas_width | default(1080) }}">
   <title>{{ project_name }}</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
@@ -11,8 +11,8 @@
        ══════════════════════════════════════════════════════════════ */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 1080px;
-      height: 1920px;
+      width: {{ canvas_width | default(1080) }}px;
+      height: {{ canvas_height | default(1920) }}px;
       overflow: hidden;
       position: relative;
       {{ base_bg_css | default('background: #000;') }}
@@ -24,8 +24,8 @@
     .clip {
       position: absolute;
       inset: 0;
-      width: 1080px;
-      height: 1920px;
+      width: {{ canvas_width | default(1080) }}px;
+      height: {{ canvas_height | default(1920) }}px;
       overflow: hidden;
     }
     .layer-bg      { position: absolute; inset: 0; z-index: 1; }
@@ -35,7 +35,7 @@
     /* Phase 系统 */
     .phase {
       position: absolute; inset: 0;
-      padding: 180px 80px 220px 80px;
+      padding: {{ safe_padding | default('180px 80px 220px 80px') }};
       display: flex; flex-direction: column; justify-content: center;
       opacity: 1;
     }
@@ -62,7 +62,9 @@
 <body>
 
   {# ── 音频嵌入（确定性，从 segment_durations.json 自动读取） ── #}
-  <div class="composition" data-composition-id="main" data-start="0">
+  <div class="composition" data-composition-id="main"
+       data-width="{{ canvas_width | default(1080) }}" data-height="{{ canvas_height | default(1920) }}"
+       data-start="0">
     <audio data-track-index="1" data-volume="1"
            src="narration.mp3" preload="auto"></audio>
     <audio data-track-index="2"
@@ -117,6 +119,19 @@
     {% endfor %}
     {% endif %}
     {% endfor %}
+
+    // ── Phase 自动切换（从 phase_timings.json 校准） ──
+    const PHASE_TIMINGS = {{ phase_timings_json | default('{}') }};
+    if (PHASE_TIMINGS.scenes) {
+      PHASE_TIMINGS.scenes.forEach(sc => {
+        sc.phases.forEach((p, i) => {
+          if (i === 0) return; // phase-1 默认可见，无需切换
+          const t = sc.global_start + p.start_offset;
+          tl.to(`#${sc.scene} .phase-${i}`, { opacity: 0, duration: 0.3 }, t);
+          tl.to(`#${sc.scene} .phase-${i + 1}`, { opacity: 1, duration: 0.4 }, t + 0.1);
+        });
+      });
+    }
 
     // ══════════════════════════════════════════════════════════════
     // 创意 GSAP 区域 — LLM 自由创作动画

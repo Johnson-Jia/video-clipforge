@@ -22,8 +22,31 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# 安全区 padding（单层 padding 原则）
-SAFE_PADDING = '180px 80px 220px 80px'
+# 安全区 padding（单层 padding 原则）— 按方向选择
+SAFE_PADDING_PORTRAIT = '180px 80px 220px 80px'
+SAFE_PADDING_LANDSCAPE = '60px 120px 60px 120px'
+
+# 画布尺寸
+CANVAS_PORTRAIT = (1080, 1920)
+CANVAS_LANDSCAPE = (1920, 1080)
+
+# 字号标准（竖屏/横屏）— 与 director-toolkit.md 排版表对齐
+FONT_SIZES = {
+    'portrait': {
+        'phase_title': 72,
+        'phase_header': 56,
+        'feature_card': 36,
+        'data_label': 32,
+        'data_value': 36,
+    },
+    'landscape': {
+        'phase_title': 64,
+        'phase_header': 52,
+        'feature_card': 32,
+        'data_label': 28,
+        'data_value': 32,
+    },
+}
 
 
 def parse_design_style(project_dir):
@@ -96,10 +119,30 @@ def get_base_colors(immersion_mode):
     return palettes.get(immersion_mode, palettes['hyper-pace'])
 
 
-def generate_css(segments, colors):
+def get_orientation_config(orientation):
+    """根据方向返回配置"""
+    if orientation == 'landscape':
+        return {
+            'padding': SAFE_PADDING_LANDSCAPE,
+            'canvas_w': CANVAS_LANDSCAPE[0],
+            'canvas_h': CANVAS_LANDSCAPE[1],
+            'fonts': FONT_SIZES['landscape'],
+        }
+    return {
+        'padding': SAFE_PADDING_PORTRAIT,
+        'canvas_w': CANVAS_PORTRAIT[0],
+        'canvas_h': CANVAS_PORTRAIT[1],
+        'fonts': FONT_SIZES['portrait'],
+    }
+
+
+def generate_css(segments, colors, orientation='portrait'):
     """生成 CSS 骨架"""
+    cfg = get_orientation_config(orientation)
+    fonts = cfg['fonts']
+
     lines = []
-    lines.append('/* ClipForge 场景样式骨架（自动生成） */')
+    lines.append(f'/* ClipForge 场景样式骨架（自动生成） — {orientation} */')
     lines.append('/* 安全区 padding: 单层原则 — padding 只设在 .phase 或直接子元素上 */')
     lines.append('')
 
@@ -116,7 +159,7 @@ def generate_css(segments, colors):
 
     # 三层架构
     lines.append('/* ── 三层架构 ── */')
-    lines.append('.clip { position: relative; width: 1080px; height: 1920px; overflow: hidden; }')
+    lines.append(f'.clip {{ position: relative; width: {cfg["canvas_w"]}px; height: {cfg["canvas_h"]}px; overflow: hidden; }}')
     lines.append('.scene-wrap { position: relative; width: 100%; height: 100%; }')
     lines.append('  /* scene-wrap 不设 padding — padding 由 .phase 统一管理 */')
     lines.append('.layer-bg { position: absolute; inset: 0; z-index: 1; }')
@@ -128,7 +171,7 @@ def generate_css(segments, colors):
     lines.append('/* ── Phase（视觉分镜）── */')
     lines.append('.phase {')
     lines.append(f'  position: absolute; inset: 0;')
-    lines.append(f'  padding: {SAFE_PADDING};')
+    lines.append(f'  padding: {cfg["padding"]};')
     lines.append('  display: flex; flex-direction: column; justify-content: center;')
     lines.append('  opacity: 1;  /* Phase 1 默认可见，Phase 2+ 由 GSAP .set() 控制 */')
     lines.append('}')
@@ -159,16 +202,16 @@ def generate_css(segments, colors):
 
     # 通用组件
     lines.append('/* ── 通用组件样式 ── */')
-    lines.append('.phase-title { font-size: 56px; font-weight: 800; margin-bottom: 32px; }')
-    lines.append('.phase-header { font-size: 40px; font-weight: 700; margin-bottom: 24px; color: var(--accent-cool); }')
+    lines.append(f'.phase-title {{ font-size: {fonts["phase_title"]}px; font-weight: 800; margin-bottom: 32px; }}')
+    lines.append(f'.phase-header {{ font-size: {fonts["phase_header"]}px; font-weight: 700; margin-bottom: 24px; color: var(--accent-cool); }}')
     lines.append('.feature-card {')
     lines.append('  background: var(--bg-card); border: 1px solid var(--border-subtle);')
     lines.append('  border-radius: 16px; padding: 24px 32px; margin-bottom: 16px;')
-    lines.append('  font-size: 28px;')
+    lines.append(f'  font-size: {fonts["feature_card"]}px;')
     lines.append('}')
     lines.append('.data-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }')
-    lines.append('.data-label { color: var(--text-secondary); font-size: 26px; }')
-    lines.append('.data-value { color: var(--accent-warm); font-size: 28px; font-weight: 700; }')
+    lines.append(f'.data-label {{ color: var(--text-secondary); font-size: {fonts["data_label"]}px; }}')
+    lines.append(f'.data-value {{ color: var(--accent-warm); font-size: {fonts["data_value"]}px; font-weight: 700; }}')
 
     return '\n'.join(lines)
 
@@ -177,6 +220,8 @@ def main():
     parser = argparse.ArgumentParser(description='生成场景 CSS 骨架')
     parser.add_argument('--project-dir', default='.', help='项目目录')
     parser.add_argument('--output', default=None, help='输出文件路径（默认 stdout）')
+    parser.add_argument('--orientation', choices=['portrait', 'landscape'], default='portrait',
+                        help='画布方向（默认 portrait）')
     args = parser.parse_args()
 
     project_dir = os.path.abspath(args.project_dir)
@@ -185,12 +230,12 @@ def main():
     colors = get_base_colors(immersion)
     segments = load_segments(project_dir)
 
-    css = generate_css(segments, colors)
+    css = generate_css(segments, colors, orientation=args.orientation)
 
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:
             f.write(css)
-        print(f'CSS 骨架已写入: {args.output}（{len(segments)} 场景, 模式: {immersion}）')
+        print(f'CSS 骨架已写入: {args.output}（{len(segments)} 场景, 模式: {immersion}, 方向: {args.orientation}）')
     else:
         print(css)
 
