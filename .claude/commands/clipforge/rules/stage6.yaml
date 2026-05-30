@@ -127,3 +127,31 @@ rules:
     scope: SKILL
     skill: "stage6-production"
     source: "事故: 2026-05-28 ai-training-impact output_no_bgm.mp4 纯黑屏"
+
+  - id: "R-S6-013"
+    type: FORBIDDEN_METHOD
+    pattern: "使用 CSS class 切换场景可见性（.active / .show / .visible）"
+    positive: "场景可见性由 GSAP timeline .set()/.fromTo() 控制，HyperFrames 通过 seek 驱动，不执行 CSS class 切换"
+    guardrail: "CSS 中 .scene-wrap 设置 opacity:0 + visibility:hidden，依赖 .active class 切换，HyperFrames 不会添加/移除 class → 所有场景永远不可见 → 黑屏"
+    detection:
+      keywords: [".active", "visibility:hidden", "opacity:0"]
+      regex: "\\.scene[_-]?wrap\\s*\\{[^}]*opacity\\s*:\\s*0[^}]*visibility\\s*:\\s*hidden"
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "事故: 2026-05-30 github-trending 使用 CSS class 切换可见性导致黑屏"
+
+  - id: "R-S6-014"
+    type: FORBIDDEN_ACTION
+    pattern: "渲染输出视频码率异常低（<500 kbps），疑似黑屏"
+    positive: "1080x1920 视频正常码率应 >500 kbps。低于 500 kbps 通常意味着内容大面积不可见"
+    guardrail: "HyperFrames 渲染的 output.mp4 码率 <500 kbps，说明 HTML 内容在 seek 过程中不可见"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "事故: 2026-05-30 github-trending output.mp4 仅 17 kbps（黑屏）"

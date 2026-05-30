@@ -142,7 +142,7 @@ python engine/gate.py --skill stage4-audio --project-dir workspace/2026/05/27/gi
 python engine/trace.py record --skill stage4-audio --project-dir workspace/2026/05/27/github-trending/ --result pass --score 85
 
 # 失败归因
-python engine/attribution.py --trace traces/github-trending/trace.json --skill stage4-audio
+python engine/attribution.py --trace-file traces/github-trending/trace.json
 ```
 
 ### 规则与 Skill 的映射
@@ -336,7 +336,7 @@ workspace/
 当 stage 执行失败或门禁不通过时，运行归因引擎定位根因：
 
 ```bash
-python engine/attribution.py --trace traces/<project>/trace.json --skill <stage-id>
+python engine/attribution.py --trace-file traces/<project>/trace.json
 ```
 
 归因引擎返回：违反的规则 ID（强归因）+ 可能的能力缺口/规则缺失（弱归因）。根据归因结果决定是修复重试还是回退上游。

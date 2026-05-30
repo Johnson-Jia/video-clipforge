@@ -33,3 +33,6 @@ skills-lock.json
 # Python
 __pycache__/
 *.pyc
+
+# 引擎执行轨迹
+.claude/commands/clipforge/traces/

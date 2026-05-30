@@ -56,6 +56,22 @@ mkdir -p "${PROJECT_DIR}"
 - 设置项目目录路径
 - 传入分类特定参数
 
+> **⛔ 门禁强制执行铁律：每个 SubAgent 完成其主要任务后，必须运行 `engine/gate.py`。**
+>
+> 门禁是防事故的最后防线。SubAgent prompt 中必须包含以下指令：
+>
+> ```
+> 完成任务后，必须运行门禁校验：
+> cd <clipforge-dir> && python engine/gate.py --skill <stage-id> --project-dir <project-dir>
+>
+> - HARD 门禁失败：修复问题后重新执行（最多重试 2 次）
+> - 仍失败：停止并报告失败原因，不要继续下一阶段
+> - 全部通过：报告通过，继续
+> ```
+>
+> **事故记录：2026-05-30 github-trending 视频黑屏事故，因 SubAgent-3 未运行 gate.py，
+> 导致 R-R-001（opacity:0）和 R-S6-011（composition 结构）等已有规则未触发拦截。**
+
 ### SubAgent-1: content → design → narration
 
 加载：`skills/stage0-env.yaml` + `skills/stage1-content.yaml` + `skills/stage2-analysis.yaml` + `skills/stage3-scenes.yaml`
@@ -72,6 +88,8 @@ mkdir -p "${PROJECT_DIR}"
 
 **额外指令**：分类特定的选取规则、内容偏好等（从分类配置的 `selection_strategy` 段提取）。
 
+**门禁校验**：完成后运行 `cd <clipforge-dir> && python engine/gate.py --skill stage3-scenes --project-dir <PROJECT_DIR>`
+
 **验证**：`ls -la ${PROJECT_DIR}/design.md ${PROJECT_DIR}/narration_segments.json ${PROJECT_DIR}/narration.txt`
 
 ### SubAgent-2: audio
@@ -87,6 +105,8 @@ mkdir -p "${PROJECT_DIR}"
 
 **验证**：`ls -la ${PROJECT_DIR}/segment_durations.json ${PROJECT_DIR}/narration.mp3 ${PROJECT_DIR}/bgm.wav`
 
+**门禁校验**：完成后运行 `cd <clipforge-dir> && python engine/gate.py --skill stage4-audio --project-dir <PROJECT_DIR>`
+
 ### SubAgent-3: video
 
 加载：`skills/stage6-production.yaml`
@@ -97,6 +117,26 @@ mkdir -p "${PROJECT_DIR}"
 |------|------|------|
 | PROJECT_DIR | 项目目录绝对路径 | 同上 |
 | EXTRA_CONTEXT | 额外上下文 | 时长可延长至 45-60 秒 |
+
+**⛔ 门禁指令（必须执行，不可跳过）**：
+
+SubAgent-3 的 prompt 中必须包含以下完整指令：
+
+```
+完成 HTML 编写和渲染后，必须执行门禁校验：
+
+cd .claude/commands/clipforge && python engine/gate.py --skill stage6-production --project-dir <PROJECT_DIR>
+
+门禁会检查：
+- index.html 是否包含 window.__hf API
+- 是否使用 CSS class 切换可见性（禁止，必须用 GSAP timeline）
+- composition 结构是否完整（data-composition-id + __timelines + paused）
+- bg/fx 层质量是否合格
+- output.mp4 码率是否正常（<500 kbps = 黑屏）
+
+HARD 门禁失败时：修复问题，重新渲染，再次运行门禁。最多重试 2 次。
+仍失败时：停止并返回门禁输出，不要继续下一阶段。
+```
 
 **验证**：`ls -la ${PROJECT_DIR}/output.mp4 ${PROJECT_DIR}/output_no_bgm.mp4`
 
@@ -113,8 +153,12 @@ mkdir -p "${PROJECT_DIR}"
 
 **执行顺序**：
 1. delivery（封面 + 双版本 final.mp4）
-2. machine-scoring（gate 全量校验 → `score_report.json`）
-3. cleanup（按 `shared/cleanup-rules.md` 白名单清理中间产物）
+2. delivery 门禁校验：`cd <clipforge-dir> && python engine/gate.py --skill stage7-delivery --project-dir <PROJECT_DIR>`
+   - 检查 cover.html 封面 7 层结构是否完整
+   - 检查 douyin.md 是否含 URL
+   - 门禁失败则修复后重试，最多 2 次
+3. machine-scoring（gate 全量校验 → `score_report.json`）
+4. cleanup（按 `shared/cleanup-rules.md` 白名单清理中间产物）
 
 > **⛔ 清理必须通过 SubAgent-4 执行，主编排禁止直接手动清理。** 如 SubAgent-4 跳过或失败，用脚本补救：`bash .claude/commands/clipforge/scripts/cleanup_project.sh "${PROJECT_DIR}"`。禁止手动 `rm -f` 批量删除中间文件。
 

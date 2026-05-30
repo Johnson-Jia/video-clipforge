@@ -16,7 +16,7 @@ skill:
       - ref: "R-G-*"
       - ref: "R-S7-*"
     preferences:
-      - text: "封面设计基于 6 层模板，从内容推导而非套用"
+      - text: "封面设计基于 7 层模板，从内容推导而非套用"
         weight: "HIGH"
         source_pattern: "P-feedback-cover-design"
       - text: "标签组合使用 broad + niche + trending 三层结构"
@@ -41,6 +41,9 @@ skill:
       - gate: no_url_in_output
         params:
           files: ["douyin.md"]
+      - gate: cover_layers_present
+        params:
+          file: "cover.html"
     soft: []
     max_retries: 2
   trace:

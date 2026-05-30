@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_skill, load_rules_by_scope, RULES_DIR, SKILLS_DIR
 from engine.lib.models import Severity, Rigor, Rule, RuleClass
 from engine.lib.positive_rewrite import rewrite_rule
+from engine.lib.delta import load_deltas, apply_delta_to_rules
 
 
 PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
@@ -33,12 +34,19 @@ def merge_rules(rules: list[Rule]) -> list[Rule]:
 
 
 def load_patterns(category: str | None = None, patterns_dir: Path | None = None) -> list[str]:
+    from datetime import datetime, timedelta
+
+    MAX_AGE_DAYS = 90
     patterns_dir = patterns_dir or PATTERNS_DIR
     if not patterns_dir.exists():
         return []
     patterns: list[str] = []
     for fp in sorted(patterns_dir.glob("*.yaml")):
         import yaml
+        # 老化过滤：超过 90 天的 pattern 跳过
+        mtime = datetime.fromtimestamp(fp.stat().st_mtime)
+        if (datetime.now() - mtime).days > MAX_AGE_DAYS:
+            continue
         with open(fp, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         if not data:
@@ -81,6 +89,19 @@ def generate_injection(
                 else:
                     skill_rules.extend([r for r in rules if r.id == rref])
         rules = merge_rules(skill_rules)
+
+    # 应用高置信度 Delta（无需人工审核）
+    try:
+        deltas = load_deltas()
+        auto_deltas = [
+            d for d in deltas
+            if d.get("delta", d).get("confidence", 0) >= 0.70
+            and not d.get("delta", d).get("requires_human_review", True)
+        ]
+        for delta in auto_deltas:
+            rules = apply_delta_to_rules(rules, delta)
+    except Exception:
+        pass
 
     rigor = skill.rigor_level if skill else Rigor.STANDARD
 

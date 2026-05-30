@@ -585,6 +585,106 @@ def backfill_matches(
     return results
 
 
+def run_feedback_loop(
+    matches: list[dict],
+    workspace_root: Path,
+) -> tuple[list[dict], dict | None]:
+    """Post-backfill feedback chain: attribution → calibration → pattern extraction.
+
+    反馈循环的激活点 — 当播放数据到达并回填后自动触发。
+    """
+    try:
+        sys.path.insert(0, str(CLIPFORGE_DIR))
+        from engine.attribution import performance_attribution, calibrate_machine_scoring, _classify_hook_type
+        from engine.success_analyzer import auto_extract_from_performance, save_pattern
+    except ImportError as e:
+        return [], {"error": f"Import failed: {e}"}
+
+    feedback_results = []
+    all_perf_data = []
+
+    for m in matches:
+        if not m["matched"] or not m["project"]:
+            continue
+
+        proj_dir = Path(m["project"]["dir"])
+        rec = m["record"]
+        perf = {k: v for k, v in rec.items() if not k.startswith("_") and v is not None}
+        platform = rec.get("platform", "")
+        narration_file = proj_dir / "narration_segments.json"
+
+        # Hook type classification for pattern extraction
+        if narration_file.exists():
+            try:
+                seg_data = json.loads(narration_file.read_text(encoding="utf-8"))
+                segments = seg_data.get("segments", [])
+                if segments:
+                    hook_text = segments[0].get("narration_segment", "")
+                    perf["hook_type"] = _classify_hook_type(hook_text)
+            except Exception:
+                pass
+
+        # 1. Performance attribution → Delta
+        attr_summary = None
+        try:
+            attr = performance_attribution(perf, narration_file)
+            attr_summary = {
+                "root_cause": attr.get("root_cause"),
+                "confidence": attr.get("confidence"),
+                "causes": [c.get("cause") for c in attr.get("causes", [])],
+                "delta_path": attr.get("delta_path"),
+            }
+        except Exception as e:
+            attr_summary = {"error": str(e)}
+
+        # 2. Machine scoring calibration (if score_report.json exists)
+        cal_summary = None
+        score_report_path = proj_dir / "score_report.json"
+        if score_report_path.exists():
+            try:
+                score_report = json.loads(score_report_path.read_text(encoding="utf-8"))
+                cal = calibrate_machine_scoring(
+                    score_report, perf, narration_file=narration_file
+                )
+                cal_summary = {
+                    "verdict": cal.get("verdict"),
+                    "prediction": cal.get("machine_prediction"),
+                    "outcome": cal.get("actual_outcome"),
+                    "diagnosis": cal.get("diagnosis"),
+                    "delta_path": cal.get("delta_path"),
+                }
+            except Exception as e:
+                cal_summary = {"error": str(e)}
+
+        all_perf_data.append(perf)
+        feedback_results.append({
+            "project_dir": str(proj_dir.relative_to(workspace_root)),
+            "platform": platform,
+            "attribution": attr_summary,
+            "calibration": cal_summary,
+        })
+
+    # 3. Pattern extraction (needs >= 3 samples)
+    pattern_summary = None
+    if len(all_perf_data) >= 3:
+        try:
+            patterns = auto_extract_from_performance(all_perf_data)
+            if patterns:
+                saved_paths = []
+                for p in patterns:
+                    path = save_pattern(p)
+                    saved_paths.append(str(path))
+                pattern_summary = {
+                    "count": len(patterns),
+                    "pattern_ids": [p["id"] for p in patterns],
+                    "saved": saved_paths,
+                }
+        except Exception:
+            pass
+
+    return feedback_results, pattern_summary
+
+
 # ── 报告输出 ──────────────────────────────────────────────────────────────────
 
 def print_table_report(matches: list[dict], backfill_results: list[dict] | None):
@@ -693,8 +793,16 @@ def main():
 
     # 回填
     backfill_results = None
+    feedback_results = None
+    pattern_results = None
     if args.backfill and not args.dry_run:
         backfill_results = backfill_matches(matches, workspace_root)
+        # 反馈循环: backfill 后自动触发 attribution → calibration → pattern extraction
+        if backfill_results:
+            try:
+                feedback_results, pattern_results = run_feedback_loop(matches, workspace_root)
+            except Exception:
+                pass
 
     # 输出
     if args.json:
@@ -720,9 +828,32 @@ def main():
         if backfill_results:
             output["backfill"] = backfill_results
 
+        if feedback_results:
+            output["feedback"] = feedback_results
+        if pattern_results:
+            output["patterns"] = pattern_results
+
         print(json.dumps(output, ensure_ascii=False, indent=2))
     else:
         print_table_report(matches, backfill_results)
+        if feedback_results:
+            print("\n=== 反馈循环 ===")
+            for r in feedback_results:
+                attr = r.get("attribution") or {}
+                cal = r.get("calibration")
+                print(f"  {r['project_dir']} ({r['platform']}):")
+                if attr.get("root_cause") and attr["root_cause"] != "no_performance_issue":
+                    print(f"    归因: {attr['root_cause']} (置信度 {attr.get('confidence', 0):.2f})")
+                    if attr.get("delta_path"):
+                        print(f"    Delta: {attr['delta_path']}")
+                if cal:
+                    print(f"    校准: {cal.get('verdict', 'N/A')} ({cal.get('prediction', '?')} → {cal.get('outcome', '?')})")
+                    if cal.get("delta_path"):
+                        print(f"    Delta: {cal['delta_path']}")
+            if pattern_results:
+                print(f"  模式提炼: {pattern_results['count']} 个新模式")
+                for pid in pattern_results.get("pattern_ids", []):
+                    print(f"    - {pid}")
 
     return 0
 

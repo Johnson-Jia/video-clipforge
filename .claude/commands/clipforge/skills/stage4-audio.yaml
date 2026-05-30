@@ -68,6 +68,10 @@ skill:
           segments_file: "segment_durations.json"
           narration_file: "narration.mp3"
           min_coverage_ratio: 0.95
+      - gate: bgm_silence_valid
+        params:
+          bgm_file: "bgm.wav"
+          segments_file: "segment_durations.json"
     soft: []
     max_retries: 2
   trace:

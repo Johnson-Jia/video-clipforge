@@ -1,0 +1,31 @@
+<!--
+@ComponentMeta
+name: light_streak
+layer: fx
+tags: [light, streak, diagonal, band, cinematic, dramatic]
+emotion_range: [excitement, shock, climax, dynamic]
+visual_density: low
+complexity: css-only
+description: 对角线光带快速扫过画面，电影感瞬间光效，适合高潮/转折/震撼场景
+parameters:
+  angle: { default: -25, range: [-45, 45], description: "光带角度(deg)" }
+  color: { default: "rgba(255,255,255,0.15)", description: "光带颜色" }
+  width: { default: 200, range: [100, 400], description: "光带宽度(px)" }
+  speed: { default: 4, range: [2, 8], description: "扫过周期(秒)" }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享) -->
+<!--
+@keyframes streakSweep {
+  0% { transform: translateX(-150%) rotate(-25deg); opacity: 0; }
+  30% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateX(150%) rotate(-25deg); opacity: 0; }
+}
+-->
+<!-- HTML (嵌入 .layer-fx) -->
+<div style="position:absolute;top:-50%;left:-50%;width:200%;height:200%;pointer-events:none;overflow:hidden">
+  <div style="position:absolute;top:0;left:0;width:200px;height:300%;transform:rotate(-25deg);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 20%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.06) 80%,transparent);
+    animation:streakSweep 4s ease-in-out infinite"></div>
+</div>

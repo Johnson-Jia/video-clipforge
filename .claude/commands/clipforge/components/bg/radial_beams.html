@@ -1,0 +1,33 @@
+<!--
+@ComponentMeta
+name: radial_beams
+layer: bg
+tags: [beams, rays, radial, light, dramatic, epic]
+emotion_range: [shock, excitement, climax, revelation]
+visual_density: medium
+complexity: css-only
+description: 径向光束射线从中心发散 + 渐变底色 + 光晕，适合震撼开场/重大揭示/高潮场景
+parameters:
+  beam_count: { default: 12, range: [8, 16] }
+  beam_color: { default: "rgba(255,200,0,0.06)", description: "光束颜色" }
+  center_x: { default: "50%", description: "射线中心X" }
+  center_y: { default: "35%", description: "射线中心Y" }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享) -->
+<!--
+@keyframes beamRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 渐变底色 -->
+<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0800,#1a1200,#0a0800)"></div>
+<!-- 径向光束 -->
+<div style="position:absolute;top:0;left:0;width:200%;height:200%;transform-origin:25% 17.5%;animation:beamRotate 60s linear infinite;
+  background:repeating-conic-gradient(from 0deg,transparent 0deg,rgba(255,200,0,0.05) 2deg,transparent 4deg,transparent 28deg)"></div>
+<!-- 中心光晕 -->
+<div style="position:absolute;top:15%;left:30%;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(255,200,0,0.25) 0%,transparent 60%);filter:blur(80px)"></div>
+<!-- 暗角 -->
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,transparent 30%,rgba(0,0,0,0.5) 100%)"></div>

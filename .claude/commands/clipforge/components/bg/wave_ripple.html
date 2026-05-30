@@ -1,0 +1,33 @@
+<!--
+@ComponentMeta
+name: wave_ripple
+layer: bg
+tags: [wave, ripple, pulse, organic, calm, flow]
+emotion_range: [calm, mystery, depth, transition]
+visual_density: medium
+complexity: css-only
+description: 同心波纹扩散 + 渐变底色，从中心向外扩散的波纹感，适合过渡/转折/揭示场景
+parameters:
+  ripple_color: { default: "rgba(100,100,200,0.06)", description: "波纹颜色" }
+  ripple_spacing: { default: 60, range: [40, 80], description: "波纹间距(px)" }
+  center_x: { default: "50%", description: "波纹中心X" }
+  center_y: { default: "50%", description: "波纹中心Y" }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享) -->
+<!--
+@keyframes rippleExpand {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 渐变底色 -->
+<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0a1a,#0a0815,#0a0a1a)"></div>
+<!-- 同心波纹 -->
+<div style="position:absolute;inset:0;background:repeating-radial-gradient(circle at 50% 50%,transparent 0px,transparent 58px,rgba(100,100,200,0.05) 58px,rgba(100,100,200,0.05) 60px)"></div>
+<!-- 扩散环动画 -->
+<div style="position:absolute;top:calc(50% - 200px);left:calc(50% - 200px);width:400px;height:400px;border-radius:50%;border:2px solid rgba(100,100,200,0.15);animation:rippleExpand 4s ease-out infinite"></div>
+<div style="position:absolute;top:calc(50% - 200px);left:calc(50% - 200px);width:400px;height:400px;border-radius:50%;border:1px solid rgba(100,100,200,0.1);animation:rippleExpand 4s ease-out infinite 2s"></div>
+<!-- 辉光 -->
+<div style="position:absolute;top:35%;left:30%;width:400px;height:400px;border-radius:50%;background:rgba(80,80,180,0.12);filter:blur(100px)"></div>

@@ -14,16 +14,24 @@
 ## 组件索引
 
 > **按需加载：** 只在需要某个组件时，用 Read 工具读取对应文件。不要一次性加载全部组件。
-> **统一索引：** `components/registry.yaml` 是所有 21 个组件的元数据汇总，支持按 layer/tags/emotion_range 粗筛。
+> **统一索引：** `components/registry.yaml` 是所有组件的元数据汇总，支持按 layer/tags/emotion_range 粗筛。
 
 ### 背景层 (bg/)
 
 > 嵌入 `.layer-bg`，提供渐变、光晕等氛围基底。一个场景选 0-1 个 bg 组件。
+>
+> **R-R-011 HARD 门禁**：禁止仅使用 glow+grid 三件套（线性渐变 + 模糊光圆 + grid-bg）作为 bg 方案。每个场景 bg 层必须包含至少 2 种不同类型的视觉元素。
 
 | # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
 |---|--------|-----------|-------------|---------|
 | 1 | GradientMesh | 渐变色带缓慢摇摆 | ambient, background | `components/bg/gradient_mesh.html` |
 | 2 | LightField | 高斯模糊光球 + 渐变背景 | atmosphere, depth | `components/bg/light_field.html` |
+| 3 | NoiseField | SVG 噪点纹理 + 移动光斑 | tension, mystery, atmospheric | `components/bg/noise_field.html` |
+| 4 | ContourLines | 等高线纹理 + 辉光 | analysis, data, structured | `components/bg/contour_lines.html` |
+| 5 | RadialBeams | 径向光束射线发散 | shock, climax, revelation | `components/bg/radial_beams.html` |
+| 6 | ScanGrid | 网格 + 移动扫描线 | tech, cyber, futuristic | `components/bg/scan_grid.html` |
+| 7 | VignetteGlow | 暗角聚光 + 中心辉光 | warmth, focus, conclusion | `components/bg/vignette_glow.html` |
+| 8 | WaveRipple | 同心波纹扩散 | calm, transition, mystery | `components/bg/wave_ripple.html` |
 
 ### 特效层 (fx/)
 
@@ -36,6 +44,11 @@
 | 3 | ParticleBurst | 粒子爆发庆祝效果 | climax, celebration | `components/fx/particle_burst.html` |
 | 4 | ThreeScene | 3D 场景容器（需引入 Three.js） | immersive, spatial | `components/fx/three_scene.html` |
 | 5 | Spectrum | 冲击光谱（色带 + 垂直条形图双形态） | impact, analysis, spectrum | `components/fx/spectrum.html` |
+| 6 | ScanLine | 水平扫描线扫过屏幕 | tech, detection, analysis | `components/fx/scan_line.html` |
+| 7 | AlertBorder | 脉动警告边框 + 四角标 | warning, urgency, critical | `components/fx/alert_border.html` |
+| 8 | FloatParticles | 发光微粒向上漂浮 | calm, mystery, dreamy | `components/fx/float_particles.html` |
+| 9 | LightStreak | 对角线光带快速扫过 | climax, dynamic, cinematic | `components/fx/light_streak.html` |
+| 10 | DataStream | 垂直数据流（Canvas, 类 Matrix） | tech, data, AI | `components/fx/data_stream.html` |
 
 ### 内容层 (content/)
 
