@@ -20,6 +20,54 @@ components:
     visual_density: low
     complexity: css-only
 
+  - name: noise_field
+    layer: bg
+    file: bg/noise_field.html
+    tags: [noise, texture, grain, static, atmospheric, depth]
+    emotion_range: [tension, mystery, depth, unease]
+    visual_density: medium
+    complexity: css-only
+
+  - name: contour_lines
+    layer: bg
+    file: bg/contour_lines.html
+    tags: [contour, topographic, lines, data, analysis, structured]
+    emotion_range: [analysis, depth, focus, precision]
+    visual_density: medium
+    complexity: css-only
+
+  - name: radial_beams
+    layer: bg
+    file: bg/radial_beams.html
+    tags: [beams, rays, radial, light, dramatic, epic]
+    emotion_range: [shock, excitement, climax, revelation]
+    visual_density: medium
+    complexity: css-only
+
+  - name: scan_grid
+    layer: bg
+    file: bg/scan_grid.html
+    tags: [grid, scan, tech, cyber, digital, futuristic]
+    emotion_range: [tension, focus, tech, analysis]
+    visual_density: medium
+    complexity: css-only
+
+  - name: vignette_glow
+    layer: bg
+    file: bg/vignette_glow.html
+    tags: [vignette, center, glow, warm, elegant, focused]
+    emotion_range: [warmth, focus, calm, conclusion]
+    visual_density: medium
+    complexity: css-only
+
+  - name: wave_ripple
+    layer: bg
+    file: bg/wave_ripple.html
+    tags: [wave, ripple, pulse, organic, calm, flow]
+    emotion_range: [calm, mystery, depth, transition]
+    visual_density: medium
+    complexity: css-only
+
   # ── 特效层 ──
   - name: code_rain
     layer: fx
@@ -60,6 +108,46 @@ components:
     emotion_range: [analysis, depth]
     visual_density: medium
     complexity: css-only
+
+  - name: scan_line
+    layer: fx
+    file: fx/scan_line.html
+    tags: [scan, sweep, tech, detection, analysis, alert]
+    emotion_range: [tension, analysis, focus, tech]
+    visual_density: low
+    complexity: css-only
+
+  - name: alert_border
+    layer: fx
+    file: fx/alert_border.html
+    tags: [alert, border, warning, pulse, frame, critical]
+    emotion_range: [tension, warning, urgency, alert]
+    visual_density: low
+    complexity: css-only
+
+  - name: float_particles
+    layer: fx
+    file: fx/float_particles.html
+    tags: [particles, float, drift, ambient, dreamy, ethereal]
+    emotion_range: [calm, mystery, wonder, depth]
+    visual_density: low
+    complexity: css-only
+
+  - name: light_streak
+    layer: fx
+    file: fx/light_streak.html
+    tags: [light, streak, diagonal, band, cinematic, dramatic]
+    emotion_range: [excitement, shock, climax, dynamic]
+    visual_density: low
+    complexity: css-only
+
+  - name: data_stream
+    layer: fx
+    file: fx/data_stream.html
+    tags: [data, stream, flow, binary, code, matrix, tech]
+    emotion_range: [tech, tension, focus, analysis]
+    visual_density: medium
+    complexity: canvas-js
 
   # ── 内容层 ──
   - name: hero_card

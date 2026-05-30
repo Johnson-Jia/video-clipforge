@@ -283,6 +283,8 @@ def auto_extract_from_performance(
         # 只提炼高于基线的模式
         if avg_plays < 5000:
             continue
+        if avg_5s < 0.40:
+            continue
 
         confidence = min(0.5 + len(group) * 0.1, 0.95)
         weight = "HIGH" if avg_plays > 30000 else "MEDIUM" if avg_plays > 10000 else "LOW"

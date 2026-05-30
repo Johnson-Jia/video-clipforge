@@ -10,7 +10,7 @@ skill:
     criteria:
       - "ffmpeg 可用且版本 >= 4.0"
       - "edge-tts 可用"
-      - "node >= 18 可用"
+      - "node >= 22 可用"
   boundary:
     rules:
       - ref: "R-G-*"

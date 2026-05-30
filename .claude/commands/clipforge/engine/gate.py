@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -324,7 +325,7 @@ def check_output_no_bgm_valid(project_dir: Path, params: dict) -> tuple[bool, st
     no_bgm_file = project_dir / params.get("no_bgm_file", "output_no_bgm.mp4")
 
     if not bgm_file.exists():
-        return True, "output.mp4 不存在，跳过 no_bgm 检查"
+        return False, "output.mp4 缺失，无法验证 no_bgm 版本"
     if not no_bgm_file.exists():
         return False, "output_no_bgm.mp4 缺失"
 
@@ -347,6 +348,53 @@ GATE_CHECKERS[GateType.hf_api_present] = check_hf_api_present
 GATE_CHECKERS[GateType.scene_ids_match] = check_scene_ids_match
 GATE_CHECKERS[GateType.composition_structure] = check_composition_structure
 GATE_CHECKERS[GateType.output_no_bgm_valid] = check_output_no_bgm_valid
+
+
+def check_bgm_silence_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 BGM 在旁白时长范围内无连续静音段。
+
+    集成 scripts/bgm_silence_check.py 的核心逻辑。
+    在旁白覆盖范围内，连续 >= 3 秒静音（< -45 dB）即 FAIL。
+    """
+    sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+    from bgm_silence_check import analyze_bgm
+
+    bgm_file = project_dir / params.get("bgm_file", "bgm.wav")
+    seg_file = project_dir / params.get("segments_file", "segment_durations.json")
+    silence_db = params.get("silence_db", -45)
+    min_silent_blocks = params.get("min_silent_blocks", 3)
+
+    if not bgm_file.exists():
+        return False, f"BGM 文件缺失: {bgm_file.name}"
+    if not seg_file.exists():
+        return False, f"时长文件缺失: {seg_file.name}"
+
+    try:
+        seg_data = json.loads(seg_file.read_text(encoding="utf-8"))
+        narration_sec = sum(s.get("actual_duration", 0) for s in seg_data.get("segments", []))
+    except Exception as e:
+        return False, f"读取时长数据失败: {e}"
+
+    if narration_sec <= 0:
+        return False, "旁白总时长为 0，无法检查 BGM 覆盖"
+
+    silent_runs, blocks, coverage, check_range = analyze_bgm(
+        str(bgm_file), narration_sec,
+        silence_db=silence_db,
+        min_silent_blocks=min_silent_blocks,
+    )
+
+    if silent_runs:
+        runs_desc = ", ".join(f"{s}s~{e}s ({l}s)" for s, e, l in silent_runs[:3])
+        return False, f"BGM 存在连续静音段: {runs_desc}（覆盖率 {coverage:.0f}%）"
+
+    if coverage < 80:
+        return False, f"BGM 音频覆盖率仅 {coverage:.0f}%（阈值 80%）"
+
+    return True, f"BGM 全程有声: {check_range}s 覆盖率 {coverage:.0f}%"
+
+
+GATE_CHECKERS[GateType.bgm_silence_valid] = check_bgm_silence_valid
 
 
 def check_bgm_duration_covers(project_dir: Path, params: dict) -> tuple[bool, str]:
@@ -416,6 +464,357 @@ def check_bgm_duration_covers(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.bgm_duration_covers] = check_bgm_duration_covers
 
 
+def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查渲染后的视频码率是否正常，防止黑屏视频通过。
+
+    事故记录：2026-05-30 github-trending 项目 HyperFrames 渲染输出 17 kbps 黑屏视频，
+    因 index.html 使用 CSS class 切换可见性而非 GSAP timeline，所有场景 opacity:0。
+    1080x1920 正常视频应 > 100 kbps。
+
+    检测策略：
+    1. 用 ffprobe 获取视频码率
+    2. 低于 min_bitrate_kbps（默认 80 kbps）判定为黑屏/异常
+    """
+    video_file = project_dir / params.get("file", "output.mp4")
+    if not video_file.exists():
+        return False, f"视频文件缺失: {params.get('file', 'output.mp4')}"
+
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries",
+             "format=bit_rate,duration,size:stream=codec_name,width,height",
+             "-of", "json", str(video_file)],
+            capture_output=True, text=True, timeout=15,
+        )
+        probe = json.loads(result.stdout)
+    except Exception as e:
+        return False, f"ffprobe 执行失败: {e}"
+
+    streams = probe.get("streams", [])
+    video_stream = next((s for s in streams if s.get("codec_name") in ("h264", "h265", "vp9")), None)
+    if not video_stream:
+        return False, "未找到视频流"
+
+    width = int(video_stream.get("width", 0))
+    height = int(video_stream.get("height", 0))
+
+    # 从 format 获取码率
+    fmt = probe.get("format", {})
+    bit_rate_str = fmt.get("bit_rate", "0")
+    try:
+        bit_rate = int(bit_rate_str)
+    except (ValueError, TypeError):
+        bit_rate = 0
+
+    duration_str = fmt.get("duration", "0")
+    try:
+        duration = float(duration_str)
+    except (ValueError, TypeError):
+        duration = 0
+
+    # 如果 format 层没有 bit_rate，用文件大小/时长估算
+    if bit_rate == 0 and duration > 0:
+        file_size = video_file.stat().st_size
+        bit_rate = int((file_size * 8) / duration)
+
+    bitrate_kbps = bit_rate / 1000 if bit_rate else 0
+    min_kbps = params.get("min_bitrate_kbps", 80)
+
+    if bitrate_kbps < min_kbps:
+        return False, (
+            f"视频码率异常: {bitrate_kbps:.0f} kbps < {min_kbps} kbps（疑似黑屏）。"
+            f"分辨率 {width}x{height}, 时长 {duration:.1f}s。"
+            f"常见原因：index.html 使用 CSS class 切换可见性而非 GSAP timeline"
+        )
+
+    return True, f"视频码率正常: {bitrate_kbps:.0f} kbps ({width}x{height}, {duration:.1f}s)"
+
+
+def check_html_no_css_visibility(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 index.html 禁止使用 CSS class 切换场景可见性（HyperFrames 不执行 CSS class 切换）。
+
+    事故记录：2026-05-30 github-trending 项目 index.html 使用:
+      .scene-wrap{opacity:0;visibility:hidden}
+      .scene-wrap.active{opacity:1;visibility:visible}
+    HyperFrames 通过 GSAP timeline seek 驱动，不会添加/移除 CSS class，
+    导致所有场景永远 opacity:0 → 黑屏。
+
+    禁止模式：
+    1. CSS 中设置 scene-wrap/scene 的 opacity:0 + visibility:hidden，依赖 .active class 切换
+    2. 任何 CSS class 切换可见性的模式（.xxx.active / .xxx.show / .xxx.visible）
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+    issues: list[str] = []
+
+    # 检测 CSS 中 scene 相关选择器设置 opacity:0
+    # 匹配 .scene-wrap{...opacity:0...visibility:hidden} 模式
+    css_blocks = re.findall(
+        r'\.scene[_-]?wrap\s*\{([^}]+)\}', content, re.IGNORECASE
+    )
+    for block in css_blocks:
+        has_opacity_zero = re.search(r'opacity\s*:\s*0(?:\.0+)?\s*(?:;|})', block)
+        has_visibility_hidden = re.search(r'visibility\s*:\s*hidden', block)
+        if has_opacity_zero and has_visibility_hidden:
+            issues.append("scene-wrap 同时设置 opacity:0 + visibility:hidden（HyperFrames 不执行 CSS class 切换）")
+
+    # 检测 .xxx.active / .xxx.show / .xxx.visible 可见性切换模式
+    active_patterns = re.findall(
+        r'\.\w+\.(?:active|show|visible)\s*\{[^}]*opacity\s*:\s*1', content
+    )
+    if active_patterns:
+        issues.append(f"发现 CSS class 切换可见性模式（{len(active_patterns)} 处），HyperFrames 通过 GSAP seek 驱动，不会切换 class")
+
+    if issues:
+        return False, f"R-S6-013: {'; '.join(issues)}。正确方式：GSAP timeline .set()/.fromTo() 控制场景可见性"
+
+    return True, "未检测到 CSS class 可见性切换模式"
+
+
+GATE_CHECKERS[GateType.video_bitrate_valid] = check_video_bitrate_valid
+GATE_CHECKERS[GateType.html_no_css_visibility] = check_html_no_css_visibility
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# HTML 内容级检测器 — R-R-008 / R-R-011 / R-R-012
+# ═══════════════════════════════════════════════════════════════════════
+
+def _split_into_scenes(html: str) -> list[tuple[str, str]]:
+    """按 id="sN" 切割 HTML，返回 [(scene_id, scene_html), ...]。"""
+    markers = [(m.group(1), m.start()) for m in re.finditer(r'\bid="(s\d+)"', html)]
+    if not markers:
+        return []
+    scenes = []
+    for i, (sid, start) in enumerate(markers):
+        end = markers[i + 1][1] if i + 1 < len(markers) else len(html)
+        scenes.append((sid, html[start:end]))
+    return scenes
+
+
+def _extract_layer_chunk(scene_html: str, layer_class: str) -> str:
+    """提取 layer-bg / layer-fx 到下一个兄弟 layer 之间的 HTML 片段。"""
+    start_match = re.search(rf'class="[^"]*{layer_class}[^"]*"', scene_html)
+    if not start_match:
+        return ""
+    pos = start_match.start()
+    rest = scene_html[start_match.end():]
+    # 查找下一个兄弟 layer（bg→fx→content 顺序）
+    suffix = layer_class.split("-")[-1]
+    next_layer = re.search(rf'class="[^"]*layer-(?!{suffix})[^"]*"', rest)
+    if next_layer:
+        return scene_html[pos:start_match.end() + next_layer.start()]
+    return scene_html[pos:]
+
+
+def _classify_bg_element_types(bg_chunk: str) -> set[str]:
+    """分类 bg 层中的视觉元素类型。"""
+    types = set()
+    if re.search(r'(?<!repeating-)(?:linear|radial)-gradient\s*\(', bg_chunk):
+        types.add("gradient")
+    if "feTurbulence" in bg_chunk:
+        types.add("noise")
+    if "repeating-radial-gradient" in bg_chunk:
+        types.add("contour")
+    if "conic-gradient" in bg_chunk:
+        types.add("beams")
+    if re.search(r'background-size\s*:\s*\d+px', bg_chunk) and \
+       re.search(r'linear-gradient[^;]{0,60}1px[^;]{0,30}transparent', bg_chunk):
+        types.add("grid")
+    if re.search(r'radial-gradient[^)]{0,200}transparent[^)]{0,200}rgba\(0,\s*0,\s*0', bg_chunk):
+        types.add("vignette")
+    if re.search(r'filter\s*:\s*blur\(\d+px\)', bg_chunk):
+        types.add("glow")
+    if re.search(r'ripple|wave', bg_chunk, re.IGNORECASE):
+        types.add("wave")
+    if re.search(r'scanLine|scan_line|scan-grid', bg_chunk, re.IGNORECASE):
+        types.add("scan")
+    if re.search(r'background-image\s*:[^;]{0,40}radial-gradient[^;]{0,80}circle[^;]{0,40}\d+px[^;]{0,30}\d+px',
+                 bg_chunk):
+        types.add("dots")
+    return types
+
+
+def _has_visible_content(chunk: str) -> bool:
+    """检查 HTML 片段是否包含可见元素（排除空/注释/opacity:0/display:none）。"""
+    cleaned = re.sub(r'<!--.*?-->', '', chunk, flags=re.DOTALL).strip()
+    if not cleaned:
+        return False
+    if not re.search(r'<(?:div|canvas|svg|img|video)\b', cleaned):
+        return False
+    style = re.search(r'style="([^"]*)"', cleaned)
+    if style:
+        s = style.group(1)
+        if re.search(r'(?:^|;)\s*opacity\s*:\s*0(?:\.0+)?\s*(?:;|$|"|)', s):
+            return False
+        if re.search(r'display\s*:\s*none', s):
+            return False
+    return True
+
+
+def _bg_style_fingerprint(bg_chunk: str) -> str:
+    """生成 bg 层的风格指纹（元素类型 + 主色），用于相邻场景对比。"""
+    types = ",".join(sorted(_classify_bg_element_types(bg_chunk)))
+    colors = sorted(set(re.findall(r'#[0-9a-fA-F]{6}\b', bg_chunk)))
+    return f"{types}|{'|'.join(colors)}"
+
+
+def check_bg_visual_diversity(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-R-011: bg 层必须 ≥2 种视觉元素类型，禁止 glow+grid 三件套。"""
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+    scenes = _split_into_scenes(html)
+    if not scenes:
+        return True, "无场景可检查"
+    violations = []
+    for sid, scene_html in scenes:
+        bg = _extract_layer_chunk(scene_html, "layer-bg")
+        if not bg.strip():
+            continue
+        types = _classify_bg_element_types(bg)
+        # 禁止模式：仅 glow+grid 三件套
+        if types and types <= {"gradient", "glow", "grid"}:
+            violations.append(f"{sid}: glow+grid 三件套 ({', '.join(sorted(types))})")
+        elif len(types) < 2:
+            violations.append(f"{sid}: 类型不足 ({', '.join(sorted(types)) or '空'})")
+    if violations:
+        return False, f"R-R-011: {'; '.join(violations[:6])}"
+    return True, f"{len(scenes)} 场景 bg 视觉多样性合格"
+
+
+def check_adjacent_bg_diversity(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-R-012: 相邻场景 bg 必须有可区分的视觉差异。"""
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+    scenes = _split_into_scenes(html)
+    if len(scenes) < 2:
+        return True, "场景数不足，跳过相邻检查"
+    fps = []
+    for sid, scene_html in scenes:
+        bg = _extract_layer_chunk(scene_html, "layer-bg")
+        fps.append((sid, _bg_style_fingerprint(bg) if bg.strip() else ""))
+    violations = []
+    for i in range(len(fps) - 1):
+        if fps[i][1] and fps[i][1] == fps[i + 1][1]:
+            violations.append(f"{fps[i][0]}↔{fps[i+1][0]}")
+    unique_styles = len(set(fp for _, fp in fps if fp))
+    min_styles = max(len(scenes) // 5, 3)
+    if violations:
+        return False, (
+            f"R-R-012: {len(violations)} 对相邻同质 "
+            f"({unique_styles} 种风格/{len(scenes)} 场景, 需≥{min_styles}); "
+            f"{'; '.join(violations[:4])}"
+        )
+    if unique_styles < min_styles:
+        return False, f"R-R-012: 风格组不足 ({unique_styles}/{min_styles})"
+    return True, f"相邻 bg 可区分 ({unique_styles} 种风格/{len(scenes)} 场景)"
+
+
+def check_fx_layer_not_empty(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-R-008: fx 层禁止为空或仅含不可见元素。"""
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+    scenes = _split_into_scenes(html)
+    if not scenes:
+        return True, "无场景可检查"
+    violations = []
+    for sid, scene_html in scenes:
+        fx = _extract_layer_chunk(scene_html, "layer-fx")
+        if not fx.strip():
+            continue
+        if not _has_visible_content(fx):
+            violations.append(sid)
+    if violations:
+        return False, f"R-R-008: {len(violations)} 个场景 fx 层为空/不可见 ({', '.join(violations[:6])})"
+    return True, f"{len(scenes)} 场景 fx 层合格"
+
+
+GATE_CHECKERS[GateType.bg_visual_diversity] = check_bg_visual_diversity
+GATE_CHECKERS[GateType.adjacent_bg_diversity] = check_adjacent_bg_diversity
+GATE_CHECKERS[GateType.fx_layer_not_empty] = check_fx_layer_not_empty
+
+
+def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 cover.html 包含 7 层封面模板结构。
+
+    事故记录：2026-05-30 github-trending 项目封面用浏览器截图生成，未遵循 7 层模板。
+    R-S7-002 原使用 semantic_check 在自动化场景不可靠，改为结构化 HTML 检测。
+
+    检测的 7 层：
+    1. 日期层：中文日期格式（含"年"字）或 class="date"
+    2. 场景标签：class 含 scene-label 或"热门"/"TRENDING" 等
+    3. 胶囊徽章：class 含 badge，且为圆角样式
+    4. 主标题：class 含 main-title 或 title，且含大号字体
+    5. 渐变分隔线：class 含 divider 或 gradient+line/separator
+    6. 数据说明：class 含 subtitle/data/sub
+    7. 数据卡片：class 含 card，且有数字+标签结构
+    """
+    cover_file = project_dir / params.get("file", "cover.html")
+    if not cover_file.exists():
+        return False, "cover.html 缺失，无法检查封面结构"
+
+    content = cover_file.read_text(encoding="utf-8", errors="ignore")
+    if not content.strip():
+        return False, "cover.html 为空文件"
+
+    missing: list[str] = []
+
+    # 第1层：中文日期（"年"字或 class="date"）
+    has_date = bool(re.search(r'class="[^"]*date[^"]*"', content)) or "年" in content
+    if not has_date:
+        missing.append("第1层:中文日期（需 class='date' 或包含'年'字）")
+
+    # 第2层：场景标签（class 含 scene-label / label / tag）
+    has_scene_label = bool(re.search(r'class="[^"]*(?:scene[-_]?label|tag)[^"]*"', content))
+    if not has_scene_label:
+        missing.append("第2层:场景标签（需 class='scene-label'）")
+
+    # 第3层：胶囊徽章（class 含 badge）
+    has_badge = bool(re.search(r'class="[^"]*badge[^"]*"', content))
+    if not has_badge:
+        missing.append("第3层:胶囊徽章（需 class='badge'）")
+
+    # 第4层：主标题（class 含 main-title / title / heading）
+    has_title = bool(re.search(r'class="[^"]*(?:main[-_]?title|title|heading)[^"]*"', content))
+    if not has_title:
+        missing.append("第4层:主标题（需 class='main-title'）")
+
+    # 第5层：渐变分隔线（class 含 divider / separator，或 linear-gradient 横条）
+    has_divider = bool(re.search(r'class="[^"]*(?:divider|separator|line)[^"]*"', content))
+    if not has_divider:
+        missing.append("第5层:渐变分隔线（需 class='divider'）")
+
+    # 第6层：数据说明（class 含 subtitle / data-sub / description）
+    has_subtitle = bool(re.search(
+        r'class="[^"]*(?:sub(?:title)?|data[-_]?sub|description)[^"]*"', content))
+    if not has_subtitle:
+        missing.append("第6层:数据说明（需 class='data-subtitle' 或类似）")
+
+    # 第7层：数据卡片（class 含 card）
+    has_cards = bool(re.search(r'class="[^"]*card[^"]*"', content))
+    if not has_cards:
+        missing.append("第7层:数据卡片（需 class='card'）")
+
+    if missing:
+        return False, (
+            f"R-S7-002: 封面缺少 {len(missing)} 层: {'; '.join(missing)}。"
+            f"参考 stage7-delivery.md §7.1 的 7 层模板"
+        )
+
+    return True, "封面 7 层结构完整"
+
+
+GATE_CHECKERS[GateType.cover_layers_present] = check_cover_layers_present
+
+
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
 SAFETY_GATES = {
     GateType.no_forbidden_speech,
@@ -463,6 +862,42 @@ def run_gate(skill: SkillDefinition, project_dir: Path) -> GateReport:
     )
 
 
+def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> dict:
+    """运行全阶段门禁并聚合为 score_report.json（基础设施：纯记录，无反馈逻辑）。"""
+    stages = ["stage1-content", "stage3-scenes", "stage4-audio", "stage6-production", "stage7-delivery"]
+    phases = {}
+    for stage_id in stages:
+        try:
+            sk = load_skill(stage_id, skills_dir)
+            if not sk:
+                continue
+            r = run_gate(sk, project_dir)
+            phases[stage_id] = {
+                "hard_passed": r.hard_passed,
+                "soft_score": r.soft_score,
+            }
+        except Exception:
+            phases[stage_id] = {"hard_passed": False, "soft_score": 0.0, "error": "gate check failed"}
+
+    score_report = {
+        "project": str(project_dir),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "phases": phases,
+        "overall_soft_score": (
+            sum(p["soft_score"] for p in phases.values()) / len(phases) if phases else 0
+        ),
+        "hard_passed_all": all(p.get("hard_passed", False) for p in phases.values()),
+        "total_stages": len(phases),
+        "stages_passed": sum(1 for p in phases.values() if p.get("hard_passed")),
+    }
+
+    report_path = project_dir / "score_report.json"
+    report_path.write_text(
+        json.dumps(score_report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return score_report
+
+
 def main():
     parser = argparse.ArgumentParser(description="ClipForge 门禁引擎")
     parser.add_argument("--skill", required=True)
@@ -479,6 +914,55 @@ def main():
         sys.exit(1)
 
     report = run_gate(skill, project_dir)
+
+    # ── Auto-trace: 基础设施层，非反馈逻辑 ──
+    trace_path = None
+    try:
+        from engine.trace import record_trace
+        trace_result = "pass" if report.hard_passed else "fail"
+        gate_dict = {
+            "hard_passed": report.hard_passed,
+            "soft_score": report.soft_score,
+            "hard_violations": [
+                {"rule_id": v.rule_id, "details": v.details}
+                for v in report.hard_violations
+            ],
+            "soft_issues": report.soft_issues,
+        }
+        trace_path = record_trace(
+            skill_id=args.skill,
+            project_dir=str(project_dir),
+            result=trace_result,
+            gate_report=gate_dict,
+        )
+    except Exception:
+        pass
+
+    # ── Auto score_report: delivery 通过后自动产出（基础设施层）──
+    score_report = None
+    if args.skill == "stage7-delivery" and report.hard_passed:
+        try:
+            score_report = generate_score_report(project_dir, skills_dir)
+        except Exception:
+            score_report = None
+
+    # ── Auto attribution: HARD 失败时自动强归因（反馈层）──
+    attribution_results = []
+    if not report.hard_passed:
+        try:
+            from engine.attribution import strong_attribution
+            from engine.lib.rule_parser import load_all_rules
+            all_rules = load_all_rules()
+            for v in report.hard_violations:
+                attr = strong_attribution(
+                    {"rule_id": v.rule_id, "details": v.details},
+                    rules=all_rules,
+                )
+                if attr.get("matched_rule"):
+                    attribution_results.append(attr)
+        except Exception:
+            pass
+
     output = {
         "hard_passed": report.hard_passed,
         "soft_score": report.soft_score,
@@ -494,6 +978,12 @@ def main():
         ],
         "soft_issues": report.soft_issues,
     }
+    if trace_path:
+        output["trace"] = str(trace_path)
+    if score_report:
+        output["score_report_generated"] = True
+    if attribution_results:
+        output["attribution"] = attribution_results
     print(json.dumps(output, ensure_ascii=False, indent=2))
     sys.exit(0 if report.hard_passed else 1)
 

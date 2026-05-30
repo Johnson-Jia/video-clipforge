@@ -1,0 +1,25 @@
+<!--
+@ComponentMeta
+name: contour_lines
+layer: bg
+tags: [contour, topographic, lines, data, analysis, structured]
+emotion_range: [analysis, depth, focus, precision]
+visual_density: medium
+complexity: css-only
+description: CSS 重复径向渐变模拟等高线纹理 + 渐变底色，适合数据分析/结构化信息/科学类场景
+parameters:
+  line_color: { default: "rgba(0,200,200,0.06)", description: "等高线颜色" }
+  ring_spacing: { default: 80, range: [60, 120], description: "等高线间距(px)" }
+  center_x: { default: "30%", description: "等高线中心X" }
+  center_y: { default: "40%", description: "等高线中心Y" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 渐变底色 -->
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,#080818 0%,#0a1520 50%,#080818 100%)"></div>
+<!-- 等高线纹理 -->
+<div style="position:absolute;inset:0;background:repeating-radial-gradient(circle at 30% 40%,transparent 0px,transparent 78px,rgba(0,200,200,0.06) 78px,rgba(0,200,200,0.06) 80px);opacity:0.8"></div>
+<!-- 中心辉光 -->
+<div style="position:absolute;top:25%;left:20%;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,180,200,0.12) 0%,transparent 70%);filter:blur(80px)"></div>
+<!-- 对角线光带 -->
+<div style="position:absolute;top:0;left:30%;width:2px;height:100%;background:linear-gradient(transparent 10%,rgba(0,200,200,0.08) 50%,transparent 90%)"></div>

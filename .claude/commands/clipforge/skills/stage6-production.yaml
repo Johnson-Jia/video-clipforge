@@ -29,6 +29,12 @@ skill:
       - thought: "三层架构太麻烦，直接写内容就行"
         reality: "三层是正确结构，扁平化会导致渲染异常和视觉分层混乱"
         trigger: "试图省略三层架构"
+      - thought: "bg 层用 glow+grid 三件套就够了，反正渲染出来差别不大"
+        reality: "H.264 编码后低质量 bg 差异极小，必须有纹理/光束/粒子等丰富元素才有效。R-R-011 已升级为 HARD 门禁"
+        trigger: "试图用 glow+grid 三件套作为唯一 bg 方案"
+      - thought: "相邻场景用同样的渐变没关系，反正内容不同"
+        reality: "视觉同质化导致观众疲劳，R-R-012 要求相邻场景 bg 必须有可区分的差异"
+        trigger: "连续场景使用相同的 bg 渐变色值"
       - thought: "padding 设两层更安全"
         reality: "双重 padding 是最常见的渲染事故，只设一层"
         trigger: "试图同时设置 scene-wrap 和 .phase 的 padding"
@@ -38,6 +44,12 @@ skill:
       - thought: "场景 div 不需要 id，用 class 选择器就行"
         reality: "GSAP 动画使用 #sN .xxx 选择器，缺少 id 会导致场景动画静默丢失，尤其是首尾关键场景"
         trigger: "场景包裹 div 未设置 id=\"sN\" 属性"
+      - thought: "用 CSS .scene-wrap{opacity:0} + .active{opacity:1} 控制场景切换"
+        reality: "HyperFrames 通过 GSAP timeline seek 驱动，不会添加/移除 CSS class。所有场景永远 opacity:0 → 黑屏。正确方式：GSAP timeline .set() 控制可见性"
+        trigger: "试图用 CSS class 切换场景可见性"
+      - thought: "渲染成功就代表视频没问题"
+        reality: "黑屏视频（所有帧相同颜色）码率极低（<500 kbps），HyperFrames 不报错但产出的视频无内容。必须检查码率"
+        trigger: "HyperFrames 渲染完成后未验证视频质量"
     spirit_vs_letter:
       - rule_ref: "R-S6-*"
         mode: LETTER
@@ -67,6 +79,22 @@ skill:
         params:
           bgm_file: "output.mp4"
           no_bgm_file: "output_no_bgm.mp4"
+      - gate: bg_visual_diversity
+        params:
+          file: "index.html"
+      - gate: adjacent_bg_diversity
+        params:
+          file: "index.html"
+      - gate: fx_layer_not_empty
+        params:
+          file: "index.html"
+      - gate: html_no_css_visibility
+        params:
+          file: "index.html"
+      - gate: video_bitrate_valid
+        params:
+          file: "output.mp4"
+          min_bitrate_kbps: 500
     soft: []
     max_retries: 2
   trace:

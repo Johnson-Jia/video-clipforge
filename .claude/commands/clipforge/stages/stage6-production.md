@@ -325,9 +325,24 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（主标题 ≥100px）、对比最强、光晕加倍（2 个大光晕 ≥画面 50%）、发光效果、配色优雅（≤3 色）、布局精致（留白 ≥30%）、动画干脆（0.3-0.5s）。
 
-#### 背景：渐变 + 光晕 + 网格三件套
+#### 背景：多元素组合（≥3 种视觉类型）
 
-每个场景必须同时包含：渐变背景（`linear-gradient`）、光晕装饰（1-2 个 `filter: blur(140px)` 球）、网格底纹（3%-5% 透明度）。
+每个场景的 bg 层必须包含 **至少 2 种不同类型的视觉元素**（仅 glow+grid 组合不满足要求）。允许的类型：
+
+| 类型 | 实现方式 | 组件参考 |
+|------|---------|---------|
+| 渐变底色 | `linear-gradient` / `radial-gradient` | gradient_mesh |
+| 噪点纹理 | SVG `feTurbulence` | noise_field |
+| 等高线 | `repeating-radial-gradient` | contour_lines |
+| 光束射线 | `repeating-conic-gradient` + 旋转 | radial_beams |
+| 网格+扫描线 | `background-image` + `@keyframes scanLine` | scan_grid |
+| 暗角聚光 | `radial-gradient` 暗角 + 中心辉光 | vignette_glow |
+| 波纹扩散 | `repeating-radial-gradient` + 扩散环 | wave_ripple |
+| 光晕装饰 | `filter:blur()` 球体 | light_field |
+
+**视觉风格分组**：20 个场景的视频至少有 4-5 种不同的 bg 风格组（如：暖色渐变+噪点、冷色等高线、暖色光束、冷色网格、暗角聚光）。相邻场景禁止使用相同的渐变色值组合。
+
+**禁止模式**：glow+grid 三件套（线性渐变 + 1-2 个模糊光圆 + grid-bg）作为唯一 bg 方案。这是 R-R-011 HARD 门禁。
 
 #### 场景独立配色
 
@@ -348,7 +363,7 @@ CTA 必须：中心光晕 + 大标题（72px+）+ 副标题（36px+）+ 3-4 个�
 
 #### 整体品质检查
 
-渲染前对照清单：背景三层、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf`（duration + seek）、场景 id 映射、GSAP timeline、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition、**`.clip` 必须是 `inset:0`（禁止 top/right/bottom/left 偏移 → 黑边）**。
+渲染前对照清单：背景三层（bg ≥2 种视觉元素类型，禁止纯 glow+grid 三件套）、fx 层非空（R-R-008 HARD）、相邻场景 bg 风格可区分（R-R-012 HARD）、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf`（duration + seek）、场景 id 映射、GSAP timeline、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition、**`.clip` 必须是 `inset:0`（禁止 top/right/bottom/left 偏移 → 黑边）**。
 
 ### 动画规则
 

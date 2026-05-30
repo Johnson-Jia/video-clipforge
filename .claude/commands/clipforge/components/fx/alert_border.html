@@ -1,0 +1,37 @@
+<!--
+@ComponentMeta
+name: alert_border
+layer: fx
+tags: [alert, border, warning, pulse, frame, critical]
+emotion_range: [tension, warning, urgency, alert]
+visual_density: low
+complexity: css-only
+description: 脉动警告边框 + 角标，呼吸式闪烁警示效果，适合风险/警告/关键发现场景
+parameters:
+  color: { default: "rgba(255,60,60,0.7)", description: "边框颜色" }
+  pulse_speed: { default: 2, range: [1, 4], description: "脉动周期(秒)" }
+  border_width: { default: 2, range: [1, 3], description: "边框宽度(px)" }
+  corner_size: { default: 30, range: [20, 50], description: "角标长度(px)" }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享) -->
+<!--
+@keyframes alertPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+-->
+<!-- HTML (嵌入 .layer-fx) -->
+<!-- 顶部边 -->
+<div style="position:absolute;top:20px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite;pointer-events:none"></div>
+<!-- 底部边 -->
+<div style="position:absolute;bottom:20px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite 0.5s;pointer-events:none"></div>
+<!-- 左边 -->
+<div style="position:absolute;top:20px;bottom:20px;left:20px;width:2px;background:linear-gradient(180deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite 0.25s;pointer-events:none"></div>
+<!-- 右边 -->
+<div style="position:absolute;top:20px;bottom:20px;right:20px;width:2px;background:linear-gradient(180deg,rgba(255,60,60,0.8),rgba(255,100,60,0.4),rgba(255,60,60,0.8));animation:alertPulse 2s ease-in-out infinite 0.75s;pointer-events:none"></div>
+<!-- 四角标 -->
+<div style="position:absolute;top:14px;left:14px;width:30px;height:30px;border-top:3px solid rgba(255,60,60,0.9);border-left:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite;pointer-events:none"></div>
+<div style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-top:3px solid rgba(255,60,60,0.9);border-right:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite 0.5s;pointer-events:none"></div>
+<div style="position:absolute;bottom:14px;left:14px;width:30px;height:30px;border-bottom:3px solid rgba(255,60,60,0.9);border-left:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite 0.25s;pointer-events:none"></div>
+<div style="position:absolute;bottom:14px;right:14px;width:30px;height:30px;border-bottom:3px solid rgba(255,60,60,0.9);border-right:3px solid rgba(255,60,60,0.9);animation:alertPulse 2s ease-in-out infinite 0.75s;pointer-events:none"></div>

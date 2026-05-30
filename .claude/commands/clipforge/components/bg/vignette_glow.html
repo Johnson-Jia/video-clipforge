@@ -1,0 +1,25 @@
+<!--
+@ComponentMeta
+name: vignette_glow
+layer: bg
+tags: [vignette, center, glow, warm, elegant, focused]
+emotion_range: [warmth, focus, calm, conclusion]
+visual_density: medium
+complexity: css-only
+description: 暗角聚光 + 中心辉光 + 渐变底色，观众视线聚焦中心，适合总结/结论/CTA/温暖场景
+parameters:
+  glow_color: { default: "rgba(255,200,0,0.2)", description: "中心辉光色" }
+  edge_darkness: { default: 0.6, range: [0.4, 0.8], description: "暗角强度" }
+  bg_color_a: { default: "#0a0a0a", description: "底色A" }
+  bg_color_b: { default: "#1a1000", description: "底色B" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 渐变底色 -->
+<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0a0a,#1a1000,#0a0a0a)"></div>
+<!-- 中心辉光 -->
+<div style="position:absolute;top:30%;left:20%;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(255,200,0,0.18) 0%,rgba(255,150,0,0.08) 40%,transparent 70%);filter:blur(60px)"></div>
+<!-- 暗角 -->
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 25%,rgba(0,0,0,0.6) 100%)"></div>
+<!-- 微粒纹理 -->
+<div style="position:absolute;inset:0;opacity:0.03;background-image:radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px);background-size:40px 40px"></div>

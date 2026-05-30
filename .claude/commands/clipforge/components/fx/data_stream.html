@@ -1,0 +1,78 @@
+<!--
+@ComponentMeta
+name: data_stream
+layer: fx
+tags: [data, stream, flow, binary, code, matrix, tech]
+emotion_range: [tech, tension, focus, analysis]
+visual_density: medium
+complexity: canvas-js
+description: 垂直数据流线条（类 Matrix 但更含蓄），seek 驱动的持续流动效果，适合数据/技术/AI 主题
+parameters:
+  line_count: { default: 15, range: [8, 25], description: "数据线条数" }
+  color: { default: "rgba(0,200,150,0.3)", description: "数据流颜色" }
+  speed: { default: 1.0, range: [0.5, 2.0], description: "流动速度倍率" }
+  char_set: { default: "01", description: "显示字符集" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-fx) -->
+<canvas id="dataStreamCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.5"></canvas>
+<script>
+(function(){
+  var canvas = document.getElementById('dataStreamCanvas');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var columns = 15;
+  var chars = '01';
+  var fontSize = 14;
+  var drops = [];
+
+  function resize(){
+    canvas.width = canvas.parentElement.offsetWidth || 1080;
+    canvas.height = canvas.parentElement.offsetHeight || 1920;
+    var colWidth = canvas.width / columns;
+    drops = [];
+    for(var i = 0; i < columns; i++){
+      drops.push({
+        x: i * colWidth + colWidth/2,
+        y: Math.random() * canvas.height,
+        speed: 0.5 + Math.random() * 1.0,
+        chars: [],
+        len: 8 + Math.floor(Math.random() * 12)
+      });
+      for(var j = 0; j < drops[i].len; j++){
+        drops[i].chars.push(chars[Math.floor(Math.random() * chars.length)]);
+      }
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  function draw(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = fontSize + 'px monospace';
+    for(var i = 0; i < drops.length; i++){
+      var d = drops[i];
+      for(var j = 0; j < d.len; j++){
+        var alpha = 1 - j/d.len;
+        ctx.fillStyle = 'rgba(0,200,150,' + (alpha * 0.25).toFixed(2) + ')';
+        ctx.fillText(d.chars[j], d.x, d.y - j * fontSize);
+      }
+      d.y += d.speed * 1.5;
+      if(d.y - d.len * fontSize > canvas.height){
+        d.y = -d.len * fontSize;
+        d.speed = 0.5 + Math.random() * 1.0;
+        for(var j = 0; j < d.len; j++){
+          d.chars[j] = chars[Math.floor(Math.random() * chars.length)];
+        }
+      }
+      if(Math.random() < 0.05){
+        var idx = Math.floor(Math.random() * d.len);
+        d.chars[idx] = chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>

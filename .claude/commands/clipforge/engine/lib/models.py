@@ -42,6 +42,13 @@ class GateType(str, Enum):
     composition_structure = "composition_structure"
     output_no_bgm_valid = "output_no_bgm_valid"
     bgm_duration_covers = "bgm_duration_covers"
+    bg_visual_diversity = "bg_visual_diversity"
+    adjacent_bg_diversity = "adjacent_bg_diversity"
+    fx_layer_not_empty = "fx_layer_not_empty"
+    video_bitrate_valid = "video_bitrate_valid"
+    html_no_css_visibility = "html_no_css_visibility"
+    cover_layers_present = "cover_layers_present"
+    bgm_silence_valid = "bgm_silence_valid"
 
 
 class Rigor(str, Enum):
