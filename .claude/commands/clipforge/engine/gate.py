@@ -464,6 +464,141 @@ def check_bgm_duration_covers(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.bgm_duration_covers] = check_bgm_duration_covers
 
 
+def check_data_duration_source(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 HTML data-duration 值与 segment_durations.json 的一致性。
+
+    事故记录：2026-05-30 ai-agent-business-value 10 分钟视频，
+    SubAgent 用 narration_segments.json 的 estimated_duration（偏长 16.9%）
+    计算动画断点，导致旁白与画面节奏不同步。本门禁确保 HTML 中
+    data-duration 值来自 actual_duration 而非 estimated_duration。
+
+    检查项：
+    1. HTML 中每个 .clip/data-duration 值与 segment_durations.json 逐段对比
+    2. 差值 > tolerance（默认 0.5s）判定为 HARD 失败
+    3. HTML 中禁止出现 estimated_duration 关键词（来自上游的泄露）
+    """
+    html_file = project_dir / params.get("html_file", "index.html")
+    seg_file = project_dir / params.get("segments_file", "segment_durations.json")
+    tolerance = params.get("tolerance", 0.5)
+
+    if not html_file.exists():
+        return False, "index.html 缺失"
+    if not seg_file.exists():
+        return False, "segment_durations.json 缺失"
+
+    try:
+        seg_data = json.loads(seg_file.read_text(encoding="utf-8"))
+        actual_durations = [s.get("actual_duration", 0) for s in seg_data.get("segments", [])]
+    except Exception as e:
+        return False, f"segment_durations.json 解析失败: {e}"
+
+    html_content = html_file.read_text(encoding="utf-8", errors="ignore")
+
+    # 检测 estimated_duration 泄露
+    if "estimated_duration" in html_content:
+        return False, "index.html 包含 'estimated_duration' 关键词（应为 actual_duration）"
+
+    # 提取所有 data-duration 值（按出现顺序）
+    html_durations = [float(m.group(1)) for m in re.finditer(
+        r'data-duration=["\']?([\d.]+)', html_content
+    )]
+
+    if not html_durations:
+        return False, "index.html 未找到 data-duration 属性"
+
+    # 逐段对比
+    mismatches: list[str] = []
+    for i, hd in enumerate(html_durations):
+        if i >= len(actual_durations):
+            mismatches.append(f"场景{i+1}: HTML 有 {len(html_durations)} 段但 segment_durations 仅 {len(actual_durations)} 段")
+            break
+        ad = actual_durations[i]
+        diff = abs(hd - ad)
+        if diff > tolerance:
+            mismatches.append(f"场景{i+1}: HTML={hd:.2f}s vs actual={ad:.2f}s (偏差 {diff:.2f}s)")
+
+    if mismatches:
+        return False, f"data-duration 不匹配 actual_duration: {'; '.join(mismatches[:6])}"
+
+    return True, f"HTML data-duration 与 actual_duration 一致 ({len(html_durations)} 场景, 容差 {tolerance}s)"
+
+
+def check_estimation_accuracy(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 Stage 3 预估时长与 Stage 4 实测时长的偏差。
+
+    事故记录：2026-05-30 ai-agent-business-value 项目 TTS 使用 +0% 语速
+    而非默认 +25%，导致实际时长 508s vs 预估 611s（偏短 16.9%）。
+    单段偏差最大 45%。本门禁在 Stage 4 结束后对比两份时长数据，
+    发现系统性偏差时发出预警。
+
+    检查项：
+    1. 逐段对比 estimated vs actual：单段偏差 > segment_threshold（默认 30%）→ SOFT
+    2. 总体偏差 > total_threshold（默认 20%）→ HARD（可能 TTS 配置错误）
+    """
+    narr_file = project_dir / params.get("narration_file", "narration_segments.json")
+    seg_file = project_dir / params.get("segments_file", "segment_durations.json")
+    seg_threshold = params.get("segment_threshold", 0.30)
+    total_threshold = params.get("total_threshold", 0.20)
+
+    if not narr_file.exists():
+        return True, "narration_segments.json 缺失，跳过预估偏差检查"
+    if not seg_file.exists():
+        return True, "segment_durations.json 缺失，跳过预估偏差检查"
+
+    try:
+        narr_data = json.loads(narr_file.read_text(encoding="utf-8"))
+        seg_data = json.loads(seg_file.read_text(encoding="utf-8"))
+    except Exception:
+        return True, "JSON 解析失败，跳过预估偏差检查"
+
+    narr_segs = narr_data if isinstance(narr_data, list) else narr_data.get("segments", [])
+    actual_segs = seg_data.get("segments", [])
+
+    if not narr_segs or not actual_segs:
+        return True, "段落数据为空，跳过预估偏差检查"
+
+    total_est = 0.0
+    total_act = 0.0
+    big_deviations: list[str] = []
+
+    for i in range(min(len(narr_segs), len(actual_segs))):
+        est = narr_segs[i].get("estimated_duration", 0)
+        act = actual_segs[i].get("actual_duration", 0)
+        total_est += est
+        total_act += act
+        if act > 0:
+            deviation = abs(est - act) / act
+            if deviation > seg_threshold:
+                big_deviations.append(
+                    f"场景{i+1}: est={est:.1f}s act={act:.1f}s ({deviation:.0%})"
+                )
+
+    if total_act == 0:
+        return True, "实际总时长为 0，跳过偏差检查"
+
+    total_deviation = abs(total_est - total_act) / total_act
+
+    if total_deviation > total_threshold:
+        return False, (
+            f"预估/实际总偏差 {total_deviation:.1%} > {total_threshold:.0%} "
+            f"(est={total_est:.0f}s act={total_act:.0f}s)，"
+            f"可能 TTS 语速配置错误（如用了 +0% 而非 +25%）"
+        )
+
+    if big_deviations:
+        return True, (
+            f"预估总偏差 {total_deviation:.1%} 可接受，"
+            f"但 {len(big_deviations)} 段偏差 >{seg_threshold:.0%}: "
+            f"{'; '.join(big_deviations[:4])}"
+        )
+
+    return True, f"预估偏差正常: 总偏差 {total_deviation:.1%}, 单段偏差均 <{seg_threshold:.0%}"
+
+
+GATE_CHECKERS[GateType.data_duration_source_valid] = check_data_duration_source
+GATE_CHECKERS[GateType.estimation_accuracy_valid] = check_estimation_accuracy
+
+
 def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查渲染后的视频码率是否正常，防止黑屏视频通过。
 

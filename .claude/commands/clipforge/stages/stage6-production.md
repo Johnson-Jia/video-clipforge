@@ -102,6 +102,10 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 
 HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>` 时长，`mediaDurationFloor` 确保视频时间线不短于音频。
 
+> **禁止**：使用 `narration_segments.json` 的 `estimated_duration` 设置 `data-duration` 或计算动画时间点。
+> 该值是 Stage 3 的粗估，偏差可达 30-45%。
+> `segment_durations.json` 的 `actual_duration` 是唯一权威来源。
+
 ## 6.4 编写 HTML 组合（组件装配模式）
 
 **调用 `/hyperframes` 技能**，传入：视觉风格方向、故事板、design.md 路径、`stage6-components.md` 组件库、`segment_durations.json` 时长、`narration_segments.json` 情感标记、音频嵌入参数。
@@ -120,6 +124,12 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 1. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 3. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
+
+**动画断点强制使用 actual_duration（来自 `segment_durations.json`）：**
+1. 读取 `segment_durations.json` 获取每个场景的 `actual_duration`
+2. 用 `actual_duration` 计算 BP 断点数组（见 `visual-phasing.md`）
+3. GSAP timeline 中所有时间偏移量基于 BP 断点，不使用任何预估时长
+4. `data-duration` 属性直接使用 `actual_duration` 值
 3a. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4b 的匹配流程生成
 4. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？

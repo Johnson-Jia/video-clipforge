@@ -95,6 +95,11 @@ skill:
         params:
           file: "output.mp4"
           min_bitrate_kbps: 500
+      - gate: data_duration_source_valid
+        params:
+          html_file: "index.html"
+          segments_file: "segment_durations.json"
+          tolerance: 0.5
     soft: []
     max_retries: 2
   trace:
