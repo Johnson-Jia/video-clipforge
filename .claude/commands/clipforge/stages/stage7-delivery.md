@@ -51,7 +51,13 @@ echo "Stage 7 前置检查通过"
 
 ### 封面 HTML 模板
 
-> **模板使用 CSS 变量控制配色，从 `design.md` 的 `color_direction` 读取色值填入 `:root`。** 7 层结构和布局可由 AI 根据内容适当调整（如主标题单色/三色、数据卡片 1-3 个），但所有 7 层必须存在。
+> **封面铁律：布局严格按模板，创意体现在内容层。**
+>
+> **不可变更（结构性）：** `.cover` 包裹容器、7 层的 CSS class 名（`.date` `.scene-label` `.badge` `.main-title` `.divider` `.data-subtitle` `.cards`）、光晕定位（`.glow-warm` 左上 / `.glow-cool` 右下 / `blur(200px)`）、字体族（`Inter` + `JetBrains Mono`）、`:root` CSS 变量机制、`data-composition-id` + `data-width` + `data-height` 结构。
+>
+> **AI 创意域（内容层）：** CSS 变量的色值（从 `design.md` 读取填充）、主标题文案及分色方案（单色/双色/三色）、数据卡片数量（1-3 个）及内容、光晕透明度、分隔线渐变方向、场景标签和徽章文案。
+>
+> **禁止：** 将 `.cover` 改名为 `.container` 或其他名称、绕过 CSS 变量直接硬编码色值、更换字体族、重新排列 7 层顺序、添加模板中没有的额外层、删除任何一层。
 
 ```html
 <!DOCTYPE html>
@@ -189,16 +195,21 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
 | `--accent-cool` | design.md `color_direction.cool` | `#6CB4EE` |
 | `--bg-dark` | design.md `color_direction.bg_dark` | `#080820` |
 
-**布局变化允许（AI 自主决定）：**
+**创意域边界（严格区分）：**
 
-| 元素 | 允许的变化 |
-|------|----------|
-| 主标题（第4层） | 单色/双色/三色；字号 180-260px |
-| 数据卡片（第7层） | 1-3 个卡片；内容格式可变 |
-| 光晕强度 | `--glow-warm-opacity` 0.1-0.25 |
-| 渐变方向 | 分隔线渐变方向可变 |
-
-**7 层必须全部存在，不可省略任何一层。**
+| 类别 | 项目 | 规则 |
+|------|------|------|
+| **不可变更** | CSS class 名 | 必须使用模板中的 `.cover` `.date` `.scene-label` `.badge` `.main-title` `.divider` `.data-subtitle` `.cards` `.card` |
+| **不可变更** | 容器结构 | 必须用 `.cover` 作为根容器，内部 7 层按模板顺序排列 |
+| **不可变更** | 光晕定位 | `.glow-warm` 左上 `top:-200px;left:-400px` / `.glow-cool` 右下 `bottom:-200px;right:-400px` / `blur(200px)` |
+| **不可变更** | 字体族 | `Inter`（正文）+ `JetBrains Mono`（数字），通过 Google Fonts 引入 |
+| **不可变更** | 配色机制 | 色值通过 `:root` CSS 变量控制，禁止在子元素中硬编码 `color:` 覆盖变量 |
+| **不可变更** | 7 层完整性 | 每一层必须存在且按顺序排列，不可省略或调换 |
+| **AI 创意域** | 色值 | `:root` 变量的值从 `design.md` 的 `color_direction` 读取填充 |
+| **AI 创意域** | 主标题（第4层） | 单色/双色/三色方案自由选择；字号 180-260px |
+| **AI 创意域** | 数据卡片（第7层） | 1-3 个卡片；内容和标签自由填写 |
+| **AI 创意域** | 光晕强度 | `--glow-warm-opacity` 0.1-0.25，`--glow-cool-opacity` 0.05-0.15 |
+| **AI 创意域** | 分隔线渐变 | 渐变方向和色值可变（但必须用 CSS 变量） |
 
 ### 渲染命令（3 级降级）
 
@@ -233,12 +244,17 @@ ffmpeg -y -i output.mp4 -vf "select=eq(n\,0)" -vframes 1 -update 1 cover.png
 | 检查项 | 通过标准 |
 |--------|---------|
 | 文件存在 | `cover.html` 和 `cover.png` 都存在且非空 |
-| 7 层完整性 | 日期区 ✓ 场景标签 ✓ 胶囊徽章 ✓ 主标题 ✓ 渐变分隔线 ✓ 数据说明 ✓ 数据卡片 ✓ |
-| 背景三层 | 渐变背景 ✓ 双色光晕 ✓ 网格底纹 ✓ |
+| 7 层完整性 | `.date` ✓ `.scene-label` ✓ `.badge` ✓ `.main-title` ✓ `.divider` ✓ `.data-subtitle` ✓ `.cards` ✓ |
+| 容器结构 | 根元素使用 `.cover` class（非 `.container` 或其他名称） |
+| CSS 变量 | `:root` 中定义了 `--accent-warm` `--accent-cool` `--bg-dark` 等变量，子元素引用变量而非硬编码色值 |
+| 字体引入 | HTML 包含 Google Fonts `Inter` 和 `JetBrains Mono` 的 `@import` |
+| 光晕定位 | `.glow-warm` 位于左上、`.glow-cool` 位于右下、均使用 `blur(200px)` |
+| 背景三层 | 渐变背景 ✓ 双色光晕 ✓ |
 | 文字可读性 | 缩小到 100px 宽仍能看清主标题 |
 | 日期标识 | 封面包含中文日期（"YYYY年M月D日"格式） |
 | 字号足够 | 主标题 ≥ 80px，副标题 ≥ 40px，日期 ≥ 28px |
 | 无 URL | 封面中不出现任何网址 |
+| 无多余层 | 除了模板定义的 7 层 + 2 个光晕 + 背景渐变外，不存在额外装饰层 |
 
 ### 封面渲染自动降级
 
@@ -381,7 +397,16 @@ echo "   如空间不足，可执行 Stage 8 自动清理（详见 clipforge/sha
 - **正文**：口语化短句，每句不超过 15 字
 - **标签**：混合大流量 + 精准标签
 - **不放网址**：链接统一放评论区自评
-- **必须包含评论区自评**：在抖音文案末尾添加 `---` 分隔线 + `评论区自评：` 段落，包含安装方法、定价、来源等补充信息
+- **必须包含评论区自评**：在 douyin.md 中添加 `## 评论区自评` 段落，包含**两种**项目介绍格式：
+  1. **搜索方式**：`GitHub搜索: 项目名`（如 `GitHub搜索: RuView`）
+  2. **完整路径**：`owner/repo` 格式（如 `openpli/ruview`）
+  每个项目都要同时提供这两种格式，方便不同偏好的用户找到项目。示例：
+  ```
+  1. RuView — WiFi信号空间感知
+     GitHub搜索: RuView
+     完整路径: openpli/ruview
+     语言: Rust | 68K⭐ | 今日+656
+  ```
 - **三平台文案必填**：`douyin.md` 必须包含 `## 抖音`、`## 视频号`、`## 小红书` 三个二级标题，每个标题下有完整文案（标题+正文+标签）。校验：`grep -c '^## ' douyin.md` ≥ 3
 - **措辞规范**遵守 `clipforge/shared/shared-rules` §1
 

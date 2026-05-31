@@ -128,6 +128,12 @@ skill:
         params:
           file: "phase_timings.json"
           max_gap: 0.5
+      - gate: bgm_not_exceeds_narration
+        params:
+          bgm_file: "bgm.wav"
+          segments_file: "segment_durations.json"
+          narration_file: "narration.mp3"
+          tolerance: 0.15
     soft:
       - gate: phase_anchor_coverage
         params:

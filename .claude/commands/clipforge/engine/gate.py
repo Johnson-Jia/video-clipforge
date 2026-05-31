@@ -509,6 +509,76 @@ def check_bgm_duration_covers(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.bgm_duration_covers] = check_bgm_duration_covers
 
 
+def check_bgm_not_exceeds_narration(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 bgm.wav 时长不超过旁白时长（防止 A/V 漂移）。
+
+    事故记录：2026-05-31 github-trending 视频 BGM 70.92s 而旁白 69.94s，
+    HyperFrames discoveredDuration = max(所有音频轨) = BGM 时长，
+    导致视频渲染到 70.93s，旁白在 69.94s 结束后出现 ~1s 纯画面无旁白。
+
+    根因：bgm_pipeline.sh TARGET_DUR = 旁白 + 1s 缓冲，使 BGM 系统性地
+    比旁白长。HyperFrames 以最长音频轨为视频时长，BGM > 旁白 → 视频延伸。
+
+    本门禁是独立于 bgm_pipeline.sh 的最后防线。
+    允许容差 tolerance（默认 0.15s），处理采样精度误差。
+    """
+    bgm_file = project_dir / params.get("bgm_file", "bgm.wav")
+    seg_file = project_dir / params.get("segments_file", "segment_durations.json")
+    narr_file = project_dir / params.get("narration_file", "narration.mp3")
+    tolerance = params.get("tolerance", 0.15)
+
+    if not bgm_file.exists():
+        return False, "bgm.wav 缺失"
+
+    # 获取旁白总时长
+    narr_dur = 0.0
+    if seg_file.exists():
+        try:
+            data = json.loads(seg_file.read_text(encoding="utf-8"))
+            narr_dur = sum(s.get("actual_duration", 0) for s in data.get("segments", []))
+        except Exception:
+            pass
+
+    if narr_dur == 0 and narr_file.exists():
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(narr_file)],
+                capture_output=True, text=True, timeout=10,
+            )
+            narr_dur = float(result.stdout.strip())
+        except Exception:
+            return True, "无法获取旁白时长，跳过 BGM 超时检查"
+
+    if narr_dur == 0:
+        return True, "无旁白时长数据，跳过 BGM 超时检查"
+
+    # 获取 BGM 时长
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", str(bgm_file)],
+            capture_output=True, text=True, timeout=10,
+        )
+        bgm_dur = float(result.stdout.strip())
+    except Exception:
+        return False, "无法获取 bgm.wav 时长"
+
+    excess = bgm_dur - narr_dur
+    if excess > tolerance:
+        return False, (
+            f"A/V 漂移风险: bgm={bgm_dur:.2f}s > 旁白={narr_dur:.2f}s "
+            f"(超出 {excess:.2f}s > 容差 {tolerance}s)。"
+            f"HyperFrames 会以最长音频轨为准渲染，BGM 超长导致视频尾段无旁白。"
+            f"修复: ffmpeg -y -i bgm.wav -t {narr_dur:.2f} -c:a pcm_s16le bgm.wav"
+        )
+
+    return True, f"BGM 未超旁白: bgm={bgm_dur:.2f}s <= 旁白={narr_dur:.2f}s + {tolerance}s"
+
+
+GATE_CHECKERS[GateType.bgm_not_exceeds_narration] = check_bgm_not_exceeds_narration
+
+
 def check_data_duration_source(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 HTML data-duration 值与 segment_durations.json 的一致性。
 
@@ -1178,6 +1248,67 @@ def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.portrait_typography_valid] = check_portrait_typography
 
 
+def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 douyin.md 包含三平台文案 + 评论区自评。
+
+    stage7-delivery.md §7.5 明确要求:
+    1. 三平台文案必填：## 抖音、## 视频号、## 小红书
+    2. 评论区自评必填：## 评论区自评（或 --- 分隔线后的自评段）
+    3. 评论区必须包含两种项目介绍格式：
+       a) 搜索方式："GitHub搜索: 项目名"
+       b) 完整路径："owner/repo" 格式
+
+    事故记录：2026-05-31 github-trending 视频只生成了基础交付信息，
+    缺少三平台文案和评论区自评。根因：stage7-delivery.md 有文本指令
+    但无结构化门禁强制执行，LLM 不自觉遵守就漏掉了。
+    """
+    douyin_file = project_dir / params.get("file", "douyin.md")
+    if not douyin_file.exists():
+        return False, "douyin.md 缺失"
+
+    content = douyin_file.read_text(encoding="utf-8", errors="ignore")
+    issues: list[str] = []
+
+    # 1. 检查三平台文案
+    required_platforms = params.get("platforms", ["抖音", "视频号", "小红书"])
+    missing_platforms = []
+    for p in required_platforms:
+        if f"## {p}" not in content:
+            missing_platforms.append(p)
+    if missing_platforms:
+        issues.append(f"缺少平台文案: {', '.join(missing_platforms)}（需 ## 抖音、## 视频号、## 小红书）")
+
+    # 2. 检查评论区自评段
+    has_comment_section = (
+        "## 评论区自评" in content or
+        "评论区自评" in content
+    )
+    if not has_comment_section:
+        issues.append("缺少评论区自评（需 ## 评论区自评 段落）")
+    else:
+        # 3. 检查两种项目介绍格式
+        # 格式a: 搜索方式 — "GitHub搜索:" 或 "GitHub 搜索:"
+        has_search_format = bool(re.search(r'GitHub\s*搜索\s*[:：]', content))
+        # 格式b: 完整路径 — "owner/repo" 形式（字母/数字/连字符/下划线/点）
+        has_path_format = bool(re.search(r'[\w\-\.]+/[\w\-\.]+', content))
+
+        format_missing = []
+        if not has_search_format:
+            format_missing.append("搜索方式（如 'GitHub搜索: RuView'）")
+        if not has_path_format:
+            format_missing.append("完整路径（如 'openpli/ruview'）")
+        if format_missing:
+            issues.append(f"评论区缺少项目介绍格式: {', '.join(format_missing)}")
+
+    if issues:
+        return False, f"R-S7-006: {'; '.join(issues)}"
+
+    return True, f"douyin.md 三平台文案 + 评论区自评（搜索+路径）完整"
+
+
+GATE_CHECKERS[GateType.douyin_platforms_complete] = check_douyin_platforms_complete
+
+
 def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 cover.html 包含 7 层封面模板结构。
 
@@ -1249,6 +1380,60 @@ def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, s
 
 
 GATE_CHECKERS[GateType.cover_layers_present] = check_cover_layers_present
+
+
+def check_final_duration_close_to_output(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 final.mp4 时长与 output.mp4 时长差异不超过容差。
+
+    事故记录：2026-05-31 github-trending 视频交付 SubAgent 绕过 assemble_final.sh，
+    自行用 ffmpeg 将 cover.png 渲染为 3 秒封面视频再拼接到 output.mp4 前面。
+    封面无音频轨 → 旁白从 PTS=0 播放 → 视觉内容在 ~3s 才开始 →
+    每个场景切换处旁白都比画面提前 ~3 秒，全程 A/V 不同步。
+
+    assemble_final.sh 正确行为：1 帧封面（~0.033s），几乎不影响时长。
+    本门禁是独立于 assemble_final.sh 的最后防线。
+    """
+    final_file = project_dir / params.get("final_file", "final.mp4")
+    output_file = project_dir / params.get("output_file", "output.mp4")
+    tolerance = params.get("tolerance", 0.2)
+
+    if not final_file.exists():
+        return True, "final.mp4 尚未生成，跳过时长比对"
+    if not output_file.exists():
+        return True, "output.mp4 缺失，跳过时长比对"
+
+    def _get_duration(f: Path) -> float | None:
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(f)],
+                capture_output=True, text=True, timeout=10,
+            )
+            return float(result.stdout.strip())
+        except Exception:
+            return None
+
+    final_dur = _get_duration(final_file)
+    output_dur = _get_duration(output_file)
+
+    if final_dur is None:
+        return False, "无法获取 final.mp4 时长"
+    if output_dur is None:
+        return True, "无法获取 output.mp4 时长，跳过比对"
+
+    diff = final_dur - output_dur
+    if diff > tolerance:
+        return False, (
+            f"封面膨胀 A/V 脱节: final={final_dur:.2f}s vs output={output_dur:.2f}s "
+            f"(差 {diff:.2f}s > 容差 {tolerance}s)。"
+            f"封面视频占用了 {diff:.1f}s 无音频画面，导致旁白全程领先。"
+            f"修复: 使用 assemble_final.sh 重新拼接（1帧封面≈0.033s）"
+        )
+
+    return True, f"final.mp4 时长正常: 差值 {diff:.3f}s <= {tolerance}s"
+
+
+GATE_CHECKERS[GateType.final_duration_close_to_output] = check_final_duration_close_to_output
 
 
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复

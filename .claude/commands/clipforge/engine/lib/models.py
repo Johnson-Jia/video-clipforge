@@ -20,6 +20,7 @@ class Severity(str, Enum):
 class RuleClass(str, Enum):
     SAFETY = "SAFETY"
     EXPERIENTIAL = "EXPERIENTIAL"
+    QUALITY = "QUALITY"
 
 
 class Scope(str, Enum):
@@ -56,6 +57,9 @@ class GateType(str, Enum):
     portrait_typography_valid = "portrait_typography_valid"
     phase_timings_valid = "phase_timings_valid"
     phase_anchor_coverage = "phase_anchor_coverage"
+    douyin_platforms_complete = "douyin_platforms_complete"
+    bgm_not_exceeds_narration = "bgm_not_exceeds_narration"
+    final_duration_close_to_output = "final_duration_close_to_output"
 
 
 class Rigor(str, Enum):
