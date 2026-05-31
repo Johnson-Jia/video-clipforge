@@ -2,63 +2,171 @@
 @ComponentMeta
 name: timeline_flow
 layer: content
-tags: [timeline, history, steps, roadmap, evolution]
+tags: [timeline, history, steps, roadmap, evolution, journey]
 emotion_range: [progress, anticipation]
 visual_density: standard
 complexity: css-only
-description: 时间线叙事，竖直节点链展示项目发展历程或版本迭代
+description: 时间线叙事，竖直节点链展示项目发展历程或版本迭代，含完成/进行中/未来三种状态
 parameters:
-  node_gap: { default: 60, range: [40, 80] }
+  node_gap: { default: 48, range: [40, 80] }
 /ComponentMeta
 -->
 <!-- HTML -->
 <div class="timeline-flow">
-  <div class="timeline-line"></div>
-  <div class="timeline-node" data-index="0">
-    <div class="node-dot"></div>
-    <div class="node-content">
-      <div class="node-date">2024.01</div>
-      <div class="node-text">项目启动</div>
+  <div class="tl-line"></div>
+
+  <!-- 节点 1 — 已完成 -->
+  <div class="tl-node tl-done" data-index="0">
+    <div class="tl-dot"><span class="tl-check">✓</span></div>
+    <div class="tl-card">
+      <div class="tl-date">2024.01</div>
+      <div class="tl-title">项目启动</div>
+      <div class="tl-desc">核心架构搭建完成</div>
     </div>
   </div>
-  <!-- 更多节点... -->
+
+  <!-- 节点 2 — 已完成 -->
+  <div class="tl-node tl-done" data-index="1">
+    <div class="tl-dot"><span class="tl-check">✓</span></div>
+    <div class="tl-card">
+      <div class="tl-date">2024.06</div>
+      <div class="tl-title">首个里程碑</div>
+      <div class="tl-desc">用户量突破 10K</div>
+    </div>
+  </div>
+
+  <!-- 节点 3 — 进行中（高亮） -->
+  <div class="tl-node tl-active" data-index="2">
+    <div class="tl-dot"><span class="tl-pulse"></span></div>
+    <div class="tl-card">
+      <div class="tl-date">2025.01</div>
+      <div class="tl-title">全面升级</div>
+      <div class="tl-desc">AI 驱动的新架构</div>
+    </div>
+  </div>
+
+  <!-- 节点 4 — 未来（暗淡） -->
+  <div class="tl-node tl-future" data-index="3">
+    <div class="tl-dot"><span class="tl-ring"></span></div>
+    <div class="tl-card">
+      <div class="tl-date">2025.12</div>
+      <div class="tl-title">生态扩展</div>
+      <div class="tl-desc">多平台内容分发</div>
+    </div>
+  </div>
 </div>
 
 <!-- CSS -->
 <style>
 .timeline-flow {
   position: relative; width: 100%;
-  display: flex; flex-direction: column; gap: 60px;
+  display: flex; flex-direction: column; gap: 48px;
+  padding: 0 20px;
 }
-.timeline-line {
-  position: absolute; left: 60px; top: 0; bottom: 0;
+.tl-line {
+  position: absolute; left: 54px; top: 0; bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--accent-cool), var(--accent-warm));
+  background: linear-gradient(180deg, var(--accent-cool, #06B6D4), rgba(6,182,212,0.15));
+  opacity: 0.4; border-radius: 2px;
+}
+.tl-node {
+  display: flex; align-items: flex-start; gap: 28px;
+  position: relative;
+}
+/* ——— Dot 状态 ——— */
+.tl-dot {
+  width: 30px; height: 30px; border-radius: 50%;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  position: relative; z-index: 2;
+}
+.tl-done .tl-dot {
+  background: var(--accent-cool, #06B6D4);
+  box-shadow: 0 0 16px rgba(6,182,212,0.4);
+}
+.tl-check {
+  font-size: 14px; color: #000; font-weight: 900;
+}
+.tl-active .tl-dot {
+  background: var(--accent-warm, #F59E0B);
+  box-shadow: 0 0 20px rgba(245,158,11,0.5);
+}
+.tl-pulse {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #fff; display: block;
+  animation: tlPulseAnim 1.5s ease-in-out infinite;
+}
+@keyframes tlPulseAnim {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+.tl-future .tl-dot {
+  background: transparent;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+.tl-ring {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,0.2); display: block;
+}
+/* ——— Card ——— */
+.tl-card {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px; padding: 20px 24px;
+  backdrop-filter: blur(8px);
+}
+.tl-active .tl-card {
+  border-color: rgba(245,158,11,0.2);
+  background: rgba(245,158,11,0.04);
+}
+.tl-future .tl-card {
   opacity: 0.5;
 }
-.timeline-node {
-  display: flex; align-items: center; gap: 40px;
-  margin-left: 60px;
+.tl-date {
+  font-size: 20px; font-weight: 700;
+  color: var(--accent-cool, #06B6D4);
+  margin-bottom: 6px;
 }
-.node-dot {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent-cool);
-  box-shadow: 0 0 20px var(--accent-cool);
-  flex-shrink: 0;
+.tl-active .tl-date { color: var(--accent-warm, #F59E0B); }
+.tl-future .tl-date { color: rgba(255,255,255,0.3); }
+.tl-title {
+  font-size: 28px; font-weight: 800;
+  color: var(--text-primary, #F9FAFB);
+  margin-bottom: 4px;
 }
-.node-date { font-size: 24px; color: var(--accent-warm); font-weight: 700; }
-.node-text { font-size: 32px; color: #fff; margin-top: 8px; }
+.tl-future .tl-title { color: rgba(255,255,255,0.4); }
+.tl-desc {
+  font-size: 18px;
+  color: var(--text-secondary, #9CA3AF);
+}
+.tl-future .tl-desc { color: rgba(255,255,255,0.2); }
 </style>
 
 <!-- JS (GSAP) -->
 <script>
-// Step 1: Timeline line draws in from top
-tl.from('.timeline-line', {scaleY:0, transformOrigin:'top center', duration:0.6, ease:'power4.out'}, startTime)
-  // Step 2: Node dots pop in sequence
-  .from('.node-dot', {scale:0, opacity:0, duration:0.3, ease:'back.out(2)', stagger:0.15}, startTime + 0.3)
-  // Step 3: Node content slides in with alternating direction
-  .from('.timeline-node', {
-    opacity:0, x:(i) => i % 2 === 0 ? -40 : 40,
-    duration:0.35, ease:'power3.out', stagger:0.15
-  }, startTime + 0.4);
+// Step 1: Timeline line draws in from top with glow
+tl.from('.tl-line', {scaleY:0, transformOrigin:'top center', duration:0.6, ease:'power4.out'}, startTime)
+  .fromTo('.tl-line',
+    {boxShadow:'0 0 0px transparent'},
+    {boxShadow:'0 0 12px rgba(6,182,212,0.3)', duration:0.3, ease:'power2.out'}, startTime + 0.3)
+  // Step 2: Node dots pop in sequence with elastic
+  .from('.tl-dot', {scale:0, opacity:0, duration:0.35, ease:'elastic.out(1, 0.5)', stagger:0.18}, startTime + 0.35)
+  // Step 3: Cards slide in with alternating direction + scale
+  .from('.tl-card', {
+    opacity:0, x:(i) => i % 2 === 0 ? -50 : 50, scale:0.9,
+    duration:0.4, ease:'back.out(1.4)', stagger:0.18
+  }, startTime + 0.5)
+  // Step 4: Active node glow pulse
+  .fromTo('.tl-active .tl-dot',
+    {boxShadow:'0 0 20px rgba(245,158,11,0.5)'},
+    {boxShadow:'0 0 40px rgba(245,158,11,0.7), 0 0 60px rgba(245,158,11,0.3)',
+     duration:0.3, ease:'power2.out'}, startTime + 1.2)
+  // Step 5: Active card border glow
+  .fromTo('.tl-active .tl-card',
+    {borderColor:'rgba(245,158,11,0.0)'},
+    {borderColor:'rgba(245,158,11,0.3)', duration:0.3, ease:'power2.out'}, startTime + 1.3)
+  // Step 6: Future nodes subtle shimmer
+  .fromTo('.tl-future .tl-card',
+    {opacity:0.3},
+    {opacity:0.5, duration:0.3, ease:'power2.out'}, startTime + 1.4);
 </script>
