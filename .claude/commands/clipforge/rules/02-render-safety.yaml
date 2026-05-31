@@ -182,9 +182,9 @@ rules:
 
   - id: "R-R-015"
     type: FORBIDDEN_ACTION
-    pattern: "竖屏内容层文字字号低于正文最低标准（竖屏<36px / 横屏<24px）"
-    positive: "竖屏(1080×1920)字号最低标准：标题≥64px、正文≥36px、标注≥28px。横屏(1920×1080)：标题≥48px、正文≥24px、标注≥18px"
-    guardrail: ".layer-content 内存在 font-size 低于正文最低标准（36px/24px）的文字元素"
+    pattern: "内容层文字字号低于正文最低标准（竖屏<36px / 横屏<32px）"
+    positive: "竖屏(1080×1920)字号最低标准：标题≥64px、正文≥36px、标注≥28px。横屏(1920×1080)：标题≥56px、正文≥32px、标注≥24px"
+    guardrail: ".layer-content 内存在 font-size 低于正文最低标准（竖屏 36px / 横屏 32px）的文字元素"
     detection:
       keywords: []
       semantic_check: true
@@ -196,7 +196,7 @@ rules:
   - id: "R-R-016"
     type: FORBIDDEN_METHOD
     pattern: "使用 section-tag 小徽章标签作为场景标题（20-24px 带背景色小标签）"
-    positive: "场景标题使用标题层字号（竖屏≥64px/横屏≥48px），用字重/颜色/位置区分层级"
+    positive: "场景标题使用标题层字号（竖屏≥64px/横屏≥56px），用字重/颜色/位置区分层级"
     guardrail: "HTML 中存在 class=\"section-tag\" 的元素"
     detection:
       keywords: ["section-tag"]
@@ -242,3 +242,16 @@ rules:
     class: QUALITY
     scope: stage7-delivery
     source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"
+
+  - id: "R-R-020"
+    type: FORBIDDEN_ACTION
+    pattern: "横屏场景内容视觉重心明显偏移（整体偏向画布一侧超过 70%）"
+    positive: "横屏内容区域视觉重心应在画布中段（水平 20%-80%）。单栏文字用 max-width+margin:0 auto 居中容器（文字可左对齐）；双栏布局宽度比不超 3:1。禁止所有内容挤在画布一侧"
+    guardrail: "横屏场景中内容元素集中在画布左侧或右侧 30% 区域内，另一侧无内容"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: QUALITY
+    scope: stage6-production
+    source: "shared/render-safety.md §3.5 — 2026-05-31 VibeCoding 大赏视频内容偏左事故"

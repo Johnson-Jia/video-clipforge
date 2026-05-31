@@ -60,11 +60,14 @@ skill:
         reality: "竖屏 1080px 宽 ÷ 3 DPR ≈ 360px 手机宽度，36px 以下在手机端只有 9-12px 完全不可读（R-R-015 HARD）。字号是可读性底线，不是审美偏好"
         trigger: "试图在竖屏内容层使用低于 36px 的字号"
       - thought: "横屏空间大，字体可以小一些"
-        reality: "横屏在手机端播放时缩放比 ~2.67x，24px 在手机上只有 9px。横屏正文最低 32px，低于此值门禁拒绝（R-R-015 HARD）"
+        reality: "横屏在手机端播放时缩放比 ~2.67x，32px 缩放后只有 12px 是可读极限。横屏正文最低 32px，标注最低 24px（R-R-015 HARD）。32px 是底线不是目标，正文推荐 36-44px"
         trigger: "试图在横屏内容层使用低于 32px 的字号"
       - thought: "横屏纯白文字就够了，不需要渐变"
         reality: "纯白/纯色文字在横屏宽幅画面上视觉平淡。标题应使用渐变色（background-clip:text）或高对比配色，横屏空间大必须用色彩丰富度弥补"
         trigger: "横屏场景标题使用纯白色"
+      - thought: "横屏内容左对齐像文档一样更自然"
+        reality: "视频不是文档。横屏 1920px 宽幅下所有内容左对齐会导致视觉重心偏向一侧，另一侧空旷失衡。内容容器应居中（max-width+margin:0 auto），文字本身可以左对齐。双栏布局保持左右平衡（R-R-020 HARD）"
+        trigger: "横屏场景所有内容偏向画布一侧"
     spirit_vs_letter:
       - rule_ref: "R-S6-*"
         mode: LETTER

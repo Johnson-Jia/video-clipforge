@@ -13,7 +13,20 @@ RULES_DIR = Path(__file__).parent.parent.parent / "rules"
 SKILLS_DIR = Path(__file__).parent.parent.parent / "skills"
 
 
+def _resolve_scope(raw_scope: str) -> tuple[Scope, str | None]:
+    """将 YAML scope 值解析为 (Scope 枚举, skill 名)。
+
+    GLOBAL/SCENE/SKILL 直接匹配。其他值视为 SKILL 作用域，scope 值即为 skill 名。
+    """
+    try:
+        return Scope(raw_scope), None
+    except ValueError:
+        return Scope.SKILL, raw_scope
+
+
 def parse_rule(raw: dict) -> Rule:
+    raw_scope = raw.get("scope", "GLOBAL")
+    scope, skill_from_scope = _resolve_scope(raw_scope)
     return Rule(
         id=raw["id"],
         type=RuleType(raw["type"]),
@@ -27,9 +40,9 @@ def parse_rule(raw: dict) -> Rule:
         ),
         severity=Severity(raw.get("severity", "HARD")),
         rule_class=RuleClass(raw.get("class", "EXPERIENTIAL")),
-        scope=Scope(raw.get("scope", "GLOBAL")),
+        scope=scope,
         scene=raw.get("scene"),
-        skill=raw.get("skill"),
+        skill=raw.get("skill") or skill_from_scope,
         source=raw.get("source", ""),
         created_at=raw.get("created_at", ""),
         hit_count=raw.get("hit_count", 0),
