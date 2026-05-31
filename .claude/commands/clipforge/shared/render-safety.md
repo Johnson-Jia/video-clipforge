@@ -214,7 +214,7 @@
 
 ## 3. 竖屏排版规范
 
-> **默认竖屏。** 用户未指定时按竖屏设计。横屏仅在用户明确要求时使用。画布方向由 `data-width`/`data-height` 决定：1080×1920 = 竖屏，1920×1080 = 横屏。
+> **方向由 `design.md` 的 `orientation` 字段决定，`orientation_source` 记录来源。** 来源优先级：`user_explicit` > `category_hint` > `duration` > `default`。未指定时按竖屏设计。长视频（>3 分钟）推荐横屏，由 Stage 3 完成 narration 后自动判定（source=duration）。画布方向由 `data-width`/`data-height` 决定：1080×1920 = 竖屏，1920×1080 = 横屏。
 
 ### 3.1 竖屏字号最低标准（1080×1920）
 

@@ -548,9 +548,16 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 ## 6.5 画布方向
 
-默认输出**竖屏（1080×1920）**。用户明确要求横屏时输出 **横屏（1920×1080）**。
+方向由 `design.md` 的 `orientation` 字段决定：
 
-方向判定：根组合 `data-width` / `data-height` — `h > w` 为竖屏，`w > h` 为横屏。所有字号、padding、布局按方向自动切换（详见 `director-toolkit.md` 排版表和 `render-safety.md §1.3`）。
+| orientation 值 | 画布尺寸 | 说明 |
+|---------------|---------|------|
+| `portrait` 或未设置 | 1080×1920 | 默认竖屏 |
+| `landscape` | 1920×1080 | 横屏 |
+
+读取方法：解析 `design.md` 中 `orientation:` 行的值。无此字段按 portrait 处理。
+
+方向判定：根组合 `data-width` / `data-height` — `h > w` 为竖屏，`w > h` 为横屏。字号、padding、布局按方向自动切换（详见 `director-toolkit.md` 和 `render-safety.md §1.3`）。
 
 ### 横屏视觉增强（强制性）
 

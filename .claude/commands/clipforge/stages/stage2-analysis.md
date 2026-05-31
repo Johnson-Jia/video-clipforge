@@ -83,7 +83,7 @@
 - 记录角色出场时机：高潮段（climax）必出，幽默段（tease）可选
 - 表情规划跟随 storyboard，不在 Stage 2 确定具体表情
 
-**交付物：** 展示「视觉风格」、「配乐方向」、「素材需求预判」和「故事板设计」，确认后**写入 `design.md`** 并进入 Stage 3。
+**交付物：** 展示「视觉风格」、「配乐方向」、「素材需求预判」、「故事板设计」和「画布方向（默认 portrait）」，确认后**写入 `design.md`** 并进入 Stage 3。
 
 > **design.md 归属：Stage 2 负责写入。** Stage 6 仅读取此文件，不重写。如需调整风格，回退到 Stage 2 重新生成。
 
@@ -125,11 +125,22 @@ storyboard:
     climax: "features"
     settle: "usecases, tech"
     summon: "CTA"
+
+## 方向（新增）
+orientation: portrait   # portrait | landscape
+orientation_source: default  # default | user_explicit | category_hint | duration
 ```
 
 > **beat_mapping 说明：** 这是场景到情感节拍的粗映射，帮助 Stage 3 和 Stage 6 理解每个场景应传递的情感。不是严格约束，Stage 3 可以调整。
 
-> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction` 和 `immersion_mode` 选择对应的组件和配色方案（见 `stage6-components.md` 的沉浸模式配色速查），Stage 7 封面复用同一风格方向。
+> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction`、`orientation` 和 `immersion_mode` 选择对应的组件和配色方案（见 `stage6-components.md` 的沉浸模式配色速查），Stage 7 封面复用同一风格方向。
+
+> **orientation 判定逻辑（Stage 2）：**
+> 1. 若用户明确指定方向（inject 参数或 prompt 上下文中的方向关键词）→ 写入用户指定值 + `orientation_source: user_explicit`
+> 2. 若分类配置有 `orientation_hint`（render_stage 已注入到模板）→ 写入 hint 值 + `orientation_source: category_hint`
+> 3. 以上均无 → 写入 `portrait` + `orientation_source: default`
+>
+> Stage 3 完成 narration 后，若 `orientation_source` 仍为 `default`，根据预估时长回写两个字段（详见 `stage3-scenes.md` 方向推荐规则）。
 
 ---
 

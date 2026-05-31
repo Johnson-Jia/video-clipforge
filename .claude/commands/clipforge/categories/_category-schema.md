@@ -53,6 +53,17 @@ id: "分类ID（与文件名一致，如 github、comics）"
 配色偏好（如"冷色为主、强调色偏橙蓝"）
 ```
 
+#### 跨阶段: orientation — 画布方向（Stage 2 读取写入，Stage 3 可回写）
+
+```markdown
+## orientation
+
+### orientation_hint（可选）
+画布方向强制指定。不设置时由系统根据预估时长自动判定。
+值：`portrait` | `landscape`
+说明：Stage 2 读取此值直接写入 design.md（orientation_source=category_hint），跳过 Stage 3 的时长推荐。
+```
+
 #### Stage 3: narration — 场景与文案
 
 ```markdown
@@ -161,6 +172,7 @@ delivery:
 | `delivery` | `comment_template` | string | 评论区模板 |
 | `design` | `default_style` | string | 默认风格方向 |
 | `design` | `color_bias` | string | 配色偏好 |
+| `orientation` | `orientation_hint` | string | 画布方向强制指定（portrait/landscape） |
 | `content` | `optional_deps` | list[str] | 分类专有可选依赖 |
 | `shared_rules` | `data_example` | string | 数据示例 |
 | `shared_rules` | `hook_data_example` | string | 钩子数据示例 |
