@@ -1,0 +1,136 @@
+<!--
+@ComponentMeta
+name: lightning
+layer: fx
+tags: [lightning, electric, storm, dramatic, shock, fractal, arc, flash]
+emotion_range: [shock, dramatic, energy, climax]
+visual_density: low
+complexity: canvas-gsap
+description: 分形闪电特效，递归分支 + 双层辉光（蓝线+白芯）+ 全屏闪光，适合震撼/突破/高潮场景
+parameters:
+  bolt_interval: { default: 1500, range: [800, 3000], description: "闪电间隔(ms)" }
+  max_depth: { default: 5, range: [3, 7], description: "分形递归深度" }
+  opacity: { default: 0.6, range: [0.3, 0.8], description: "画布整体透明度" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-fx) -->
+<canvas class="lightning-canvas" width="1080" height="1920" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.6;pointer-events:none;z-index:10;"></canvas>
+<div class="flash-overlay" style="position:absolute;inset:0;background:white;opacity:0;pointer-events:none;z-index:20;"></div>
+
+<!-- CSS -->
+<style>
+.lightning-canvas { mix-blend-mode: screen; }
+</style>
+
+<!-- JS (GSAP Canvas seek-driven) -->
+<script>
+var lCanvas = document.querySelector('.lightning-canvas');
+var lCtx = lCanvas.getContext('2d');
+var flashEl = document.querySelector('.flash-overlay');
+var LW = 1080, LH = 1920;
+var bolts = [];
+var lastBolt = 0;
+var nextInterval = 1500;
+
+// Recursive fractal bolt path generation
+function generateBolt(x1, y1, x2, y2, depth, maxDepth, branches) {
+  if (depth >= maxDepth) return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+  var mx = (x1 + x2) / 2;
+  var my = (y1 + y2) / 2;
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  var len = Math.sqrt(dx * dx + dy * dy);
+  var offset = (Math.random() - 0.5) * len * 0.35 / (depth + 1);
+  var px = -dy / len;
+  var py = dx / len;
+  var cx = mx + px * offset;
+  var cy = my + py * offset;
+  var left = generateBolt(x1, y1, cx, cy, depth + 1, maxDepth, branches);
+  var right = generateBolt(cx, cy, x2, y2, depth + 1, maxDepth, branches);
+  // Branch
+  if (depth < maxDepth - 1 && Math.random() < 0.30 && branches.count < 5) {
+    branches.count++;
+    var bAngle = (Math.random() - 0.5) * 1.2;
+    var bLen = len * (0.3 + Math.random() * 0.3);
+    var bx = cx + Math.cos(Math.atan2(dy, dx) + bAngle) * bLen;
+    var by = cy + Math.sin(Math.atan2(dy, dx) + bAngle) * bLen;
+    var branch = generateBolt(cx, cy, bx, by, depth + 1, maxDepth - 1, branches);
+    branches.list.push(branch);
+  }
+  return left.concat(right.slice(1));
+}
+
+// Draw single bolt — dual layer: glow + core
+function drawBolt(points, alpha) {
+  if (points.length < 2) return;
+  // Glow layer — thick, blue
+  lCtx.save();
+  lCtx.strokeStyle = 'rgba(140,170,255,' + (alpha * 0.35) + ')';
+  lCtx.lineWidth = 8;
+  lCtx.shadowBlur = 30;
+  lCtx.shadowColor = 'rgba(140,170,255,0.6)';
+  lCtx.beginPath();
+  lCtx.moveTo(points[0].x, points[0].y);
+  for (var i = 1; i < points.length; i++) lCtx.lineTo(points[i].x, points[i].y);
+  lCtx.stroke();
+  lCtx.restore();
+  // Core layer — thin, white
+  lCtx.save();
+  lCtx.strokeStyle = 'rgba(220,230,255,' + alpha + ')';
+  lCtx.lineWidth = 2.5;
+  lCtx.shadowBlur = 20;
+  lCtx.shadowColor = 'rgba(180,200,255,0.8)';
+  lCtx.beginPath();
+  lCtx.moveTo(points[0].x, points[0].y);
+  for (var i = 1; i < points.length; i++) lCtx.lineTo(points[i].x, points[i].y);
+  lCtx.stroke();
+  lCtx.restore();
+}
+
+function spawnBolt(now) {
+  var sx = 200 + Math.random() * 680;
+  var sy = Math.random() * 200;
+  var ex = 100 + Math.random() * 880;
+  var ey = 800 + Math.random() * 900;
+  var branches = { count: 0, list: [] };
+  var pts = generateBolt(sx, sy, ex, ey, 0, 5, branches);
+  bolts.push({ points: pts, branches: branches.list, born: now, life: 300 + Math.random() * 200 });
+  // 50% chance second bolt
+  if (Math.random() < 0.5) {
+    var sx2 = sx + (Math.random() - 0.5) * 200;
+    var ey2 = 600 + Math.random() * 600;
+    var branches2 = { count: 0, list: [] };
+    var pts2 = generateBolt(sx2, sy, sx2 + (Math.random() - 0.5) * 300, ey2, 0, 4, branches2);
+    bolts.push({ points: pts2, branches: branches2.list, born: now + 30, life: 200 + Math.random() * 150 });
+  }
+  // Screen flash
+  gsap.fromTo(flashEl, { opacity: 0.12 }, { opacity: 0, duration: 0.15, ease: 'power2.out' });
+}
+
+function drawLightningFrame() {
+  var now = Date.now();
+  lCtx.clearRect(0, 0, LW, LH);
+  // Spawn new bolt on interval
+  if (now - lastBolt > nextInterval) {
+    spawnBolt(now);
+    lastBolt = now;
+    nextInterval = 1500 + Math.random() * 2000;
+  }
+  // Draw active bolts with fade
+  bolts = bolts.filter(function(b) {
+    var age = now - b.born;
+    if (age > b.life) return false;
+    var alpha = Math.max(0, 1 - age / b.life);
+    drawBolt(b.points, alpha);
+    b.branches.forEach(function(br) { drawBolt(br, alpha * 0.7); });
+    return true;
+  });
+}
+
+// Seek-driven animation: GSAP controls progress 0→1
+var lightProgress = { val: 0 };
+tl.to(lightProgress, {
+  val: 1, duration: 8,
+  onUpdate: drawLightningFrame
+}, startTime);
+</script>

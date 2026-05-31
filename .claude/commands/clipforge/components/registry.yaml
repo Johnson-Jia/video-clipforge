@@ -204,6 +204,32 @@ components:
     emotion_range: [tech, tension, focus, analysis]
     visual_density: medium
     complexity: canvas-gsap
+
+  - name: constellation
+    layer: fx
+    file: fx/constellation.html
+    tags: [constellation, network, nodes, connection, stars, links, proximity]
+    emotion_range: [wonder, connection, depth, mystery]
+    visual_density: low
+    complexity: canvas-gsap
+
+  - name: vortex
+    layer: fx
+    file: fx/vortex.html
+    tags: [vortex, spiral, energy, whirlpool, particles, kepler, orbit]
+    emotion_range: [energy, power, dynamic, immersion]
+    visual_density: medium
+    complexity: canvas-gsap
+
+  - name: lightning
+    layer: fx
+    file: fx/lightning.html
+    tags: [lightning, electric, storm, dramatic, shock, fractal, arc, flash]
+    emotion_range: [shock, dramatic, energy, climax]
+    visual_density: low
+    complexity: canvas-gsap
+
+  # ── 内容层 ──
   - name: hero_card
     layer: content
     file: content/hero_card.html
