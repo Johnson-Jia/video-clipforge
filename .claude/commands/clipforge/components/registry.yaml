@@ -252,22 +252,6 @@ components:
     visual_density: generous
     complexity: css-only
 
-  - name: speech_bubble
-    layer: content
-    file: content/speech_bubble.html
-    tags: [humor, commentary, bubble, character, reaction]
-    emotion_range: [amusement, sarcasm]
-    visual_density: low
-    complexity: css-only
-
-  - name: char_overlay
-    layer: content
-    file: content/char_overlay.html
-    tags: [character, reaction, emotion, avatar, expression]
-    emotion_range: [neutral, amusement, shock, excitement]
-    visual_density: low
-    complexity: css-only
-
   - name: project_full_card
     layer: content
     file: content/project_full_card.html
