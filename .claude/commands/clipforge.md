@@ -183,12 +183,17 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
 
 ```
 用户调用 /clipforge
+  → 解析用户 prompt 中的方向关键词：
+     - 包含「横屏」「landscape」「宽屏」→ 记录 user_orientation=landscape
+     - 包含「竖屏」「portrait」「竖版」→ 记录 user_orientation=portrait
+     - 无方向关键词 → user_orientation=null
   → 读取 schema.yaml，解析 artifact DAG
   → 扫描 generates 路径，检测已完成 artifact
   → 拓扑排序，确定执行队列
   → 逐个执行 ready artifact：
      1. 引擎注入：运行 python engine/inject.py --skill <stage-id> [--category <cat>]
         → 将输出（Intent + 正向规则 + 经验模式 + Guard Red Flags）拼入 stage prompt 前段
+        → 若 user_orientation 已记录且当前 skill 为 stage2-analysis → 追加方向指令到 prompt
      2. 模板渲染：运行 python engine/render_stage.py --stage stages/<stage-file> --category <cat>
         → 将分类配置的值确定性替换到通用 stage 模板中（音色、标签、关键词等）
         → 无分类时用默认值，LLM 读到的是已合并的完整文件
@@ -202,6 +207,15 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
      7. 轨迹记录：运行 python engine/trace.py record --skill <stage-id> --project-dir <dir> --result pass/fail --score <N>
      8. 展示结果并确认
   → 完成后重新扫描状态，更新队列
+
+> **方向推荐检查（仅 Stage 3 完成后执行）：** 读取 `design.md` 中 `orientation_source` 字段
+> - 若 `orientation_source` 为 `duration` 且 `orientation` 为 `landscape` → 展示推荐：
+>   「预估视频时长约 {X} 分钟，建议使用横屏（1920×1080）以获得更好的观看体验。是否采用？」
+>   - 用户确认 → 保持 landscape
+>   - 用户拒绝 → 改为 portrait 并将 `orientation_source` 更新为 `user_explicit`，更新 design.md
+> - 若 `orientation_source` 为 `user_explicit` 或 `category_hint` → 不提示，直接继续
+> - 若 `orientation` 为 `portrait` → 不提示，直接继续
+> - 自动化模式下由 cron-template 的"方向自动判定"指令处理，无需此检查
   → 全部完成 → 触发 cleanup
   → 自动检测播放数据 → 结束
 ```
