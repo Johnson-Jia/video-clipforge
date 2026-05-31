@@ -2,37 +2,110 @@
 @ComponentMeta
 name: float_particles
 layer: fx
-tags: [particles, float, drift, ambient, dreamy, ethereal]
+tags: [particles, float, drift, ambient, dreamy, ethereal, glow]
 emotion_range: [calm, mystery, wonder, depth]
 visual_density: low
 complexity: gsap
-description: 多个发光微粒漂浮，梦幻感氛围粒子。GSAP 驱动持续漂浮，HyperFrames seek 兼容
+description: 16 个多色发光微粒漂浮，梦幻感氛围粒子。GSAP 弹性入场 + 持续漂浮 + scale 呼吸 + opacity 闪烁，blur 景深层次
 parameters:
-  count: { default: 12, range: [8, 20], description: "粒子数量" }
-  color: { default: "rgba(200,200,255,0.6)", description: "粒子颜色" }
-  size_min: { default: 3, description: "最小粒子尺寸(px)" }
-  size_max: { default: 8, description: "最大粒子尺寸(px)" }
+  count: { default: 16, range: [10, 20], description: "粒子数量" }
+  color: { default: "mixed-cool-warm", description: "粒子颜色混合" }
+  size_min: { default: 4, description: "最小粒子尺寸(px)" }
+  size_max: { default: 24, description: "最大粒子尺寸(px)" }
   drift_duration: { default: 8, range: [5, 15], description: "漂浮周期(秒)" }
 /ComponentMeta
 -->
-<!-- HTML (嵌入 .layer-fx) -->
-<!-- 粒子：初始位置可见（opacity 0.4-0.7），由 GSAP 驱动持续漂浮 -->
-<div class="fp p1" style="position:absolute;bottom:10%;left:15%;width:5px;height:5px;border-radius:50%;background:rgba(200,200,255,0.7);box-shadow:0 0 8px rgba(200,200,255,0.5);pointer-events:none"></div>
-<div class="fp p2" style="position:absolute;bottom:5%;left:35%;width:4px;height:4px;border-radius:50%;background:rgba(180,180,255,0.6);box-shadow:0 0 6px rgba(180,180,255,0.4);pointer-events:none"></div>
-<div class="fp p3" style="position:absolute;bottom:15%;left:55%;width:6px;height:6px;border-radius:50%;background:rgba(200,200,255,0.8);box-shadow:0 0 10px rgba(200,200,255,0.6);pointer-events:none"></div>
-<div class="fp p4" style="position:absolute;bottom:8%;left:75%;width:3px;height:3px;border-radius:50%;background:rgba(220,220,255,0.5);box-shadow:0 0 5px rgba(220,220,255,0.3);pointer-events:none"></div>
-<div class="fp p5" style="position:absolute;bottom:20%;left:25%;width:5px;height:5px;border-radius:50%;background:rgba(200,200,255,0.6);box-shadow:0 0 8px rgba(200,200,255,0.4);pointer-events:none"></div>
-<div class="fp p6" style="position:absolute;bottom:3%;left:45%;width:7px;height:7px;border-radius:50%;background:rgba(180,200,255,0.7);box-shadow:0 0 12px rgba(180,200,255,0.5);pointer-events:none"></div>
-<div class="fp p7" style="position:absolute;bottom:12%;left:65%;width:4px;height:4px;border-radius:50%;background:rgba(200,220,255,0.5);box-shadow:0 0 6px rgba(200,220,255,0.3);pointer-events:none"></div>
-<div class="fp p8" style="position:absolute;bottom:18%;left:85%;width:5px;height:5px;border-radius:50%;background:rgba(200,200,255,0.6);box-shadow:0 0 8px rgba(200,200,255,0.4);pointer-events:none"></div>
+<!-- HTML -->
+<!-- 深景层 (blur 4-6px, 大粒子, 低 opacity) -->
+<div class="fp p1" style="position:absolute;bottom:10%;left:12%;width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle,rgba(139,92,246,0.6),rgba(139,92,246,0.1));
+  box-shadow:0 0 20px rgba(139,92,246,0.35);pointer-events:none;filter:blur(5px)"></div>
+<div class="fp p5" style="position:absolute;bottom:22%;left:72%;width:24px;height:24px;border-radius:50%;
+  background:radial-gradient(circle,rgba(6,182,212,0.45),rgba(6,182,212,0.05));
+  box-shadow:0 0 24px rgba(6,182,212,0.3);pointer-events:none;filter:blur(6px)"></div>
+<div class="fp p12" style="position:absolute;bottom:2%;left:52%;width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle,rgba(200,200,255,0.35),rgba(200,200,255,0.05));
+  box-shadow:0 0 22px rgba(200,200,255,0.2);pointer-events:none;filter:blur(5px)"></div>
+<div class="fp p16" style="position:absolute;bottom:38%;left:90%;width:20px;height:20px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,158,11,0.3),rgba(245,158,11,0.05));
+  box-shadow:0 0 18px rgba(245,158,11,0.2);pointer-events:none;filter:blur(4px)"></div>
+<!-- 中景层 (blur 1-3px, 中等粒子) -->
+<div class="fp p3" style="position:absolute;bottom:18%;left:42%;width:14px;height:14px;border-radius:50%;
+  background:radial-gradient(circle,rgba(200,210,255,0.55),rgba(200,210,255,0.1));
+  box-shadow:0 0 16px rgba(200,210,255,0.4);pointer-events:none;filter:blur(2px)"></div>
+<div class="fp p7" style="position:absolute;bottom:35%;left:8%;width:10px;height:10px;border-radius:50%;
+  background:radial-gradient(circle,rgba(16,185,129,0.6),rgba(16,185,129,0.1));
+  box-shadow:0 0 12px rgba(16,185,129,0.4);pointer-events:none;filter:blur(2px)"></div>
+<div class="fp p10" style="position:absolute;bottom:12%;left:65%;width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle,rgba(6,182,212,0.45),rgba(6,182,212,0.08));
+  box-shadow:0 0 18px rgba(6,182,212,0.3);pointer-events:none;filter:blur(3px)"></div>
+<div class="fp p13" style="position:absolute;bottom:42%;left:22%;width:12px;height:12px;border-radius:50%;
+  background:radial-gradient(circle,rgba(244,63,94,0.5),rgba(244,63,94,0.1));
+  box-shadow:0 0 14px rgba(244,63,94,0.35);pointer-events:none;filter:blur(2px)"></div>
+<!-- 前景层 (无 blur, 小粒子, 高 opacity) -->
+<div class="fp p2" style="position:absolute;bottom:5%;left:28%;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,158,11,0.8),rgba(245,158,11,0.2));
+  box-shadow:0 0 10px rgba(245,158,11,0.5);pointer-events:none"></div>
+<div class="fp p4" style="position:absolute;bottom:8%;left:58%;width:8px;height:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(6,182,212,0.75),rgba(6,182,212,0.15));
+  box-shadow:0 0 12px rgba(6,182,212,0.5);pointer-events:none"></div>
+<div class="fp p6" style="position:absolute;bottom:3%;left:88%;width:7px;height:7px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,158,11,0.7),rgba(245,158,11,0.15));
+  box-shadow:0 0 10px rgba(245,158,11,0.45);pointer-events:none"></div>
+<div class="fp p8" style="position:absolute;bottom:15%;left:48%;width:5px;height:5px;border-radius:50%;
+  background:radial-gradient(circle,rgba(16,185,129,0.8),rgba(16,185,129,0.2));
+  box-shadow:0 0 9px rgba(16,185,129,0.5);pointer-events:none"></div>
+<div class="fp p9" style="position:absolute;bottom:25%;left:32%;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle,rgba(59,130,246,0.7),rgba(59,130,246,0.15));
+  box-shadow:0 0 12px rgba(59,130,246,0.45);pointer-events:none"></div>
+<div class="fp p11" style="position:absolute;bottom:30%;left:82%;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle,rgba(220,220,255,0.8),rgba(220,220,255,0.2));
+  box-shadow:0 0 10px rgba(220,220,255,0.5);pointer-events:none"></div>
+<div class="fp p14" style="position:absolute;bottom:6%;left:78%;width:8px;height:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(244,63,94,0.65),rgba(244,63,94,0.15));
+  box-shadow:0 0 10px rgba(244,63,94,0.4);pointer-events:none"></div>
+<div class="fp p15" style="position:absolute;bottom:28%;left:5%;width:5px;height:5px;border-radius:50%;
+  background:radial-gradient(circle,rgba(139,92,246,0.8),rgba(139,92,246,0.2));
+  box-shadow:0 0 9px rgba(139,92,246,0.5);pointer-events:none"></div>
 
-<!-- JS (GSAP) — 入场 + 持续漂浮 -->
+<!-- JS (GSAP) -->
 <script>
-// 入场：淡入
-// tl.from('#sN .fp', {opacity: 0, scale: 0, duration: 0.4, stagger: 0.05, ease: 'back.out(1.7)'}, sceneStart)
-// 持续：每个粒子独立漂浮
-// tl.to('#sN .p1', {y: -60, x: 20, duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart)
-// tl.to('#sN .p2', {y: -80, x: -15, duration: 8, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 0.5)
-// tl.to('#sN .p3', {y: -50, x: 25, duration: 5, repeat: -1, yoyo: true, ease: 'sine.inOut'}, sceneStart + 1)
-// ... 每个粒子不同方向和速度
+// Step 1: Entry — stagger pop-in with back.out overshoot
+tl.from('.fp', {opacity:0, scale:0, duration:0.5, stagger:0.06, ease:'back.out(1.8)'}, startTime)
+  // Step 2: Continuous drift — each particle unique direction/speed/phase
+  .to('.p1',  {y:-80, x:30,  duration:8,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.6)
+  .to('.p2',  {y:-100,x:-25, duration:9,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.7)
+  .to('.p3',  {y:-65, x:35,  duration:7,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.4)
+  .to('.p4',  {y:-90, x:-18, duration:8,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.8)
+  .to('.p5',  {y:-50, x:22,  duration:10, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.5)
+  .to('.p6',  {y:-95, x:28,  duration:7.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.9)
+  .to('.p7',  {y:-75, x:-30, duration:8.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.3)
+  .to('.p8',  {y:-85, x:15,  duration:6.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.0)
+  .to('.p9',  {y:-60, x:-22, duration:7.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.45)
+  .to('.p10', {y:-70, x:32,  duration:9.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.6)
+  .to('.p11', {y:-105,x:-26, duration:6,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.75)
+  .to('.p12', {y:-40, x:18,  duration:11, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.55)
+  .to('.p13', {y:-80, x:-12, duration:8,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.85)
+  .to('.p14', {y:-65, x:24,  duration:7,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.35)
+  .to('.p15', {y:-90, x:-32, duration:9,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.95)
+  .to('.p16', {y:-55, x:20,  duration:8,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.5)
+  // Step 3: Scale breathing — all particles gentle pulse (larger = more amplitude)
+  .to('.p1',  {scale:1.2, duration:4,   repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.6)
+  .to('.p5',  {scale:1.25,duration:4.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.8)
+  .to('.p10', {scale:1.3, duration:3.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.5)
+  .to('.p12', {scale:1.15,duration:5,   repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.7)
+  .to('.p16', {scale:1.2, duration:4.2, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.9)
+  // Step 4: Opacity twinkle — select particles shimmer
+  .to('.p2',  {opacity:0.4, duration:2,  repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.2)
+  .to('.p4',  {opacity:0.5, duration:2.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.4)
+  .to('.p8',  {opacity:0.3, duration:1.8,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.6)
+  .to('.p11', {opacity:0.4, duration:2.2,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.3)
+  .to('.p15', {opacity:0.5, duration:1.5,repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.5)
+  // Step 5: Glow expansion on select particles (box-shadow pulse)
+  .fromTo('.p1',
+    {boxShadow:'0 0 20px rgba(139,92,246,0.35)'},
+    {boxShadow:'0 0 35px rgba(139,92,246,0.55), 0 0 60px rgba(139,92,246,0.15)', duration:3, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.0)
+  .fromTo('.p5',
+    {boxShadow:'0 0 24px rgba(6,182,212,0.3)'},
+    {boxShadow:'0 0 40px rgba(6,182,212,0.5), 0 0 70px rgba(6,182,212,0.12)', duration:3.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.2);
 </script>
