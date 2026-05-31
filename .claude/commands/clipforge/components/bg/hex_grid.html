@@ -1,0 +1,57 @@
+<!--
+@ComponentMeta
+name: hex_grid
+layer: bg
+tags: [hexagon, grid, honeycomb, emerald, tech, pattern, pulse, glass]
+emotion_range: [confidence, precision, tech]
+visual_density: high
+complexity: css-only
+description: SVG 六边形蜂窝网格纹理 + 翡翠绿中心辉光 + 副辉光 + 网格脉冲呼吸 + 毛玻璃折射 + 棱镜色散
+parameters:
+  grid_scale: { default: 1.4, range: [1.0, 2.0], description: "网格缩放倍率" }
+  glow_color: { default: "hsla(150,80%,50%,0.22)", description: "中心辉光颜色" }
+  pulse_period: { default: 7, range: [5, 12] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes hexPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 翡翠黑底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(160,20%,4%),hsl(170,15%,8%),hsl(160,20%,4%))"></div>
+<!-- 六边形网格 SVG -->
+<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.55" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="hexPat" width="56" height="100" patternUnits="userSpaceOnUse" patternTransform="scale(1.4)">
+      <path d="M28 0 L56 16.7 L56 50 L28 66.7 L0 50 L0 16.7 Z" fill="none" stroke="hsla(155,70%,45%,0.12)" stroke-width="0.8"/>
+      <path d="M28 33.3 L56 50 L56 83.3 L28 100 L0 83.3 L0 50 Z" fill="none" stroke="hsla(155,70%,45%,0.12)" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#hexPat)"/>
+</svg>
+<!-- 网格脉冲叠加 -->
+<div style="position:absolute;inset:0;background:rgba(0,0,0,0);animation:hexPulse 7s ease-in-out infinite"></div>
+<!-- 中心翡翠辉光 -->
+<div style="position:absolute;top:30%;left:25%;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,hsla(150,80%,50%,0.22),hsla(155,60%,40%,0.08),transparent 70%);
+  filter:blur(100px)"></div>
+<!-- 副辉光 -->
+<div style="position:absolute;top:60%;left:55%;width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,hsla(140,60%,45%,0.10),transparent 70%);
+  filter:blur(80px)"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(120deg,rgba(255,255,255,0.015) 0%,transparent 30%,transparent 70%,rgba(255,255,255,0.02) 100%);
+  animation:glassShimmer 8s ease-in-out infinite"></div>
+<!-- 棱镜色散 -->
+<div style="position:absolute;top:50%;right:-8%;width:50%;height:200px;opacity:0.15;
+  background:linear-gradient(90deg,hsla(120,60%,50%,0.5),hsla(160,50%,45%,0.4),hsla(200,60%,50%,0.5));
+  filter:blur(70px);border-radius:50%"></div>

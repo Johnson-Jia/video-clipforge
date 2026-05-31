@@ -1,0 +1,51 @@
+<!--
+@ComponentMeta
+name: diamond_lattice
+layer: bg
+tags: [diamond, lattice, grid, 45deg, gold, elegant, diagonal, drift, glass]
+emotion_range: [pride, confidence, elegance]
+visual_density: medium
+complexity: css-only
+description: 45° 金色菱形网格（+45°/-45° 交叉线）+ 对角线漂移动画 + 中心金色辉光 + 副辉光 + 暖色玻璃折射 + 棱镜色散
+parameters:
+  grid_spacing: { default: 60, range: [40, 80], description: "网格间距(px)" }
+  gold_intensity: { default: 0.055, range: [0.03, 0.10], description: "网格线透明度" }
+  drift_period: { default: 24, range: [18, 35] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes latticeDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 30px); }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 暖金黑底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(135deg,hsl(40,20%,4%),hsl(30,15%,7%))"></div>
+<!-- 菱形网格（45° + -45° 交叉线） -->
+<div style="position:absolute;inset:0;animation:latticeDrift 24s ease-in-out infinite;
+  background-image:
+    repeating-linear-gradient(45deg,transparent,transparent 59px,hsla(40,70%,55%,0.055) 59px,hsla(40,70%,55%,0.055) 60px),
+    repeating-linear-gradient(-45deg,transparent,transparent 59px,hsla(40,70%,55%,0.055) 59px,hsla(40,70%,55%,0.055) 60px);
+  background-size:85px 85px"></div>
+<!-- 中心金色辉光 -->
+<div style="position:absolute;top:30%;left:25%;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,hsla(38,80%,50%,0.20),hsla(35,60%,40%,0.08),transparent 70%);
+  filter:blur(90px)"></div>
+<!-- 副辉光 -->
+<div style="position:absolute;top:60%;left:50%;width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,hsla(42,65%,48%,0.10),transparent 70%);
+  filter:blur(70px)"></div>
+<!-- 暖色玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,220,150,0.02) 0%,transparent 40%,rgba(255,200,120,0.025) 60%,transparent 100%);
+  animation:glassShimmer 8s ease-in-out infinite"></div>
+<!-- 棱镜色散 -->
+<div style="position:absolute;bottom:15%;left:-10%;width:120%;height:160px;opacity:0.15;
+  background:linear-gradient(90deg,transparent,hsla(40,60%,50%,0.4),hsla(25,50%,45%,0.3),hsla(50,70%,55%,0.4),transparent);
+  filter:blur(60px)"></div>

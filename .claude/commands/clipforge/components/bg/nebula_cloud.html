@@ -1,0 +1,71 @@
+<!--
+@ComponentMeta
+name: nebula_cloud
+layer: bg
+tags: [nebula, cloud, cosmic, deep-space, drift, stars, twinkle, glass]
+emotion_range: [wonder, mystery, beauty]
+visual_density: medium
+complexity: css-only
+description: 3 团星云色团漂移（紫/暗红/深蓝）+ 8 颗闪烁星点 + 毛玻璃折射 + 棱镜色散
+parameters:
+  nebula_count: { default: 3, range: [2, 4] }
+  drift_period: { default: 24, range: [18, 35] }
+  star_count: { default: 8, range: [6, 12] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes orbDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -40px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(15px, 35px) scale(1.02); }
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.55; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 深紫黑底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(160deg,hsl(260,25%,4%),hsl(240,20%,7%),hsl(255,22%,5%))"></div>
+<!-- 星云 1：深紫 -->
+<div style="position:absolute;top:15%;left:10%;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,hsla(280,60%,35%,0.16),hsla(270,45%,25%,0.06),transparent 70%);
+  filter:blur(100px);animation:orbDrift 24s ease-in-out infinite 0s"></div>
+<!-- 星云 2：暗红 -->
+<div style="position:absolute;top:45%;left:45%;width:420px;height:420px;border-radius:50%;
+  background:radial-gradient(circle,hsla(350,50%,30%,0.13),hsla(340,40%,22%,0.04),transparent 70%);
+  filter:blur(90px);animation:orbDrift 28s ease-in-out infinite 6s"></div>
+<!-- 星云 3：深蓝 -->
+<div style="position:absolute;top:60%;left:5%;width:350px;height:350px;border-radius:50%;
+  background:radial-gradient(circle,hsla(220,55%,35%,0.11),hsla(230,40%,25%,0.04),transparent 70%);
+  filter:blur(85px);animation:orbDrift 22s ease-in-out infinite 12s"></div>
+<!-- 星点 1 -->
+<div style="position:absolute;top:12%;left:65%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.40;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 4s ease-in-out infinite 0s"></div>
+<!-- 星点 2 -->
+<div style="position:absolute;top:28%;left:25%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.35;box-shadow:0 0 5px rgba(255,255,255,0.4);animation:starTwinkle 5s ease-in-out infinite 1.5s"></div>
+<!-- 星点 3 -->
+<div style="position:absolute;top:42%;left:78%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.45;box-shadow:0 0 7px rgba(255,255,255,0.5);animation:starTwinkle 3.5s ease-in-out infinite 3s"></div>
+<!-- 星点 4 -->
+<div style="position:absolute;top:55%;left:40%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.30;box-shadow:0 0 4px rgba(255,255,255,0.35);animation:starTwinkle 6s ease-in-out infinite 2s"></div>
+<!-- 星点 5 -->
+<div style="position:absolute;top:70%;left:60%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.38;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 4.5s ease-in-out infinite 4s"></div>
+<!-- 星点 6 -->
+<div style="position:absolute;top:82%;left:18%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.42;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 5.5s ease-in-out infinite 1s"></div>
+<!-- 星点 7 -->
+<div style="position:absolute;top:35%;left:52%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.32;box-shadow:0 0 4px rgba(255,255,255,0.4);animation:starTwinkle 4s ease-in-out infinite 5s"></div>
+<!-- 星点 8 -->
+<div style="position:absolute;top:8%;left:42%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.36;box-shadow:0 0 5px rgba(255,255,255,0.4);animation:starTwinkle 3s ease-in-out infinite 2.5s"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.015) 0%,transparent 35%,transparent 65%,rgba(255,255,255,0.02) 100%);
+  animation:glassShimmer 10s ease-in-out infinite"></div>
+<!-- 棱镜色散 -->
+<div style="position:absolute;top:20%;right:-5%;width:40%;height:250px;opacity:0.15;
+  background:linear-gradient(180deg,rgba(255,80,180,0.4),rgba(80,120,255,0.3),rgba(180,80,255,0.4));
+  filter:blur(80px);border-radius:50%"></div>

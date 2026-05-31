@@ -1,0 +1,100 @@
+<!--
+@ComponentMeta
+name: aurora_flow
+layer: bg
+tags: [aurora, flow, horizontal, color-bands, northern-lights, atmospheric, glass, rays]
+emotion_range: [wonder, beauty, calm, curiosity]
+visual_density: medium
+complexity: css-only
+description: 3-4 条水平流动极光色带（绿/青/紫）+ 顶部光源 + 竖直射线丝 + 射线亮点闪烁 + 毛玻璃折射 + 棱镜色散，模拟北极光帘幕结构
+parameters:
+  band_count: { default: 4, range: [3, 5] }
+  ray_count: { default: 7, range: [5, 10] }
+  flow_period: { default: 22, range: [18, 30] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes auroraFlow {
+  0%, 100% { transform: translateX(-8%) scaleY(1); }
+  50% { transform: translateX(8%) scaleY(1.12); }
+}
+@keyframes auroraCurtain {
+  0%, 100% { transform: scaleY(1) translateY(0); opacity: 0.5; }
+  50% { transform: scaleY(1.15) translateY(-10px); opacity: 0.8; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.55; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 深青黑底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(200,30%,5%),hsl(180,25%,8%))"></div>
+<!-- 极光色带 1：翡翠绿 -->
+<div style="position:absolute;top:15%;left:-10%;width:120%;height:180px;
+  background:linear-gradient(90deg,transparent 5%,hsla(150,70%,45%,0.18),hsla(160,55%,40%,0.12),transparent 95%);
+  filter:blur(45px);animation:auroraFlow 22s ease-in-out infinite 0s"></div>
+<!-- 极光色带 2：青色 -->
+<div style="position:absolute;top:35%;left:-10%;width:120%;height:150px;
+  background:linear-gradient(90deg,transparent 10%,hsla(180,60%,50%,0.16),hsla(170,50%,45%,0.10),transparent 90%);
+  filter:blur(50px);animation:auroraFlow 26s ease-in-out infinite 4s"></div>
+<!-- 极光色带 3：紫色 -->
+<div style="position:absolute;top:55%;left:-10%;width:120%;height:160px;
+  background:linear-gradient(90deg,transparent 8%,hsla(280,50%,50%,0.16),hsla(260,45%,40%,0.10),transparent 92%);
+  filter:blur(55px);animation:auroraFlow 20s ease-in-out infinite 8s"></div>
+<!-- 极光色带 4：翡翠薄纱 -->
+<div style="position:absolute;top:72%;left:-10%;width:120%;height:120px;
+  background:linear-gradient(90deg,transparent 15%,hsla(155,60%,42%,0.15),transparent 85%);
+  filter:blur(40px);animation:auroraFlow 28s ease-in-out infinite 12s"></div>
+<!-- 顶部极光光源 -->
+<div style="position:absolute;top:-15%;left:15%;width:70%;height:250px;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 100%,hsla(155,65%,45%,0.18),hsla(170,50%,40%,0.08),transparent 70%);
+  filter:blur(60px);animation:auroraCurtain 14s ease-in-out infinite"></div>
+<!-- 竖直射线丝 1 -->
+<div style="position:absolute;top:0;left:20%;width:2px;height:65%;
+  background:linear-gradient(180deg,hsla(155,70%,55%,0.25),hsla(155,60%,48%,0.08) 40%,transparent 100%);
+  filter:blur(1px);animation:auroraCurtain 8s ease-in-out infinite 0s"></div>
+<!-- 竖直射线丝 2 -->
+<div style="position:absolute;top:0;left:28%;width:1.5px;height:55%;
+  background:linear-gradient(180deg,hsla(160,65%,50%,0.20),hsla(160,55%,45%,0.06) 45%,transparent 100%);
+  filter:blur(1px);animation:auroraCurtain 9s ease-in-out infinite 1s"></div>
+<!-- 竖直射线丝 3 -->
+<div style="position:absolute;top:0;left:38%;width:2.5px;height:70%;
+  background:linear-gradient(180deg,hsla(170,70%,52%,0.28),hsla(170,60%,45%,0.10) 35%,transparent 100%);
+  filter:blur(1.5px);animation:auroraCurtain 7s ease-in-out infinite 2s"></div>
+<!-- 竖直射线丝 4 -->
+<div style="position:absolute;top:0;left:50%;width:2px;height:60%;
+  background:linear-gradient(180deg,hsla(180,65%,50%,0.22),hsla(180,55%,42%,0.07) 40%,transparent 100%);
+  filter:blur(1px);animation:auroraCurtain 10s ease-in-out infinite 3s"></div>
+<!-- 竖直射线丝 5 -->
+<div style="position:absolute;top:0;left:60%;width:1.5px;height:50%;
+  background:linear-gradient(180deg,hsla(175,60%,48%,0.18),hsla(175,50%,40%,0.05) 45%,transparent 100%);
+  filter:blur(1px);animation:auroraCurtain 8.5s ease-in-out infinite 4s"></div>
+<!-- 竖直射线丝 6 -->
+<div style="position:absolute;top:0;left:72%;width:2px;height:58%;
+  background:linear-gradient(180deg,hsla(270,55%,50%,0.20),hsla(270,45%,42%,0.06) 40%,transparent 100%);
+  filter:blur(1px);animation:auroraCurtain 9.5s ease-in-out infinite 5s"></div>
+<!-- 竖直射线丝 7 -->
+<div style="position:absolute;top:0;left:82%;width:1.5px;height:45%;
+  background:linear-gradient(180deg,hsla(280,50%,48%,0.16),hsla(280,40%,38%,0.05) 50%,transparent 100%);
+  filter:blur(1px);animation:auroraCurtain 11s ease-in-out infinite 6s"></div>
+<!-- 射线亮点闪烁 -->
+<div style="position:absolute;top:18%;left:37%;width:5px;height:5px;border-radius:50%;
+  background:hsla(165,70%,60%,0.4);box-shadow:0 0 12px hsla(165,70%,55%,0.5);animation:starTwinkle 3s ease-in-out infinite 0s"></div>
+<div style="position:absolute;top:30%;left:50%;width:4px;height:4px;border-radius:50%;
+  background:hsla(180,65%,58%,0.35);box-shadow:0 0 10px hsla(180,65%,50%,0.4);animation:starTwinkle 4s ease-in-out infinite 1.5s"></div>
+<div style="position:absolute;top:12%;left:72%;width:4px;height:4px;border-radius:50%;
+  background:hsla(270,55%,55%,0.35);box-shadow:0 0 10px hsla(270,55%,48%,0.4);animation:starTwinkle 3.5s ease-in-out infinite 3s"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 40%,rgba(255,255,255,0.03) 60%,transparent 100%);
+  animation:glassShimmer 9s ease-in-out infinite"></div>
+<!-- 棱镜色散 -->
+<div style="position:absolute;bottom:10%;left:-10%;width:120%;height:160px;opacity:0.15;
+  background:linear-gradient(90deg,transparent,hsla(150,60%,50%,0.4),hsla(180,50%,45%,0.3),hsla(280,40%,45%,0.4),transparent);
+  filter:blur(60px)"></div>

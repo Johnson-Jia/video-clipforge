@@ -32,6 +32,13 @@
 | 6 | ScanGrid | 网格 + 移动扫描线 | tech, cyber, futuristic | `components/bg/scan_grid.html` |
 | 7 | VignetteGlow | 暗角聚光 + 中心辉光 | warmth, focus, conclusion | `components/bg/vignette_glow.html` |
 | 8 | WaveRipple | 同心波纹扩散 | calm, transition, mystery | `components/bg/wave_ripple.html` |
+| 9 | AuroraFlow | 水平极光色带 + 竖直射线丝 + 闪烁亮点 | wonder, beauty, curiosity | `components/bg/aurora_flow.html` |
+| 10 | HexGrid | SVG 六边形蜂窝网格 + 翡翠绿辉光 + 脉冲 | confidence, precision, tech | `components/bg/hex_grid.html` |
+| 11 | NebulaCloud | 星云色团漂移 + 星点闪烁 | wonder, mystery, beauty | `components/bg/nebula_cloud.html` |
+| 12 | EmberGlow | 琥珀/橙色余烬上浮 + 火星粒子 + 暖纹 | warmth, nostalgia, beauty | `components/bg/ember_glow.html` |
+| 13 | DiamondLattice | 45° 金色菱形网格 + 对角漂移 + 金色辉光 | pride, confidence, elegance | `components/bg/diamond_lattice.html` |
+| 14 | ElectricPulse | 旋转光弧 + 脉冲环 + 青白能量核心 | excitement, power, climax | `components/bg/electric_pulse.html` |
+| 15 | CosmicPlanet | 地球（海洋/大陆/云层/冰盖/城市灯光）+ 星空 | wonder, epic, mystery | `components/bg/cosmic_planet.html` |
 
 ### 特效层 (fx/)
 
@@ -367,6 +374,494 @@ for (let i = 0; i < count; i++) {
 ```
 
 **参数：** 竖线宽度 2-3px / 长度 150-400px / 默认 opacity 0.40-0.60 / box-shadow 发光 / 周期 12-20s
+
+---
+
+### 通用背景动画 keyframes
+
+> 以下 keyframes 被 6 个增强背景组件和新 7 个背景共享，使用前需写入 `<style>`。
+
+```css
+/* 漂浮粒子 — 背景装饰粒子上下漂移 */
+@keyframes floatParticle {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
+  50% { transform: translateY(-50px) translateX(8px); opacity: 0.7; }
+}
+/* 辉光脉冲 — 中心辉光缩放+透明度呼吸 */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+/* 光带呼吸 — 对角线/竖线透明度脉冲 */
+@keyframes beamBreath {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+/* 闪烁点 — 小圆点闪烁 */
+@keyframes starDot {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+/* 毛玻璃折射 — 微妙的光泽移动效果 */
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+/* 棱镜色散呼吸 — 色散带透明度呼吸 */
+@keyframes prismShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.18; }
+}
+/* 噪点微移 — SVG 噪点纹理微小位移 */
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-8px, 6px); }
+  100% { transform: translate(0, 0); }
+}
+/* 尘埃浮沉 — 暗色场景微粒缓慢上浮 */
+@keyframes dustFloat {
+  0%, 100% { transform: translateY(0); opacity: 0.25; }
+  50% { transform: translateY(-30px); opacity: 0.45; }
+}
+/* 暖色扩散环 — 从中心向外扩散渐隐 */
+@keyframes warmRing {
+  0% { transform: scale(0.9); opacity: 0.15; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+/* 光晕扫描 — 水平光带缓慢横移 */
+@keyframes lightStreak {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+/* 等高线漂移 — 副层等高线中心微移 */
+@keyframes contourShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 3% 48%; }
+}
+/* 等高线脉冲 — 主层等高线透明度呼吸 */
+@keyframes contourPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.9; }
+}
+/* 光斑漂移 — 大型模糊光斑缓慢位移+缩放 */
+@keyframes noiseDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -30px) scale(1.08); }
+  66% { transform: translate(-25px, 35px) scale(0.94); }
+}
+/* 光束旋转 — 径向光束360度旋转 */
+@keyframes beamRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* 扫描线 — 水平线从上到下移动 */
+@keyframes scanLine {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+/* 网格脉冲 — 网格透明度呼吸 */
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+/* 暗角脉冲 — 中心微光透明度呼吸 */
+@keyframes vignettePulse {
+  0%, 100% { opacity: 0.10; }
+  50% { opacity: 0.16; }
+}
+/* 暖光呼吸 — 中心暖辉光缩放+透明度呼吸 */
+@keyframes warmBreath {
+  0%, 100% { transform: scale(1); opacity: 0.10; }
+  50% { transform: scale(1.06); opacity: 0.18; }
+}
+/* 波纹扩散 — 同心圆环扩大渐隐 */
+@keyframes rippleExpand {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+/* 波纹呼吸 — 同心波纹图案透明度呼吸 */
+@keyframes rippleBreath {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+```
+
+---
+
+### AuroraFlow（极光流动）
+
+4 条水平极光色带（绿/青/紫）缓慢流动 + 竖直射线丝 + 顶部光源 + 闪烁亮点。色带默认居中可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes auroraFlow {
+  0%, 100% { transform: translateX(-8%) scaleY(1); }
+  50% { transform: translateX(8%) scaleY(1.12); }
+}
+@keyframes auroraCurtain {
+  0%, 100% { transform: scaleY(1) translateY(0); opacity: 0.5; }
+  50% { transform: scaleY(1.15) translateY(-10px); opacity: 0.8; }
+}
+```
+
+**HTML 模板（色带 + 射线 + 亮点 + 玻璃折射 + 棱镜色散）：**
+
+```html
+<div class="layer-bg">
+  <!-- 深青黑底 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(200,30%,5%),hsl(180,25%,8%))"></div>
+  <!-- 极光色带 -->
+  <div style="position:absolute;top:15%;left:-10%;width:120%;height:180px;
+    background:linear-gradient(90deg,transparent 5%,hsla(150,70%,45%,0.18),hsla(160,55%,40%,0.12),transparent 95%);
+    filter:blur(45px);animation:auroraFlow 22s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:35%;left:-10%;width:120%;height:150px;
+    background:linear-gradient(90deg,transparent 10%,hsla(180,60%,50%,0.16),hsla(170,50%,45%,0.10),transparent 90%);
+    filter:blur(50px);animation:auroraFlow 26s ease-in-out infinite 4s"></div>
+  <div style="position:absolute;top:55%;left:-10%;width:120%;height:160px;
+    background:linear-gradient(90deg,transparent 8%,hsla(280,50%,50%,0.16),hsla(260,45%,40%,0.10),transparent 92%);
+    filter:blur(55px);animation:auroraFlow 20s ease-in-out infinite 8s"></div>
+  <!-- 顶部光源 -->
+  <div style="position:absolute;top:-15%;left:15%;width:70%;height:250px;border-radius:50%;
+    background:radial-gradient(ellipse at 50% 100%,hsla(155,65%,45%,0.18),hsla(170,50%,40%,0.08),transparent 70%);
+    filter:blur(60px);animation:auroraCurtain 14s ease-in-out infinite"></div>
+  <!-- 竖直射线丝 -->
+  <div style="position:absolute;top:0;left:38%;width:2.5px;height:70%;
+    background:linear-gradient(180deg,hsla(170,70%,52%,0.28),hsla(170,60%,45%,0.10) 35%,transparent 100%);
+    filter:blur(1.5px);animation:auroraCurtain 7s ease-in-out infinite 2s"></div>
+  <!-- 射线亮点 -->
+  <div style="position:absolute;top:18%;left:37%;width:5px;height:5px;border-radius:50%;
+    background:hsla(165,70%,60%,0.4);box-shadow:0 0 12px hsla(165,70%,55%,0.5);animation:starTwinkle 3s ease-in-out infinite"></div>
+  <!-- 玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 40%,rgba(255,255,255,0.03) 60%,transparent 100%);
+    animation:glassShimmer 9s ease-in-out infinite"></div>
+</div>
+```
+
+**参数：** 色带 3-4 条 / blur 40-55px / 周期 18-30s / 射线 5-7 条 / 射线高度 45%-70%
+
+---
+
+### HexGrid（蜂窝网格）
+
+SVG 六边形蜂窝网格 + 翡翠绿辉光 + 脉冲呼吸。网格默认可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes hexPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+```
+
+**HTML 模板（SVG 网格 + 辉光 + 玻璃折射 + 棱镜色散）：**
+
+```html
+<div class="layer-bg">
+  <!-- 翡翠黑底 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(160,20%,4%),hsl(170,15%,8%),hsl(160,20%,4%))"></div>
+  <!-- 六边形网格 SVG -->
+  <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.55" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="hexPat" width="56" height="100" patternUnits="userSpaceOnUse" patternTransform="scale(1.4)">
+        <path d="M28 0 L56 16.7 L56 50 L28 66.7 L0 50 L0 16.7 Z" fill="none" stroke="hsla(155,70%,45%,0.12)" stroke-width="0.8"/>
+        <path d="M28 33.3 L56 50 L56 83.3 L28 100 L0 83.3 L0 50 Z" fill="none" stroke="hsla(155,70%,45%,0.12)" stroke-width="0.8"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#hexPat)"/>
+  </svg>
+  <!-- 网格脉冲 -->
+  <div style="position:absolute;inset:0;animation:hexPulse 7s ease-in-out infinite"></div>
+  <!-- 中心翡翠辉光 -->
+  <div style="position:absolute;top:30%;left:25%;width:500px;height:500px;border-radius:50%;
+    background:radial-gradient(circle,hsla(150,80%,50%,0.22),hsla(155,60%,40%,0.08),transparent 70%);
+    filter:blur(100px)"></div>
+  <!-- 玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(120deg,rgba(255,255,255,0.015) 0%,transparent 30%,transparent 70%,rgba(255,255,255,0.02) 100%);
+    animation:glassShimmer 8s ease-in-out infinite"></div>
+</div>
+```
+
+**参数：** 网格缩放 1.0-2.0 / 辉光尺寸 300-500px / 脉冲周期 5-12s
+
+---
+
+### NebulaCloud（星云宇宙）
+
+3 团星云色团漂移 + 8 颗闪烁星点。色团默认居中可见。
+
+**CSS keyframes（全局）：** 复用 `orbDrift`（见 LightField）+ `starTwinkle`（见 StarBurst）
+
+**HTML 模板（色团 + 星点 + 玻璃折射 + 棱镜色散）：**
+
+```html
+<div class="layer-bg">
+  <!-- 深紫黑底 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(160deg,hsl(260,25%,4%),hsl(240,20%,7%),hsl(255,22%,5%))"></div>
+  <!-- 星云 1：深紫 -->
+  <div style="position:absolute;top:15%;left:10%;width:500px;height:500px;border-radius:50%;
+    background:radial-gradient(circle,hsla(280,60%,35%,0.16),hsla(270,45%,25%,0.06),transparent 70%);
+    filter:blur(100px);animation:orbDrift 24s ease-in-out infinite 0s"></div>
+  <!-- 星云 2：暗红 -->
+  <div style="position:absolute;top:45%;left:45%;width:420px;height:420px;border-radius:50%;
+    background:radial-gradient(circle,hsla(350,50%,30%,0.13),hsla(340,40%,22%,0.04),transparent 70%);
+    filter:blur(90px);animation:orbDrift 28s ease-in-out infinite 6s"></div>
+  <!-- 星云 3：深蓝 -->
+  <div style="position:absolute;top:60%;left:5%;width:350px;height:350px;border-radius:50%;
+    background:radial-gradient(circle,hsla(220,55%,35%,0.11),hsla(230,40%,25%,0.04),transparent 70%);
+    filter:blur(85px);animation:orbDrift 22s ease-in-out infinite 12s"></div>
+  <!-- 星点（6-8 颗） -->
+  <div style="position:absolute;top:12%;left:65%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.40;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 4s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:42%;left:78%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.45;box-shadow:0 0 7px rgba(255,255,255,0.5);animation:starTwinkle 3.5s ease-in-out infinite 3s"></div>
+  <!-- 玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.015) 0%,transparent 35%,transparent 65%,rgba(255,255,255,0.02) 100%);
+    animation:glassShimmer 10s ease-in-out infinite"></div>
+</div>
+```
+
+**参数：** 色团 2-4 个 / blur 85-100px / 漂移周期 18-35s / 星点 6-12 颗
+
+---
+
+### EmberGlow（余烬暖光）
+
+3 团余烬辉光上浮 + 漂浮火星粒子 + 对角暖光带 + 水平余烬纹。辉光默认底部可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes emberRise {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.16; }
+  50% { transform: translateY(-40px) scale(1.08); opacity: 0.24; }
+}
+@keyframes emberFloat {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.5; }
+  50% { transform: translateY(-60px) translateX(10px); opacity: 0.8; }
+}
+@keyframes warmShift {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.18; }
+}
+```
+
+**HTML 模板（辉光 + 粒子 + 暖纹 + 暗角）：**
+
+```html
+<div class="layer-bg">
+  <!-- 暖棕黑底 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(25,30%,4%),hsl(15,25%,7%))"></div>
+  <!-- 余烬辉光 -->
+  <div style="position:absolute;top:55%;left:15%;width:450px;height:450px;border-radius:50%;
+    background:radial-gradient(circle,hsla(30,80%,50%,0.17),hsla(25,60%,40%,0.06),transparent 70%);
+    filter:blur(100px);animation:emberRise 22s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:65%;left:50%;width:380px;height:380px;border-radius:50%;
+    background:radial-gradient(circle,hsla(15,70%,45%,0.13),hsla(10,50%,35%,0.04),transparent 70%);
+    filter:blur(85px);animation:emberRise 26s ease-in-out infinite 5s"></div>
+  <!-- 对角暖光带 -->
+  <div style="position:absolute;top:20%;left:-20%;width:140%;height:250px;
+    background:linear-gradient(100deg,transparent 20%,hsla(30,70%,50%,0.06),hsla(20,60%,45%,0.04),transparent 80%);
+    filter:blur(60px);transform:rotate(-8deg);animation:warmShift 12s ease-in-out infinite"></div>
+  <!-- 漂浮火星粒子（3-5 颗） -->
+  <div style="position:absolute;top:50%;left:20%;width:4px;height:4px;border-radius:50%;background:hsla(35,90%,65%,0.6);box-shadow:0 0 8px hsla(35,80%,55%,0.5);animation:emberFloat 6s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:45%;left:70%;width:3px;height:3px;border-radius:50%;background:hsla(40,80%,60%,0.55);box-shadow:0 0 7px hsla(40,70%,50%,0.45);animation:emberFloat 5s ease-in-out infinite 4s"></div>
+  <!-- 水平余烬纹 -->
+  <div style="position:absolute;top:58%;left:-5%;width:110%;height:3px;
+    background:linear-gradient(90deg,transparent 10%,hsla(30,80%,55%,0.18) 40%,hsla(35,70%,50%,0.15) 60%,transparent 90%);
+    filter:blur(2px)"></div>
+  <!-- 暖色玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,200,100,0.02) 0%,transparent 40%,rgba(255,180,80,0.025) 60%,transparent 100%);
+    animation:glassShimmer 9s ease-in-out infinite"></div>
+  <!-- 暖色暗角 -->
+  <div style="position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 55%,transparent 35%,hsla(15,30%,3%,0.55) 100%)"></div>
+</div>
+```
+
+**参数：** 辉光 2-4 个 / 粒子 3-8 颗 / 上浮周期 18-30s / 粒子周期 5-8s
+
+---
+
+### DiamondLattice（菱形网格）
+
+45° 金色菱形网格 + 对角漂移 + 金色辉光。网格默认居中可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes latticeDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 30px); }
+}
+```
+
+**HTML 模板（菱形网格 + 辉光 + 玻璃折射 + 棱镜色散）：**
+
+```html
+<div class="layer-bg">
+  <!-- 暖金黑底 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(135deg,hsl(40,20%,4%),hsl(30,15%,7%))"></div>
+  <!-- 菱形网格（45° + -45° 交叉线） -->
+  <div style="position:absolute;inset:0;animation:latticeDrift 24s ease-in-out infinite;
+    background-image:
+      repeating-linear-gradient(45deg,transparent,transparent 59px,hsla(40,70%,55%,0.055) 59px,hsla(40,70%,55%,0.055) 60px),
+      repeating-linear-gradient(-45deg,transparent,transparent 59px,hsla(40,70%,55%,0.055) 59px,hsla(40,70%,55%,0.055) 60px);
+    background-size:85px 85px"></div>
+  <!-- 中心金色辉光 -->
+  <div style="position:absolute;top:30%;left:25%;width:500px;height:500px;border-radius:50%;
+    background:radial-gradient(circle,hsla(38,80%,50%,0.20),hsla(35,60%,40%,0.08),transparent 70%);
+    filter:blur(90px)"></div>
+  <!-- 暖色玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,220,150,0.02) 0%,transparent 40%,rgba(255,200,120,0.025) 60%,transparent 100%);
+    animation:glassShimmer 8s ease-in-out infinite"></div>
+</div>
+```
+
+**参数：** 网格间距 40-80px / 线透明度 0.03-0.10 / 漂移周期 18-35s
+
+---
+
+### ElectricPulse（电脉冲）
+
+旋转锥形光弧 + 能量核心 + 脉冲环扩散 + 暗角聚焦。核心默认可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes arcRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes pulseExpand {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes coreBreathe {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50% { opacity: 0.38; transform: scale(1.08); }
+}
+```
+
+**HTML 模板（光弧 + 核心 + 脉冲环 + 暗角 + 玻璃折射）：**
+
+```html
+<div class="layer-bg">
+  <!-- 深蓝黑底 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(160deg,hsl(220,25%,3%),hsl(200,20%,6%))"></div>
+  <!-- 旋转锥形光弧 -->
+  <div style="position:absolute;top:0;left:0;width:200%;height:200%;transform-origin:25% 17.5%;animation:arcRotate 45s linear infinite;
+    background:conic-gradient(from 0deg,
+      transparent 0deg,hsla(180,70%,50%,0.07) 25deg,transparent 50deg,
+      transparent 90deg,hsla(185,65%,48%,0.05) 115deg,transparent 140deg,
+      transparent 180deg,hsla(175,70%,50%,0.06) 205deg,transparent 230deg,
+      transparent 270deg,hsla(190,60%,45%,0.04) 295deg,transparent 320deg)"></div>
+  <!-- 能量核心 -->
+  <div style="position:absolute;top:25%;left:25%;width:500px;height:500px;border-radius:50%;
+    background:radial-gradient(circle,hsla(185,90%,60%,0.30),hsla(190,70%,45%,0.10),transparent 50%);
+    filter:blur(60px);animation:coreBreathe 5s ease-in-out infinite"></div>
+  <!-- 脉冲环（3 层，交错延迟） -->
+  <div style="position:absolute;top:calc(35% - 80px);left:calc(35% - 80px);width:160px;height:160px;border-radius:50%;
+    border:2px solid hsla(190,80%,55%,0.18);animation:pulseExpand 4s ease-out infinite 0s"></div>
+  <div style="position:absolute;top:calc(35% - 80px);left:calc(35% - 80px);width:160px;height:160px;border-radius:50%;
+    border:1.5px solid hsla(190,70%,50%,0.14);animation:pulseExpand 4s ease-out infinite 1.5s"></div>
+  <div style="position:absolute;top:calc(35% - 80px);left:calc(35% - 80px);width:160px;height:160px;border-radius:50%;
+    border:1px solid hsla(185,65%,48%,0.10);animation:pulseExpand 4s ease-out infinite 3s"></div>
+  <!-- 暗角聚焦 -->
+  <div style="position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 45%,transparent 25%,hsla(220,30%,2%,0.55) 80%,hsla(220,35%,2%,0.75) 100%)"></div>
+  <!-- 玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(150deg,rgba(255,255,255,0.02) 0%,transparent 30%,transparent 70%,rgba(255,255,255,0.025) 100%);
+    animation:glassShimmer 7s ease-in-out infinite"></div>
+</div>
+```
+
+**参数：** 光弧旋转周期 30-60s / 脉冲周期 3-6s / 核心强度 0.20-0.45
+
+---
+
+### CosmicPlanet（星空地球）
+
+深空背景 + 星点群 + 银河带 + 地球（海洋/大陆/云层/冰盖/城市灯光/大气层蓝边）。地球默认可见。
+
+**CSS keyframes（全局）：**
+
+```css
+@keyframes planetRotate {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes planetGlow {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 60px hsla(200,60%,45%,0.15), inset 0 0 30px hsla(200,50%,40%,0.08); }
+  50% { opacity: 0.8; box-shadow: 0 0 80px hsla(200,60%,45%,0.22), inset 0 0 40px hsla(200,50%,40%,0.12); }
+}
+```
+
+**HTML 模板（太空底 + 银河 + 大气晕 + 地球 + 星点 + 玻璃折射）：**
+
+```html
+<div class="layer-bg">
+  <!-- 深空底色 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(170deg,hsl(230,30%,3%),hsl(220,25%,5%),hsl(235,28%,3%))"></div>
+  <!-- 银河带 -->
+  <div style="position:absolute;top:30%;left:-20%;width:140%;height:120px;opacity:0.15;
+    background:linear-gradient(100deg,transparent 10%,hsla(220,30%,50%,0.35),hsla(260,25%,45%,0.3),hsla(200,30%,50%,0.35),transparent 90%);
+    filter:blur(50px);transform:rotate(-10deg)"></div>
+  <!-- 大气层外晕 -->
+  <div style="position:absolute;top:18%;left:38%;width:480px;height:480px;border-radius:50%;
+    background:radial-gradient(circle,hsla(210,70%,55%,0.08),hsla(215,55%,42%,0.03),transparent 55%);
+    filter:blur(30px);animation:planetGlow 8s ease-in-out infinite"></div>
+  <!-- 地球本体 -->
+  <div style="position:absolute;top:26%;left:46%;width:320px;height:320px;border-radius:50%;overflow:hidden;
+    box-shadow:0 0 60px hsla(210,65%,50%,0.10),0 0 120px hsla(205,55%,40%,0.05);
+    background:hsla(215,55%,12%,0.75)">
+    <!-- 海洋底色 -->
+    <div style="position:absolute;inset:0;border-radius:50%;
+      background:radial-gradient(circle at 38% 35%,hsla(205,65%,32%,0.85) 0%,hsla(210,60%,25%,0.80) 40%,hsla(220,50%,15%,0.75) 75%,hsla(230,40%,8%,0.70) 100%)"></div>
+    <!-- 大陆色块（background-size:200% + planetRotate 实现自转） -->
+    <div style="position:absolute;inset:0;border-radius:50%;
+      background:
+        radial-gradient(ellipse 80px 65px at 22% 35%,hsla(100,35%,28%,0.38),hsla(120,30%,25%,0.20),transparent),
+        radial-gradient(ellipse 50px 90px at 40% 50%,hsla(85,30%,25%,0.34),hsla(95,25%,22%,0.18),transparent),
+        radial-gradient(ellipse 70px 45px at 55% 30%,hsla(35,40%,30%,0.32),hsla(40,35%,25%,0.16),transparent),
+        radial-gradient(ellipse 55px 60px at 68% 55%,hsla(110,28%,26%,0.28),hsla(100,22%,20%,0.12),transparent);
+      background-size:200% 100%;
+      animation:planetRotate 35s linear infinite"></div>
+    <!-- 云层 -->
+    <div style="position:absolute;inset:0;border-radius:50%;
+      background:
+        radial-gradient(ellipse 90px 25px at 18% 40%,hsla(0,0%,100%,0.14),hsla(0,0%,95%,0.06),transparent),
+        radial-gradient(ellipse 70px 20px at 50% 28%,hsla(0,0%,100%,0.12),transparent);
+      background-size:200% 100%;
+      animation:planetRotate 24s linear infinite"></div>
+    <!-- 大气层蓝边 -->
+    <div style="position:absolute;inset:-3px;border-radius:50%;
+      background:radial-gradient(circle at 35% 32%,transparent 45%,
+        hsla(210,70%,65%,0.16) 47%,hsla(205,65%,60%,0.25) 48.5%,hsla(200,60%,55%,0.12) 50%,transparent 52%)"></div>
+    <!-- 暗面阴影 -->
+    <div style="position:absolute;inset:0;border-radius:50%;
+      background:linear-gradient(110deg,transparent 30%,hsla(225,35%,4%,0.45) 65%,hsla(230,40%,2%,0.60) 85%)"></div>
+    <!-- 夜面城市灯光（4-6 颗暖色小点） -->
+    <div style="position:absolute;top:38%;left:68%;width:2px;height:2px;border-radius:50%;background:hsla(45,80%,70%,0.35);box-shadow:0 0 4px hsla(45,70%,60%,0.28)"></div>
+    <div style="position:absolute;top:50%;left:75%;width:1.5px;height:1.5px;border-radius:50%;background:hsla(50,80%,70%,0.28);box-shadow:0 0 3px hsla(50,70%,60%,0.20)"></div>
+  </div>
+  <!-- 星点群（12-20 颗，部分带闪烁） -->
+  <div style="position:absolute;top:3%;left:10%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.55;box-shadow:0 0 4px rgba(255,255,255,0.5);animation:starTwinkle 4s ease-in-out infinite 0s"></div>
+  <div style="position:absolute;top:12%;left:72%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.60;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 5s ease-in-out infinite 1s"></div>
+  <div style="position:absolute;top:88%;left:80%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.50;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 4.5s ease-in-out infinite 0.8s"></div>
+  <!-- 玻璃折射层 -->
+  <div style="position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.01) 0%,transparent 35%,transparent 65%,rgba(255,255,255,0.015) 100%);
+    animation:glassShimmer 10s ease-in-out infinite"></div>
+</div>
+```
+
+**参数：** 地球尺寸 240-400px / 自转周期 25-50s / 云层周期 20-35s / 星点 12-25 颗
 
 ---
 

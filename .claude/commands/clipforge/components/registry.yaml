@@ -68,6 +68,62 @@ components:
     visual_density: low
     complexity: css-only
 
+  - name: aurora_flow
+    layer: bg
+    file: bg/aurora_flow.html
+    tags: [aurora, flow, horizontal, color-bands, northern-lights, atmospheric, glass, rays]
+    emotion_range: [wonder, beauty, calm, curiosity]
+    visual_density: medium
+    complexity: css-only
+
+  - name: hex_grid
+    layer: bg
+    file: bg/hex_grid.html
+    tags: [hexagon, grid, honeycomb, emerald, tech, pattern, pulse, glass]
+    emotion_range: [confidence, precision, tech]
+    visual_density: high
+    complexity: css-only
+
+  - name: nebula_cloud
+    layer: bg
+    file: bg/nebula_cloud.html
+    tags: [nebula, cloud, cosmic, deep-space, drift, stars, twinkle, glass]
+    emotion_range: [wonder, mystery, beauty]
+    visual_density: medium
+    complexity: css-only
+
+  - name: ember_glow
+    layer: bg
+    file: bg/ember_glow.html
+    tags: [ember, warm, amber, glow, rising, particles, vignette, glass]
+    emotion_range: [warmth, nostalgia, beauty]
+    visual_density: low
+    complexity: css-only
+
+  - name: diamond_lattice
+    layer: bg
+    file: bg/diamond_lattice.html
+    tags: [diamond, lattice, grid, 45deg, gold, elegant, diagonal, drift, glass]
+    emotion_range: [pride, confidence, elegance]
+    visual_density: medium
+    complexity: css-only
+
+  - name: electric_pulse
+    layer: bg
+    file: bg/electric_pulse.html
+    tags: [electric, pulse, energy, arc, conic, rotate, core, ring, expand, dramatic, glass]
+    emotion_range: [excitement, power, climax]
+    visual_density: high
+    complexity: css-only
+
+  - name: cosmic_planet
+    layer: bg
+    file: bg/cosmic_planet.html
+    tags: [cosmic, planet, earth, space, stars, atmosphere, ocean, continent, glass]
+    emotion_range: [wonder, epic, mystery]
+    visual_density: medium
+    complexity: css-only
+
   # ── 特效层 ──
   - name: code_rain
     layer: fx
