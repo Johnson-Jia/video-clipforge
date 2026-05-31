@@ -480,6 +480,17 @@ Phase 标注：
 
 **交付物：** 展示场景表和旁白文案（含情感标记和幽默元素），用户确认后进入音频制作。
 
+## 方向推荐规则
+
+完成 narration 后，检查 `design.md` 的 `orientation_source` 决定是否需要判定：
+
+**判定条件**：仅当 `orientation_source` 为 `default` 时执行（其他来源优先级更高，不可覆盖）。
+
+1. 计算预估时长：narration 总字数 ÷ 4.5 字/秒（YunjianNeural 语速）
+2. 预估时长 > 180s → 回写 `orientation: landscape` + `orientation_source: duration`
+3. 预估时长 ≤ 180s → 回写 `orientation: portrait` + `orientation_source: duration`
+4. 将两个字段同步更新到 `design.md`
+
 ---
 
 ## 约束声明

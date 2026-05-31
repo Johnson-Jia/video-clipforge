@@ -55,6 +55,47 @@ def validate_html(html_path: str) -> bool:
     all_pass = True
     missing = []
 
+    # ── 门禁 0: 封面禁止 JavaScript 动画 ──
+    # 封面是纯静态 HTML+CSS 文档，渲染为 PNG 截图时动画不会播放
+    # fromTo opacity:0 之类的初始隐藏会导致截图白屏
+    # 唯一允许的 script 是 HyperFrames 兼容声明: window.__hf = {...}; window.__timelines = {};
+
+    js_fail = False
+
+    # 检测 1: 外部脚本引用 <script src="...">
+    external_scripts = re.findall(r'<script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', content)
+    if external_scripts:
+        print(f'  Layer 0: 外部脚本检测 FAIL')
+        print(f'    封面禁止引用外部脚本（GSAP、anime.js 等动画库会导致白屏）')
+        for src in external_scripts:
+            print(f'    发现: <script src="{src}">')
+        js_fail = True
+
+    # 检测 2: 内联脚本内容
+    if not js_fail:
+        script_blocks = re.findall(r'<script[^>]*>(.*?)</script>', content, re.DOTALL)
+        for block in script_blocks:
+            stripped = block.strip()
+            if not stripped:
+                continue
+            # 允许纯 HyperFrames 兼容声明（无动画逻辑）
+            hf_compat = re.sub(r'window\.__hf\s*=\s*\{[^}]*\}\s*;?\s*', '', stripped)
+            hf_compat = re.sub(r'window\.__timelines\s*=\s*\{[^}]*\}\s*;?\s*', '', hf_compat)
+            hf_compat = re.sub(r'window\.__timelines\s*=\s*window\.__timelines\s*\|\|\s*\{\}\s*;?\s*', '', hf_compat)
+            hf_compat = re.sub(r'[\s;{}]+', '', hf_compat)
+            if hf_compat:
+                print(f'  Layer 0: JavaScript 动画检测 FAIL')
+                print(f'    封面禁止 JavaScript 代码（仅允许 HyperFrames 兼容声明）')
+                print(f'    发现非法内容: {hf_compat[:80]}...' if len(hf_compat) > 80 else f'    发现非法内容: {hf_compat}')
+                print(f'    原因: 封面渲染为 PNG 截图时动画不播放，fromTo opacity:0 等初始隐藏会导致白屏')
+                js_fail = True
+                break
+
+    if js_fail:
+        all_pass = False
+    else:
+        print(f'  Layer 0: JavaScript 检测 OK（纯静态 HTML+CSS）')
+
     for layer_num, layer_name, pattern in REQUIRED_LAYERS:
         if re.search(pattern, content):
             print(f'  Layer {layer_num}: {layer_name} OK')
@@ -82,7 +123,8 @@ def validate_html(html_path: str) -> bool:
 
 # 封面关键区域定义：(区域名, y_start%, y_end%, 预期主色RGB范围)
 # 基于封面 7 层布局从上到下的位置比例
-COVER_REGIONS = [
+# 竖屏 (2160×3840 或 1080×1920)
+COVER_REGIONS_PORTRAIT = [
     # Layer 1: 日期区域 (约 25-32%) — 应有橙色文字
     ('日期区域',    0.25, 0.32, (200, 100, 0), 80),
     # Layer 2-3: 标签+徽章区域 (约 33-47%) — 应有蓝色文字
@@ -91,6 +133,15 @@ COVER_REGIONS = [
     ('主标题区域',   0.42, 0.56, None, 150),
     # Layer 6-7: 数据+卡片区域 (约 60-72%) — 应有绿色/橙色数字
     ('数据卡片区域', 0.60, 0.72, None, 100),
+]
+
+# 横屏 (3840×2160 或 1920×1080) — 内容在 3:4 安全区内垂直堆叠
+COVER_REGIONS_LANDSCAPE = [
+    # 安全区垂直居中，内容分布更紧凑
+    ('日期区域',    0.15, 0.25, (200, 100, 0), 80),
+    ('标签徽章区域', 0.25, 0.38, (0, 150, 200), 80),
+    ('主标题区域',   0.35, 0.55, None, 150),
+    ('数据卡片区域', 0.58, 0.75, None, 100),
 ]
 
 
@@ -144,15 +195,24 @@ def validate_render(png_path: str) -> bool:
         print(f'  WARNING: 文件大小 {file_size/1024:.0f}KB < {size_label}，可能缺少文字内容')
         # 不直接失败，继续像素检测
 
+    # 方向检测：横屏用安全区采样区域，竖屏用标准区域
+    is_landscape = w > h
+    if is_landscape:
+        cover_regions = COVER_REGIONS_LANDSCAPE
+        sample_width_pct = 0.42   # 安全区约占宽度 42%（810/1920）
+    else:
+        cover_regions = COVER_REGIONS_PORTRAIT
+        sample_width_pct = 0.6    # 竖屏采样中间 60%
+
     # 门禁2: 像素采样文字检测
     img_rgb = img.convert('RGB')
     all_pass = True
 
-    for region_name, y_start_pct, y_end_pct, expected_color, threshold in COVER_REGIONS:
+    for region_name, y_start_pct, y_end_pct, expected_color, threshold in cover_regions:
         y_start = int(h * y_start_pct)
         y_end = int(h * y_end_pct)
-        region_w = int(w * 0.6)  # 只采样中间 60%（文字居中）
-        x_start = int(w * 0.2)
+        region_w = int(w * sample_width_pct)  # 横屏采样42%（安全区），竖屏60%
+        x_start = int((w - region_w) / 2)    # 水平居中采样
 
         bright_count = 0
         total_sampled = 0

@@ -59,11 +59,12 @@ def read_design_style(project_dir):
     return meta
 
 
-def generate_cover_html(project_dir, title, design_meta, scene_label=""):
-    """生成 6 层封面 HTML"""
+def generate_cover_html(project_dir, title, design_meta, scene_label="", orientation="portrait"):
+    """生成封面 HTML（竖屏 7 层 / 横屏 7 层+安全区）"""
     style = design_meta.get('style', '科技赛博')
     accent_cool = '#00f5d4' if '赛博' in style or '科技' in style else '#4cc9f0'
     accent_warm = '#f9a825' if '赛博' in style or '科技' in style else '#ff6b6b'
+    is_landscape = orientation == 'landscape'
 
     # 尝试从 content_summary.md 获取更精确标题
     summary_path = os.path.join(project_dir, 'content_summary.md')
@@ -88,6 +89,14 @@ def generate_cover_html(project_dir, title, design_meta, scene_label=""):
     badge_text = tags[0] if tags else style
     date_text = __import__('datetime').datetime.now().strftime('%Y年%m月%d日')
 
+    if is_landscape:
+        return _generate_landscape(title, date_text, scene_label, badge_text, tags, accent_warm, accent_cool)
+    else:
+        return _generate_portrait(title, date_text, scene_label, badge_text, tags, accent_warm, accent_cool)
+
+
+def _generate_portrait(title, date_text, scene_label, badge_text, tags, accent_warm, accent_cool):
+    """竖屏封面（1080×1920）"""
     html = f'''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -195,14 +204,125 @@ def generate_cover_html(project_dir, title, design_meta, scene_label=""):
     return html
 
 
+def _generate_landscape(title, date_text, scene_label, badge_text, tags, accent_warm, accent_cool):
+    """横屏封面（1920×1080，3:4 安全区 810px 居中）"""
+    html = f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+html,body{{width:1920px;height:1080px;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}}
+.root{{position:relative;width:1920px;height:1080px;overflow:hidden}}
+.cover{{
+  position:absolute;top:0;left:0;width:1920px;height:1080px;
+  background:linear-gradient(120deg,#0a0a0f 0%,#1a1a2e 30%,#16213e 70%,#0d0d2a 100%);
+  color:#fff;
+}}
+.glow-warm{{
+  position:absolute;top:-80px;left:-120px;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,{accent_warm}25 0%,transparent 70%);filter:blur(80px);z-index:1;
+}}
+.glow-cool{{
+  position:absolute;bottom:-100px;right:-80px;width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,{accent_cool}18 0%,transparent 70%);filter:blur(80px);z-index:1;
+}}
+/* 3:4 安全区（810×1080 水平居中） */
+.safe-zone{{
+  position:relative;z-index:5;
+  width:810px;height:100%;
+  margin:0 auto;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}}
+.date{{font-size:28px;opacity:0.6;letter-spacing:4px;margin-bottom:16px}}
+.scene-label{{font-size:22px;text-transform:uppercase;letter-spacing:6px;color:{accent_cool};margin-bottom:16px}}
+.badge{{
+  display:inline-block;
+  background:rgba(255,255,255,0.06);
+  border:1px solid {accent_cool}66;
+  padding:8px 24px;border-radius:50px;
+  font-size:22px;font-weight:600;color:{accent_cool};margin-bottom:36px;
+}}
+.main-title{{
+  font-size:68px;font-weight:900;text-align:center;line-height:1.25;
+  letter-spacing:-2px;margin-bottom:12px;
+}}
+.main-title .accent{{
+  background:linear-gradient(135deg,{accent_cool},{accent_warm});
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}}
+.divider{{
+  width:220px;height:3px;
+  background:linear-gradient(90deg,transparent,{accent_cool},{accent_warm},transparent);
+  margin-bottom:20px;
+}}
+.data-subtitle{{font-size:26px;font-weight:600;text-align:center;opacity:0.7;margin-bottom:20px}}
+.cards{{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}}
+.card{{
+  text-align:center;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  padding:14px 18px;border-radius:12px;min-width:150px;
+}}
+.card .val{{font-size:32px;font-weight:900;color:{accent_cool}}}
+.card .lbl{{font-size:15px;opacity:0.5;margin-top:4px}}
+</style>
+</head>
+<body>
+<div class="root" data-composition-id="root" data-width="1920" data-height="1080">
+<div class="cover">
+  <div class="glow-warm"></div>
+  <div class="glow-cool"></div>
+  <div class="safe-zone">
+    <div class="date">{date_text}</div>
+    <div class="scene-label">{scene_label}</div>
+    <div class="badge">{badge_text}</div>
+    <div class="main-title">{title}</div>
+    <div class="divider"></div>
+    <div class="data-subtitle">点击观看完整内容</div>
+    <div class="cards">
+      {"".join(f'<div class="card"><div class="val">{t}</div></div>' for t in tags[:3]) if tags else '<div class="card"><div class="val">AI 精选</div></div>'}
+    </div>
+  </div>
+</div>
+<script>window.__hf = {{ duration: 1, seek: function(t) {{}} }};window.__timelines = {{}};</script>
+</div>
+</body>
+</html>'''
+
+    return html
+
+
+def detect_orientation(project_dir):
+    """从 design.md 检测方向，默认 portrait"""
+    design_path = os.path.join(project_dir, 'design.md')
+    if os.path.exists(design_path):
+        with open(design_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                m = re.match(r'^orientation:\s*(\w+)', line)
+                if m:
+                    val = m.group(1).strip().strip('"\'')
+                    if val in ('landscape', 'portrait'):
+                        return val
+    return 'portrait'
+
+
 def main():
-    parser = argparse.ArgumentParser(description='生成封面 HTML 6 层模板')
+    parser = argparse.ArgumentParser(description='生成封面 HTML 7 层模板')
     parser.add_argument('--project-dir', default='.', help='项目目录')
     parser.add_argument('--title', default=None, help='覆盖标题')
     parser.add_argument('--scene-label', default='', help='场景标签（如频道名）')
+    parser.add_argument('--orientation', default=None, choices=['portrait', 'landscape'],
+                        help='画布方向（默认从 design.md 自动检测）')
     args = parser.parse_args()
 
     project_dir = os.path.abspath(args.project_dir)
+
+    # 方向检测：命令行参数 > design.md > 默认竖屏
+    if args.orientation:
+        orientation = args.orientation
+    else:
+        orientation = detect_orientation(project_dir)
 
     # 读取元数据
     narration_path = os.path.join(project_dir, 'narration_segments.json')
@@ -215,7 +335,8 @@ def main():
     else:
         title = '精彩内容'
 
-    html = generate_cover_html(project_dir, title, design_meta, scene_label=args.scene_label)
+    html = generate_cover_html(project_dir, title, design_meta,
+                               scene_label=args.scene_label, orientation=orientation)
 
     output_path = os.path.join(project_dir, 'cover.html')
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -223,6 +344,7 @@ def main():
 
     print(f'生成封面: {output_path}')
     print(f'标题: {title}')
+    print(f'方向: {orientation}')
     print(f'风格: {design_meta.get("style", "默认")}')
 
 

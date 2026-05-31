@@ -134,6 +134,9 @@ skill:
           segments_file: "segment_durations.json"
           narration_file: "narration.mp3"
           tolerance: 0.15
+      - gate: orientation_consistency
+        params:
+          file: "index.html"
     soft:
       - gate: phase_anchor_coverage
         params:

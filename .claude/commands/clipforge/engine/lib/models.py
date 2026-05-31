@@ -60,6 +60,7 @@ class GateType(str, Enum):
     douyin_platforms_complete = "douyin_platforms_complete"
     bgm_not_exceeds_narration = "bgm_not_exceeds_narration"
     final_duration_close_to_output = "final_duration_close_to_output"
+    orientation_consistency = "orientation_consistency"
 
 
 class Rigor(str, Enum):
