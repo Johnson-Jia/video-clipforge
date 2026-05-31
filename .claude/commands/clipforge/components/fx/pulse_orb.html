@@ -2,11 +2,11 @@
 @ComponentMeta
 name: pulse_orb
 layer: fx
-tags: [energy, pulse, glow, focus, orb, ambient]
+tags: [energy, pulse, glow, focus, orb, ambient, cinematic]
 emotion_range: [focus, energy]
 visual_density: low
 complexity: gsap
-description: 脉冲光球特效，核心发光体 + 三层扩散环 + 持续脉冲动画，适合数据展示或聚焦场景
+description: 脉冲光球特效，核心发光体 + 三层扩散环 + 轨道粒子 + 持续脉冲旋转，适合数据展示或聚焦场景
 parameters: {}
 /ComponentMeta
 -->
@@ -16,6 +16,12 @@ parameters: {}
   <div class="orb-ring ring-1"></div>
   <div class="orb-ring ring-2"></div>
   <div class="orb-ring ring-3"></div>
+  <!-- 轨道粒子 -->
+  <div class="orb-orbit" style="animation-delay:0s"><div class="orbit-dot"></div></div>
+  <div class="orb-orbit" style="animation-delay:-2s"><div class="orbit-dot"></div></div>
+  <div class="orb-orbit" style="animation-delay:-4s"><div class="orbit-dot"></div></div>
+  <div class="orb-orbit" style="animation-delay:-6s"><div class="orbit-dot"></div></div>
+  <div class="orb-orbit" style="animation-delay:-8s"><div class="orbit-dot"></div></div>
 </div>
 
 <!-- CSS -->
@@ -29,31 +35,81 @@ parameters: {}
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   width: 80px; height: 80px; border-radius: 50%;
-  background: var(--accent-cool);
-  box-shadow: 0 0 60px var(--accent-cool), 0 0 120px rgba(0,229,160,0.3);
+  background: var(--accent-cool, #06B6D4);
+  box-shadow:
+    0 0 30px var(--accent-cool, #06B6D4),
+    0 0 60px rgba(6,182,212,0.4),
+    0 0 120px rgba(6,182,212,0.15);
 }
 .orb-ring {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 2px solid var(--accent-cool);
-  opacity: 0.3;
+  border: 2px solid var(--accent-cool, #06B6D4);
 }
-.ring-1 { width: 160px; height: 160px; }
-.ring-2 { width: 280px; height: 280px; opacity: 0.2; }
-.ring-3 { width: 400px; height: 400px; opacity: 0.1; }
+.ring-1 {
+  width: 160px; height: 160px;
+  opacity: 0.35;
+  box-shadow: 0 0 20px rgba(6,182,212,0.2), inset 0 0 20px rgba(6,182,212,0.05);
+}
+.ring-2 {
+  width: 280px; height: 280px;
+  opacity: 0.2;
+  border-style: dashed;
+  box-shadow: 0 0 30px rgba(6,182,212,0.1);
+}
+.ring-3 {
+  width: 400px; height: 400px;
+  opacity: 0.1;
+  box-shadow: 0 0 40px rgba(6,182,212,0.06);
+}
+/* 轨道粒子 */
+.orb-orbit {
+  position: absolute; top: 50%; left: 50%;
+  width: 280px; height: 280px;
+  margin-left: -140px; margin-top: -140px;
+  animation: orbSpin 10s linear infinite;
+  pointer-events: none;
+}
+.orbit-dot {
+  position: absolute; top: -4px; left: 50%;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-cool, #06B6D4);
+  box-shadow: 0 0 12px var(--accent-cool, #06B6D4), 0 0 24px rgba(6,182,212,0.4);
+  margin-left: -4px;
+}
+@keyframes orbSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 </style>
 
-<!-- JS (GSAP) — 入场 + 持续脉冲 -->
+<!-- JS (GSAP) — 入场 + 持续脉冲 + 旋转 -->
 <script>
-// 入场：弹性缩放
-// tl.from('#sN .orb-core', {scale:0, duration:0.5, ease:'elastic.out(1, 0.5)'}, sceneStart)
-//   .from('#sN .ring-1', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, sceneStart + 0.2)
-//   .from('#sN .ring-2', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, sceneStart + 0.3)
-//   .from('#sN .ring-3', {scale:0, opacity:0, duration:0.4, ease:'power2.out'}, sceneStart + 0.4)
-// 持续：核心脉冲 + 扩散环呼吸
-// tl.to('#sN .orb-core', {scale:1.15, duration:2, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 0.6)
-// tl.to('#sN .ring-1', {scale:1.1, opacity:0.4, duration:2.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 0.8)
-// tl.to('#sN .ring-2', {scale:1.08, opacity:0.3, duration:3, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 1)
-// tl.to('#sN .ring-3', {scale:1.05, opacity:0.15, duration:3.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, sceneStart + 1.2)
+// Step 1: Core elastic scale in with glow burst
+tl.from('.orb-core', {scale:0, opacity:0, duration:0.6, ease:'elastic.out(1, 0.5)'}, startTime)
+  // Step 2: Ring-1 expands out
+  .from('.ring-1', {scale:0, opacity:0, duration:0.4, ease:'back.out(1.8)'}, startTime + 0.2)
+  // Step 3: Ring-2 expands out
+  .from('.ring-2', {scale:0, opacity:0, duration:0.4, ease:'back.out(1.6)'}, startTime + 0.35)
+  // Step 4: Ring-3 expands out
+  .from('.ring-3', {scale:0, opacity:0, duration:0.4, ease:'back.out(1.4)'}, startTime + 0.5)
+  // Step 5: Orbit dots stagger in
+  .from('.orb-orbit', {opacity:0, scale:0.5, duration:0.3, ease:'power2.out', stagger:0.08}, startTime + 0.6)
+  // Step 6: Core glow pulse (sustained)
+  .to('.orb-core', {scale:1.15, duration:2, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 0.8)
+  // Step 7: Ring-1 breathe + slow rotate
+  .to('.ring-1', {scale:1.08, opacity:0.45, duration:2.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1)
+  // Ring-1 rotate
+  .to('.ring-1', {rotation:360, duration:20, repeat:-1, ease:'none'}, startTime + 1)
+  // Step 8: Ring-2 breathe + counter-rotate
+  .to('.ring-2', {scale:1.06, opacity:0.3, duration:3, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.2)
+  .to('.ring-2', {rotation:-360, duration:30, repeat:-1, ease:'none'}, startTime + 1.2)
+  // Step 9: Ring-3 breathe
+  .to('.ring-3', {scale:1.04, opacity:0.15, duration:3.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1.4)
+  // Step 10: Core flicker shimmer
+  .fromTo('.orb-core',
+    {boxShadow:'0 0 30px var(--accent-cool,#06B6D4), 0 0 60px rgba(6,182,212,0.4), 0 0 120px rgba(6,182,212,0.15)'},
+    {boxShadow:'0 0 40px var(--accent-cool,#06B6D4), 0 0 80px rgba(6,182,212,0.55), 0 0 160px rgba(6,182,212,0.2)',
+     duration:1.5, repeat:-1, yoyo:true, ease:'sine.inOut'}, startTime + 1);
 </script>

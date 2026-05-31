@@ -6,28 +6,48 @@ tags: [light, streak, diagonal, band, cinematic, dramatic]
 emotion_range: [excitement, shock, climax, dynamic]
 visual_density: low
 complexity: gsap
-description: 对角线光带快速扫过画面，电影感瞬间光效，适合高潮/转折/震撼场景。GSAP 驱动，HyperFrames seek 兼容
+description: 对角线双光带快速扫过画面，电影感瞬间光效，主光带+副光带不同角度速度，适合高潮/转折/震撼场景
 parameters:
-  angle: { default: -25, range: [-45, 45], description: "光带角度(deg)" }
+  angle: { default: -25, range: [-45, 45], description: "主光带角度(deg)" }
   color: { default: "rgba(255,255,255,0.15)", description: "光带颜色" }
   width: { default: 200, range: [100, 400], description: "光带宽度(px)" }
   speed: { default: 4, range: [2, 8], description: "扫过周期(秒)" }
 /ComponentMeta
 -->
 <!-- HTML (嵌入 .layer-fx) -->
-<!-- 光带容器：初始位置在画面左侧外，由 GSAP 驱动扫过 -->
-<div class="streak-wrap" style="position:absolute;top:-50%;left:-50%;width:200%;height:200%;pointer-events:none;overflow:hidden">
-  <div class="streak-band" style="position:absolute;top:0;left:-30%;width:200px;height:300%;transform:rotate(-25deg);
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 20%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.06) 80%,transparent)">
+<div class="streak-wrap" style="position:absolute;top:-50%;left:-50%;width:200%;height:200%;pointer-events:none;overflow:hidden;mix-blend-mode:screen">
+  <!-- 主光带（亮，-15°） -->
+  <div class="streak-main" style="position:absolute;top:0;left:-30%;width:200px;height:300%;transform:rotate(-15deg);filter:blur(4px);
+    background:linear-gradient(90deg,transparent 5%,rgba(255,255,255,0.04) 15%,rgba(255,255,255,0.18) 45%,rgba(255,255,255,0.04) 85%,transparent 95%);
+    box-shadow:0 0 60px rgba(255,255,255,0.06)">
+  </div>
+  <!-- 副光带（暗，25°） -->
+  <div class="streak-sub" style="position:absolute;top:0;left:-50%;width:120px;height:300%;transform:rotate(25deg);filter:blur(6px);
+    background:linear-gradient(90deg,transparent 10%,rgba(6,182,212,0.06) 30%,rgba(6,182,212,0.10) 50%,rgba(6,182,212,0.06) 70%,transparent 90%);
+    box-shadow:0 0 40px rgba(6,182,212,0.04)">
   </div>
 </div>
 
-<!-- JS (GSAP) — 持续扫过动画 -->
+<!-- CSS -->
+<style>
+.streak-wrap { opacity: 1; }
+.streak-main { opacity: 1; }
+.streak-sub { opacity: 0.7; }
+</style>
+
+<!-- JS (GSAP) -->
 <script>
-// 修改选择器为场景内的元素
-// tl.to('#sN .streak-band', {xPercent: 200, duration: 4, repeat: -1, ease: 'none'}, sceneStart)
-// 入场：从左侧滑入
-// tl.from('#sN .streak-band', {xPercent: -50, duration: 0.8, ease: 'power2.out'}, sceneStart)
-// 持续：反复扫过
-// tl.to('#sN .streak-band', {xPercent: 200, duration: 4, repeat: -1, ease: 'none'}, sceneStart + 1)
+// Step 1: Main streak slides in from left
+tl.from('.streak-main', {xPercent: -80, opacity:0, duration:0.8, ease:'power2.out'}, startTime)
+  // Step 2: Sub streak slides in with delay
+  .from('.streak-sub', {xPercent: -60, opacity:0, duration:0.6, ease:'power2.out'}, startTime + 0.3)
+  // Step 3: Main streak continues sweeping right (repeating)
+  .to('.streak-main', {xPercent: 200, duration: 4, repeat: -1, ease: 'none'}, startTime + 1)
+  // Step 4: Sub streak slower sweep
+  .to('.streak-sub', {xPercent: 180, duration: 6, repeat: -1, ease: 'none'}, startTime + 1.2)
+  // Step 5: Main streak glow pulse
+  .fromTo('.streak-main',
+    {boxShadow:'0 0 60px rgba(255,255,255,0.06)'},
+    {boxShadow:'0 0 100px rgba(255,255,255,0.12), 0 0 40px rgba(255,255,255,0.08)',
+     duration:0.4, ease:'power2.out', repeat:-1, yoyo:true}, startTime + 0.5);
 </script>

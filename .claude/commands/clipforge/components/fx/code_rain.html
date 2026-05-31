@@ -2,11 +2,11 @@
 @ComponentMeta
 name: code_rain
 layer: fx
-tags: [tech, coding, matrix, rain, background, hacker]
-emotion_range: [tension, focus]
+tags: [tech, coding, matrix, rain, background, hacker, data, cyber]
+emotion_range: [tension, focus, tech]
 visual_density: low
 complexity: canvas-js
-description: 代码雨背景特效，字符瀑布式下落，科技感场景背景，低透明度不遮挡内容
+description: 电影级代码雨背景特效，亮头字符+渐变拖尾+随机速度+多语言字符集，科技感场景背景
 parameters: {}
 /ComponentMeta
 -->
@@ -18,7 +18,7 @@ parameters: {}
 .code-rain-canvas {
   position: absolute; top: 0; left: 0;
   width: 100%; height: 100%;
-  opacity: 0.15; pointer-events: none;
+  opacity: 0.25; pointer-events: none;
 }
 </style>
 
@@ -26,22 +26,75 @@ parameters: {}
 <script>
 const rainCanvas = document.querySelector('.code-rain-canvas');
 const rainCtx = rainCanvas.getContext('2d');
-const rainCols = Math.floor(1080 / 20);
-const rainDrops = Array(rainCols).fill(0);
-const rainChars = '01{}[]<>/=;:fnvarletconstreturnifelse'.split('');
+const COL_W = 18;
+const rainCols = Math.floor(1080 / COL_W);
+
+// 扩充字符集：编程符号 + 汉字 + 片假名 + 数字
+const rainChars = '01{}[]<>/=;:fnvarletconstreturnifelse'.split('')
+  .concat('星碼力數據智能核心系統算法模型'.split(''))
+  .concat('アイウエオカキクケコサシスセソ'.split(''));
+
+// 每列独立状态
+const rainDrops = [];
+for (let i = 0; i < rainCols; i++) {
+  rainDrops.push({
+    y: Math.random() * 1920,            // 起始位置随机
+    speed: 1.5 + Math.random() * 3,     // 1.5-4.5 倍速
+    fontSize: 14 + Math.floor(Math.random() * 5), // 14-18px
+    trailLen: 12 + Math.floor(Math.random() * 18), // 12-30 字符拖尾
+    chars: []                             // 拖尾字符缓存
+  });
+  // 初始化拖尾字符
+  for (let j = 0; j < rainDrops[i].trailLen; j++) {
+    rainDrops[i].chars.push(rainChars[Math.floor(Math.random() * rainChars.length)]);
+  }
+}
 
 function drawRain(progress) {
-  rainCtx.fillStyle = 'rgba(8,8,24,0.1)';
+  // 半透明覆盖产生拖尾效果
+  rainCtx.fillStyle = 'rgba(8,8,24,0.12)';
   rainCtx.fillRect(0, 0, 1080, 1920);
-  rainCtx.fillStyle = '#00e5a0';
-  rainCtx.font = '14px monospace';
-  const step = Math.floor(progress * 200);
-  for (let i = 0; i < step % 50; i++) {
-    const char = rainChars[Math.floor(Math.random() * rainChars.length)];
-    const x = Math.floor(Math.random() * rainCols) * 20;
-    const y = (rainDrops[i] * 20) % 1920;
-    rainCtx.fillText(char, x, y);
-    rainDrops[i] = (rainDrops[i] + 1) % 96;
+
+  const activeCols = Math.min(rainCols, Math.floor(rainCols * Math.min(1, progress * 3)));
+
+  for (let i = 0; i < activeCols; i++) {
+    const drop = rainDrops[i];
+    const x = i * COL_W;
+    drop.y += drop.speed * 2.5;
+
+    // 绘制拖尾字符（从尾到头，逐渐变亮）
+    for (let j = 0; j < drop.trailLen; j++) {
+      const charY = drop.y - j * drop.fontSize;
+      if (charY < -20 || charY > 1940) continue;
+
+      const ratio = 1 - (j / drop.trailLen); // 1=头 0=尾
+      if (j === 0) {
+        // 亮头字符 — 白色高亮
+        rainCtx.fillStyle = 'rgba(200,255,220,0.95)';
+        rainCtx.font = `bold ${drop.fontSize}px monospace`;
+      } else if (j === 1) {
+        // 第二个字符 — 亮绿
+        rainCtx.fillStyle = `rgba(0,230,160,${0.7 * ratio})`;
+        rainCtx.font = `${drop.fontSize}px monospace`;
+      } else {
+        // 拖尾 — 逐渐变暗的绿色
+        rainCtx.fillStyle = `rgba(0,200,100,${0.5 * ratio})`;
+        rainCtx.font = `${drop.fontSize}px monospace`;
+      }
+      rainCtx.fillText(drop.chars[j], x, charY);
+    }
+
+    // 随机替换拖尾中的字符（闪烁效果）
+    if (Math.random() < 0.08) {
+      const idx = Math.floor(Math.random() * drop.trailLen);
+      drop.chars[idx] = rainChars[Math.floor(Math.random() * rainChars.length)];
+    }
+
+    // 循环回屏幕顶部
+    if (drop.y > 1920 + drop.trailLen * drop.fontSize) {
+      drop.y = -drop.trailLen * drop.fontSize;
+      drop.speed = 1.5 + Math.random() * 3;
+    }
   }
 }
 
