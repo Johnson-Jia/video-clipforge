@@ -1,0 +1,106 @@
+<!--
+@ComponentMeta
+name: vortex
+layer: fx
+tags: [vortex, spiral, energy, whirlpool, particles, kepler, orbit]
+emotion_range: [energy, power, dynamic, immersion]
+visual_density: medium
+complexity: canvas-gsap
+description: 能量漩涡特效，100 粒子开普勒螺旋轨道 + 星轨拖尾 + 暖色核心点缀，适合能量/科技/沉浸场景
+parameters:
+  particle_count: { default: 100, range: [50, 200], description: "粒子数量" }
+  center_x: { default: 540, range: [200, 880], description: "漩涡中心X坐标" }
+  center_y: { default: 768, range: [300, 1500], description: "漩涡中心Y坐标" }
+  opacity: { default: 0.35, range: [0.2, 0.6], description: "画布整体透明度" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-fx) -->
+<canvas class="vortex-canvas" width="1080" height="1920" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.35;pointer-events:none;"></canvas>
+
+<!-- CSS -->
+<style>
+.vortex-canvas { mix-blend-mode: screen; }
+</style>
+
+<!-- JS (GSAP Canvas seek-driven) -->
+<script>
+var vCanvas = document.querySelector('.vortex-canvas');
+var vCtx = vCanvas.getContext('2d');
+var CX = 540, CY = 768;
+var PARTICLE_COUNT = 100;
+var vParticles = [];
+
+// Initialize — center-dense, outer-sparse distribution
+for (var i = 0; i < PARTICLE_COUNT; i++) {
+  var r = 20 + Math.pow(Math.random(), 0.6) * 460;
+  var angle = Math.random() * Math.PI * 2;
+  // Kepler-like: inner orbits faster
+  var angularSpeed = 0.8 / Math.sqrt(r / 80);
+  // 12% warm highlights near center
+  var isWarm = r < 180 && Math.random() < 0.12;
+  var h = isWarm ? (30 + Math.random() * 30) : (180 + Math.random() * 60);
+  var s = isWarm ? 80 : (65 + Math.random() * 25);
+  var l = isWarm ? 65 : (50 + Math.random() * 20);
+  var baseSize = r < 150 ? (1 + Math.random() * 1) : (2 + Math.random() * 2.5);
+
+  vParticles.push({
+    angle: angle,
+    radius: r,
+    baseRadius: r,
+    angularSpeed: angularSpeed * (0.8 + Math.random() * 0.4),
+    radiusOscSpeed: 0.3 + Math.random() * 0.5,
+    radiusOscAmp: 8 + Math.random() * 25,
+    radiusPhase: Math.random() * Math.PI * 2,
+    size: baseSize,
+    h: h, s: s, l: l,
+    alpha: 0.5 + Math.random() * 0.5
+  });
+}
+
+var vTime = 0;
+
+function drawVortex() {
+  // Semi-transparent overlay for star-trail trailing effect
+  vCtx.fillStyle = 'rgba(10,10,20,0.12)';
+  vCtx.fillRect(0, 0, 1080, 1920);
+
+  for (var i = 0; i < vParticles.length; i++) {
+    var p = vParticles[i];
+    p.angle += p.angularSpeed * 0.016;
+    var oscR = p.baseRadius + Math.sin(vTime * p.radiusOscSpeed + p.radiusPhase) * p.radiusOscAmp;
+    var clampedR = Math.max(10, oscR);
+    var x = CX + Math.cos(p.angle) * clampedR;
+    var y = CY + Math.sin(p.angle) * clampedR;
+
+    vCtx.save();
+    vCtx.globalAlpha = p.alpha;
+    vCtx.shadowBlur = 6;
+    vCtx.shadowColor = 'hsla(' + p.h + ',' + p.s + '%,' + p.l + '%,0.6)';
+    vCtx.fillStyle = 'hsl(' + p.h + ',' + p.s + '%,' + p.l + '%)';
+    vCtx.beginPath();
+    vCtx.arc(x, y, p.size, 0, Math.PI * 2);
+    vCtx.fill();
+    vCtx.restore();
+  }
+
+  // Central core glow — soft pulsing
+  var coreAlpha = 0.08 + Math.sin(vTime * 1.5) * 0.03;
+  var grad = vCtx.createRadialGradient(CX, CY, 0, CX, CY, 120);
+  grad.addColorStop(0, 'rgba(6,182,212,' + (coreAlpha + 0.06) + ')');
+  grad.addColorStop(0.5, 'rgba(6,182,212,' + coreAlpha + ')');
+  grad.addColorStop(1, 'rgba(6,182,212,0)');
+  vCtx.fillStyle = grad;
+  vCtx.beginPath();
+  vCtx.arc(CX, CY, 120, 0, Math.PI * 2);
+  vCtx.fill();
+
+  vTime += 0.016;
+}
+
+// Seek-driven animation: GSAP controls progress 0→1
+var vortexProgress = { val: 0 };
+tl.to(vortexProgress, {
+  val: 1, duration: 8,
+  onUpdate: drawVortex
+}, startTime);
+</script>

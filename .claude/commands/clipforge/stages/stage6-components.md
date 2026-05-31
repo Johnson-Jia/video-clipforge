@@ -56,6 +56,9 @@
 | 8 | FloatParticles | 发光微粒向上漂浮 | calm, mystery, dreamy | `components/fx/float_particles.html` |
 | 9 | LightStreak | 对角线光带快速扫过 | climax, dynamic, cinematic | `components/fx/light_streak.html` |
 | 10 | DataStream | 垂直数据流（Canvas, 类 Matrix） | tech, data, AI | `components/fx/data_stream.html` |
+| 11 | Constellation | 星座网络（发光节点 + 邻近连接线 + 漂移） | tech, network, connection | `components/fx/constellation.html` |
+| 12 | Vortex | 能量漩涡（开普勒螺旋粒子 + 星轨拖尾） | energy, immersion, dynamic | `components/fx/vortex.html` |
+| 13 | Lightning | 分形闪电（递归分支 + 双层辉光 + 闪光） | shock, dramatic, climax | `components/fx/lightning.html` |
 
 ### 内容层 (content/)
 

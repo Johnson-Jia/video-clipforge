@@ -1,0 +1,111 @@
+<!--
+@ComponentMeta
+name: constellation
+layer: fx
+tags: [constellation, network, nodes, connection, stars, links, proximity]
+emotion_range: [wonder, connection, depth, mystery]
+visual_density: low
+complexity: canvas-gsap
+description: 星座网络特效，22 个发光节点 + 邻近连接线 + 缓慢漂移 + shadowBlur 辉光，适合科技/网络/连接主题
+parameters:
+  node_count: { default: 22, range: [10, 40], description: "节点数量" }
+  link_distance: { default: 300, range: [150, 500], description: "连接线触发距离(px)" }
+  opacity: { default: 0.4, range: [0.2, 0.8], description: "画布整体透明度" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-fx) -->
+<canvas class="constellation-canvas" width="1080" height="1920" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.4;pointer-events:none;"></canvas>
+
+<!-- CSS -->
+<style>
+.constellation-canvas { mix-blend-mode: screen; }
+</style>
+
+<!-- JS (GSAP Canvas seek-driven) -->
+<script>
+const cCanvas = document.querySelector('.constellation-canvas');
+const cCtx = cCanvas.getContext('2d');
+const W = 1080, H = 1920;
+const NODE_COUNT = 22;
+const LINK_DIST = 300;
+const nodes = [];
+
+// Initialize nodes — cyan-blue hue range, random positions
+for (let i = 0; i < NODE_COUNT; i++) {
+  const h = 180 + Math.random() * 40;
+  const s = 60 + Math.random() * 30;
+  const l = 55 + Math.random() * 20;
+  nodes.push({
+    x: 60 + Math.random() * (W - 120),
+    y: 120 + Math.random() * (H - 240),
+    vx: (Math.random() - 0.5) * 0.8,
+    vy: (Math.random() - 0.5) * 0.8,
+    radius: 2.5 + Math.random() * 3.5,
+    color: 'hsl(' + h + ',' + s + '%,' + l + '%)',
+    baseOpacity: 0.5 + Math.random() * 0.4,
+    opacity: 0.5 + Math.random() * 0.4,
+    flickerSpeed: 0.01 + Math.random() * 0.02,
+    flickerPhase: Math.random() * Math.PI * 2
+  });
+}
+
+function drawConstellation(progress) {
+  cCtx.clearRect(0, 0, W, H);
+  var t = progress * 600;
+
+  // Update positions — slow drift with edge bounce
+  nodes.forEach(function(n) {
+    n.x += n.vx;
+    n.y += n.vy;
+    if (n.x < 30) { n.x = 30; n.vx *= -1; }
+    if (n.x > W - 30) { n.x = W - 30; n.vx *= -1; }
+    if (n.y < 60) { n.y = 60; n.vy *= -1; }
+    if (n.y > H - 60) { n.y = H - 60; n.vy *= -1; }
+    n.opacity = n.baseOpacity + Math.sin(t * n.flickerSpeed + n.flickerPhase) * 0.25;
+    n.opacity = Math.max(0.3, Math.min(1, n.opacity));
+  });
+
+  // Draw proximity connection lines
+  for (var i = 0; i < nodes.length; i++) {
+    for (var j = i + 1; j < nodes.length; j++) {
+      var dx = nodes[i].x - nodes[j].x;
+      var dy = nodes[i].y - nodes[j].y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < LINK_DIST) {
+        var alpha = (1 - dist / LINK_DIST) * 0.35;
+        cCtx.beginPath();
+        cCtx.moveTo(nodes[i].x, nodes[i].y);
+        cCtx.lineTo(nodes[j].x, nodes[j].y);
+        cCtx.strokeStyle = 'rgba(100,200,230,' + alpha + ')';
+        cCtx.lineWidth = 1;
+        cCtx.stroke();
+      }
+    }
+  }
+
+  // Draw nodes with glow
+  nodes.forEach(function(n) {
+    cCtx.save();
+    cCtx.globalAlpha = n.opacity;
+    cCtx.shadowBlur = 18;
+    cCtx.shadowColor = n.color;
+    cCtx.beginPath();
+    cCtx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+    cCtx.fillStyle = n.color;
+    cCtx.fill();
+    // Inner bright core
+    cCtx.beginPath();
+    cCtx.arc(n.x, n.y, n.radius * 0.5, 0, Math.PI * 2);
+    cCtx.fillStyle = 'rgba(255,255,255,0.7)';
+    cCtx.fill();
+    cCtx.restore();
+  });
+}
+
+// Seek-driven animation: GSAP controls progress 0→1
+var constProgress = { val: 0 };
+tl.to(constProgress, {
+  val: 1, duration: 6,
+  onUpdate: function() { drawConstellation(constProgress.val); }
+}, startTime);
+</script>
