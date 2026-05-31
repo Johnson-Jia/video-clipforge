@@ -85,8 +85,17 @@ mkdir -p "${PROJECT_DIR}"
 | CONTENT_TYPE | 内容类型描述 | `GitHub Trending 项目盘点` |
 | CATEGORY | 分类 ID | `github` |
 | CONTENT_SOURCE | 数据来源文件 | `raw_trending.json` |
+| ORIENTATION | 画布方向 | `portrait` 或 `landscape`（由 SubAgent 根据时长自动判定后写入 design.md） |
+| ORIENTATION_HINT | 分类配置的方向提示 | `portrait`/`landscape`/空（从分类配置 CONFIG 段提取，空则由时长判定） |
 
 **额外指令**：分类特定的选取规则、内容偏好等（从分类配置的 `selection_strategy` 段提取）。
+
+**方向自动判定**：
+1. 若 ORIENTATION_HINT 非空 → 写入 `orientation: {ORIENTATION_HINT}` + `orientation_source: category_hint`
+2. 若 ORIENTATION_HINT 为空 → 完成 narration 后，计算预估时长（narration 总字数 ÷ 4.5 字/秒）
+   - 预估时长 > 180s → `orientation: landscape` + `orientation_source: duration`
+   - 预估时长 ≤ 180s → `orientation: portrait` + `orientation_source: duration`
+3. 将两个字段写入 design.md
 
 **门禁校验**：完成后运行 `cd <clipforge-dir> && python engine/gate.py --skill stage3-scenes --project-dir <PROJECT_DIR>`
 

@@ -1248,6 +1248,39 @@ def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.portrait_typography_valid] = check_portrait_typography
 
 
+def check_orientation_consistency(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-S6-020: design.md 方向与 HTML 画布尺寸一致性校验。"""
+    design_md = project_dir / "design.md"
+    if not design_md.exists():
+        return True, "design.md 不存在，跳过方向校验"
+
+    content = design_md.read_text(encoding="utf-8", errors="ignore")
+    orient_match = re.search(r'orientation:\s*(portrait|landscape)', content)
+    if not orient_match:
+        return True, "design.md 无 orientation 字段，跳过方向校验"
+    declared = orient_match.group(1)
+
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return True, "index.html 不存在，跳过方向校验"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+
+    w_match = re.search(r'data-width="(\d+)"', html)
+    h_match = re.search(r'data-height="(\d+)"', html)
+    if not w_match or not h_match:
+        return False, "R-S6-020: HTML 根组合缺少 data-width/data-height，无法验证方向"
+
+    w, h = int(w_match.group(1)), int(h_match.group(1))
+    actual = "portrait" if h > w else "landscape"
+
+    if declared != actual:
+        return False, f"R-S6-020: 方向不一致 — design.md={declared}, HTML={actual}({w}×{h})"
+    return True, f"方向一致: {declared}({w}×{h})"
+
+
+GATE_CHECKERS[GateType.orientation_consistency] = check_orientation_consistency
+
+
 def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 douyin.md 包含三平台文案 + 评论区自评。
 
@@ -1331,6 +1364,28 @@ def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, s
     content = cover_file.read_text(encoding="utf-8", errors="ignore")
     if not content.strip():
         return False, "cover.html 为空文件"
+
+    # 门禁 0: 封面禁止 JavaScript 动画（白屏根因）
+    external_scripts = re.findall(r'<script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', content)
+    if external_scripts:
+        return False, (
+            f"R-S7-003: 封面禁止引用外部脚本（动画库会导致白屏截图），"
+            f"发现: {', '.join(external_scripts[:3])}"
+        )
+    script_blocks = re.findall(r'<script[^>]*>(.*?)</script>', content, re.DOTALL)
+    for block in script_blocks:
+        stripped = block.strip()
+        if not stripped:
+            continue
+        hf_compat = re.sub(r'window\.__hf\s*=\s*\{[^}]*\}\s*;?\s*', '', stripped)
+        hf_compat = re.sub(r'window\.__timelines\s*=\s*\{[^}]*\}\s*;?\s*', '', hf_compat)
+        hf_compat = re.sub(r'window\.__timelines\s*=\s*window\.__timelines\s*\|\|\s*\{\}\s*;?\s*', '', hf_compat)
+        hf_compat = re.sub(r'[\s;{}]+', '', hf_compat)
+        if hf_compat:
+            return False, (
+                f"R-S7-003: 封面禁止 JavaScript 动画代码（fromTo opacity:0 等会导致白屏），"
+                f"发现非法内容: {hf_compat[:60]}"
+            )
 
     missing: list[str] = []
 
