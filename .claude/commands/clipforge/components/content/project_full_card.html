@@ -127,12 +127,28 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.pfc-category', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, sceneStart + 0.1)
-  .from('.pfc-rank', {opacity:0, scale:0.5, duration:0.4, ease:'back.out(1.5)'}, sceneStart + 0.2)
-  .from('.pfc-name', {opacity:0, x:-20, duration:0.3, ease:'power3.out'}, sceneStart + 0.3)
-  .from('.pfc-desc', {opacity:0, duration:0.3, ease:'power3.out'}, sceneStart + 0.5)
-  .from('.pfc-lang', {opacity:0, scale:0.8, duration:0.2, ease:'back.out(2)'}, sceneStart + 0.7)
-  .from('.pfc-stars', {opacity:0, x:20, duration:0.3, ease:'power3.out'}, sceneStart + 0.3)
-  .from('.pfc-selling', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, sceneStart + 0.8)
-  .from('.pfc-commentary', {opacity:0, duration:0.3, ease:'power3.out'}, sceneStart + 1.0);
+// Step 1: Category tag spins in
+tl.from('.pfc-category', {opacity:0, scale:0, rotation:-15, duration:0.45, ease:'back.out(2.5)'}, startTime + 0.05)
+  // Step 2: Rank number zooms from distance
+  .from('.pfc-rank', {scale:4, opacity:0, duration:0.55, ease:'power4.out'}, startTime + 0.15)
+  .to('.pfc-rank', {scale:0.92, duration:0.2, ease:'power2.inOut'}, startTime + 0.7)
+  .to('.pfc-rank', {scale:1, duration:0.15, ease:'back.out(1.5)'}, startTime + 0.9)
+  // Step 3: Project name slides in with clip-path
+  .from('.pfc-name', {opacity:0, x:-50, clipPath:'inset(0 100% 0 0)', duration:0.4, ease:'power4.out'}, startTime + 0.45)
+  // Step 4: Description fades in
+  .from('.pfc-desc', {opacity:0, y:15, duration:0.3, ease:'power4.out'}, startTime + 0.65)
+  // Step 5: Language badge elastic pop
+  .from('.pfc-lang', {opacity:0, scale:0, rotation:20, duration:0.35, ease:'elastic.out(1, 0.5)'}, startTime + 0.8)
+  // Step 6: Stars burst in with glow
+  .from('.pfc-stars', {opacity:0, scale:0, duration:0.45, ease:'elastic.out(1, 0.4)'}, startTime + 0.55)
+  .fromTo('.pfc-stars',
+    {textShadow:'0 0 30px rgba(240,180,41,0.3)'},
+    {textShadow:'0 0 60px rgba(240,180,41,0.6), 0 0 100px rgba(240,180,41,0.3)', duration:0.3, ease:'power2.out'}, startTime + 1.0)
+  // Step 7: Selling points slide up
+  .from('.pfc-selling', {opacity:0, y:20, duration:0.3, ease:'back.out(1.5)'}, startTime + 1.05)
+  // Step 8: Commentary drifts in
+  .from('.pfc-commentary', {opacity:0, x:30, duration:0.35, ease:'power4.out'}, startTime + 1.25)
+  // Step 9: Background glows pulse
+  .to('.pfc-glow-warm', {scale:1.2, duration:0.5, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 0.3)
+  .to('.pfc-glow-cool', {scale:1.15, duration:0.5, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 0.5);
 </script>

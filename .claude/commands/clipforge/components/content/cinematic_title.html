@@ -1,0 +1,72 @@
+<!--
+@ComponentMeta
+name: cinematic_title
+layer: content
+tags: [cinematic, title, opening, chapter, transition, epic, dramatic]
+emotion_range: [epic, grand, anticipation]
+visual_density: generous
+complexity: css-only
+description: 电影级标题卡，超大粗体水平展开 + 渐变金线 + 光晕扫过，用于开场、转场或章节分隔
+parameters:
+  title_size: { default: 120, range: [80, 140] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="ct-wrap">
+  <div class="ct-glow"></div>
+  <div class="ct-sweep"></div>
+  <div class="ct-title">未来的形状</div>
+  <div class="ct-line"></div>
+  <div class="ct-sub">2026 科技趋势</div>
+</div>
+
+<!-- CSS -->
+<style>
+.ct-wrap {
+  position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 180px 80px 220px 80px;
+  overflow: hidden;
+}
+.ct-glow {
+  position: absolute; top: 50%; left: 50%;
+  width: 800px; height: 400px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse, rgba(245,158,11,0.15) 0%, rgba(6,182,212,0.08) 40%, transparent 70%);
+  filter: blur(80px); pointer-events: none;
+}
+.ct-sweep {
+  position: absolute; top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  pointer-events: none;
+}
+.ct-title {
+  font-size: 120px; font-weight: 900; color: var(--text-primary, #F9FAFB);
+  letter-spacing: -3px; line-height: 1.1;
+  text-shadow: 0 0 60px rgba(245,158,11,0.4), 0 4px 20px rgba(0,0,0,0.5);
+  text-align: center;
+  transform-origin: center;
+}
+.ct-line {
+  width: 320px; height: 3px; margin-top: 40px;
+  background: linear-gradient(90deg, transparent, var(--accent-warm, #F59E0B), var(--accent-cool, #06B6D4), transparent);
+  transform-origin: center;
+}
+.ct-sub {
+  font-size: 42px; font-weight: 600;
+  color: var(--accent-cool, #06B6D4);
+  margin-top: 32px; letter-spacing: 8px;
+  text-shadow: 0 0 30px rgba(6,182,212,0.3);
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.ct-glow', {opacity:0, scale:0.5, duration:0.6, ease:'power2.out'}, startTime)
+  .from('.ct-title', {opacity:0, scaleX:0, duration:0.5, ease:'power4.out'}, startTime + 0.15)
+  .from('.ct-line', {opacity:0, scaleX:0, duration:0.4, ease:'power3.out'}, startTime + 0.4)
+  .from('.ct-sub', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime + 0.55)
+  .fromTo('.ct-sweep', {left:'-100%'}, {left:'200%', duration:1.2, ease:'power1.inOut'}, startTime + 0.3);
+</script>

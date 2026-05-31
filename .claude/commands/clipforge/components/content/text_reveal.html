@@ -35,7 +35,17 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.reveal-text', {
-  y:'100%', duration:0.6, ease:'power4.out'
-}, startTime);
+// Step 1: Clip-path wipe reveal from top
+tl.fromTo('.reveal-mask',
+  {clipPath:'inset(0 0 100% 0)'},
+  {clipPath:'inset(0 0 0% 0)', duration:0.5, ease:'power4.out'}, startTime)
+  // Step 2: Text slides up within clip
+  .from('.reveal-text', {y:'80%', opacity:0, duration:0.4, ease:'power3.out'}, startTime + 0.1)
+  // Step 3: Dramatic scale overshoot punch
+  .to('.reveal-text', {scale:1.03, duration:0.15, ease:'back.out(1.2)'}, startTime + 0.5)
+  .to('.reveal-text', {scale:1, duration:0.1, ease:'power2.inOut'}, startTime + 0.65)
+  // Step 4: Glow sweep settle
+  .fromTo('.reveal-text',
+    {textShadow: '0 0 80px rgba(240,180,41,0.6)'},
+    {textShadow: '0 0 80px rgba(240,180,41,0.6), 0 0 140px rgba(240,180,41,0.3)', duration:0.3, ease:'power2.out'}, startTime + 0.7);
 </script>

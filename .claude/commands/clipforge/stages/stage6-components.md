@@ -77,6 +77,16 @@
 | 12 | MarketBars | 市场对比条（水平进度条，data-width 驱动） | market, growth, comparison | `components/content/market_bars.html` |
 | 13 | ScoreCompare | 对比评分卡（A/B 双卡片 + WIN 徽章） | compare, versus, battle | `components/content/score_compare.html` |
 | 14 | RecStrip | 三档推荐条（优先级排列 + 结论框） | recommendation, ranking, priority | `components/content/rec_strip.html` |
+| 15 | CinematicTitle | 电影标题卡（水平展开 + 金线 + 光晕扫过） | opening, chapter, transition | `components/content/cinematic_title.html` |
+| 16 | GlassCard | 毛玻璃卡片（blur + 光泽条 + 彩色边条） | feature, highlight, showcase | `components/content/glass_card.html` |
+| 17 | CountdownReveal | 倒计时揭示（3-2-1 缩放 → 内容展开） | reveal, countdown, suspense | `components/content/countdown_reveal.html` |
+| 18 | SplitStory | 分屏叙事（50/50 竖分屏 + 渐变分割线） | compare, before-after, story | `components/content/split_story.html` |
+| 19 | NeonTitle | 霓虹灯标题（多层发光 + 呼吸亮度） | hook, announcement, tech | `components/content/neon_title.html` |
+| 20 | QuoteBlock | 引用卡片（纪录片风格，装饰引号 + 署名） | quote, citation, expert-opinion | `components/content/quote_block.html` |
+| 21 | LayeredCards | 层叠透视卡片（3D 倾斜 + 前清后虚） | listing, portfolio, showcase | `components/content/layered_cards.html` |
+| 22 | SpotlightCard | 聚光灯卡片（径向聚焦 + 光束射线） | feature, key-point, highlight | `components/content/spotlight_card.html` |
+| 23 | KineticText | 动态排版（逐字弹入，冲击力极强） | impact, statement, cta | `components/content/kinetic_text.html` |
+| 24 | Breakthrough | 破屏而出（裂纹扩展 + 内容冲出） | reveal, breakthrough, climax | `components/content/breakthrough.html` |
 
 ---
 

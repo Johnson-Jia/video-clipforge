@@ -1,0 +1,120 @@
+<!--
+@ComponentMeta
+name: breakthrough
+layer: content
+tags: [breakthrough, crack, shatter, reveal, shock, dramatic, climax, milestone]
+emotion_range: [shock, breakthrough, revelation]
+visual_density: generous
+complexity: css-only
+description: 破屏而出效果，裂纹从中心展开 + 内容穿透冲出 + 光晕碎片四散，极致震撼的揭示动画
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="bt-wrap">
+  <div class="bt-crack"></div>
+  <div class="bt-burst"></div>
+  <div class="bt-frag bt-frag-1"></div>
+  <div class="bt-frag bt-frag-2"></div>
+  <div class="bt-frag bt-frag-3"></div>
+  <div class="bt-frag bt-frag-4"></div>
+  <div class="bt-frag bt-frag-5"></div>
+  <div class="bt-frag bt-frag-6"></div>
+  <div class="bt-content">
+    <div class="bt-label">MILESTONE</div>
+    <div class="bt-title">突破时刻</div>
+    <div class="bt-number">2026</div>
+    <div class="bt-sub">AI 驱动的新纪元</div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.bt-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+/* 裂纹背景：用多个旋转渐变线模拟放射状裂纹 */
+.bt-crack {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(35deg,  transparent 48%, rgba(255,255,255,0.06) 49%, rgba(255,255,255,0.06) 51%, transparent 52%),
+    linear-gradient(85deg,  transparent 48%, rgba(255,255,255,0.05) 49%, rgba(255,255,255,0.05) 51%, transparent 52%),
+    linear-gradient(145deg, transparent 48%, rgba(255,255,255,0.04) 49%, rgba(255,255,255,0.04) 51%, transparent 52%),
+    linear-gradient(175deg, transparent 48%, rgba(255,255,255,0.05) 49%, rgba(255,255,255,0.05) 51%, transparent 52%),
+    linear-gradient(215deg, transparent 48%, rgba(255,255,255,0.06) 49%, rgba(255,255,255,0.06) 51%, transparent 52%),
+    linear-gradient(305deg, transparent 48%, rgba(255,255,255,0.04) 49%, rgba(255,255,255,0.04) 51%, transparent 52%),
+    linear-gradient(335deg, transparent 48%, rgba(255,255,255,0.05) 49%, rgba(255,255,255,0.05) 51%, transparent 52%);
+  clip-path: circle(0% at 50% 50%);
+  z-index: 1; pointer-events: none;
+}
+/* 中心光爆 */
+.bt-burst {
+  position: absolute;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,158,11,0.15), rgba(6,182,212,0.08) 40%, transparent 70%);
+  filter: blur(40px);
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 0; pointer-events: none;
+  opacity: 0;
+}
+/* 碎片光点 */
+.bt-frag {
+  position: absolute;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-warm, #F59E0B);
+  box-shadow: 0 0 12px rgba(245,158,11,0.6), 0 0 30px rgba(245,158,11,0.3);
+  z-index: 2; pointer-events: none;
+  top: 50%; left: 50%;
+}
+.bt-frag-1 { transform: translate(-200px, -150px); }
+.bt-frag-2 { transform: translate(180px, -120px); background: var(--accent-cool, #06B6D4); box-shadow: 0 0 12px rgba(6,182,212,0.6), 0 0 30px rgba(6,182,212,0.3); }
+.bt-frag-3 { transform: translate(-160px, 180px); }
+.bt-frag-4 { transform: translate(220px, 160px); background: var(--accent-cool, #06B6D4); box-shadow: 0 0 12px rgba(6,182,212,0.6), 0 0 30px rgba(6,182,212,0.3); }
+.bt-frag-5 { transform: translate(-250px, 20px); }
+.bt-frag-6 { transform: translate(250px, -40px); }
+/* 主内容 */
+.bt-content {
+  position: relative; z-index: 3;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+}
+.bt-label {
+  font-size: 22px; font-weight: 700;
+  color: var(--accent-warm, #F59E0B);
+  letter-spacing: 6px;
+  margin-bottom: 16px;
+  background: rgba(245,158,11,0.1);
+  padding: 6px 24px; border-radius: 6px;
+  border: 1px solid rgba(245,158,11,0.2);
+}
+.bt-title {
+  font-size: 64px; font-weight: 900;
+  color: var(--text-primary, #F9FAFB);
+  text-shadow: 0 0 40px rgba(245,158,11,0.4), 0 4px 20px rgba(0,0,0,0.5);
+  margin-bottom: 12px;
+}
+.bt-number {
+  font-size: 120px; font-weight: 900;
+  background: linear-gradient(135deg, var(--accent-warm, #F59E0B), var(--accent-cool, #06B6D4));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.bt-sub {
+  font-size: 28px; color: var(--text-secondary, #9CA3AF);
+  letter-spacing: 4px;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.to('.bt-crack', {clipPath:'circle(100% at 50% 50%)', duration:0.6, ease:'power2.inOut'}, startTime)
+  .from('.bt-burst', {opacity:0, scale:0, duration:0.5, ease:'power3.out'}, startTime + 0.3)
+  .from('.bt-content', {opacity:0, scale:1.5, duration:0.5, ease:'back.out(1.3)'}, startTime + 0.4)
+  .from('.bt-frag', {opacity:0, scale:0, x:0, y:0, duration:0.4, ease:'power3.out', stagger:0.06}, startTime + 0.5);
+</script>

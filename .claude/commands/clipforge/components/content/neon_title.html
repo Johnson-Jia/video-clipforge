@@ -1,0 +1,71 @@
+<!--
+@ComponentMeta
+name: neon_title
+layer: content
+tags: [neon, glow, cyber, title, announcement, highlight, tech, futuristic]
+emotion_range: [excitement, energy, cyber]
+visual_density: generous
+complexity: css-only
+description: 霓虹灯标题，多层发光 text-shadow + 呼吸亮度 + 底部霓虹线，赛博朋克风格
+parameters:
+  neon_color: { default: "#06B6D4", description: "霓虹主色" }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="nt-wrap">
+  <div class="nt-vignette"></div>
+  <div class="nt-title">下一代 AI</div>
+  <div class="nt-line"></div>
+  <div class="nt-sub">重新定义人机交互的边界</div>
+</div>
+
+<!-- CSS -->
+<style>
+.nt-wrap {
+  position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 180px 80px 220px 80px;
+  overflow: hidden;
+}
+.nt-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.4) 100%);
+  pointer-events: none;
+}
+.nt-title {
+  font-size: 120px; font-weight: 900;
+  color: #fff;
+  letter-spacing: -2px; line-height: 1.1;
+  text-shadow:
+    0 0 20px #06B6D4,
+    0 0 40px rgba(6,182,212,0.5),
+    0 0 80px rgba(6,182,212,0.25),
+    0 0 4px #F43F5E,
+    0 0 8px rgba(244,63,94,0.4);
+  text-align: center;
+  z-index: 1;
+}
+.nt-line {
+  width: 400px; height: 2px; margin-top: 48px;
+  background: linear-gradient(90deg, transparent, #06B6D4, #F43F5E, #06B6D4, transparent);
+  box-shadow: 0 0 12px rgba(6,182,212,0.6), 0 0 24px rgba(6,182,212,0.3);
+  transform-origin: center;
+  z-index: 1;
+}
+.nt-sub {
+  font-size: 36px; font-weight: 600;
+  color: rgba(6,182,212,0.7);
+  margin-top: 36px; letter-spacing: 6px;
+  text-shadow: 0 0 20px rgba(6,182,212,0.3);
+  z-index: 1;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.nt-title', {opacity:0, duration:0.5, ease:'power2.out'}, startTime)
+  .from('.nt-line', {opacity:0, scaleX:0, duration:0.4, ease:'power3.out'}, startTime + 0.3)
+  .from('.nt-sub', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime + 0.5)
+  .fromTo('.nt-title', {y:0}, {y:-3, yoyo:true, repeat:3, duration:0.6, ease:'sine.inOut'}, startTime + 0.6);
+</script>

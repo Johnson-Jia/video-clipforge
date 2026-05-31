@@ -315,3 +315,85 @@ components:
     emotion_range: [certainty, guidance]
     visual_density: standard
     complexity: css-only
+
+  # ── 内容层：电影级特效 ──
+
+  - name: cinematic_title
+    layer: content
+    file: content/cinematic_title.html
+    tags: [cinematic, title, opening, chapter, transition, epic, dramatic]
+    emotion_range: [epic, grand, anticipation]
+    visual_density: generous
+    complexity: css-only
+
+  - name: glass_card
+    layer: content
+    file: content/glass_card.html
+    tags: [glass, frosted, modern, card, blur, premium, feature]
+    emotion_range: [elegance, sophistication]
+    visual_density: standard
+    complexity: css-only
+
+  - name: countdown_reveal
+    layer: content
+    file: content/countdown_reveal.html
+    tags: [countdown, reveal, suspense, milestone, dramatic, timer, anticipation]
+    emotion_range: [anticipation, excitement, suspense]
+    visual_density: generous
+    complexity: css-only
+
+  - name: split_story
+    layer: content
+    file: content/split_story.html
+    tags: [split, dual, story, compare, before-after, narrative, cinematic]
+    emotion_range: [contrast, tension, narrative]
+    visual_density: medium
+    complexity: css-only
+
+  - name: neon_title
+    layer: content
+    file: content/neon_title.html
+    tags: [neon, glow, cyber, title, announcement, highlight, tech, futuristic]
+    emotion_range: [excitement, energy, cyber]
+    visual_density: generous
+    complexity: css-only
+
+  - name: quote_block
+    layer: content
+    file: content/quote_block.html
+    tags: [quote, citation, documentary, expert, opinion, insight, authority]
+    emotion_range: [authority, gravitas, wisdom]
+    visual_density: standard
+    complexity: css-only
+
+  - name: layered_cards
+    layer: content
+    file: content/layered_cards.html
+    tags: [stacked, layered, depth, 3d, perspective, cards, showcase, portfolio]
+    emotion_range: [depth, richness, showcase]
+    visual_density: medium
+    complexity: css-only
+
+  - name: spotlight_card
+    layer: content
+    file: content/spotlight_card.html
+    tags: [spotlight, focus, dramatic, stage, emphasis, highlight, theatrical]
+    emotion_range: [focus, drama, spotlight]
+    visual_density: standard
+    complexity: css-only
+
+  - name: kinetic_text
+    layer: content
+    file: content/kinetic_text.html
+    tags: [kinetic, typography, motion, dynamic, impact, statement, punchline, cta]
+    emotion_range: [energy, impact, power]
+    visual_density: generous
+    complexity: css-only
+
+  - name: breakthrough
+    layer: content
+    file: content/breakthrough.html
+    tags: [breakthrough, crack, shatter, reveal, shock, dramatic, climax, milestone]
+    emotion_range: [shock, breakthrough, revelation]
+    visual_density: generous
+    complexity: css-only

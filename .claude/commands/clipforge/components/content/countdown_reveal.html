@@ -1,0 +1,93 @@
+<!--
+@ComponentMeta
+name: countdown_reveal
+layer: content
+tags: [countdown, reveal, suspense, milestone, dramatic, timer, anticipation]
+emotion_range: [anticipation, excitement, suspense]
+visual_density: generous
+complexity: css-only
+description: 倒计时揭示动画，超大数字 3-2-1 缩放倒计时后内容面板展开，紧张感拉满
+parameters:
+  countdown_size: { default: 200, range: [140, 260] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="cr-wrap">
+  <div class="cr-number" id="cr-num-3">3</div>
+  <div class="cr-number" id="cr-num-2">2</div>
+  <div class="cr-number" id="cr-num-1">1</div>
+  <div class="cr-ring"></div>
+  <div class="cr-content">
+    <div class="cr-badge">🏆 年度评选</div>
+    <div class="cr-title">年度最佳项目</div>
+    <div class="cr-line"></div>
+    <div class="cr-sub">从 12,000 个开源项目中脱颖而出</div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.cr-wrap {
+  position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.cr-number {
+  position: absolute;
+  font-size: 200px; font-weight: 900;
+  color: var(--accent-warm, #F59E0B);
+  text-shadow: 0 0 80px rgba(245,158,11,0.5), 0 0 160px rgba(245,158,11,0.2);
+  opacity: 0;
+}
+.cr-ring {
+  position: absolute;
+  width: 360px; height: 360px; border-radius: 50%;
+  border: 3px solid rgba(245,158,11,0.25);
+  box-shadow: 0 0 60px rgba(245,158,11,0.1), inset 0 0 60px rgba(245,158,11,0.05);
+  opacity: 0;
+}
+.cr-content {
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  opacity: 0;
+}
+.cr-badge {
+  font-size: 28px; font-weight: 600;
+  color: var(--accent-warm, #F59E0B);
+  background: rgba(245,158,11,0.15);
+  padding: 8px 28px; border-radius: 24px;
+  margin-bottom: 36px;
+}
+.cr-title {
+  font-size: 96px; font-weight: 900;
+  color: var(--text-primary, #F9FAFB);
+  letter-spacing: -2px;
+  text-shadow: 0 0 60px rgba(245,158,11,0.4), 0 4px 20px rgba(0,0,0,0.5);
+}
+.cr-line {
+  width: 240px; height: 3px; margin: 32px 0;
+  background: linear-gradient(90deg, transparent, var(--accent-warm, #F59E0B), var(--accent-cool, #06B6D4), transparent);
+}
+.cr-sub {
+  font-size: 36px; font-weight: 600;
+  color: var(--text-secondary, #9CA3AF);
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.cr-ring', {opacity:0, scale:0.3, duration:0.3, ease:'power2.out'}, startTime)
+  .from('#cr-num-3', {opacity:0, scale:3, duration:0.35, ease:'power3.out'}, startTime)
+  .to('#cr-num-3', {opacity:0, scale:0.5, duration:0.2, ease:'power2.in'}, startTime + 0.4)
+  .from('#cr-num-2', {opacity:0, scale:3, duration:0.35, ease:'power3.out'}, startTime + 0.5)
+  .to('#cr-num-2', {opacity:0, scale:0.5, duration:0.2, ease:'power2.in'}, startTime + 0.9)
+  .from('#cr-num-1', {opacity:0, scale:3, duration:0.35, ease:'power3.out'}, startTime + 1.0)
+  .to('#cr-num-1', {opacity:0, scale:0.5, duration:0.2, ease:'power2.in'}, startTime + 1.4)
+  .to('.cr-ring', {opacity:0, scale:1.5, duration:0.3, ease:'power2.in'}, startTime + 1.5)
+  .from('.cr-content', {opacity:0, scale:0.85, duration:0.5, ease:'back.out(1.2)'}, startTime + 1.6)
+  .from('.cr-badge', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime + 1.85)
+  .from('.cr-line', {opacity:0, scaleX:0, duration:0.3, ease:'power3.out'}, startTime + 2.0)
+  .from('.cr-sub', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, startTime + 2.1);
+</script>

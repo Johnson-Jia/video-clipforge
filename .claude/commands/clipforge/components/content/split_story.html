@@ -1,0 +1,97 @@
+<!--
+@ComponentMeta
+name: split_story
+layer: content
+tags: [split, dual, story, compare, before-after, narrative, cinematic]
+emotion_range: [contrast, tension, narrative]
+visual_density: medium
+complexity: css-only
+description: 电影分屏叙事，50/50 竖分屏 + 渐变分割线，左右对比两种状态或观点
+parameters:
+  divider_color: { default: "var(--accent-cool, #06B6D4)" }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="ss-wrap">
+  <div class="ss-panel ss-left">
+    <div class="ss-label">传统方式</div>
+    <div class="ss-items">
+      <div class="ss-item ss-item-dim"><span class="ss-dot ss-dot-dim"></span>手动编写测试用例</div>
+      <div class="ss-item ss-item-dim"><span class="ss-dot ss-dot-dim"></span>逐行 Code Review</div>
+      <div class="ss-item ss-item-dim"><span class="ss-dot ss-dot-dim"></span>单人负责部署</div>
+      <div class="ss-item ss-item-dim"><span class="ss-dot ss-dot-dim"></span>周级迭代周期</div>
+    </div>
+  </div>
+  <div class="ss-divider"></div>
+  <div class="ss-panel ss-right">
+    <div class="ss-label">AI 方式</div>
+    <div class="ss-items">
+      <div class="ss-item ss-item-hl"><span class="ss-dot ss-dot-hl"></span>AI 自动生成 + 覆盖</div>
+      <div class="ss-item ss-item-hl"><span class="ss-dot ss-dot-hl"></span>智能审查 + 安全扫描</div>
+      <div class="ss-item ss-item-hl"><span class="ss-dot ss-dot-hl"></span>一键灰度 + 自动回滚</div>
+      <div class="ss-item ss-item-hl"><span class="ss-dot ss-dot-hl"></span>小时级发布节奏</div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.ss-wrap {
+  display: flex; width: 100%; height: 100%;
+  align-items: stretch; position: relative;
+  overflow: hidden;
+}
+.ss-panel {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 100px 60px;
+}
+.ss-left {
+  background: rgba(255,255,255,0.02);
+  border-right: none;
+}
+.ss-right {
+  background: rgba(6,182,212,0.04);
+}
+.ss-divider {
+  position: absolute; top: 0; left: 50%;
+  width: 2px; height: 100%;
+  background: linear-gradient(180deg, transparent, var(--accent-cool, #06B6D4), var(--accent-warm, #F59E0B), var(--accent-cool, #06B6D4), transparent);
+  transform: translateX(-50%);
+  box-shadow: 0 0 20px rgba(6,182,212,0.3), 0 0 40px rgba(6,182,212,0.1);
+  transform-origin: top;
+}
+.ss-label {
+  font-size: 36px; font-weight: 900;
+  margin-bottom: 48px; letter-spacing: 2px;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.ss-left .ss-label { color: var(--text-secondary, #9CA3AF); }
+.ss-right .ss-label { color: var(--accent-cool, #06B6D4); }
+.ss-items {
+  display: flex; flex-direction: column; gap: 24px;
+}
+.ss-item {
+  font-size: 24px; line-height: 1.6;
+  display: flex; align-items: center; gap: 16px;
+}
+.ss-item-dim { color: rgba(156,163,175,0.6); }
+.ss-item-hl {
+  color: var(--text-primary, #F9FAFB);
+  text-shadow: 0 0 20px rgba(6,182,212,0.15);
+}
+.ss-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.ss-dot-dim { background: rgba(156,163,175,0.3); }
+.ss-dot-hl { background: var(--accent-cool, #06B6D4); box-shadow: 0 0 8px rgba(6,182,212,0.5); }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.ss-left', {x:'-100%', duration:0.6, ease:'power3.out'}, startTime)
+  .from('.ss-right', {x:'100%', duration:0.6, ease:'power3.out'}, startTime + 0.1)
+  .from('.ss-divider', {opacity:0, scaleY:0, duration:0.5, ease:'power2.out'}, startTime + 0.3)
+  .from('.ss-left .ss-item', {opacity:0, x:-30, duration:0.3, ease:'power3.out', stagger:0.08}, startTime + 0.5)
+  .from('.ss-right .ss-item', {opacity:0, x:30, duration:0.3, ease:'power3.out', stagger:0.08}, startTime + 0.6);
+</script>

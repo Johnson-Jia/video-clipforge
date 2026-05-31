@@ -40,8 +40,19 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.speech-bubble', {
-  opacity:0, scale:0.5, y:20,
-  duration:0.3, ease:'back.out(2)'
-}, startTime);
+// Step 1: Bubble inflates from zero with elastic spring
+tl.from('.speech-bubble', {scale:0, opacity:0, rotation:-5, duration:0.6, ease:'elastic.out(1, 0.35)'}, startTime)
+  // Step 2: Tail springs out with overshoot
+  .from('.bubble-tail', {scaleX:0, scaleY:0, opacity:0, duration:0.35, ease:'back.out(3)'}, startTime + 0.3)
+  // Step 3: Text fades in with slight upward drift
+  .from('.bubble-text', {opacity:0, y:15, scale:0.9, duration:0.3, ease:'power4.out'}, startTime + 0.4)
+  // Step 4: Wobble settle
+  .to('.speech-bubble', {rotation:1, duration:0.1, ease:'power2.out'}, startTime + 0.7)
+  .to('.speech-bubble', {rotation:0, duration:0.08, ease:'power2.out'}, startTime + 0.8)
+  // Step 5: Gentle floating bob
+  .to('.speech-bubble', {y:-6, duration:0.5, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 1.0)
+  // Step 6: Glow pulse
+  .fromTo('.speech-bubble',
+    {boxShadow:'0 8px 32px rgba(0,0,0,0.3)'},
+    {boxShadow:'0 8px 48px rgba(0,0,0,0.4), 0 0 60px rgba(255,255,255,0.08)', duration:0.3, ease:'power2.out'}, startTime + 0.9);
 </script>

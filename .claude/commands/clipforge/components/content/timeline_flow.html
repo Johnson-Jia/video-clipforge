@@ -52,8 +52,13 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.timeline-node', {
-  opacity:0, x:-30, duration:0.3,
-  ease:'power3.out', stagger:0.2
-}, startTime);
+// Step 1: Timeline line draws in from top
+tl.from('.timeline-line', {scaleY:0, transformOrigin:'top center', duration:0.6, ease:'power4.out'}, startTime)
+  // Step 2: Node dots pop in sequence
+  .from('.node-dot', {scale:0, opacity:0, duration:0.3, ease:'back.out(2)', stagger:0.15}, startTime + 0.3)
+  // Step 3: Node content slides in with alternating direction
+  .from('.timeline-node', {
+    opacity:0, x:(i) => i % 2 === 0 ? -40 : 40,
+    duration:0.35, ease:'power3.out', stagger:0.15
+  }, startTime + 0.4);
 </script>

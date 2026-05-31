@@ -1,0 +1,122 @@
+<!--
+@ComponentMeta
+name: spotlight_card
+layer: content
+tags: [spotlight, focus, dramatic, stage, emphasis, highlight, theatrical]
+emotion_range: [focus, drama, spotlight]
+visual_density: standard
+complexity: css-only
+description: 舞台聚光灯效果卡片，径向渐变聚焦中央内容 + 暗角烘托 + 光束射线装饰，营造戏剧性焦点
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="sl-wrap">
+  <div class="sl-overlay"></div>
+  <div class="sl-rays">
+    <div class="sl-ray sl-ray-1"></div>
+    <div class="sl-ray sl-ray-2"></div>
+    <div class="sl-ray sl-ray-3"></div>
+    <div class="sl-ray sl-ray-4"></div>
+  </div>
+  <div class="sl-content">
+    <div class="sl-icon">⭐</div>
+    <div class="sl-title">核心亮点</div>
+    <div class="sl-desc">单项目单日涨星 5,123，创下 GitHub 历史记录</div>
+    <div class="sl-metrics">
+      <div class="sl-metric">
+        <div class="sl-metric-val">5.1K</div>
+        <div class="sl-metric-lbl">今日涨星</div>
+      </div>
+      <div class="sl-metric">
+        <div class="sl-metric-val">58K</div>
+        <div class="sl-metric-lbl">总星数</div>
+      </div>
+      <div class="sl-metric">
+        <div class="sl-metric-val">#1</div>
+        <div class="sl-metric-lbl">全球排名</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.sl-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+}
+.sl-overlay {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 45%,
+    rgba(255,255,255,0.03) 0%,
+    transparent 35%,
+    rgba(0,0,0,0.5) 75%,
+    rgba(0,0,0,0.7) 100%
+  );
+  pointer-events: none; z-index: 1;
+}
+.sl-rays {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 0;
+}
+.sl-ray {
+  position: absolute;
+  width: 2px; height: 300px;
+  background: linear-gradient(to top, rgba(255,220,150,0.12), transparent);
+  transform-origin: bottom center;
+  top: 10%; left: 50%;
+}
+.sl-ray-1 { transform: rotate(-30deg); left: 35%; height: 250px; opacity: 0.6; }
+.sl-ray-2 { transform: rotate(-10deg); left: 45%; height: 280px; opacity: 0.5; }
+.sl-ray-3 { transform: rotate(10deg); left: 55%; height: 280px; opacity: 0.5; }
+.sl-ray-4 { transform: rotate(30deg); left: 65%; height: 250px; opacity: 0.6; }
+.sl-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  max-width: 800px; padding: 60px;
+}
+.sl-icon { font-size: 72px; margin-bottom: 24px; }
+.sl-title {
+  font-size: 52px; font-weight: 900;
+  color: var(--text-primary, #F9FAFB);
+  text-shadow: 0 0 40px rgba(245,158,11,0.4);
+  margin-bottom: 20px;
+}
+.sl-desc {
+  font-size: 28px; line-height: 1.6;
+  color: var(--text-secondary, #9CA3AF);
+  margin-bottom: 40px;
+}
+.sl-metrics {
+  display: flex; gap: 32px;
+}
+.sl-metric {
+  text-align: center;
+  padding: 16px 28px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+}
+.sl-metric-val {
+  font-size: 40px; font-weight: 900;
+  color: var(--accent-warm, #F59E0B);
+  text-shadow: 0 0 20px rgba(245,158,11,0.3);
+}
+.sl-metric-lbl {
+  font-size: 18px; color: var(--text-secondary, #9CA3AF);
+  margin-top: 6px;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.sl-overlay', {opacity:0, scale:0, duration:0.6, ease:'power3.out'}, startTime)
+  .from('.sl-rays .sl-ray', {opacity:0, scaleY:0, duration:0.5, ease:'power3.out', stagger:0.08}, startTime + 0.2)
+  .from('.sl-icon', {opacity:0, scale:0, duration:0.4, ease:'back.out(1.5)'}, startTime + 0.3)
+  .from('.sl-title', {opacity:0, y:20, duration:0.4, ease:'power3.out'}, startTime + 0.45)
+  .from('.sl-desc', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, startTime + 0.6)
+  .from('.sl-metric', {opacity:0, y:20, duration:0.3, ease:'power3.out', stagger:0.1}, startTime + 0.75);
+</script>

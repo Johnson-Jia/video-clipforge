@@ -40,8 +40,18 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.char-overlay', {
-  opacity:0, x:-40, duration:0.4,
-  ease:'back.out(1.5)'
-}, startTime);
+// Step 1: Character bounces in with elastic spin
+tl.from('.char-overlay', {opacity:0, scale:0, rotation:-30, duration:0.7, ease:'elastic.out(1, 0.4)'}, startTime)
+  // Step 2: SVG elements inside stagger glow
+  .from('.char-svg *', {opacity:0, scale:0.8, stagger:0.03, duration:0.15, ease:'back.out(2)'}, startTime + 0.3)
+  // Step 3: Wobble settle
+  .to('.char-overlay', {rotation:3, duration:0.12, ease:'power2.out'}, startTime + 0.8)
+  .to('.char-overlay', {rotation:-1, duration:0.1, ease:'power2.out'}, startTime + 0.92)
+  .to('.char-overlay', {rotation:0, duration:0.08, ease:'power2.out'}, startTime + 1.02)
+  // Step 4: Gentle floating bob
+  .to('.char-overlay', {y:-8, duration:0.6, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 1.2)
+  // Step 5: Glow pulse on eyes
+  .fromTo('.char-svg',
+    {filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'},
+    {filter:'drop-shadow(0 4px 24px rgba(240,180,41,0.5))', duration:0.3, ease:'power2.out'}, startTime + 1.0);
 </script>

@@ -75,10 +75,26 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.numgrid-title', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime)
-  .from('.numgrid-subtitle', {opacity:0, duration:0.3}, startTime + 0.15)
+// Step 1: Title scales in with dramatic punch
+tl.from('.numgrid-title', {opacity:0, scale:0.3, y:-50, duration:0.5, ease:'back.out(2)'}, startTime)
+  // Step 2: Subtitle fades in
+  .from('.numgrid-subtitle', {opacity:0, y:20, duration:0.3, ease:'power4.out'}, startTime + 0.2)
+  // Step 3: Grid items flip in with stagger from center
   .from('.num-item', {
-    opacity:0, scale:0.85, duration:0.4, ease:'back.out(1.2)',
-    stagger:{each:0.1, from:'center'}
-  }, startTime + 0.3);
+    opacity:0, scale:0.4, rotation:(i) => i % 2 === 0 ? 8 : -8,
+    duration:0.5, ease:'back.out(1.8)',
+    stagger:{each:0.08, from:'center'}
+  }, startTime + 0.35)
+  // Step 4: Big numbers spin-pop in with elastic
+  .from('.num-val', {
+    scale:0, opacity:0, rotation:(i) => i % 2 === 0 ? 10 : -10,
+    duration:0.5, ease:'elastic.out(1, 0.5)',
+    stagger:{each:0.06, from:'center'}
+  }, startTime + 0.65)
+  // Step 5: Descriptions slide up
+  .from('.num-desc', {opacity:0, y:10, duration:0.25, stagger:{each:0.06, from:'center'}, ease:'power3.out'}, startTime + 0.9)
+  // Step 6: Glow pulse on grid items
+  .fromTo('.num-item',
+    {boxShadow:'0 0 0px transparent'},
+    {boxShadow:'0 0 40px rgba(6,182,212,0.15), 0 0 80px rgba(240,180,41,0.1)', duration:0.4, ease:'power2.out', stagger:0.08}, startTime + 1.1);
 </script>
