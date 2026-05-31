@@ -1,0 +1,135 @@
+<!--
+@ComponentMeta
+name: cosmic_planet
+layer: bg
+tags: [cosmic, planet, earth, space, stars, atmosphere, ocean, continent, glass]
+emotion_range: [wonder, epic, mystery]
+visual_density: medium
+complexity: css-only
+description: 深空背景 + 星点群 + 银河带 + 地球本体（深蓝海洋/绿棕大陆/白色云层/极地冰盖/夜面城市灯光/大气层蓝边/暗面阴影）+ 毛玻璃折射
+parameters:
+  planet_size: { default: 320, range: [240, 400], description: "星球直径(px)" }
+  planet_x: { default: "46%", description: "星球中心X位置" }
+  planet_y: { default: "26%", description: "星球顶部位置" }
+  rotation_period: { default: 35, range: [25, 50] }
+  star_count: { default: 17, range: [12, 25] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes planetRotate {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes planetGlow {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 60px hsla(200,60%,45%,0.15), inset 0 0 30px hsla(200,50%,40%,0.08); }
+  50% { opacity: 0.8; box-shadow: 0 0 80px hsla(200,60%,45%,0.22), inset 0 0 40px hsla(200,50%,40%,0.12); }
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.55; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 深空底色 -->
+<div style="position:absolute;inset:0;background:linear-gradient(170deg,hsl(230,30%,3%),hsl(220,25%,5%),hsl(235,28%,3%))"></div>
+<!-- 银河带 -->
+<div style="position:absolute;top:30%;left:-20%;width:140%;height:120px;opacity:0.15;
+  background:linear-gradient(100deg,transparent 10%,hsla(220,30%,50%,0.35),hsla(260,25%,45%,0.3),hsla(200,30%,50%,0.35),transparent 90%);
+  filter:blur(50px);transform:rotate(-10deg)"></div>
+<!-- 大气层外晕（柔和蓝色光圈） -->
+<div style="position:absolute;top:18%;left:38%;width:480px;height:480px;border-radius:50%;
+  background:radial-gradient(circle,hsla(210,70%,55%,0.08),hsla(215,55%,42%,0.03),transparent 55%);
+  filter:blur(30px);animation:planetGlow 8s ease-in-out infinite"></div>
+<!-- 地球本体 -->
+<div style="position:absolute;top:26%;left:46%;width:320px;height:320px;border-radius:50%;overflow:hidden;
+  box-shadow:0 0 60px hsla(210,65%,50%,0.10),0 0 120px hsla(205,55%,40%,0.05);
+  background:hsla(215,55%,12%,0.75)">
+  <!-- 第一层：深蓝海洋底色 -->
+  <div style="position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 38% 35%,hsla(205,65%,32%,0.85) 0%,hsla(210,60%,25%,0.80) 40%,hsla(220,50%,15%,0.75) 75%,hsla(230,40%,8%,0.70) 100%)"></div>
+  <!-- 第二层：大陆色块 -->
+  <div style="position:absolute;inset:0;border-radius:50%;
+    background:
+      radial-gradient(ellipse 80px 65px at 22% 35%,hsla(100,35%,28%,0.38),hsla(120,30%,25%,0.20),transparent),
+      radial-gradient(ellipse 50px 90px at 40% 50%,hsla(85,30%,25%,0.34),hsla(95,25%,22%,0.18),transparent),
+      radial-gradient(ellipse 70px 45px at 55% 30%,hsla(35,40%,30%,0.32),hsla(40,35%,25%,0.16),transparent),
+      radial-gradient(ellipse 55px 60px at 68% 55%,hsla(110,28%,26%,0.28),hsla(100,22%,20%,0.12),transparent),
+      radial-gradient(ellipse 40px 35px at 80% 38%,hsla(45,35%,28%,0.26),transparent),
+      radial-gradient(ellipse 35px 50px at 15% 60%,hsla(90,25%,24%,0.20),transparent),
+      radial-gradient(ellipse 60px 40px at 90% 50%,hsla(30,38%,26%,0.24),transparent),
+      radial-gradient(ellipse 45px 55px at 48% 68%,hsla(105,22%,22%,0.18),transparent);
+    background-size:200% 100%;
+    animation:planetRotate 35s linear infinite"></div>
+  <!-- 第三层：冰盖 -->
+  <div style="position:absolute;inset:0;border-radius:50%;
+    background:
+      radial-gradient(ellipse 60px 20px at 30% 5%,hsla(200,30%,85%,0.15),transparent),
+      radial-gradient(ellipse 50px 18px at 55% 95%,hsla(200,25%,80%,0.12),transparent);
+    background-size:200% 100%;
+    animation:planetRotate 35s linear infinite"></div>
+  <!-- 第四层：云层 -->
+  <div style="position:absolute;inset:0;border-radius:50%;
+    background:
+      radial-gradient(ellipse 90px 25px at 18% 40%,hsla(0,0%,100%,0.14),hsla(0,0%,95%,0.06),transparent),
+      radial-gradient(ellipse 70px 20px at 50% 28%,hsla(0,0%,100%,0.12),transparent),
+      radial-gradient(ellipse 100px 18px at 35% 60%,hsla(0,0%,100%,0.13),hsla(0,0%,95%,0.05),transparent),
+      radial-gradient(ellipse 60px 22px at 72% 48%,hsla(0,0%,100%,0.10),transparent),
+      radial-gradient(ellipse 80px 15px at 60% 72%,hsla(0,0%,100%,0.09),transparent),
+      radial-gradient(ellipse 50px 20px at 85% 35%,hsla(0,0%,100%,0.08),transparent);
+    background-size:200% 100%;
+    animation:planetRotate 24s linear infinite"></div>
+  <!-- 太阳高光 -->
+  <div style="position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 30% 25%,hsla(205,55%,80%,0.20),hsla(210,45%,65%,0.06),transparent 40%)"></div>
+  <!-- 海面高光反射点 -->
+  <div style="position:absolute;top:24%;left:26%;width:12px;height:6px;border-radius:50%;
+    background:hsla(200,50%,90%,0.18);filter:blur(2px)"></div>
+  <!-- 大气层边缘（薄蓝色光环） -->
+  <div style="position:absolute;inset:-3px;border-radius:50%;
+    background:radial-gradient(circle at 35% 32%,transparent 45%,
+      hsla(210,70%,65%,0.16) 47%,
+      hsla(205,65%,60%,0.25) 48.5%,
+      hsla(200,60%,55%,0.12) 50%,
+      transparent 52%)"></div>
+  <!-- 暗面阴影 -->
+  <div style="position:absolute;inset:0;border-radius:50%;
+    background:linear-gradient(110deg,transparent 30%,hsla(225,35%,4%,0.45) 65%,hsla(230,40%,2%,0.60) 85%)"></div>
+  <!-- 夜面城市灯光 1 -->
+  <div style="position:absolute;top:38%;left:68%;width:2px;height:2px;border-radius:50%;background:hsla(45,80%,70%,0.35);box-shadow:0 0 4px hsla(45,70%,60%,0.28)"></div>
+  <!-- 夜面城市灯光 2 -->
+  <div style="position:absolute;top:42%;left:72%;width:2px;height:2px;border-radius:50%;background:hsla(40,75%,65%,0.30);box-shadow:0 0 3px hsla(40,65%,55%,0.22)"></div>
+  <!-- 夜面城市灯光 3 -->
+  <div style="position:absolute;top:50%;left:75%;width:1.5px;height:1.5px;border-radius:50%;background:hsla(50,80%,70%,0.28);box-shadow:0 0 3px hsla(50,70%,60%,0.20)"></div>
+  <!-- 夜面城市灯光 4 -->
+  <div style="position:absolute;top:35%;left:73%;width:1.5px;height:1.5px;border-radius:50%;background:hsla(42,70%,65%,0.25);box-shadow:0 0 3px hsla(42,60%,55%,0.18)"></div>
+  <!-- 夜面城市灯光 5 -->
+  <div style="position:absolute;top:55%;left:70%;width:2px;height:2px;border-radius:50%;background:hsla(48,75%,68%,0.30);box-shadow:0 0 4px hsla(48,65%,58%,0.22)"></div>
+  <!-- 夜面城市灯光 6 -->
+  <div style="position:absolute;top:46%;left:78%;width:1.5px;height:1.5px;border-radius:50%;background:hsla(38,72%,62%,0.22);box-shadow:0 0 3px hsla(38,60%,52%,0.16)"></div>
+</div>
+<!-- 星点群 -->
+<div style="position:absolute;top:3%;left:10%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.55;box-shadow:0 0 4px rgba(255,255,255,0.5);animation:starTwinkle 4s ease-in-out infinite 0s"></div>
+<div style="position:absolute;top:8%;left:28%;width:1.5px;height:1.5px;border-radius:50%;background:white;opacity:0.35;box-shadow:0 0 3px rgba(255,255,255,0.3)"></div>
+<div style="position:absolute;top:12%;left:72%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.60;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 5s ease-in-out infinite 1s"></div>
+<div style="position:absolute;top:6%;left:50%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.40;box-shadow:0 0 4px rgba(255,255,255,0.35);animation:starTwinkle 3.5s ease-in-out infinite 2s"></div>
+<div style="position:absolute;top:18%;left:5%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.45;box-shadow:0 0 5px rgba(255,255,255,0.4);animation:starTwinkle 6s ease-in-out infinite 0.5s"></div>
+<div style="position:absolute;top:22%;left:18%;width:1.5px;height:1.5px;border-radius:50%;background:white;opacity:0.30;box-shadow:0 0 3px rgba(255,255,255,0.25)"></div>
+<div style="position:absolute;top:15%;left:88%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.48;box-shadow:0 0 4px rgba(255,255,255,0.4);animation:starTwinkle 4.5s ease-in-out infinite 3s"></div>
+<div style="position:absolute;top:35%;left:3%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.52;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 4s ease-in-out infinite 2.5s"></div>
+<div style="position:absolute;top:48%;left:8%;width:1.5px;height:1.5px;border-radius:50%;background:white;opacity:0.32;box-shadow:0 0 3px rgba(255,255,255,0.3)"></div>
+<div style="position:absolute;top:55%;left:15%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.42;box-shadow:0 0 4px rgba(255,255,255,0.4);animation:starTwinkle 5.5s ease-in-out infinite 1.5s"></div>
+<div style="position:absolute;top:65%;left:22%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.38;box-shadow:0 0 4px rgba(255,255,255,0.35)"></div>
+<div style="position:absolute;top:72%;left:45%;width:2.5px;height:2.5px;border-radius:50%;background:white;opacity:0.48;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 3s ease-in-out infinite 4s"></div>
+<div style="position:absolute;top:78%;left:68%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.40;box-shadow:0 0 4px rgba(255,255,255,0.35);animation:starTwinkle 5s ease-in-out infinite 3.5s"></div>
+<div style="position:absolute;top:85%;left:35%;width:1.5px;height:1.5px;border-radius:50%;background:white;opacity:0.28;box-shadow:0 0 3px rgba(255,255,255,0.25)"></div>
+<div style="position:absolute;top:88%;left:80%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.50;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 4.5s ease-in-out infinite 0.8s"></div>
+<div style="position:absolute;top:92%;left:55%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.35;box-shadow:0 0 4px rgba(255,255,255,0.3);animation:starTwinkle 3.5s ease-in-out infinite 5s"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.01) 0%,transparent 35%,transparent 65%,rgba(255,255,255,0.015) 100%);
+  animation:glassShimmer 10s ease-in-out infinite"></div>

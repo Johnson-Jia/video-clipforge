@@ -1,0 +1,64 @@
+<!--
+@ComponentMeta
+name: electric_pulse
+layer: bg
+tags: [electric, pulse, energy, arc, conic, rotate, core, ring, expand, dramatic, glass]
+emotion_range: [excitement, power, climax]
+visual_density: high
+complexity: css-only
+description: 旋转锥形光弧（conic-gradient）+ 明亮青白能量核心 + 3 层脉冲环扩散 + 暗角聚焦 + 毛玻璃折射
+parameters:
+  arc_speed: { default: 45, range: [30, 60], description: "光弧旋转周期(s)" }
+  pulse_period: { default: 4, range: [3, 6] }
+  core_intensity: { default: 0.30, range: [0.20, 0.45], description: "核心辉光强度" }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes arcRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes pulseExpand {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes coreBreathe {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50% { opacity: 0.38; transform: scale(1.08); }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- 深蓝黑底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(160deg,hsl(220,25%,3%),hsl(200,20%,6%))"></div>
+<!-- 旋转锥形光弧 -->
+<div style="position:absolute;top:0;left:0;width:200%;height:200%;transform-origin:25% 17.5%;animation:arcRotate 45s linear infinite;
+  background:conic-gradient(from 0deg,
+    transparent 0deg,hsla(180,70%,50%,0.07) 25deg,transparent 50deg,
+    transparent 90deg,hsla(185,65%,48%,0.05) 115deg,transparent 140deg,
+    transparent 180deg,hsla(175,70%,50%,0.06) 205deg,transparent 230deg,
+    transparent 270deg,hsla(190,60%,45%,0.04) 295deg,transparent 320deg)"></div>
+<!-- 能量核心辉光 -->
+<div style="position:absolute;top:25%;left:25%;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,hsla(185,90%,60%,0.30),hsla(190,70%,45%,0.10),transparent 50%);
+  filter:blur(60px);animation:coreBreathe 5s ease-in-out infinite"></div>
+<!-- 脉冲环 1 -->
+<div style="position:absolute;top:calc(35% - 80px);left:calc(35% - 80px);width:160px;height:160px;border-radius:50%;
+  border:2px solid hsla(190,80%,55%,0.18);animation:pulseExpand 4s ease-out infinite 0s"></div>
+<!-- 脉冲环 2 -->
+<div style="position:absolute;top:calc(35% - 80px);left:calc(35% - 80px);width:160px;height:160px;border-radius:50%;
+  border:1.5px solid hsla(190,70%,50%,0.14);animation:pulseExpand 4s ease-out infinite 1.5s"></div>
+<!-- 脉冲环 3 -->
+<div style="position:absolute;top:calc(35% - 80px);left:calc(35% - 80px);width:160px;height:160px;border-radius:50%;
+  border:1px solid hsla(185,65%,48%,0.10);animation:pulseExpand 4s ease-out infinite 3s"></div>
+<!-- 暗角聚焦 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 45%,transparent 25%,hsla(220,30%,2%,0.55) 80%,hsla(220,35%,2%,0.75) 100%)"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(150deg,rgba(255,255,255,0.02) 0%,transparent 30%,transparent 70%,rgba(255,255,255,0.025) 100%);
+  animation:glassShimmer 7s ease-in-out infinite"></div>

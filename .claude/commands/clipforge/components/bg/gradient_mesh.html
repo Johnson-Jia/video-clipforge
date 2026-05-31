@@ -2,15 +2,16 @@
 @ComponentMeta
 name: gradient_mesh
 layer: bg
-tags: [gradient, background, ambient, wave, sway, glass]
+tags: [gradient, background, ambient, wave, sway, glass, particles]
 emotion_range: [calm, mystery, depth]
 visual_density: medium
 complexity: css-only
-description: 2-3 条半透明渐变色带缓慢旋转摇摆 + 毛玻璃折射层 + 棱镜色散，提供氛围感和玻璃质感
+description: 2-3 条半透明渐变色带缓慢旋转摇摆 + 漂浮粒子 + 毛玻璃折射层 + 棱镜色散呼吸
 parameters:
   band_count: { default: 2, range: [2, 3] }
   band_height: { default: 300, range: [200, 350] }
   sway_period: { default: 22, range: [18, 30] }
+  particle_count: { default: 3, range: [2, 5] }
 /ComponentMeta
 -->
 <!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
@@ -20,8 +21,16 @@ parameters:
   50% { transform: rotate(5deg); }
 }
 @keyframes glassShimmer {
-  0%, 100% { opacity: 0.03; }
-  50% { opacity: 0.08; }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+@keyframes floatParticle {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
+  50% { transform: translateY(-50px) translateX(8px); opacity: 0.7; }
+}
+@keyframes prismShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.18; }
 }
 -->
 <!-- HTML (嵌入 .layer-bg) -->
@@ -34,13 +43,26 @@ parameters:
   transform:rotate(-8deg);animation:waveSway 20s ease-in-out infinite 0s"></div>
 <!-- 色带 2 -->
 <div style="position:absolute;top:55%;left:0;width:100%;height:250px;
-  background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.12),transparent);
+  background:linear-gradient(90deg,transparent,hsla(250,50%,45%,0.18),transparent);
   transform:rotate(5deg);animation:waveSway 25s ease-in-out infinite 5s"></div>
+<!-- 色带 3（额外层次） -->
+<div style="position:absolute;top:38%;left:-5%;width:110%;height:180px;
+  background:linear-gradient(90deg,transparent 15%,hsla(190,55%,45%,0.16),hsla(200,45%,40%,0.10),transparent 85%);
+  filter:blur(30px);animation:waveSway 28s ease-in-out infinite 10s"></div>
+<!-- 漂浮粒子 1 -->
+<div style="position:absolute;top:25%;left:65%;width:4px;height:4px;border-radius:50%;
+  background:hsla(230,60%,60%,0.5);box-shadow:0 0 8px hsla(230,50%,50%,0.4);animation:floatParticle 7s ease-in-out infinite 0s"></div>
+<!-- 漂浮粒子 2 -->
+<div style="position:absolute;top:50%;left:30%;width:3px;height:3px;border-radius:50%;
+  background:hsla(260,50%,55%,0.45);box-shadow:0 0 6px hsla(260,40%,45%,0.35);animation:floatParticle 9s ease-in-out infinite 3s"></div>
+<!-- 漂浮粒子 3 -->
+<div style="position:absolute;top:70%;left:55%;width:3px;height:3px;border-radius:50%;
+  background:hsla(210,55%,58%,0.4);box-shadow:0 0 6px hsla(210,45%,48%,0.3);animation:floatParticle 8s ease-in-out infinite 5s"></div>
 <!-- 玻璃折射层：半透明毛玻璃叠加 -->
 <div style="position:absolute;inset:0;
   background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 40%,rgba(255,255,255,0.03) 60%,transparent 100%);
   animation:glassShimmer 8s ease-in-out infinite"></div>
 <!-- 棱镜色散：细微的彩虹光带 -->
-<div style="position:absolute;top:30%;left:-10%;width:120%;height:200px;opacity:0.04;
+<div style="position:absolute;top:30%;left:-10%;width:120%;height:200px;opacity:0.15;
   background:linear-gradient(90deg,transparent,rgba(255,100,100,0.5),rgba(100,255,100,0.5),rgba(100,100,255,0.5),transparent);
-  filter:blur(60px);transform:rotate(-3deg)"></div>
+  filter:blur(60px);transform:rotate(-3deg);animation:prismShimmer 10s ease-in-out infinite"></div>

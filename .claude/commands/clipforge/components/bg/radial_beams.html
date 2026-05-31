@@ -2,11 +2,11 @@
 @ComponentMeta
 name: radial_beams
 layer: bg
-tags: [beams, rays, radial, light, dramatic, epic, glass]
+tags: [beams, rays, radial, light, dramatic, epic, glass, particles, rings]
 emotion_range: [shock, excitement, climax, revelation]
 visual_density: medium
 complexity: css-only
-description: 径向光束射线从中心发散 + 玻璃棱镜色散 + 渐变底色，适合震撼/揭示/高潮场景
+description: 径向光束射线从中心发散 + 中心辉光脉冲 + 金色漂浮粒子 + 扩散光环 + 玻璃棱镜色散 + 暗角
 parameters:
   beam_count: { default: 12, range: [8, 16] }
   beam_color: { default: "rgba(255,200,0,0.06)", description: "光束颜色" }
@@ -21,8 +21,24 @@ parameters:
   100% { transform: rotate(360deg); }
 }
 @keyframes glassShimmer {
-  0%, 100% { opacity: 0.04; }
-  50% { opacity: 0.10; }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+@keyframes floatParticle {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
+  50% { transform: translateY(-50px) translateX(8px); opacity: 0.7; }
+}
+@keyframes warmRing {
+  0% { transform: scale(0.9); opacity: 0.15; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes beamBreath {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
 }
 -->
 <!-- HTML (嵌入 .layer-bg) -->
@@ -31,15 +47,33 @@ parameters:
 <!-- 径向光束 -->
 <div style="position:absolute;top:0;left:0;width:200%;height:200%;transform-origin:25% 17.5%;animation:beamRotate 60s linear infinite;
   background:repeating-conic-gradient(from 0deg,transparent 0deg,rgba(255,200,0,0.05) 2deg,transparent 4deg,transparent 28deg)"></div>
-<!-- 中心光晕 -->
-<div style="position:absolute;top:15%;left:30%;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(255,200,0,0.25) 0%,transparent 60%);filter:blur(80px)"></div>
+<!-- 中心光晕（脉冲动画） -->
+<div style="position:absolute;top:15%;left:30%;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,200,0,0.25) 0%,transparent 60%);filter:blur(80px);
+  animation:glowPulse 8s ease-in-out infinite"></div>
+<!-- 金色漂浮粒子 1 -->
+<div style="position:absolute;top:30%;left:55%;width:4px;height:4px;border-radius:50%;
+  background:hsla(45,90%,65%,0.6);box-shadow:0 0 10px hsla(45,80%,55%,0.5);animation:floatParticle 6s ease-in-out infinite 0s"></div>
+<!-- 金色漂浮粒子 2 -->
+<div style="position:absolute;top:50%;left:35%;width:3px;height:3px;border-radius:50%;
+  background:hsla(38,85%,60%,0.5);box-shadow:0 0 8px hsla(38,75%,50%,0.4);animation:floatParticle 8s ease-in-out infinite 2s"></div>
+<!-- 金色漂浮粒子 3 -->
+<div style="position:absolute;top:65%;left:60%;width:3px;height:3px;border-radius:50%;
+  background:hsla(50,80%,62%,0.45);box-shadow:0 0 7px hsla(50,70%,52%,0.35);animation:floatParticle 7s ease-in-out infinite 4s"></div>
+<!-- 扩散光环 1 -->
+<div style="position:absolute;top:calc(35% - 60px);left:calc(35% - 60px);width:120px;height:120px;border-radius:50%;
+  border:1.5px solid hsla(40,80%,55%,0.12);animation:warmRing 5s ease-out infinite 0s"></div>
+<!-- 扩散光环 2 -->
+<div style="position:absolute;top:calc(35% - 60px);left:calc(35% - 60px);width:120px;height:120px;border-radius:50%;
+  border:1px solid hsla(45,70%,50%,0.08);animation:warmRing 5s ease-out infinite 2.5s"></div>
 <!-- 玻璃折射高光 -->
 <div style="position:absolute;inset:0;
   background:linear-gradient(160deg,rgba(255,255,255,0.03) 0%,transparent 25%,transparent 75%,rgba(255,255,255,0.02) 100%);
   animation:glassShimmer 7s ease-in-out infinite"></div>
-<!-- 棱镜色散环 -->
+<!-- 棱镜色散环（呼吸动画） -->
 <div style="position:absolute;top:5%;left:15%;width:700px;height:700px;border-radius:50%;opacity:0.025;
   background:conic-gradient(from 0deg,rgba(255,50,50,0.5),rgba(255,200,50,0.4),rgba(50,255,100,0.5),rgba(50,100,255,0.5),rgba(200,50,255,0.4),rgba(255,50,50,0.5));
-  filter:blur(60px)"></div>
+  filter:blur(60px);animation:beamBreath 12s ease-in-out infinite"></div>
 <!-- 暗角 -->
-<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,transparent 30%,rgba(0,0,0,0.5) 100%)"></div>
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 35%,transparent 30%,rgba(0,0,0,0.5) 100%)"></div>
