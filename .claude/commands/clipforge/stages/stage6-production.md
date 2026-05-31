@@ -321,7 +321,7 @@ python3 .claude/commands/clipforge/scripts/director_gate.py .
   {"slot_id": "s1-bg-html", "content": "<div class='nebula'>...</div>"},
   {"slot_id": "s1-fx-html", "content": "<canvas id='particles-s1'>...</canvas>"},
   {"slot_id": "s1-content-html", "content": "<h1 style='font-size:100px;...'>震撼标题</h1>"},
-  {"slot_id": "s1-gsap", "content": "tl.from('#s1 h1', {x:-400, opacity:0, duration:0.8}, 0.3);"}
+  {"slot_id": "s1-gsap", "content": "tl.from('#s1 h1', {scale:0.85, opacity:0, duration:0.15, ease:'power3.out'}, 0);"}
 ]
 ```
 
@@ -334,7 +334,7 @@ python3 .claude/commands/clipforge/scripts/director_gate.py .
 <!-- END_SLOT:s1-bg-html -->
 
 <!-- CREATIVE_SLOT:s1-gsap -->
-tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
+tl.from('#s1 h1', {scale: 0.85, opacity: 0, duration: 0.15, ease: 'power3.out'}, 0);
 <!-- END_SLOT:s1-gsap -->
 ```
 
@@ -483,7 +483,7 @@ tl.from('#s1 h1', {x: -400, opacity: 0, duration: 0.8}, 0.3);
 
 #### hook 场景 — 黄金 3 秒视觉
 
-hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（主标题 ≥100px）、对比最强、光晕加倍（2 个大光晕 ≥画面 50%）、发光效果、配色优雅（≤3 色）、布局精致（留白 ≥30%）、动画干脆（0.3-0.5s）。
+hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（主标题 ≥100px）、对比最强、光晕加倍（2 个大光晕 ≥画面 50%）、发光效果、配色优雅（≤3 色）、布局精致（留白 ≥30%）、**首帧即冲击**（首个文字动画 t=0 启动、duration ≤ 0.15s，禁止任何延迟）。
 
 #### 背景：多元素组合（≥3 种视觉类型）
 
@@ -532,6 +532,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 12. easing: `power3.out` 用于入场
 13. 场景间由框架 transitions 处理，不手动 exit
 14. **动画设计原则：** 每个场景的动画在 1 秒内完成入场，之后保持最终状态静止直到 `data-duration` 结束。
+15. **hook 场景 A/V 同步铁律：** hook（s1）的首个文字动画必须从 t=0 启动，duration ≤ 0.15s，用 `scale` 代替 `y` 位移（缩放冲击感更强）。示例：`tl.from('#s1 h1', {scale:0.85, opacity:0, duration:0.15, ease:'power3.out'}, 0)`。副标题在 0.15s 启动，0.2s 内完成。确保旁白发声（t≈0.1s）时文字已可见，消除"先声后画"的脱节感。
 15. **fx 动画密度**：每个场景的 `.layer-fx` 中，每个特效元素至少有 1 个 GSAP 动画调用。不限动画类型——脉冲、漂浮、旋转、闪烁、扫描、缩放、位移动画都可以。纯静态 fx 元素（div 在 timeline 中无 GSAP 目标）视为违规。
 
 ### 字体规则

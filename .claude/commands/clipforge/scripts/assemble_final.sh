@@ -63,9 +63,10 @@ echo "  final.mp4: $(du -h final.mp4 | cut -f1), ${FINAL_DUR}s, 音频轨道: ${
 echo "  final_no_bgm.mp4: $(du -h final_no_bgm.mp4 | cut -f1), ${NOBGM_DUR}s, 音频轨道: ${NOBGM_AUDIO}"
 
 # ── 硬性断言：时长不膨胀 + 音频不丢失 ──
-# final.mp4 时长不应超过 output.mp4 + 1 秒（1帧封面 + 余量）
-if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 1)}"; then
-  echo "FAIL: final.mp4 时长 ($FINAL_DUR) 远超源视频 ($SOURCE_DUR)，拼接异常"
+# final.mp4 时长不应超过 output.mp4 + 0.2 秒（1帧封面 ≈ 0.033s + 余量）
+# 事故记录：2026-05-31 SubAgent 绕过本脚本创建 3s 封面视频，导致 A/V 全程脱节
+if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.2)}"; then
+  echo "FAIL: final.mp4 时长 ($FINAL_DUR) 远超源视频 ($SOURCE_DUR)，封面膨胀导致 A/V 脱节风险"
   exit 1
 fi
 if [ "$FINAL_AUDIO" -eq 0 ]; then

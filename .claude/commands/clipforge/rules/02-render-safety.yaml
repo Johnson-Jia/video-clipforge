@@ -205,3 +205,40 @@ rules:
     class: QUALITY
     scope: GLOBAL
     source: "shared/render-safety.md §3.2 — 2026-05-30 用户反馈小标签视觉廉价"
+
+  - id: "R-R-017"
+    type: REQUIRED_METHOD
+    pattern: "hook(s1) 首个文字动画从 t>0 启动（旁白先于画面）"
+    positive: "hook 场景首个文字 GSAP 动画 t=0 启动、duration ≤ 0.15s、使用 scale 而非 y 位移"
+    guardrail: "index.html 中 s1 场景的 .from() 调用第三个参数（时间位置）> 0"
+    detection:
+      regex: "tl\\.from\\(['\"]#s1[^,]+,[^)]+},\\s*(0\\.[1-9]|[1-9])"
+    severity: HARD
+    class: QUALITY
+    scope: stage6-production
+    source: "stages/stage6-production.md §动画规则 R15 — 2026-05-31 A/V 同步修复"
+
+  - id: "R-R-018"
+    type: REQUIRED_METHOD
+    pattern: "封面 HTML 未使用 .cover 根容器或缺少模板规定的 CSS class"
+    positive: "cover.html 必须使用 .cover 根容器 + 模板规定的 7 层 CSS class（.date .scene-label .badge .main-title .divider .data-subtitle .cards）+ :root CSS 变量控制配色"
+    guardrail: "cover.html 中不存在 class=\"cover\" 根容器，或缺少模板规定的 CSS class"
+    detection:
+      keywords: ["cover"]
+      semantic_check: true
+    severity: HARD
+    class: QUALITY
+    scope: stage7-delivery
+    source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"
+
+  - id: "R-R-019"
+    type: FORBIDDEN_METHOD
+    pattern: "封面 HTML 中 CSS 子元素硬编码色值（绕过 :root 变量）"
+    positive: "封面配色通过 :root CSS 变量（--accent-warm --accent-cool --bg-dark 等）控制，子元素引用变量"
+    guardrail: "cover.html 中 .date/.scene-label/.badge/.main-title/.data-subtitle/.card 等子元素使用硬编码 color: 值而非 var(--xxx)"
+    detection:
+      regex: "\\.(date|scene-label|badge|main-title|data-subtitle|card|num|label)\\s*\\{[^}]*color:\\s*#[0-9a-fA-F]"
+    severity: HARD
+    class: QUALITY
+    scope: stage7-delivery
+    source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"

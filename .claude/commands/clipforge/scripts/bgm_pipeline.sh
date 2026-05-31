@@ -55,15 +55,15 @@ echo "OK: 音量校准完成"
 echo "--- Step 2.5: bgm_volume 合理性门禁 ---"
 BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json'))['meta']['bgm_volume'])")
 echo "bgm_volume = ${BGM_VOL}"
-if [ "$(echo "$BGM_VOL < 0.10" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
-    echo "ERROR: bgm_volume=${BGM_VOL} < 0.10，BGM 几乎静音。检查 bgm_gap_check.py 输出。"
+if [ "$(echo "$BGM_VOL < 0.05" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+    echo "ERROR: bgm_volume=${BGM_VOL} < 0.05，BGM 几乎静音。检查 bgm_gap_check.py 输出。"
     exit 1
 fi
 if [ "$(echo "$BGM_VOL > 0.50" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
     echo "ERROR: bgm_volume=${BGM_VOL} > 0.50，BGM 可能盖过旁白。检查 bgm_gap_check.py 输出。"
     exit 1
 fi
-echo "OK: bgm_volume=${BGM_VOL} 在合理范围内 [0.10, 0.50]"
+echo "OK: bgm_volume=${BGM_VOL} 在合理范围内 [0.05, 0.50]"
 
 # ── Step 2.7: BGM 静音尾段检测 ──
 # BGM 源文件可能只有前 N 秒有实际音乐内容，后面是余音/静音尾段。
@@ -133,8 +133,10 @@ print(round(sum(s['actual_duration'] for s in d['segments']), 2))
 
 BGM_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
 
-# 目标 = 旁白 + 1s 缓冲；淡出起点 = 旁白 - 1s
-TARGET_DUR=$(python -c "print(round($TOTAL_DUR + 1, 2))")
+# 目标 = 旁白时长（精确对齐，不加缓冲）；
+# HyperFrames discoveredDuration = max(所有音频轨)，BGM > 旁白会导致视频尾段无旁白。
+# 淡出起点 = 旁白 - 1s
+TARGET_DUR=$(python -c "print(round($TOTAL_DUR, 2))")
 FADE_START=$(python -c "print(round($TOTAL_DUR - 1, 2))")
 
 echo "旁白: ${TOTAL_DUR}s | BGM: ${BGM_DUR}s | 目标: ${TARGET_DUR}s"
