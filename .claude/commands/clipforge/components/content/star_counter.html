@@ -37,11 +37,22 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-const counter = { val: 0 };
-tl.to(counter, {
-  val: 5123, duration: 1.5, ease: 'power2.out',
-  onUpdate: () => {
-    document.querySelector('.star-number').textContent = Math.floor(counter.val).toLocaleString();
-  }
-}, startTime);
+// Step 1: Number zooms in from distance
+tl.from('.star-number', {opacity:0, scale:3, duration:0.5, ease:'power4.out'}, startTime)
+  // Step 2: Label slides in
+  .from('.star-label', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime + 0.3)
+  // Step 3: Counter animation with power4 easing
+  .to(counter || {val:0}, {
+    val: 5123, duration: 1.2, ease: 'power4.out',
+    onUpdate: function() {
+      document.querySelector('.star-number').textContent = Math.floor(this.targets()[0].val).toLocaleString();
+    }
+  }, startTime + 0.5)
+  // Step 4: Glow pulse on completion
+  .fromTo('.star-number',
+    {textShadow: '0 0 40px rgba(240,180,41,0.4)'},
+    {textShadow: '0 0 80px rgba(240,180,41,0.8), 0 0 120px rgba(240,180,41,0.4)', duration: 0.3, ease: 'power2.out'}, startTime + 1.7)
+  // Step 5: Settle with overshoot
+  .to('.star-number', {scale:1.05, duration:0.2, ease:'back.out(1.5)'}, startTime + 1.8)
+  .to('.star-number', {scale:1, duration:0.15, ease:'power2.inOut'}, startTime + 2.0);
 </script>

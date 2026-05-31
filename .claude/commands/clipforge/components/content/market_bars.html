@@ -94,12 +94,22 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-// Animate bars to their data-width values
-document.querySelectorAll('.mbar-fill').forEach(function(bar) {
+// Step 1: Title scales in from distance
+tl.from('.mbars-title', {opacity:0, scale:0.4, y:-50, duration:0.5, ease:'back.out(1.8)'}, startTime)
+  // Step 2: Subtitle fades in
+  .from('.mbars-sub', {opacity:0, y:10, duration:0.3, ease:'power4.out'}, startTime + 0.2)
+  // Step 3: Rows slide in with alternating rotation
+  .from('.mbar-row', {
+    opacity:0, x:-60, rotation:(i) => i % 2 === 0 ? -2 : 2,
+    duration:0.45, ease:'back.out(1.5)', stagger:0.1
+  }, startTime + 0.3);
+// Step 4: Bars grow with elastic power + glow
+document.querySelectorAll('.mbar-fill').forEach(function(bar, i) {
   var targetW = bar.getAttribute('data-width') + '%';
-  tl.to(bar, {width: targetW, duration: 0.8, ease:'power2.out'}, startTime + 0.3);
+  tl.fromTo(bar,
+    {width:'0%', boxShadow:'0 0 0px transparent'},
+    {width: targetW, boxShadow:'0 0 30px rgba(6,182,212,0.5)', duration: 1.0, ease:'elastic.out(1, 0.7)'}, startTime + 0.6 + i * 0.12);
 });
-tl.from('.mbars-title', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime)
-  .from('.mbars-sub', {opacity:0, duration:0.3}, startTime + 0.15)
-  .from('.mbar-row', {opacity:0, x:-20, duration:0.3, stagger:0.1, ease:'power3.out'}, startTime + 0.2);
+// Step 5: Values burst in with elastic pop
+tl.from('.mbar-value', {opacity:0, scale:0, duration:0.4, stagger:0.1, ease:'elastic.out(1, 0.5)'}, startTime + 1.1);
 </script>

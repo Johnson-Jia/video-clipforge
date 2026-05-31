@@ -50,8 +50,18 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.bar-fill', {
-  scaleX:0, duration:0.6, ease:'power2.out',
-  stagger:0.1, transformOrigin:'left center'
-}, startTime);
+// Step 1: Title scales in with overshoot punch
+tl.from('.data-title', {opacity:0, scale:0.5, y:-40, duration:0.45, ease:'back.out(1.8)'}, startTime)
+  // Step 2: Container card fades in
+  .from('.data-viz', {opacity:0, y:30, clipPath:'inset(10% 0 0 0)', duration:0.4, ease:'power4.out'}, startTime + 0.05)
+  // Step 3: Labels slide in from left with stagger
+  .from('.data-bar .bar-label', {opacity:0, x:-40, duration:0.3, stagger:0.08, ease:'back.out(1.5)'}, startTime + 0.25)
+  // Step 4: Bar fills grow with elastic easing
+  .from('.bar-fill', {scaleX:0, duration:0.8, stagger:0.12, ease:'elastic.out(1, 0.75)', transformOrigin:'left center'}, startTime + 0.4)
+  // Step 5: Values pop in with scale burst
+  .from('.bar-value', {opacity:0, scale:0, duration:0.4, stagger:0.1, ease:'elastic.out(1, 0.5)'}, startTime + 0.7)
+  // Step 6: Glow sweep on bars
+  .fromTo('.bar-fill',
+    {boxShadow:'0 0 0px transparent'},
+    {boxShadow:'0 0 30px rgba(6,182,212,0.4), 0 0 60px rgba(240,180,41,0.2)', duration:0.4, ease:'power2.out', stagger:0.1}, startTime + 1.1);
 </script>

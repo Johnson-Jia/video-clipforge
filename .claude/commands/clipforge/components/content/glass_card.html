@@ -1,0 +1,86 @@
+<!--
+@ComponentMeta
+name: glass_card
+layer: content
+tags: [glass, frosted, modern, card, blur, premium, feature]
+emotion_range: [elegance, sophistication]
+visual_density: standard
+complexity: css-only
+description: 毛玻璃卡片，backdrop-filter 模糊 + 半透明白底 + 光泽条 + 彩色边条，现代高端质感
+parameters:
+  blur_strength: { default: 20, range: [10, 30] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="gc-wrap">
+  <div class="gc-card">
+    <div class="gc-gloss"></div>
+    <div class="gc-icon">🚀</div>
+    <div class="gc-title">技术突破</div>
+    <div class="gc-desc">多模态大模型首次实现端侧实时推理，延迟低于 200ms，彻底改变移动端 AI 体验</div>
+    <div class="gc-tags">
+      <span class="gc-tag gc-tag-cool">端侧推理</span>
+      <span class="gc-tag gc-tag-warm">实时响应</span>
+      <span class="gc-tag gc-tag-green">移动优先</span>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.gc-wrap {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 40px 60px;
+}
+.gc-card {
+  position: relative; width: 100%;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-left: 4px solid var(--accent-cool, #06B6D4);
+  border-radius: 24px;
+  padding: 48px 52px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.gc-gloss {
+  position: absolute; top: 0; left: 0; width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.4) 70%, transparent 100%);
+  transform-origin: left;
+}
+.gc-icon {
+  font-size: 64px; margin-bottom: 28px;
+}
+.gc-title {
+  font-size: 48px; font-weight: 900;
+  color: var(--text-primary, #F9FAFB);
+  margin-bottom: 20px;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.gc-desc {
+  font-size: 26px; line-height: 1.8;
+  color: var(--text-secondary, #9CA3AF);
+  margin-bottom: 32px;
+}
+.gc-tags {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.gc-tag {
+  font-size: 18px; font-weight: 600;
+  padding: 8px 20px; border-radius: 12px;
+}
+.gc-tag-cool { background: rgba(6,182,212,0.12); color: var(--accent-cool, #06B6D4); border: 1px solid rgba(6,182,212,0.2); }
+.gc-tag-warm { background: rgba(245,158,11,0.12); color: var(--accent-warm, #F59E0B); border: 1px solid rgba(245,158,11,0.2); }
+.gc-tag-green { background: rgba(16,185,129,0.12); color: #10B981; border: 1px solid rgba(16,185,129,0.2); }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.gc-card', {opacity:0, y:60, duration:0.6, ease:'power3.out'}, startTime)
+  .from('.gc-gloss', {opacity:0, scaleX:0, duration:0.5, ease:'power2.out'}, startTime + 0.3)
+  .from('.gc-icon', {opacity:0, scale:0, duration:0.4, ease:'back.out(1.5)'}, startTime + 0.2)
+  .from('.gc-title', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime + 0.35)
+  .from('.gc-desc', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, startTime + 0.5)
+  .from('.gc-tag', {opacity:0, y:10, duration:0.25, ease:'power3.out', stagger:0.06}, startTime + 0.65);
+</script>

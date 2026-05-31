@@ -55,3 +55,26 @@ parameters: {}
 .compare-item .label { font-size: 28px; color: var(--text-secondary); }
 .compare-item .value { font-size: 28px; font-weight: 700; color: #fff; }
 </style>
+
+<!-- JS (GSAP) -->
+<script>
+// Step 1: Left panel sweeps in with clip-path wipe
+tl.from('.compare-col.left', {opacity:0, x:'-60%', clipPath:'inset(0 100% 0 0)', duration:0.6, ease:'power4.out'}, startTime)
+  // Step 2: Right panel sweeps in from opposite side
+  .from('.compare-col.right', {opacity:0, x:'60%', clipPath:'inset(0 0 0 100%)', duration:0.6, ease:'power4.out'}, startTime + 0.1)
+  // Step 3: Divider draws in from center
+  .fromTo('.compare-divider',
+    {scaleY:0, opacity:0},
+    {scaleY:1, opacity:0.5, duration:0.5, ease:'power4.out', transformOrigin:'center center'}, startTime + 0.3)
+  // Step 4: Headers punch in with scale
+  .from('.compare-header', {opacity:0, scale:0.7, y:-20, duration:0.35, ease:'back.out(1.8)', stagger:0.1}, startTime + 0.45)
+  // Step 5: Items stagger in with alternating rotation
+  .from('.compare-item', {
+    opacity:0, y:25, rotation:(i) => i % 2 === 0 ? -3 : 3,
+    duration:0.35, ease:'back.out(1.5)', stagger:0.1
+  }, startTime + 0.65)
+  // Step 6: Values glow on reveal
+  .fromTo('.compare-item .value',
+    {textShadow:'0 0 0px transparent'},
+    {textShadow:'0 0 20px rgba(255,255,255,0.3)', duration:0.3, ease:'power2.out', stagger:0.1}, startTime + 0.9);
+</script>

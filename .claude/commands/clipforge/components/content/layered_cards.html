@@ -1,0 +1,103 @@
+<!--
+@ComponentMeta
+name: layered_cards
+layer: content
+tags: [stacked, layered, depth, 3d, perspective, cards, showcase, portfolio]
+emotion_range: [depth, richness, showcase]
+visual_density: medium
+complexity: css-only
+description: 3D 层叠卡片，多张卡片透视倾斜错位排列，前景清晰/背景模糊，营造空间深度感
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="lc-wrap">
+  <div class="lc-card lc-card-back3">
+    <div class="lc-rank">#3</div>
+    <div class="lc-title">Crawl4AI</div>
+    <div class="lc-sub">智能爬虫框架</div>
+    <div class="lc-tag">Python</div>
+  </div>
+  <div class="lc-card lc-card-back2">
+    <div class="lc-rank">#2</div>
+    <div class="lc-title">RuView</div>
+    <div class="lc-sub">WiFi 感知人体</div>
+    <div class="lc-tag">Research</div>
+  </div>
+  <div class="lc-card lc-card-front">
+    <div class="lc-rank">#1</div>
+    <div class="lc-title">Claude Code</div>
+    <div class="lc-sub">AI 编程助手</div>
+    <div class="lc-tag">⭐ HOT</div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.lc-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  perspective: 1200px;
+}
+.lc-card {
+  position: absolute;
+  width: 480px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 36px 40px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transform: perspective(1200px) rotateY(-5deg);
+}
+.lc-card-back3 {
+  left: 50%; margin-left: -220px; top: 50%; margin-top: -60px;
+  opacity: 0.3; filter: blur(2px);
+  transform: perspective(1200px) rotateY(-5deg) translateX(60px);
+  z-index: 1;
+}
+.lc-card-back2 {
+  left: 50%; margin-left: -220px; top: 50%; margin-top: -60px;
+  opacity: 0.55; filter: blur(1px);
+  transform: perspective(1200px) rotateY(-5deg) translateX(30px);
+  z-index: 2;
+}
+.lc-card-front {
+  left: 50%; margin-left: -220px; top: 50%; margin-top: -60px;
+  opacity: 1;
+  transform: perspective(1200px) rotateY(-5deg) translateX(0px);
+  z-index: 3;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.lc-rank {
+  font-size: 28px; font-weight: 900;
+  color: var(--accent-warm, #F59E0B);
+  margin-bottom: 12px;
+}
+.lc-title {
+  font-size: 36px; font-weight: 800;
+  color: var(--text-primary, #F9FAFB);
+  margin-bottom: 8px;
+}
+.lc-sub {
+  font-size: 22px; color: var(--text-secondary, #9CA3AF);
+  margin-bottom: 16px;
+}
+.lc-tag {
+  display: inline-block;
+  font-size: 16px; font-weight: 600;
+  color: var(--accent-cool, #06B6D4);
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.15);
+  padding: 4px 14px; border-radius: 8px;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.lc-card-back3', {opacity:0, scaleX:0.9, duration:0.4, ease:'power3.out'}, startTime)
+  .from('.lc-card-back2', {opacity:0, scaleX:0.9, x:30, duration:0.4, ease:'power3.out'}, startTime + 0.15)
+  .from('.lc-card-front', {opacity:0, scaleX:0.9, x:30, duration:0.5, ease:'back.out(1.2)'}, startTime + 0.3);
+</script>

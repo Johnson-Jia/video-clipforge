@@ -74,7 +74,19 @@ parameters:
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.hero-badge', {opacity:0, y:30, duration:0.3, ease:'power3.out'}, 0.1)
-  .from('.hero-title', {opacity:0, scale:0.8, duration:0.4, ease:'back.out(1.2)'}, 0.2)
-  .from('.hero-sub', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, 0.5);
+// Step 1: Background glows bloom in
+tl.from('.hero-glow', {opacity:0, scale:0.5, duration:0.7, stagger:0.1, ease:'power2.out'}, startTime)
+  // Step 2: Grid draws in
+  .from('.hero-grid', {opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.1)
+  // Step 3: Badge drops in with rotation
+  .from('.hero-badge', {opacity:0, y:30, scale:0.5, rotation:-10, duration:0.4, ease:'back.out(2)'}, startTime + 0.15)
+  // Step 4: Title scales from zero with power4
+  .from('.hero-title', {opacity:0, scale:0.6, duration:0.5, ease:'power4.out', transformOrigin:'center center'}, startTime + 0.3)
+  // Step 5: Accent span overshoot
+  .from('.hero-title .accent', {scale:1.4, opacity:0, duration:0.35, ease:'back.out(1.5)'}, startTime + 0.6)
+  // Step 6: Subtitle scales up
+  .from('.hero-sub', {opacity:0, scale:0.8, y:30, duration:0.35, ease:'back.out(1.5)'}, startTime + 0.7)
+  // Step 7: Glow blobs pulse
+  .to('.hero-glow-warm', {scale:1.15, duration:0.4, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 0.8)
+  .to('.hero-glow-cool', {scale:1.2, duration:0.4, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 0.9);
 </script>

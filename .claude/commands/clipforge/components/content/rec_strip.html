@@ -94,12 +94,26 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.rec-heading', {opacity:0, y:20, duration:0.3, ease:'power3.out'}, startTime)
-  .from('.rec-sub', {opacity:0, duration:0.3}, startTime + 0.15)
+// Step 1: Heading scales in with punch
+tl.from('.rec-heading', {opacity:0, scale:0.4, y:-40, duration:0.45, ease:'back.out(2)'}, startTime)
+  // Step 2: Subtitle fades in
+  .from('.rec-sub', {opacity:0, y:10, duration:0.3, ease:'power4.out'}, startTime + 0.2)
+  // Step 3: Items slide in with alternating rotation
   .from('.rec-item', {
-    opacity:0, x:-30, duration:0.4, ease:'power3.out',
-    stagger:0.12
-  }, startTime + 0.3)
-  .from('.rec-score', {opacity:0, scale:0.5, duration:0.3, ease:'back.out(2)', stagger:0.12}, startTime + 0.5)
-  .from('.rec-conclusion', {opacity:0, y:20, duration:0.4, ease:'power3.out'}, startTime + 0.9);
+    opacity:0, x:-60, rotation:(i) => i % 2 === 0 ? -3 : 3,
+    duration:0.45, ease:'back.out(1.5)', stagger:0.1
+  }, startTime + 0.35)
+  // Step 4: Scores elastic pop
+  .from('.rec-score', {
+    opacity:0, scale:0, rotation:(i) => i % 2 === 0 ? -10 : 10,
+    duration:0.4, ease:'elastic.out(1, 0.5)', stagger:0.1
+  }, startTime + 0.6)
+  // Step 5: Icons bounce
+  .from('.rec-icon', {scale:0, opacity:0, duration:0.35, ease:'back.out(2.5)', stagger:0.1}, startTime + 0.45)
+  // Step 6: Conclusion wipes in with clip-path
+  .from('.rec-conclusion', {opacity:0, x:-40, clipPath:'inset(0 100% 0 0)', duration:0.5, ease:'power4.out'}, startTime + 1.0)
+  // Step 7: Highlight words glow
+  .fromTo('.rec-hl',
+    {textShadow:'0 0 0px transparent'},
+    {textShadow:'0 0 20px rgba(245,158,11,0.5)', duration:0.3, ease:'power2.out'}, startTime + 1.4);
 </script>

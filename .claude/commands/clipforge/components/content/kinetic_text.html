@@ -1,0 +1,63 @@
+<!--
+@ComponentMeta
+name: kinetic_text
+layer: content
+tags: [kinetic, typography, motion, dynamic, impact, statement, punchline, cta]
+emotion_range: [energy, impact, power]
+visual_density: generous
+complexity: css-only
+description: 动态排版组件，逐字弹入的超大粗体文字，极具冲击力的视觉呈现，适合关键陈述和行动召唤
+parameters:
+  text_size: { default: 96, range: [72, 120] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="kt-wrap">
+  <div class="kt-line">
+    <span class="kt-char">改</span><span class="kt-char">变</span><span class="kt-char">世</span><span class="kt-char">界</span><span class="kt-char">的</span><span class="kt-char">力</span><span class="kt-char">量</span>
+  </div>
+  <div class="kt-bar"></div>
+  <div class="kt-sub">开源 · 协作 · 共创</div>
+</div>
+
+<!-- CSS -->
+<style>
+.kt-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+}
+.kt-line {
+  display: flex; gap: 4px;
+  margin-bottom: 32px;
+}
+.kt-char {
+  display: inline-block;
+  font-size: 96px; font-weight: 900;
+  line-height: 1.2;
+  background: linear-gradient(135deg, var(--accent-warm, #F59E0B), var(--accent-cool, #06B6D4));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+.kt-bar {
+  width: 240px; height: 3px;
+  background: linear-gradient(90deg, var(--accent-warm, #F59E0B), var(--accent-cool, #06B6D4));
+  border-radius: 2px;
+  transform-origin: left center;
+}
+.kt-sub {
+  margin-top: 28px;
+  font-size: 28px; font-weight: 600;
+  color: var(--text-secondary, #9CA3AF);
+  letter-spacing: 8px;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.kt-char', {opacity:0, y:80, duration:0.4, ease:'back.out(1.7)', stagger:0.06}, startTime)
+  .from('.kt-bar', {opacity:0, scaleX:0, duration:0.5, ease:'power3.out'}, startTime + 0.5)
+  .from('.kt-sub', {opacity:0, y:15, duration:0.3, ease:'power3.out'}, startTime + 0.7);
+</script>

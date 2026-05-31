@@ -102,10 +102,24 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-tl.from('.sc-badge', {opacity:0, scale:0.8, duration:0.3, ease:'back.out(1.5)'}, startTime)
-  .from('.sc-title', {opacity:0, duration:0.3}, startTime + 0.1)
-  .from('.sc-divider', {scaleX:0, duration:0.4, ease:'power2.out', transformOrigin:'center'}, startTime + 0.2)
-  .from('.sc-card', {opacity:0, y:30, duration:0.4, ease:'power3.out', stagger:0.15}, startTime + 0.4)
-  .from('.sc-win-tag', {opacity:0, scale:0, duration:0.3, ease:'back.out(2)'}, startTime + 0.8)
-  .from('.sc-stat', {opacity:0, y:20, duration:0.3, stagger:0.1}, startTime + 0.9);
+// Step 1: Badge elastic spins in
+tl.from('.sc-badge', {opacity:0, scale:0, rotation:20, duration:0.5, ease:'elastic.out(1, 0.4)'}, startTime)
+  // Step 2: Title scales in with punch
+  .from('.sc-title', {opacity:0, scale:0.7, y:-30, duration:0.4, ease:'back.out(1.8)'}, startTime + 0.2)
+  // Step 3: Divider draws with power4
+  .from('.sc-divider', {scaleX:0, duration:0.5, ease:'power4.out', transformOrigin:'center'}, startTime + 0.35)
+  // Step 4: Winner card sweeps in with rotation
+  .from('.sc-winner', {opacity:0, x:'-80%', rotation:-5, duration:0.55, ease:'power4.out'}, startTime + 0.55)
+  // Step 5: Loser card sweeps from right
+  .from('.sc-card:not(.sc-winner)', {opacity:0, x:'80%', rotation:5, duration:0.55, ease:'power4.out'}, startTime + 0.6)
+  // Step 6: WIN tag elastic pops
+  .from('.sc-win-tag', {opacity:0, scale:0, rotation:-20, duration:0.45, ease:'elastic.out(1, 0.4)'}, startTime + 0.95)
+  // Step 7: Numbers scale burst
+  .from('.sc-number', {opacity:0, scale:0, duration:0.4, ease:'elastic.out(1, 0.5)', stagger:0.1}, startTime + 0.75)
+  // Step 8: Stats slide up
+  .from('.sc-stat', {opacity:0, y:25, scale:0.9, duration:0.35, ease:'back.out(1.5)', stagger:0.1}, startTime + 1.15)
+  // Step 9: Winner card glow pulse
+  .fromTo('.sc-winner',
+    {boxShadow:'0 0 0px transparent'},
+    {boxShadow:'0 0 40px rgba(16,185,129,0.3), 0 0 80px rgba(16,185,129,0.15)', duration:0.4, ease:'power2.out'}, startTime + 1.3);
 </script>

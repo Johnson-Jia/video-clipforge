@@ -1,0 +1,74 @@
+<!--
+@ComponentMeta
+name: quote_block
+layer: content
+tags: [quote, citation, documentary, expert, opinion, insight, authority]
+emotion_range: [authority, gravitas, wisdom]
+visual_density: standard
+complexity: css-only
+description: 纪录片风格引用卡片，超大装饰引号 + 居中引文 + 来源署名，适合权威引用和专家观点展示
+parameters: {}
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="qb-wrap">
+  <div class="qb-glow"></div>
+  <div class="qb-mark">"</div>
+  <div class="qb-body">
+    <div class="qb-text">AI 不是取代人类，而是放大人类最独特的部分——创造力、同理心和判断力。</div>
+    <div class="qb-divider"></div>
+    <div class="qb-source">—— 吴恩达，斯坦福大学教授</div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.qb-wrap {
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  width: 100%; padding: 60px 80px;
+}
+.qb-glow {
+  position: absolute;
+  width: 500px; height: 400px; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(139,92,246,0.08), transparent 70%);
+  filter: blur(80px); pointer-events: none;
+  top: 20%; left: 50%; transform: translateX(-50%);
+}
+.qb-mark {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 200px; line-height: 1;
+  color: var(--accent-cool, #06B6D4); opacity: 0.08;
+  position: absolute; top: -10px; left: 40px;
+  pointer-events: none; user-select: none;
+}
+.qb-body {
+  position: relative; z-index: 2;
+  max-width: 900px; text-align: center;
+}
+.qb-text {
+  font-size: 36px; font-weight: 400; font-style: italic;
+  line-height: 1.8; color: var(--text-primary, #F9FAFB);
+  text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  margin-bottom: 36px;
+}
+.qb-divider {
+  width: 120px; height: 2px; margin: 0 auto 28px;
+  background: linear-gradient(90deg, transparent, var(--accent-cool, #06B6D4), var(--accent-warm, #F59E0B), transparent);
+}
+.qb-source {
+  font-size: 24px; font-weight: 600;
+  color: var(--text-secondary, #9CA3AF);
+  text-align: right;
+  padding-right: 20px;
+}
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+tl.from('.qb-mark', {opacity:0, scale:0, duration:0.5, ease:'back.out(1.7)'}, startTime)
+  .from('.qb-text', {opacity:0, y:30, duration:0.5, ease:'power3.out'}, startTime + 0.2)
+  .from('.qb-divider', {opacity:0, scaleX:0, duration:0.4, ease:'power3.out'}, startTime + 0.5)
+  .from('.qb-source', {opacity:0, duration:0.4, ease:'power3.out'}, startTime + 0.7);
+</script>
