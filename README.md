@@ -183,7 +183,7 @@ ClipForge 不是一个固定输出的工具 — 它会从播放数据中学习�
 | Stage 3 | narration | 场景拆解 + 分段旁白文案 |
 | Stage 4 | audio | 分段 TTS + BGM 选取 + 音量校准 |
 | Stage 5 | assets | 视觉素材制备（可选） |
-| Stage 6 | video | HTML + 组件 + 动画 → HyperFrames 渲染 |
+| Stage 6 | video | HTML + 三层组件（bg / fx / content）+ 动画 → HyperFrames 渲染 |
 | Stage 7 | delivery | 封面 + 文案 + 双版本输出（含 BGM / 纯旁白） |
 | — | machine-scoring | 交付后自动运行 gate 全量校验，记录机器预测评分 |
 | Stage 8 | feedback | 播放数据 + 人类评分 → 机器评分校准（发布后手动触发，可选） |
@@ -224,7 +224,10 @@ ClipForge 内置了 GitHub 开源项目的完整分类配置。覆盖新领域�
     ├── stages/                    # 阶段执行指南（stage0 ~ stage8）
     ├── shared/                    # 共享技能（渲染安全、清理规则等）
     ├── categories/                # 分类配置（GitHub、漫画等）
-    ├── components/                # 视觉组件库（19 个 HTML 模板）
+    ├── components/                # 视觉组件库（39 个三层组件）
+    │   ├── bg/                    # 背景层（15 个：极光、星云、光束…）
+    │   ├── fx/                    # 特效层（10 个：粒子、光带、代码雨…）
+    │   └── content/               # 内容层（14 个：数据卡、时间线、对比…）
     ├── scripts/                   # 工具脚本
     ├── engine/                    # 自进化引擎（门禁/归因/Trace）
     ├── rules/                     # 约束规则库
@@ -238,7 +241,26 @@ ClipForge 内置了 GitHub 开源项目的完整分类配置。覆盖新领域�
 - **新分类：** 运行 `/clipforge-category-setup` 引导生成，或手动在 `categories/` 下创建配置文件
 - **新规则：** 在 `rules/` 下添加 YAML，引擎自动加载
 - **新阶段：** 更新 `schema.yaml` + 创建 stage 文件
-- **新组件：** 在 `components/` 下添加 HTML+CSS+JS 模板
+
+### 组件库扩展
+
+ClipForge 的视觉画面由三层组件构成，每层都可以自由添加新组件：
+
+| 层级 | 目录 | 现有 | 作用 | 示例 |
+|:-----|:-----|:----:|:-----|:-----|
+| **背景层** (bg) | `components/bg/` | 15 | 奠定画面氛围底色 — 渐变、光晕、粒子、网格 | 极光流动、星云漂移、能量脉冲、钻石网格 |
+| **特效层** (fx) | `components/fx/` | 10 | 叠加动态视觉反馈 — 扫描线、光带、粒子爆发 | 代码雨、脉冲光球、对角光带、悬浮粒子 |
+| **内容层** (content) | `components/content/` | 14 | 承载信息呈现 — 数据卡、时间线、对比面板 | 英雄卡片、星级计数、数据可视化、结论框 |
+
+**三层组合方式：** 每个场景 = 1 个背景 + 0~2 个特效 + 1 个内容组件。AI 根据场景情感（兴奋、沉稳、悬念…）自动选配组合。
+
+**添加新组件只需三步：**
+
+1. 在对应层级目录下创建 HTML 文件（含 `@ComponentMeta` 元数据头）
+2. 在 `registry.yaml` 中追加一条索引
+3. 完成 — AI 下次创作视频时自动发现并引用
+
+组件格式要求：纯 CSS 动画（bg 层）或 CSS + GSAP/Canvas（fx/content 层），深色底色，所有元素默认可见（opacity ≥ 0.15）。详见 `components/` 目录下任意现有组件作为参考模板。
 
 ## 依赖
 
