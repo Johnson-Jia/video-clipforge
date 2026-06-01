@@ -1,7 +1,7 @@
 skill:
   meta:
     id: "skill.clipforge.stage4-audio"
-    version: "1.2.0"
+    version: "1.3.0"
     type: EXECUTIVE
     tags: ["audio", "tts", "bgm"]
     rigor: STANDARD
@@ -35,6 +35,12 @@ skill:
       - thought: "BGM 不够长用 HTML loop 就行"
         reality: "HyperFrames 对 loop 支持不可靠，必须用 FFmpeg 循环扩展 WAV"
         trigger: "试图用 HTML loop 替代 FFmpeg 循环"
+      - thought: "max_volume 够了不需要 loudnorm"
+        reality: "raw edge-tts 的 max_volume 可能 >= -10dB 但采样率 24000Hz 暴露了真相。loudnorm 不是调音量，是标准化响度分布"
+        trigger: "narration.mp3 采样率为 24000 Hz"
+      - thought: "bgm_volume 写个常见值就行"
+        reality: "0.35 是 2026-06-01 事故的元凶。bgm_pipeline.sh 的 12 档查表会根据 BGM 实际响度给出精确值"
+        trigger: "试图手动设置 bgm_volume 而非运行 bgm_pipeline.sh"
     spirit_vs_letter:
       - rule_ref: "R-A-*"
         mode: LETTER
@@ -72,6 +78,14 @@ skill:
         params:
           bgm_file: "bgm.wav"
           segments_file: "segment_durations.json"
+      - gate: narration_sample_rate_valid
+        params:
+          file: "narration.mp3"
+          forbidden_rates: [24000]
+          expected_min: 44100
+      - gate: bgm_volume_provenance_valid
+        params:
+          file: "segment_durations.json"
       - gate: duration_in_range
         params:
           file: "segment_durations.json"

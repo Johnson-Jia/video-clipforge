@@ -34,3 +34,27 @@ rules:
     scope: SKILL
     skill: "stage4-audio"
     source: "stage4-audio.md"
+
+  - id: "R-S4-004"
+    type: REQUIRED_METHOD
+    pattern: "narration.mp3 未经过 loudnorm.sh 标准化"
+    positive: "narration.mp3 必须经过 loudnorm.sh 两 pass 标准化（I=-16 LUFS, 采样率 48kHz）"
+    guardrail: "narration.mp3 采样率为 24000 Hz（raw edge-tts 输出），loudnorm.sh 未执行"
+    detection: {keywords: [], semantic_check: false}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage4-audio"
+    source: "stage4-audio.md §4.1 Step 4 + 2026-06-01 事故（3 项目全部跳过 loudnorm）"
+
+  - id: "R-S4-005"
+    type: REQUIRED_METHOD
+    pattern: "bgm_volume 由手动硬编码而非 bgm_pipeline.sh 自动校准"
+    positive: "bgm_volume 必须由 bgm_pipeline.sh → bgm_gap_check.py 查表自动确定，禁止手动设置"
+    guardrail: "bgm_orig.wav 不存在 + bgm_volume 为常见硬编码值，bgm_pipeline.sh 未执行"
+    detection: {keywords: [], semantic_check: false}
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage4-audio"
+    source: "stage4-audio.md §4.2 BGM 音量守恒铁律 + 2026-06-01 事故（3 项目全部硬编码 0.35）"
