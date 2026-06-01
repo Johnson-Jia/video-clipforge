@@ -613,10 +613,14 @@ def check_data_duration_source(project_dir: Path, params: dict) -> tuple[bool, s
     if "estimated_duration" in html_content:
         return False, "index.html 包含 'estimated_duration' 关键词（应为 actual_duration）"
 
-    # 提取所有 data-duration 值（按出现顺序）
-    html_durations = [float(m.group(1)) for m in re.finditer(
-        r'data-duration=["\']?([\d.]+)', html_content
-    )]
+    # 提取 clip 级别的 data-duration 值（排除 root composition）
+    html_durations = []
+    for m in re.finditer(r'data-duration=["\']?([\d.]+)', html_content):
+        tag_start = html_content.rfind('<', 0, m.start())
+        tag_end = html_content.find('>', m.start())
+        tag = html_content[tag_start:tag_end] if tag_start >= 0 and tag_end >= 0 else ""
+        if 'data-composition-id' not in tag:
+            html_durations.append(float(m.group(1)))
 
     if not html_durations:
         return False, "index.html 未找到 data-duration 属性"
@@ -1279,6 +1283,97 @@ def check_orientation_consistency(project_dir: Path, params: dict) -> tuple[bool
 
 
 GATE_CHECKERS[GateType.orientation_consistency] = check_orientation_consistency
+
+
+def check_narration_sample_rate(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 narration.mp3 采样率，确保 loudnorm.sh 已执行。
+
+    edge-tts 原始输出 = 24000 Hz（固定）
+    loudnorm.sh 输出 = 48000 Hz（固定）
+
+    采样率 24000 Hz = loudnorm 未执行的铁证。
+    """
+    fp = project_dir / params.get("file", "narration.mp3")
+    if not fp.exists():
+        return False, "narration.mp3 缺失"
+
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries",
+             "stream=sample_rate", "-of", "csv=p=0", str(fp)],
+            capture_output=True, text=True, timeout=10,
+        )
+        sample_rate = int(result.stdout.strip())
+    except (ValueError, subprocess.TimeoutExpired) as e:
+        return False, f"无法获取 narration.mp3 采样率: {e}"
+
+    forbidden_rates = params.get("forbidden_rates", [24000])
+    expected_min = params.get("expected_min", 44100)
+
+    if sample_rate in forbidden_rates:
+        return False, (
+            f"R-S4-004: narration.mp3 采样率 {sample_rate} Hz = raw edge-tts 输出，"
+            f"loudnorm.sh 未执行。预期 >= {expected_min} Hz。"
+            f"修复: bash .claude/commands/clipforge/scripts/loudnorm.sh narration.mp3"
+        )
+
+    return True, f"narration.mp3 采样率: {sample_rate} Hz (loudnorm 已执行)"
+
+
+def check_bgm_volume_provenance(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 bgm_volume 来源合规性（bgm_pipeline.sh 执行证明）。
+
+    bgm_pipeline.sh 首次运行时:
+    1. 创建 bgm_orig.wav 作为原始备份
+    2. 调用 bgm_gap_check.py 查表自动确定 volume
+    3. 写入 segment_durations.json
+
+    事故记录：2026-06-01 三个项目全部硬编码 bgm_volume=0.35，bgm_pipeline.sh
+    从未执行，导致 BGM 普遍过响盖过旁白。
+
+    检查策略（三选一通过）：
+    A. bgm_orig.wav 存在 = 管线执行过（最强证据）
+    B. segment_durations.json 含 meta.bgm_volume_source = "bgm_pipeline" 标记
+    C. 都不满足 → 检查是否命中硬编码值黑名单
+    """
+    # 策略 A: bgm_orig.wav 存在性
+    bgm_orig = project_dir / "bgm_orig.wav"
+    if bgm_orig.exists():
+        return True, "bgm_orig.wav 存在 → bgm_pipeline.sh 已执行"
+
+    sd_file = project_dir / params.get("file", "segment_durations.json")
+    if not sd_file.exists():
+        return False, "segment_durations.json 缺失，无法验证 bgm_volume 来源"
+
+    try:
+        data = json.loads(sd_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return False, f"segment_durations.json 解析失败: {e}"
+
+    # 策略 B: 来源标记
+    source = data.get("meta", {}).get("bgm_volume_source", "")
+    if source == "bgm_pipeline":
+        return True, "meta.bgm_volume_source = bgm_pipeline → 管线校准"
+
+    # 策略 C: 常见硬编码值黑名单
+    COMMON_HARDCODES = {0.30, 0.35, 0.40, 0.50, 0.25, 0.20, 0.15, 0.10, 0.05}
+    vol = data.get("meta", {}).get("bgm_volume", 0)
+
+    if vol in COMMON_HARDCODES:
+        return False, (
+            f"R-S4-005: bgm_volume={vol} 为常见硬编码值，bgm_pipeline.sh 未执行。"
+            f"bgm_orig.wav 也不存在。"
+            f"修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
+        )
+
+    return False, (
+        "R-S4-005: 无法证明 bgm_volume 来源合规：bgm_orig.wav 不存在 + "
+        "无 bgm_volume_source 标记。必须运行 bgm_pipeline.sh"
+    )
+
+
+GATE_CHECKERS[GateType.narration_sample_rate_valid] = check_narration_sample_rate
+GATE_CHECKERS[GateType.bgm_volume_provenance_valid] = check_bgm_volume_provenance
 
 
 def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:

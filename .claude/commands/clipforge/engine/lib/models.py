@@ -62,6 +62,8 @@ class GateType(str, Enum):
     bgm_not_exceeds_narration = "bgm_not_exceeds_narration"
     final_duration_close_to_output = "final_duration_close_to_output"
     orientation_consistency = "orientation_consistency"
+    narration_sample_rate_valid = "narration_sample_rate_valid"
+    bgm_volume_provenance_valid = "bgm_volume_provenance_valid"
 
 
 class Rigor(str, Enum):

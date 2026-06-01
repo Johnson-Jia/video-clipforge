@@ -88,7 +88,9 @@ done
 # 2. 删除临时目录
 safe_rm_rf "work-*/"
 safe_rm_rf ".agents/"
-[ "$DRY_RUN" = false ] && echo "  已删除 work-*/ 和 .agents/"
+safe_rm_rf "renders/"
+safe_rm_rf "snapshots/"
+[ "$DRY_RUN" = false ] && echo "  已删除 work-*/, .agents/, renders/, snapshots/"
 
 # 3. BGM 副本按条件删除
 if [ -f bgm.wav ]; then

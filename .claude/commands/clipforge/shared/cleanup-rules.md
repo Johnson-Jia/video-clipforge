@@ -134,6 +134,8 @@ scenes.yaml
 ```
 work-*/                 # HyperFrames 工作临时目录
 .agents/                # SubAgent Skill 工具就地创建的技能库副本
+renders/                # HyperFrames 历史渲染产物（带时间戳的多次重试 mp4）
+snapshots/              # HyperFrames 渲染前 HTML 预览截图（0%/25%/50%/75%/100%）
 ```
 
 ### 按条件删除
