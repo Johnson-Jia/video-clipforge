@@ -76,6 +76,25 @@ _CUSTOM_PHRASES = {
     '空行': [['kōng'], ['háng']],
     '代码行': [['dài'], ['mǎ'], ['háng']],
     '命令行': [['mìng'], ['lìng'], ['háng']],
+    # ── 中文数字 + 行 ──
+    '两行': [['liǎng'], ['háng']],
+    '三行': [['sān'], ['háng']],
+    '四行': [['sì'], ['háng']],
+    '五行': [['wǔ'], ['háng']],
+    '六行': [['liù'], ['háng']],
+    '七行': [['qī'], ['háng']],
+    '八行': [['bā'], ['háng']],
+    '九行': [['jiǔ'], ['háng']],
+    '零行': [['líng'], ['háng']],
+    # ── 长(cháng) 上下文 — 防止 edge-tts 读成 zhǎng ──
+    '长视频': [['cháng'], ['shì'], ['pín']],
+    '长篇': [['cháng'], ['piān']],
+    '长文': [['cháng'], ['wén']],
+    '长尾': [['cháng'], ['wěi']],
+    '长期': [['cháng'], ['qī']],
+    '长线': [['cháng'], ['xiàn']],
+    '长河': [['cháng'], ['hé']],
+    '长途': [['cháng'], ['tú']],
 }
 
 # ── 多音字替换映射 ──
@@ -93,6 +112,13 @@ _POLYPHONE_MAP = {
     '处': {'chu4': '触'},  # 处 as place: chù → 触 (but 触 is chù too)
     '为': {'wei4': '未'},  # 为 as "because": wèi → 未
 }
+
+# ── 正则定向替换（pypinyin 词组匹配失败时的兜底） ──
+# 阿拉伯数字 + 行：pypinyin 无法匹配阿拉伯数字上下文
+# "300行" → "300航", "100多行" → "100多航"
+_NUMERIC_ROW_RE = re.compile(r'(\d+)\s*(多?)行')
+# 长→常：仅限已知 edge-tts 会把长读成 zhǎng 的上下文
+_LONG_AS_CHANG_RE = re.compile(r'长(视频|篇|文|尾|期|线|河|途)')
 
 # 初始化：加载自定义词组
 load_phrases_dict(_CUSTOM_PHRASES)
@@ -122,14 +148,25 @@ def fix(text: str) -> str:
             for c in changes:
                 print(c)
 
+    # ── 第一步半：正则定向替换 ──
+    # 阿拉伯数字 + 行 → 航（pypinyin 无法匹配阿拉伯数字上下文）
+    preprocessed = _NUMERIC_ROW_RE.sub(r'\1\2航', brand_replaced)
+    if preprocessed != brand_replaced:
+        print(f'[polyphone_fix] numeric+行 regex applied')
+
+    # 长→常（仅限已知误读上下文，避免全局替换影响字幕）
+    preprocessed = _LONG_AS_CHANG_RE.sub(r'常\1', preprocessed)
+    if preprocessed != brand_replaced:
+        print(f'[polyphone_fix] 长→常 regex applied')
+
     # ── 第二步：多音字替换（原逻辑） ──
-    if not any('一' <= c <= '鿿' for c in brand_replaced):
-        return brand_replaced
+    if not any('一' <= c <= '鿿' for c in preprocessed):
+        return preprocessed
 
     # 获取每个字的上下文感知拼音
-    pinyin_list = pinyin(brand_replaced, style=Style.TONE3)
+    pinyin_list = pinyin(preprocessed, style=Style.TONE3)
 
-    chars = list(brand_replaced)
+    chars = list(preprocessed)
     modified = False
 
     for i, (char, py) in enumerate(zip(chars, pinyin_list)):
@@ -148,9 +185,9 @@ def fix(text: str) -> str:
                 modified = True
 
     result = ''.join(chars)
-    if modified and result != brand_replaced:
+    if modified and result != preprocessed:
         changes = []
-        for i, (oc, nc) in enumerate(zip(brand_replaced, result)):
+        for i, (oc, nc) in enumerate(zip(preprocessed, result)):
             if oc != nc:
                 changes.append(f"  pos {i}: '{oc}' ({pinyin_list[i][0]}) → '{nc}'")
         print(f'[polyphone_fix] {len(changes)} polyphone replacement(s):')
@@ -187,6 +224,12 @@ if __name__ == '__main__':
             ('结果Qwen说进全球前三了', '结果千问说进全球前三了'),
             # 品牌名 + 多音字组合
             ('Qwen跑了一行命令', '千问跑了一航命令'),
+            # 长视频定向替换
+            ('长视频', '常视频'),
+            ('长视频和短视频', '常视频和短视频'),
+            # 阿拉伯数字+行
+            ('300行代码', '300航代码'),
+            ('100多行代码', '100多航代码'),
         ]
         passed = 0
         for inp, expected in tests:
