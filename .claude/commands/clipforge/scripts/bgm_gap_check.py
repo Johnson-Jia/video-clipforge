@@ -165,7 +165,13 @@ def main():
         with open(sd_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         old_vol = data.get('meta', {}).get('bgm_volume', 'N/A')
-        data.setdefault('meta', {})['bgm_volume'] = final_vol
+        meta = data.setdefault('meta', {})
+        meta['bgm_volume'] = final_vol
+        meta['bgm_volume_source'] = 'bgm_pipeline'
+        meta['bgm_mean_db'] = round(bgm_mean, 1)
+        meta['bgm_max_db'] = round(bgm_max, 1)
+        meta['bgm_volume_table_note'] = note
+        meta['bgm_volume_adjusted'] = adjusted
         with open(sd_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         if old_vol != final_vol:

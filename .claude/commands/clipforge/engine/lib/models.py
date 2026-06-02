@@ -64,6 +64,7 @@ class GateType(str, Enum):
     orientation_consistency = "orientation_consistency"
     narration_sample_rate_valid = "narration_sample_rate_valid"
     bgm_volume_provenance_valid = "bgm_volume_provenance_valid"
+    bgm_volume_table_valid = "bgm_volume_table_valid"
     grad_text_shorthand_valid = "grad_text_shorthand_valid"
 
 
