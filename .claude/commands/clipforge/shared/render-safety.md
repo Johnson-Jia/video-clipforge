@@ -4,7 +4,7 @@
 
 ## 1. HyperFrames 渲染安全规范
 
-> **多次出现过"只有背景没有内容"的线上事故。** 以下规则均为事故复盘总结，必须严格遵守。
+> 以下规则为渲染安全硬约束，必须严格遵守。
 
 ### 1.1 禁止 CSS `.anim-in` 及任何 CSS `opacity: 0` 入场动画
 
@@ -53,7 +53,7 @@
 - 实现方式：`.clip` 使用 `position:absolute; inset:0`（与 composition 同尺寸），不做空间偏移
 - **禁止** `.clip` 设置 `top/right/bottom/left` 偏移值（如 `top:140px`），这会把背景关在 clip 内，clip 外全是黑色 → 四面黑边
 - 安全区内缩**只能**通过 `.scene-wrap` 或组件的 padding 实现，不能通过 `.clip` 的定位
-- **事故复盘（2026-05-29）**：`.clip` 设置 `top:140 right:90 bottom:260 left:70`，背景只覆盖 920×1520 区域，四周露出黑色 body 背景
+- **HARD，gate: clip_no_offset**
 
 ### 1.4 安全边距规则
 
@@ -67,7 +67,7 @@
 - **全项目只允许一个层级设置安全区 padding**（竖屏 `180px 80px 220px 80px` / 横屏 `60px 120px 60px 120px`）
 - 禁止 `.scene-wrap` 和 `.phase`（或任何内层元素）同时设置 padding
 - 违反会导致双重/三重 padding，内容被压缩到 70% 以下，视觉重心偏移
-- 历史事故：`.scene-wrap`(70px) + `.phase`(70px) = 累计 140px/侧，内容仅 800px (74%)
+- **HARD，gate: double_padding**
 - **director_gate.py 会自动检测双重 padding，渲染前必须通过**
 
 ### 1.4b 组件 padding 分类
@@ -214,7 +214,7 @@
 
 ## 3. 排版规范（双方向）
 
-> **方向由 `design.md` 的 `orientation` 字段决定，`orientation_source` 记录来源。** 来源优先级：`user_explicit` > `category_hint` > `duration` > `default`。未指定时按竖屏设计。长视频（>3 分钟）推荐横屏，由 Stage 3 完成 narration 后自动判定（source=duration）。画布方向由 `data-width`/`data-height` 决定：1080×1920 = 竖屏，1920×1080 = 横屏。
+> **方向由 `design.md` 的 `orientation` 字段决定，`orientation_source` 记录来源。** 来源优先级：`user_explicit` > `category_hint` > `default`。默认竖屏，仅当用户明确指定或分类配置要求时才使用横屏。画布方向由 `data-width`/`data-height` 决定：1080×1920 = 竖屏，1920×1080 = 横屏。
 
 ### 3.1 竖屏字号最低标准（1080×1920）
 

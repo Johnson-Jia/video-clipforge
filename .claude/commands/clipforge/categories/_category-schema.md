@@ -59,9 +59,9 @@ id: "分类ID（与文件名一致，如 github、comics）"
 ## orientation
 
 ### orientation_hint（可选）
-画布方向强制指定。不设置时由系统根据预估时长自动判定。
+画布方向强制指定。不设置时默认 portrait。
 值：`portrait` | `landscape`
-说明：Stage 2 读取此值直接写入 design.md（orientation_source=category_hint），跳过 Stage 3 的时长推荐。
+说明：Stage 2 读取此值直接写入 design.md（orientation_source=category_hint）。
 ```
 
 #### Stage 3: narration — 场景与文案
