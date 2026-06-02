@@ -90,7 +90,9 @@ safe_rm_rf "work-*/"
 safe_rm_rf ".agents/"
 safe_rm_rf "renders/"
 safe_rm_rf "snapshots/"
-[ "$DRY_RUN" = false ] && echo "  已删除 work-*/, .agents/, renders/, snapshots/"
+safe_rm_rf "backup/"
+safe_rm_rf "lib/"
+[ "$DRY_RUN" = false ] && echo "  已删除 work-*/, .agents/, renders/, snapshots/, backup/, lib/"
 
 # 3. BGM 副本按条件删除
 if [ -f bgm.wav ]; then

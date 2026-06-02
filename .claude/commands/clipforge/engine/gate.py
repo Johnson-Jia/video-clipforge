@@ -1101,10 +1101,10 @@ def check_fx_layer_not_empty(project_dir: Path, params: dict) -> tuple[bool, str
         if not _has_visible_content(fx):
             violations.append(f"{sid}(空)")
             continue
-        # 检查 fx 元素数量（至少 2 个子 div）
+        # 检查 fx 元素数量（至少 3 个子 div，覆盖至少 2 种不同特效类型）
         fx_child_divs = len(re.findall(r'<div\b', fx)) - 1  # 减去 layer-fx 自身
-        if fx_child_divs < 2:
-            violations.append(f"{sid}(仅{fx_child_divs}元素)")
+        if fx_child_divs < 3:
+            violations.append(f"{sid}(仅{fx_child_divs}元素,需≥3)")
             continue
         # 检查是否存在全局低 opacity（所有 fx 元素 opacity < 0.10）
         opacity_vals = re.findall(r'opacity:\s*([0-9.]+)', fx)
