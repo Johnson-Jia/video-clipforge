@@ -30,12 +30,6 @@ ffmpeg -y -i "video/SOURCE_FILE.mp4" -ss START -to END \
 ffprobe -v quiet -show_entries format=duration -of csv=p=0 "clips_16x9/clip_{scene_id}_seg_{N}.mp4"
 ```
 
-**提取后测量每段实际时长：**
-
-```bash
-ffprobe -v quiet -show_entries format=duration -of csv=p=0 "clips_16x9/clip_{scene_id}_seg_{N}.mp4"
-```
-
 ## 2. 转场拼接（xfade）
 
 多个片段用 ffmpeg `xfade` + `acrossfade` 拼接，添加交叉溶解转场消除硬切。脚本自动检测片段数量（1段→复制，2段→两路xfade，3+段→链式xfade）。

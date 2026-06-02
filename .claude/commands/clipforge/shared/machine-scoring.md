@@ -1,8 +1,6 @@
 # 即时机器评分（阶段 A）
 
-> delivery 完成后**立即自动执行**。这不是独立 stage，而是 delivery → cleanup 之间的自动评分步骤。
->
-> **架构说明**：machine-scoring 是 `schema.yaml` 中的正式 artifact，但不走引擎四原子体系（无独立 skills YAML / rules YAML）。它通过 `shared/machine-scoring.md` 直接加载执行，由 SubAgent-4 内联调用。
+> delivery 完成后**立即自动执行**。这不是独立 stage，而是 delivery → cleanup 之间的自动评分步骤。由 SubAgent-4 内联调用，不走引擎四原子体系。
 
 ## 执行流程
 
