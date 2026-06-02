@@ -86,6 +86,10 @@ skill:
       - gate: bgm_volume_provenance_valid
         params:
           file: "segment_durations.json"
+      - gate: bgm_volume_table_valid
+        params:
+          file: "segment_durations.json"
+          tolerance: 0.03
       - gate: duration_in_range
         params:
           file: "segment_durations.json"

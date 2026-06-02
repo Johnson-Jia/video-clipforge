@@ -1355,25 +1355,112 @@ def check_bgm_volume_provenance(project_dir: Path, params: dict) -> tuple[bool, 
     if source == "bgm_pipeline":
         return True, "meta.bgm_volume_source = bgm_pipeline → 管线校准"
 
-    # 策略 C: 常见硬编码值黑名单
-    COMMON_HARDCODES = {0.30, 0.35, 0.40, 0.50, 0.25, 0.20, 0.15, 0.10, 0.05}
+    # 策略 C: 无溯源标记 → 拒绝
     vol = data.get("meta", {}).get("bgm_volume", 0)
-
-    if vol in COMMON_HARDCODES:
-        return False, (
-            f"R-S4-005: bgm_volume={vol} 为常见硬编码值，bgm_pipeline.sh 未执行。"
-            f"bgm_orig.wav 也不存在。"
-            f"修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
-        )
-
     return False, (
-        "R-S4-005: 无法证明 bgm_volume 来源合规：bgm_orig.wav 不存在 + "
-        "无 bgm_volume_source 标记。必须运行 bgm_pipeline.sh"
+        f"R-S4-005: bgm_volume={vol} 无溯源标记（bgm_volume_source 缺失），"
+        f"bgm_orig.wav 也不存在。"
+        f"修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
     )
 
 
 GATE_CHECKERS[GateType.narration_sample_rate_valid] = check_narration_sample_rate
 GATE_CHECKERS[GateType.bgm_volume_provenance_valid] = check_bgm_volume_provenance
+
+
+# ── 响度表定义（与 bgm_gap_check.py 保持同步） ──
+_VOLUME_TABLE = [
+    (-4,   0.07),   # 极端响
+    (-6,   0.09),   # 非常响
+    (-8,   0.11),   # 很响
+    (-10,  0.14),   # 响
+    (-12,  0.15),   # 偏响
+    (-14,  0.20),   # 中等
+    (-16,  0.22),   # 标准
+    (-18,  0.34),   # 偏安静
+    (-20,  0.40),   # 安静
+    (-22,  0.45),   # 很安静
+    (-24,  0.48),   # 极安静
+    (-27,  0.50),   # 接近极限
+]
+
+
+def _lookup_volume(mean_db: float) -> float | None:
+    for threshold, vol in _VOLUME_TABLE:
+        if mean_db > threshold:
+            return vol
+    return None
+
+
+def check_bgm_volume_table_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """验证 bgm_volume 是否与响度表匹配。
+
+    前提：bgm_gap_check.py 已将 bgm_mean_db 和 bgm_volume 写入 segment_durations.json。
+    门禁反查表验证：用存储的 bgm_mean_db 查表，对比实际 bgm_volume。
+
+    这确保了即使 cleanup 删除了 bgm_orig.wav，仍可验证音量来源的合理性。
+    """
+    import math
+
+    sd_file = project_dir / params.get("file", "segment_durations.json")
+    if not sd_file.exists():
+        return False, "segment_durations.json 缺失"
+
+    try:
+        data = json.loads(sd_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return False, f"segment_durations.json 解析失败: {e}"
+
+    meta = data.get("meta", {})
+    bgm_mean = meta.get("bgm_mean_db")
+    bgm_volume = meta.get("bgm_volume")
+    note = meta.get("bgm_volume_table_note", "")
+
+    if bgm_mean is None:
+        return False, (
+            "meta.bgm_mean_db 缺失 — bgm_gap_check.py 未写入溯源数据。"
+            "修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
+        )
+
+    if bgm_volume is None:
+        return False, "meta.bgm_volume 缺失"
+
+    # 查表获取预期 volume
+    expected = _lookup_volume(bgm_mean)
+    if expected is None:
+        return False, (
+            f"BGM mean_volume={bgm_mean:.1f} dB 超出响度表范围（< -27 dB），"
+            f"建议更换更响的 BGM 素材"
+        )
+
+    # 允许 ±0.03 容差（bgm_gap_check.py 可能因间距修正调整了查表值）
+    tolerance = params.get("tolerance", 0.03)
+    diff = abs(bgm_volume - expected)
+
+    if diff <= tolerance:
+        return True, (
+            f"bgm_volume={bgm_volume} 与响度表匹配 "
+            f"(mean={bgm_mean:.1f} dB → 表值={expected}, 档位=\"{note}\", 偏差={diff:.2f})"
+        )
+
+    # 偏差较大，检查是否因均值/峰值间距修正导致
+    adjusted = meta.get("bgm_volume_adjusted", False)
+    if adjusted and bgm_volume < expected:
+        # 间距修正确认降低音量是合理的
+        return True, (
+            f"bgm_volume={bgm_volume} 经间距修正（表值={expected}）"
+            f"(mean={bgm_mean:.1f} dB, \"{note}\", 修正后降低)"
+        )
+
+    return False, (
+        f"bgm_volume={bgm_volume} 与响度表不匹配: "
+        f"mean={bgm_mean:.1f} dB → 表值={expected}, 实际={bgm_volume}, "
+        f"偏差={diff:.2f} > 容差={tolerance}。"
+        f"修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
+    )
+
+
+GATE_CHECKERS[GateType.bgm_volume_table_valid] = check_bgm_volume_table_valid
 
 
 def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
