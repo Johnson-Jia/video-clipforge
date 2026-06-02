@@ -2,7 +2,7 @@
 
 当内容摘要已整理且 `design.md` 不存在时触发。推导视觉风格方向、规划叙事结构和沉浸模式。
 
-> **导演思维驱动。** 执行前读取 `shared/director-toolkit`，用"导演的 5 个必答题"驱动风格推导，参考"导演笔记"校准直觉。不是查表选风格，是理解内容后自主决策。
+> **执行前读取 `shared/director-toolkit`**，用导演 5 个必答题驱动风格推导。
 
 ## 情绪提炼
 
@@ -128,7 +128,7 @@ storyboard:
 
 ## 方向（新增）
 orientation: portrait   # portrait | landscape
-orientation_source: default  # default | user_explicit | category_hint | duration
+orientation_source: default  # default | user_explicit | category_hint
 ```
 
 > **beat_mapping 说明：** 这是场景到情感节拍的粗映射，帮助 Stage 3 和 Stage 6 理解每个场景应传递的情感。不是严格约束，Stage 3 可以调整。
@@ -140,7 +140,7 @@ orientation_source: default  # default | user_explicit | category_hint | duratio
 > 2. 若分类配置有 `orientation_hint`（render_stage 已注入到模板）→ 写入 hint 值 + `orientation_source: category_hint`
 > 3. 以上均无 → 写入 `portrait` + `orientation_source: default`
 >
-> Stage 3 完成 narration 后，若 `orientation_source` 仍为 `default`，根据预估时长回写两个字段（详见 `stage3-scenes.md` 方向推荐规则）。
+> 默认竖屏。仅在用户明确指定或分类配置要求时才使用横屏。
 
 ---
 
