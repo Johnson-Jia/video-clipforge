@@ -79,6 +79,14 @@ if [ -f "index.html" ]; then
 
   echo "HTML 结构: ${CLIP_COUNT} scenes, ${LAYER_FX_COUNT} fx layers, ${EMPTY_FX:-0} empty"
 
+  # 检查 fx 层最低元素密度（每个 layer-fx 至少 3 个子 div）
+  # 简化检查：统计 layer-fx 到 /layer-fx 之间的 <div 数量
+  FX_SINGLE=$(grep -oP 'class="layer-fx">\s*<div[^/]*></div>\s*</div>' index.html 2>/dev/null | wc -l || echo "0")
+  if [ "${FX_SINGLE:-0}" -gt 0 ]; then
+    echo "FAIL: ${FX_SINGLE} 个 layer-fx 仅含单元素（需≥3个特效元素，见 R-R-008）"
+    FAIL=1
+  fi
+
   # ── Padding 完整性检查 ──
   # 1. 每个 scene-wrap 必须有 padding
   SCENE_WRAPS=$(grep -c 'scene-wrap\|class="pfc\|class="hero-card\|class="project-full-card' index.html 2>/dev/null || echo "0")
