@@ -468,6 +468,7 @@ tl.from('#s1 h1', {scale: 0.85, opacity: 0, duration: 0.15, ease: 'power3.out'},
 > **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
 9. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.scene-wrap` 或组件的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
+10. **⛔ 禁止在 `.grad-text` 元素上使用 `background:` 简写**（R-S6-021 HARD）。CSS `background` 简写会重置 `background-clip` 回 `border-box`，导致 `.grad-text` 的 `background-clip:text` 失效，渐变变成纯色背景块、`color:transparent` 隐藏文字——只看到色块看不到字。**正确：`background-image:linear-gradient(...)`，错误：`background:linear-gradient(...)`**。竖屏横屏均适用。
 
 ### 视觉设计规则（必须遵守）
 

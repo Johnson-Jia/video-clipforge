@@ -1586,6 +1586,72 @@ def check_final_duration_close_to_output(project_dir: Path, params: dict) -> tup
 GATE_CHECKERS[GateType.final_duration_close_to_output] = check_final_duration_close_to_output
 
 
+def check_grad_text_shorthand(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 .grad-text 元素是否使用了 background: 简写（导致 background-clip:text 失效）。
+
+    事故记录：2026-06-02 github-trending 视频全部 8 个 .grad-text 元素使用
+    background:linear-gradient(...) 简写，CSS background 简写会重置
+    background-clip 回 border-box，导致 background-clip:text 失效，
+    结果是渐变填满整个元素背景色块，color:transparent 又隐藏文字——只看到色块看不到字。
+
+    检测逻辑：
+    1. 扫描 index.html 中所有 class 含 grad-text 的标签
+    2. 检查内联 style 是否包含 background:（排除 background-image: 等安全子属性）
+    3. 匹配到 → HARD 违规
+
+    正确写法：background-image:linear-gradient(...)
+    错误写法：background:linear-gradient(...)
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    violations: list[str] = []
+
+    # 匹配含 grad-text class 的标签，捕获 style 属性值
+    tag_pattern = re.compile(
+        r'<(\w+)\s+[^>]*class=["\'][^"\']*grad-text[^"\']*["\'][^>]*style=["\']([^"\']*)["\'][^>]*>',
+        re.IGNORECASE | re.DOTALL,
+    )
+    tag_pattern_rev = re.compile(
+        r'<(\w+)\s+[^>]*style=["\']([^"\']*)["\'][^>]*class=["\'][^"\']*grad-text[^"\']*["\'][^>]*>',
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    seen: set[str] = set()
+    for pattern in (tag_pattern, tag_pattern_rev):
+        for m in pattern.finditer(content):
+            tag_name = m.group(1)
+            style_val = m.group(2)
+
+            # background: 简写会重置 background-clip，排除安全子属性
+            shorthand_match = re.search(
+                r'(?<!-)\bbackground\s*:\s*(?!image|color|size|position|repeat|origin|attachment)',
+                style_val,
+            )
+            if shorthand_match:
+                start = shorthand_match.start()
+                snippet = style_val[start:start + 60]
+                key = f"{tag_name}:{snippet[:30]}"
+                if key not in seen:
+                    seen.add(key)
+                    violations.append(f"<{tag_name}> style=\"...{snippet}...\"")
+
+    if violations:
+        return False, (
+            f"R-S6-021: {len(violations)} 个 .grad-text 元素使用了 background: 简写，"
+            f"导致 background-clip:text 失效。"
+            f"正确写法: background-image:linear-gradient(...)。"
+            f"违规: {'; '.join(violations[:5])}"
+        )
+
+    return True, ".grad-text 元素均使用 background-image:（非简写）"
+
+
+GATE_CHECKERS[GateType.grad_text_shorthand_valid] = check_grad_text_shorthand
+
+
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
 SAFETY_GATES = {
     GateType.no_forbidden_speech,
