@@ -66,7 +66,6 @@
 
 - **全项目只允许一个层级设置安全区 padding**（竖屏 `180px 80px 220px 80px` / 横屏 `60px 120px 60px 120px`）
 - 禁止 `.scene-wrap` 和 `.phase`（或任何内层元素）同时设置 padding
-- 违反会导致双重/三重 padding，内容被压缩到 70% 以下，视觉重心偏移
 - **HARD，gate: double_padding**
 - **director_gate.py 会自动检测双重 padding，渲染前必须通过**
 
