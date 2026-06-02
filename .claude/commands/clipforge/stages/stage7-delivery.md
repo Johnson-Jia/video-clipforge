@@ -63,7 +63,7 @@ echo "Stage 7 前置检查通过"
 >
 > **禁止：** 将 `.cover` 改名为 `.container` 或其他名称、绕过 CSS 变量直接硬编码色值、更换字体族、重新排列 7 层顺序、添加模板中没有的额外层、删除任何一层。
 >
-> **封面是纯静态文档。** 封面被渲染为 PNG 截图，动画永远不会播放。`fromTo opacity:0` 等初始隐藏动画会导致截图白屏（2026-05-31 事故）。规则：
+> **封面是纯静态文档。** 封面被渲染为 PNG 截图，动画永远不会播放。`fromTo opacity:0` 等初始隐藏动画会导致截图白屏。规则：
 > - 所有视觉效果必须通过纯 CSS 实现（渐变、box-shadow、filter、opacity 直接设值）
 > - **禁止 `<script src="...">` 外部脚本引用**（GSAP、anime.js 等动画库）
 > - **禁止内联 GSAP/JS 动画代码**（fromTo、to、set 等）
@@ -448,7 +448,7 @@ python .claude/commands/clipforge/scripts/cover_check.py cover.html
 bash .claude/commands/clipforge/scripts/assemble_final.sh
 ```
 
-> **禁止绕过 `assemble_final.sh` 自行编写 ffmpeg 拼接命令。** 历史事故：自行拼接曾导致视频时长膨胀至 6 分钟 + 音频丢失。脚本内置 TS concat + stream copy（无损拼接）+ 输出验证（时长/音频断言），能防止此类问题。
+> **禁止绕过 `assemble_final.sh` 自行编写 ffmpeg 拼接命令。** 脚本内置 TS concat + stream copy（无损拼接）+ 输出验证（时长/音频断言）。
 
 > **脚本内含硬性断言：** final.mp4 时长不得超过 output.mp4 + 5 秒，两个文件都必须有音频轨道。断言失败会 exit 1。
 

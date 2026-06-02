@@ -41,7 +41,7 @@
 **关键规则：**
 - 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，自带 `padding: 180px 80px 220px 80px; display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中（不需要手动加 inline flex）
 - **scene-wrap 不设 padding** — padding 统一由 `.phase` 提供（单层 padding 原则）
-- **禁止** scene-wrap 和 .phase 同时设置 padding（双重 padding 事故：内容偏左上，可用宽度仅 74%）
+- **禁止** scene-wrap 和 .phase 同时设置 padding（单层 padding 原则，见 render-safety §1.3）
 - Phase 1 是 CSS 默认可见（opacity:1），遵守 `shared/render-safety.md` §1.1
 - Phase 2+ **不在 CSS 中设 opacity:0**，由 GSAP `.set()` 在运行时初始化（遵守 §1.1a 豁免）
 - 所有 phase 共享同一个 `.layer-bg` 和 `.layer-fx`（背景和特效不随 phase 切换）
@@ -82,9 +82,7 @@ tl.to('.s-biz-elderly .phase-3', {opacity: 0, duration: 0.3}, SCENE_START + BP3)
 
 ## Phase 断点计算（自动校准，禁止手工估算）
 
-> **事故复盘**：手工估算 + 均分 gap 导致旁白与画面严重不同步——观众听到话题 A，画面已显示话题 B，偏差达 5-12 秒。
->
-> **根治方案**：Edge TTS 按 SRT 输出句子级时间戳（精度 ±10ms），配合 `narration_anchor` 自动校准，取代一切手工断点。
+> **禁止手工估算断点。** Edge TTS 按 SRT 输出句子级时间戳（精度 ±10ms），配合 `narration_anchor` 自动校准，取代一切手工断点。
 
 **禁止**：手工在 GSAP 中硬编码 `tl.to(..., 176.0, ...)` 绝对时间戳
 

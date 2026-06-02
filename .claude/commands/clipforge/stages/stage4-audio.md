@@ -156,11 +156,7 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 
 ### BGM 预处理注意
 
-> **核心原则：旁白清晰度 > 一切。** `bgm_pipeline.sh` 自动处理音量校准和循环扩展。
->
-> **不要对 `bgm.wav` 做 gain/volume 处理。** 保持原始音量，Stage 6 的 `<audio data-volume>` 控制混音时的衰减。预处理会破坏原始音量参考。
->
-> **双重衰减防护**：bgm.wav 保持原始音量，所有音量控制通过 HTML `data-volume` 完成。预衰减 + data-volume = 几乎静音。
+> **旁白清晰度 > 一切。** 不对 `bgm.wav` 做任何 gain/volume 处理。保持原始音量，音量由 HTML `<audio data-volume>` 控制。预处理 + data-volume 叠加 = 几乎静音。
 
 ### BGM 音量守恒铁律
 
@@ -168,13 +164,13 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 - **禁止手动设置 `bgm_volume`**，只能由 `bgm_pipeline.sh` 通过 `bgm_gap_check.py` 查表自动确定。
 - `bgm_pipeline.sh` 执行后，必须验证 `segment_durations.json` 的 `meta.bgm_volume` 在 [0.10, 0.50] 范围内。
 
-> **Red Flag — bgm_volume < 0.10**：BGM 全程听不见，等于没有配乐。上次事故（2026-05-28）就是 SubAgent 手动写入 0.06 导致 BGM 全程被旁白掩盖。
+> **Red Flag — bgm_volume < 0.10**：BGM 全程听不见，等于没有配乐。
 >
-> **Red Flag — 跳过 bgm_pipeline.sh**：手动写 volume 值违反"禁止预衰减"原则，且没有经过峰值间距校验。
+> **Red Flag — 跳过 bgm_pipeline.sh**：手动写 volume 值未经过峰值间距校验。
 
 ### BGM 全程有声门禁（IRON LAW — 每次必须执行）
 
-> **事故复盘（2026-05-29）：** BGM 在 28s 后完全静音，导致视频后半段没有配乐。根因：SubAgent 生成 bgm.wav 时截取错误，且未正确执行 bgm_pipeline.sh 的静音尾段检测。此问题已反复出现多次。
+> **IRON LAW：** BGM 必须全程覆盖旁白时长，禁止出现后半段静音。`bgm_pipeline.sh` 内置静音尾段检测。
 
 **bgm.wav 生成后、进入 Stage 6 之前，必须执行此门禁：**
 

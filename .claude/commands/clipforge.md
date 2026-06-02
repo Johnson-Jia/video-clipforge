@@ -208,14 +208,7 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
      8. 展示结果并确认
   → 完成后重新扫描状态，更新队列
 
-> **方向推荐检查（仅 Stage 3 完成后执行）：** 读取 `design.md` 中 `orientation_source` 字段
-> - 若 `orientation_source` 为 `duration` 且 `orientation` 为 `landscape` → 展示推荐：
->   「预估视频时长约 {X} 分钟，建议使用横屏（1920×1080）以获得更好的观看体验。是否采用？」
->   - 用户确认 → 保持 landscape
->   - 用户拒绝 → 改为 portrait 并将 `orientation_source` 更新为 `user_explicit`，更新 design.md
-> - 若 `orientation_source` 为 `user_explicit` 或 `category_hint` → 不提示，直接继续
-> - 若 `orientation` 为 `portrait` → 不提示，直接继续
-> - 自动化模式下由 cron-template 的"方向自动判定"指令处理，无需此检查
+> **方向：** 默认竖屏（portrait）。仅当用户明确指定「横屏」或分类配置含 `orientation_hint: landscape` 时才使用横屏。无时长自动推导。
   → 全部完成 → 触发 cleanup
   → 自动检测播放数据 → 结束
 ```
