@@ -2,7 +2,7 @@
 
 当 `design.md` 已存在且 `narration_segments.json` 不存在时触发。拆解场景序列、撰写分段旁白文案、注入情感标记和幽默元素。
 
-> **导演思维驱动。** 执行前读取 `shared/director-toolkit`，每个场景用"导演的 5 个必答题"驱动视觉描述。用"视觉词汇表"写出具体的视觉指令，让 Stage 6 能直接理解和实现。
+> **执行前读取 `shared/director-toolkit`**，每个场景用导演 5 个必答题驱动视觉描述。
 
 | 模式 | 场景数 | 目标时长 |
 |------|--------|---------|
@@ -479,17 +479,6 @@ Phase 标注：
 3. `narration.txt`（完整旁白，一行一段，顺序与场景一致）
 
 **交付物：** 展示场景表和旁白文案（含情感标记和幽默元素），用户确认后进入音频制作。
-
-## 方向推荐规则
-
-完成 narration 后，检查 `design.md` 的 `orientation_source` 决定是否需要判定：
-
-**判定条件**：仅当 `orientation_source` 为 `default` 时执行（其他来源优先级更高，不可覆盖）。
-
-1. 计算预估时长：narration 总字数 ÷ 4.5 字/秒（YunjianNeural 语速）
-2. 预估时长 > 180s → 回写 `orientation: landscape` + `orientation_source: duration`
-3. 预估时长 ≤ 180s → 回写 `orientation: portrait` + `orientation_source: duration`
-4. 将两个字段同步更新到 `design.md`
 
 ---
 

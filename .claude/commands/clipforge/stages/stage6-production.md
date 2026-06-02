@@ -108,11 +108,11 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 
 ## 6.4 编写 HTML 组合（骨架 + 创意插槽模式）
 
-> **核心思路：代码引擎生成 HTML 骨架（三层架构、composition 注册、audio 嵌入、GSAP 框架），LLM 只在创意插槽中自由编写 CSS/HTML/GSAP 代码。** 骨架保证结构性正确，LLM 保证视觉创意。
+> **代码引擎生成 HTML 骨架（三层架构、composition、audio、GSAP 框架），LLM 只在 `CREATIVE_SLOT` 插槽中编写创意内容。**
 
 ### §6.4-0 骨架生成（代码引擎自动执行）
 
-> **这一步由代码引擎完成，LLM 不参与。** 输出为包含 `CREATIVE_SLOT` 标记的 HTML 骨架。
+> 代码引擎自动执行，输出包含 `CREATIVE_SLOT` 标记的 HTML 骨架。
 
 ```bash
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
@@ -138,7 +138,7 @@ python .claude/commands/clipforge/scripts/validate_skeleton.py \
 
 ### §6.4-1 视觉节奏上下文（代码引擎自动执行）
 
-> **这一步由代码引擎完成。** 为每个场景生成视觉上下文 JSON，LLM 创作前**必须读取**。
+> 代码引擎自动执行。为每个场景生成视觉上下文 JSON，创作前**必须读取**。
 
 ```bash
 # 生成视觉节奏上下文（emotion curve + 前序场景指纹 + 节奏引导）
@@ -179,7 +179,7 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 
 ### §6.4-2 创意填充（LLM 自由创作）
 
-> **LLM 在此获得完全创作自由。** 骨架已经保证了结构性正确（三层、composition、audio、__hf），LLM 只需为每个插槽编写创意内容。创作前读取 `visual_context.json`，在自由创作中自然融入节奏感。
+> 骨架保证结构性正确，LLM 只需为每个插槽编写创意内容。创作前读取 `visual_context.json`。
 
 **LLM 输出的不是完整 HTML，而是创意内容——逐场景的 CSS + HTML + GSAP 动画。**
 
@@ -198,7 +198,7 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 - **图标 SVG**：用 `<img src="assets/icons/xxx.svg">` 或 CSS mask 方式嵌入
 - **AI 生成图**：同背景图用法，适合定制化场景
 
-> **素材交接方式：** 读取 `assets/manifest.md`，将每个素材的文件名和用途描述写入 HyperFrames 的 prompt。HyperFrames 不解析 manifest.md，由编排者负责桥接。
+> 读取 `assets/manifest.md`，将素材文件名和用途写入 HyperFrames prompt。
 
 ### 组件装配流程
 
@@ -235,7 +235,7 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 
 ### 场景 → 组件参考
 
-> **这是参考映射，不是固定分配。** 根据场景内容选择最合适的组件组合，允许跨场景复用和变体。
+> 参考映射，根据场景内容选择组件，允许跨场景复用和变体。
 
 | 场景类型 | 常用组件 | 视觉方向参考 |
 |---------|---------|------------|
@@ -264,11 +264,11 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 
 ### 视觉检查（对照反面清单）
 
-> HTML 写完后，快速扫一遍 `stage6-components.md` 的 10 条反面清单，确保没有踩雷。无需额外检查流程——反面清单已经编码了所有已知的视觉质量问题。
+> HTML 写完后，扫一遍 `stage6-components.md` 的 10 条反面清单。
 
 ### 导演自审（Layer 3 — HTML 写完后、渲染前必须执行）
 
-> **目的**：像导演审看每日样片，逐场景检查 HTML 是否实现了导演决策。这是最后一道"导演看监视器"关卡。
+> 逐场景检查 HTML 是否实现了导演决策。
 
 读取 `shared/director-toolkit.md` 的"导演 5 个必答题"，逐 `.clip` 场景自审：
 
@@ -439,28 +439,12 @@ tl.from('#s1 h1', {scale: 0.85, opacity: 0, duration: 0.15, ease: 'power3.out'},
 5. **每个场景包裹 div 必须有 `id="sN"`**（如 `id="s1"`、`id="s19"`）
    - `id` 取自 `narration_segments.json` 的 `scene` 字段前缀（如 `"s1-hook"` → `id="s1"`）
    - GSAP 动画使用 `#sN .xxx` 选择器，缺少 `id` 则动画静默丢失
-   - **事故教训（2026-05-28）：s1/s19 缺少 id，导致首尾两个最重要场景的动画全部丢失**
+   - **HARD，gate: scene_ids_match**
    - **门禁自动校验**：`gate.py` 的 `scene_ids_match` 检查器会交叉验证 HTML 与 segments 的映射
 6. 根元素必须有 `data-start="0"`
 7. **`data-start` 和 `data-duration` 使用秒（不是毫秒）**
-8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**
-   - 缺少 `__hf` 会导致 HyperFrames 渲染在 62% 处崩溃（45s 超时白屏）
-   - `window.__timelines = {};`（空对象）会导致空白渲染
-   - **事故教训（2026-05-28 + service-as-software）：遗漏 __hf 是最高频渲染致命错误**
-   - 必须在 `</body>` 前添加：
-     ```html
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-     <script>
-     window.__timelines = {};
-     const tl = gsap.timeline({paused: true});
-     // ... 场景动画 ...
-
-     // ★ 必须在 </script> 前注入 __hf — 从 segment_durations.json 计算总时长
-     const totalDuration = /* sum of all segment actual_duration */;
-     window.__hf = { duration: totalDuration, seek: function(t) { tl.time(t, false); } };
-     window.__timelines["main"] = tl;
-     </script>
-     ```
+8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**（完整代码模板见 `shared/render-safety.md` §2）
+   - **HARD，gate: hyperframes_api_valid**
    - **门禁自动校验**：`gate.py` 的 `hf_api_present` 检查器会扫描 index.html 中的 `window.__hf` 声明、`duration` 字段和 `seek` 函数
 
 ### CSS 规则
@@ -575,18 +559,11 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 采用"快入+静止"动画策略：入场 0.3-0.7s，之后静止到场景结束。
 
-字号参考（与 director-toolkit.md 排版表对齐）：
-
-| 层级 | 竖屏 (1080×1920) | 横屏 (1920×1080) |
-|------|-----------------|-----------------|
-| impact | 120-220px | 88-160px |
-| title | 64-96px | 56-80px |
-| body | 36-48px | 32-44px |
-| annotation | 28-36px | 24-32px |
+字号参考见 `director-toolkit.md` 字号层级表。
 
 ### 竖屏垂直居中规则
 
-> **居中已内置到 `.phase` CSS 中**：`.phase` 统一使用 `display:flex;flex-direction:column;justify-content:center`，所有 phase 内容自动垂直居中。不需要在 `.scene-wrap` 或 inline style 上手动添加 flex 居中。
+> `.phase` 已内置 `flex-direction:column;justify-content:center`，内容自动垂直居中，无需手动添加。
 
 **禁止在 `.scene-wrap` 上加 flex 居中**：Phase 模式下 `.phase` 是 `position:absolute`，不参与 `.scene-wrap` 的 flex 布局，在 scene-wrap 上加 flex 无效。
 
@@ -628,12 +605,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 
 ### 平台安全区域
 
-**竖屏（1080×1920）：**
-- 顶部危险区：上 180px
-- 底部危险区：下 220px
-- 水平安全边距：左 80px / 右 80px
-- 安全内容区：180px ~ 1700px（垂直），80px ~ 1000px（水平）
-- padding：`180px 80px 220px 80px`
+**竖屏安全区 padding：** `180px 80px 220px 80px`（完整平台安全区域表见 `render-safety.md` §1.3）
 
 **横屏（1920×1080）：**
 - 顶部危险区：上 60px
@@ -687,7 +659,7 @@ ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep volume
 
 ## 6.7 单次渲染 + ffmpeg 合成
 
-> **HyperFrames 只渲染一次 output.mp4（旁白 + BGM 混合）。** output_no_bgm.mp4 由 ffmpeg 从 output.mp4 视频轨 + narration.mp3（纯旁白源文件）合成，无需二次渲染。
+> HyperFrames 只渲染一次 output.mp4。output_no_bgm.mp4 由 ffmpeg 从 output.mp4 视频轨 + narration.mp3 合成。
 
 ### 渲染前准备
 
@@ -784,7 +756,7 @@ rm -f cover_clip.mp4
 | **ffmpeg 只做封面帧拼接，不碰 output.mp4/output_no_bgm.mp4 的音频** | concat filter 只拼接视频流，音频从源文件直接 copy |
 | **BGM 音量在渲染前写入 HTML** | 渲染后无法修改 HyperFrames 已混入的 BGM 音量 |
 
-> **封面帧仅增加 1/30 秒（~33ms），对音画同步无感知影响。** `cover.png` 仍作为独立封面图上传平台。
+> 封面帧仅增加 ~33ms，对音画同步无影响。`cover.png` 另行上传平台。
 
 ## 6.9 Stage 6 完成门禁
 
