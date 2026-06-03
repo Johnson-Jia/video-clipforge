@@ -36,3 +36,6 @@ __pycache__/
 
 # 引擎执行轨迹
 .claude/commands/clipforge/traces/
+
+# 引擎运行时 Delta（规则增量变更产物）
+.claude/commands/clipforge/deltas/

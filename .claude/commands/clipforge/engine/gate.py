@@ -1787,9 +1787,13 @@ def run_gate(skill: SkillDefinition, project_dir: Path) -> GateReport:
 
 
 def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> dict:
-    """运行全阶段门禁并聚合为 score_report.json（基础设施：纯记录，无反馈逻辑）。"""
+    """运行全阶段门禁并聚合为 score_report.json（基础设施：纯记录，无反馈逻辑）。
+
+    返回值含 _gate_details（完整 violations 详情），仅供内部闭环使用，不写入 JSON。
+    """
     stages = ["stage1-content", "stage3-scenes", "stage4-audio", "stage6-production", "stage7-delivery"]
     phases = {}
+    gate_details = {}  # 保留完整 GateReport 信息，供 trace + attribution 使用
     for stage_id in stages:
         try:
             sk = load_skill(stage_id, skills_dir)
@@ -1799,6 +1803,13 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
             phases[stage_id] = {
                 "hard_passed": r.hard_passed,
                 "soft_score": r.soft_score,
+            }
+            gate_details[stage_id] = {
+                "hard_violations": [
+                    {"rule_id": v.rule_id, "details": v.details}
+                    for v in r.hard_violations
+                ],
+                "soft_issues": r.soft_issues,
             }
         except Exception:
             phases[stage_id] = {"hard_passed": False, "soft_score": 0.0, "error": "gate check failed"}
@@ -1819,16 +1830,13 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
     report_path.write_text(
         json.dumps(score_report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    # ⚠ 顺序不可交换：_gate_details 在 write_text 之后赋值，确保不污染 score_report.json
+    score_report["_gate_details"] = gate_details
     return score_report
 
 
-def main():
-    parser = argparse.ArgumentParser(description="ClipForge 门禁引擎")
-    parser.add_argument("--skill", required=True)
-    parser.add_argument("--project-dir", required=True)
-    parser.add_argument("--skills-dir", default=None)
-    args = parser.parse_args()
-
+def _run_single_skill(args) -> None:
+    """单阶段门禁模式：gate.py --skill X --project-dir Y"""
     project_dir = Path(args.project_dir)
     skills_dir = Path(args.skills_dir) if args.skills_dir else None
 
@@ -1861,14 +1869,6 @@ def main():
         )
     except Exception:
         pass
-
-    # ── Auto score_report: delivery 通过后自动产出（基础设施层）──
-    score_report = None
-    if args.skill == "stage7-delivery" and report.hard_passed:
-        try:
-            score_report = generate_score_report(project_dir, skills_dir)
-        except Exception:
-            score_report = None
 
     # ── Auto attribution: HARD 失败时自动强归因（反馈层）──
     attribution_results = []
@@ -1904,12 +1904,140 @@ def main():
     }
     if trace_path:
         output["trace"] = str(trace_path)
-    if score_report:
-        output["score_report_generated"] = True
     if attribution_results:
         output["attribution"] = attribution_results
     print(json.dumps(output, ensure_ascii=False, indent=2))
     sys.exit(0 if report.hard_passed else 1)
+
+
+def _activate_closed_loop(report: dict, project_dir: Path) -> None:
+    """评分闭环：trace 记录 + attribution 归因。
+
+    从 generate_score_report 的完整结果中提取数据，
+    无需重新运行 gate（复用已有结果）。
+
+    闭环链路：
+    1. 为每个 stage 记录 trace（pass/fail + gate_report）
+    2. HARD 失败的 stage → strong_attribution（确定性规则匹配）
+    3. strong_attribution 无匹配 → weak_attribution（根因推断 + Delta 产出）
+
+    幂等策略：同一天同一 stage 的 trace 采用覆盖模式（允许修复后重新评分）。
+    全程 try/except 包裹，闭环失败不影响主流程。
+    """
+    gate_details = report.get("_gate_details", {})
+    phases = report.get("phases", {})
+
+    try:
+        from engine.trace import record_trace, TRACES_DIR
+        from engine.attribution import strong_attribution, weak_attribution
+        from engine.lib.rule_parser import load_all_rules
+        all_rules = load_all_rules()
+    except Exception as e:
+        print(f"[closed-loop] 初始化失败: {e}", file=sys.stderr)
+        return
+
+    # ── 幂等性：移除今天的旧 trace（覆盖模式，允许修复后重新评分）──
+    project_traces_dir = TRACES_DIR / project_dir.name
+    trace_file = project_traces_dir / "trace.json"
+    today_prefix = datetime.now(timezone.utc).strftime("%Y%m%d")
+    if trace_file.exists():
+        try:
+            existing = json.loads(trace_file.read_text(encoding="utf-8"))
+            # 只保留非今天的 trace
+            kept = [t for t in existing if not t.get("id", "").startswith(f"T-{today_prefix}")]
+            if len(kept) != len(existing):
+                trace_file.write_text(
+                    json.dumps(kept, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass
+
+    for stage_id, phase_data in phases.items():
+        detail = gate_details.get(stage_id, {})
+
+        # ── Step 1: 记录 trace ──
+        gate_dict = {
+            "hard_passed": phase_data.get("hard_passed", False),
+            "soft_score": phase_data.get("soft_score", 0.0),
+            "hard_violations": detail.get("hard_violations", []),
+            "soft_issues": detail.get("soft_issues", []),
+        }
+        try:
+            trace_result = "pass" if phase_data.get("hard_passed") else "fail"
+            record_trace(
+                skill_id=stage_id,
+                project_dir=str(project_dir),
+                result=trace_result,
+                gate_report=gate_dict,
+            )
+        except Exception as e:
+            print(f"[closed-loop] trace 记录失败 ({stage_id}): {e}", file=sys.stderr)
+            continue
+
+        # ── Step 2: HARD 失败时触发归因 ──
+        if not phase_data.get("hard_passed"):
+            violations = detail.get("hard_violations", [])
+            # 构造合成 trace 提升弱归因置信度
+            synthetic_trace = {
+                "execution": {"steps": [], "path_switches": []},
+                "result": {"gate_report": gate_dict},
+            }
+            for v in violations:
+                try:
+                    attr = strong_attribution(v, all_rules)
+                    if attr.get("root_cause") == "no_rule_match":
+                        weak_attribution(v, trace=synthetic_trace, produce_delta=True)
+                except Exception as e:
+                    print(f"[closed-loop] 归因失败 ({v.get('rule_id','?')}): {e}", file=sys.stderr)
+
+
+def _generate_report(args) -> None:
+    """独立评分模式：gate.py --generate-report --project-dir Y
+
+    无条件运行全阶段门禁并产出 score_report.json。
+    在 delivery 后、cleanup 前由管线调用。
+    与 stage7 是否通过无关 — 失败的项目更需要评分记录。
+    """
+    project_dir = Path(args.project_dir)
+    skills_dir = Path(args.skills_dir) if args.skills_dir else None
+
+    try:
+        report = generate_score_report(project_dir, skills_dir)
+
+        # 激活 trace + attribution 闭环（副作用层，不阻塞主流程）
+        _activate_closed_loop(report, project_dir)
+
+        output = {
+            "generated": True,
+            "project": str(project_dir),
+            "overall_soft_score": report["overall_soft_score"],
+            "hard_passed_all": report["hard_passed_all"],
+            "stages_passed": f"{report['stages_passed']}/{report['total_stages']}",
+        }
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+    except Exception as e:
+        print(json.dumps({"generated": False, "error": str(e)}, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ClipForge 门禁引擎")
+    parser.add_argument("--skill", default=None, help="单阶段门禁检查")
+    parser.add_argument("--project-dir", required=True)
+    parser.add_argument("--skills-dir", default=None)
+    parser.add_argument("--generate-report", action="store_true",
+                        help="生成全阶段 score_report.json（delivery 后、cleanup 前调用）")
+    args = parser.parse_args()
+
+    # 独立评分模式：无条件运行全阶段门禁，产出 score_report.json
+    if args.generate_report:
+        _generate_report(args)
+        return
+
+    # 单阶段门禁模式（向后兼容）
+    if not args.skill:
+        parser.error("--skill is required when not using --generate-report")
+    _run_single_skill(args)
 
 
 if __name__ == "__main__":
