@@ -1,5 +1,6 @@
 """Delta Rule 管理 — 增量规则变更。"""
 from __future__ import annotations
+import re
 import yaml
 from datetime import datetime
 from pathlib import Path
@@ -45,7 +46,9 @@ def create_delta(
 def save_delta(delta: dict, deltas_dir: Path | None = None) -> Path:
     deltas_dir = deltas_dir or DELTAS_DIR
     deltas_dir.mkdir(parents=True, exist_ok=True)
-    filepath = deltas_dir / f"{delta['delta']['id']}.yaml"
+    # Windows 非法字符清洗（: / \ * ? " < > |）
+    safe_id = re.sub(r'[:\\/*?"<>|]', '_', delta['delta']['id'])
+    filepath = deltas_dir / f"{safe_id}.yaml"
     with open(filepath, "w", encoding="utf-8") as f:
         yaml.dump(delta, f, allow_unicode=True, default_flow_style=False)
     return filepath

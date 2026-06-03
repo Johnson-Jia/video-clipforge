@@ -33,12 +33,11 @@
 
 ```bash
 cd .claude/commands/clipforge
-for skill in stage1-content stage3-scenes stage4-audio stage6-production stage7-delivery; do
-  python engine/gate.py --skill "$skill" --project-dir "$PROJECT_DIR" 2>/dev/null
-done
+python engine/gate.py --generate-report --project-dir "$PROJECT_DIR"
 ```
 
-将各 stage 结果汇总写入 `$PROJECT_DIR/score_report.json`。
+无条件运行全阶段门禁，产出 `$PROJECT_DIR/score_report.json`。
+与 stage7 是否通过无关 — 失败的项目更需要评分记录。
 
 ## 关键原则
 

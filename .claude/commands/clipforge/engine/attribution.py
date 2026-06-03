@@ -143,8 +143,10 @@ def weak_attribution(
 
     if root == "rule_missing":
         action = "NEW_RULE"
+        # rule_id 可能含 Windows 非法字符（如 gate:xxx），替换为下划线
+        safe_rule_id = violation.get("rule_id", "UNK").replace(":", "_").replace("/", "_")
         candidate = {
-            "id": f"R-AUTO-{violation.get('rule_id', 'UNK')}",
+            "id": f"R-AUTO-{safe_rule_id}",
             "type": "FORBIDDEN_ACTION",
             "pattern": violation_pattern[:200],
             "positive": f"确保{violation_pattern[:80]}的正确处理",
@@ -166,8 +168,15 @@ def weak_attribution(
             traces_dir = Path(rules_dir).parent / "traces"
             traces = []
             if traces_dir.exists():
-                for f in traces_dir.glob("*.json"):
-                    traces.append(json.loads(f.read_text(encoding="utf-8")))
+                for f in traces_dir.rglob("trace.json"):
+                    try:
+                        data = json.loads(f.read_text(encoding="utf-8"))
+                        if isinstance(data, list):
+                            traces.extend(data)
+                        else:
+                            traces.append(data)
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass
             validation = shadow_validate(delta, rules, traces)
             if not validation.get("safe", True):
                 delta["shadow_validation"] = validation
@@ -412,8 +421,15 @@ def performance_attribution(
         traces_dir = Path(rules_dir).parent / "traces"
         traces = []
         if traces_dir.exists():
-            for f in traces_dir.glob("*.json"):
-                traces.append(json.loads(f.read_text(encoding="utf-8")))
+            for f in traces_dir.rglob("trace.json"):
+                try:
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                    if isinstance(data, list):
+                        traces.extend(data)
+                    else:
+                        traces.append(data)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
         validation = shadow_validate(delta, rules, traces)
         if not validation.get("safe", True):
             delta["shadow_validation"] = validation

@@ -23,7 +23,19 @@ if [ -z "$PROJECT_DIR" ]; then
   exit 1
 fi
 
+# 在 cd 前保存脚本绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 cd "$PROJECT_DIR"
+
+# ── 前置检查：score_report.json 必须存在──
+if [ ! -f "score_report.json" ]; then
+  echo "score_report.json 不存在，自动生成..."
+  python "$SCRIPT_DIR/../engine/gate.py" --generate-report --project-dir "$(pwd)" || true
+  if [ ! -f "score_report.json" ]; then
+    echo "警告：score_report.json 生成失败，继续清理（评分数据将无法事后补评）"
+  fi
+fi
 
 if [ "$DRY_RUN" = true ]; then
   echo "=== 项目清理（DRY RUN — 仅预览） ==="

@@ -25,6 +25,10 @@
 > **执行任何删除操作前，必须先完成此检查点。**
 
 ```
+0. 确认 score_report.json 已存在：
+   test -f "${PROJECT_DIR}/score_report.json" || \
+     python .claude/commands/clipforge/engine/gate.py --generate-report --project-dir "$PROJECT_DIR"
+   如果不存在，立即生成后再继续。
 1. 列出当前目录所有文件: ls -la ${PROJECT_DIR}/
 2. 逐个对照下方 §视频项目保留清单，确认每个文件的去留
 3. 将要删除的文件名单记录下来（只在必删文件列表中的）
