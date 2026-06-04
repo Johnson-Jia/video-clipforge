@@ -112,6 +112,24 @@ id: "分类ID（与文件名一致，如 github、comics）"
 封面场景标签（如"GitHub 榜单速览"）
 ```
 
+#### 跨阶段: narrative — 叙事策略（Stage 3/6 引用）
+
+```markdown
+## narrative
+
+### default_template
+默认叙事模板
+
+### humor_rules
+幽默引擎规则（类比/反差吐槽/冷知识梗的启用策略）
+
+### character_presence
+角色表现设定（虚拟主持人的表情/语态风格）
+
+### immersion_mapping
+沉浸感映射规则（情感节拍与视觉节奏的对应关系）
+```
+
 #### shared-rules 覆盖（可选）
 
 ```markdown

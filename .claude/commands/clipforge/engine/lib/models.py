@@ -67,6 +67,7 @@ class GateType(str, Enum):
     bgm_volume_table_valid = "bgm_volume_table_valid"
     grad_text_shorthand_valid = "grad_text_shorthand_valid"
     phase_visibility_present = "phase_visibility_present"
+    design_storyboard_valid = "design_storyboard_valid"
 
 
 class Rigor(str, Enum):
@@ -85,12 +86,6 @@ class SpiritMode(str, Enum):
     SPIRIT = "SPIRIT"
     LETTER = "LETTER"
 
-
-class DeltaOperation(str, Enum):
-    ADDED = "ADDED"
-    MODIFIED = "MODIFIED"
-    REMOVED = "REMOVED"
-    DEPRECATED = "DEPRECATED"
 
 
 class Platform(str, Enum):

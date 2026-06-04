@@ -4,7 +4,7 @@
 
 当 `final.mp4` 已存在且项目目录未清理时触发。清理中间产物，保留核心产出。
 
-## 强制执行
+## §1 强制执行
 
 > **⛔ 清理只允许通过以下两种方式执行，禁止任何其他方式：**
 >
@@ -13,14 +13,14 @@
 >
 > **严禁手动 `rm -f` 批量删除文件。** 手动 `rm -f` 会误删保留清单中的文件（cover.html、index.html、design.md、narration_segments.json 等），导致微调视频需要重跑整个阶段。
 
-## 第一原则
+## §2 第一原则
 
 > **白名单机制，不是黑名单机制。**
 > 只删除"必删文件"列表中**明确列出**的文件。不在必删列表中的文件，**一律不动**。
 > **严禁使用通配符批量删除保留清单中的文件类型**（如 `rm -f *.md`、`rm -f *.json`）。
 > 保留清单中的每个文件都有不可替代的作用，删除任何一个都会导致后续微调需要重跑整个阶段。
 
-## 清理前检查点
+## §3 清理前检查点
 
 > **执行任何删除操作前，必须先完成此检查点。**
 
@@ -36,14 +36,14 @@
 5. 按记录的名单逐条删除（不用通配符）
 ```
 
-## 执行时机
+## §4 执行时机
 
 - **视频项目**：Stage 7 交付 + machine-scoring 完成后
 - **文章项目**：文章生成 + 封面完成后
 - **定时任务**：全自动流程末尾自动执行
 - **手动触发**：用户说"清理"、"整理"时执行
 
-## 保留规则
+## §5 保留规则
 
 以下文件**必须保留**，是核心产出物或重新生成的必要输入：
 
@@ -84,7 +84,7 @@
 | `bgm.wav` | 如 BGM 是项目定制/一次性 | 项目专属配乐；来自素材库的可删除 |
 | `assets/` 目录 | 如后续需修改 HTML 中的图片/图表 | 修改 index.html 引用的素材需要 |
 
-## 清理规则
+## §6 清理规则
 
 以下文件**必须删除**（中间产物，可从保留文件重新生成）：
 
@@ -102,7 +102,7 @@ concat.txt
 concat_new.txt
 silence_*.mp3           # 电影模式静音填充
 
-# ffmpeg 封面帧中间产物（Stage 6 §6.8）
+# ffmpeg 封面帧中间产物（Stage 7 assemble_final.sh）
 cover_1frame.mp4        # 1帧封面视频
 cover_1frame_audio.mp4  # 含静音音轨的1帧封面
 cover.ts                # TS 格式封面
@@ -154,7 +154,7 @@ lib/                    # HyperFrames 渲染时下载的本地 JS 库（gsap.min
 | `narration.srt` | 确认不再需要字幕文件 | 可从 narration_segments 重新生成 |
 | `movie_audio.wav` | 电影模式交付后 | 可从 clips 重新构建 |
 
-## 执行脚本
+## §7 执行脚本
 
 > **关键约束：只删除"必删文件"列表中明确列出的文件。** 不在必删列表中的文件一律不动。绝不使用通配符批量删除非必删文件。
 
@@ -163,7 +163,7 @@ lib/                    # HyperFrames 渲染时下载的本地 JS 库（gsap.min
 bash .claude/commands/clipforge/scripts/cleanup_project.sh "$PROJECT_DIR"
 ```
 
-## 清理后项目目录结构
+## §8 清理后项目目录结构
 
 视频项目清理后仅包含：
 
@@ -197,7 +197,7 @@ workspace/<YYYY>/<MM>/<DD>/<项目名>/
 └── raw_trending.json      # 原始数据（GitHub 项目）
 ```
 
-## 磁盘用量监控
+## §9 磁盘用量监控
 
 清理完成后输出磁盘用量：
 
@@ -212,7 +212,7 @@ echo "总月目录：$(ls -d workspace/????/??/ 2>/dev/null | wc -l)"
 
 ---
 
-## Red Flags（停止信号）
+## §10 Red Flags（停止信号）
 
 | 信号 | 说明 |
 |------|------|
@@ -223,7 +223,7 @@ echo "总月目录：$(ls -d workspace/????/??/ 2>/dev/null | wc -l)"
 | 清理了 `design.md`、`narration_segments.json`、`segment_durations.json` | 改风格/改旁白/校音必需，删了就要重跑对应阶段 |
 | 使用 `rm -f *.md` / `rm -f *.json` 等通配符批量删除 | 通配符会误删保留清单中的文件，必须逐条按必删列表删除 |
 
-## Common Rationalizations（常见借口反驳）
+## §11 Common Rationalizations（常见借口反驳）
 
 | 借口 | 事实 |
 |------|------|

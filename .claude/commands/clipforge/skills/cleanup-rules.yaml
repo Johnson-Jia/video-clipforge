@@ -1,6 +1,6 @@
 skill:
   meta:
-    id: "skill.clipforge.cleanup"
+    id: "skill.clipforge.cleanup-rules"
     version: "1.2.0"
     type: UTILITY
     tags: ["cleanup"]

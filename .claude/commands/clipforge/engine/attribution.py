@@ -30,7 +30,7 @@ def _get_hook_anchors() -> tuple[str, ...]:
     _hook_anchors_cache = tuple(anchors) if anchors else ()
     return _hook_anchors_cache
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
-from engine.lib.models import Rule, Severity, RuleClass, Platform, PerformanceRecord
+from engine.lib.models import Rule, Platform
 from engine.lib.delta import create_delta, save_delta, shadow_validate
 
 
@@ -82,6 +82,7 @@ def _evidence_confidence(violation: dict, trace: dict | None = None) -> float:
 
 def strong_attribution(violation: dict, rules: list[Rule]) -> dict:
     """强归因：检查已有规则是否覆盖此违规。确定性推理，可全自动执行。"""
+    from engine.lib.positive_rewrite import rewrite_rule
     violation_pattern = violation.get("details", violation.get("rule_pattern", ""))
 
     for rule in rules:
@@ -95,7 +96,6 @@ def strong_attribution(violation: dict, rules: list[Rule]) -> dict:
                 "confidence": 1.0,
             }
 
-        from engine.lib.positive_rewrite import rewrite_rule
         guardrail = rewrite_rule(rule)["guardrail"]
         if guardrail and any(kw in violation_pattern for kw in rule.detection.keywords):
             return {

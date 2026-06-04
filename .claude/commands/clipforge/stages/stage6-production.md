@@ -492,7 +492,7 @@ hook 必须满足全部要求：信息极简（≤3 元素）、字号最大（�
 
 **视觉风格分组**：20 个场景的视频至少有 4-5 种不同的 bg 风格组（如：暖色渐变+噪点、冷色等高线、暖色光束、冷色网格、暗角聚光）。相邻场景禁止使用相同的渐变色值组合。
 
-**禁止模式**：glow+grid 三件套（线性渐变 + 1-2 个模糊光圆 + grid-bg）作为唯一 bg 方案。这是 R-R-011 HARD 门禁。
+**禁止模式**：glow+grid 三件套（线性渐变 + 1-2 个模糊光圆 + grid-bg）作为唯一 bg 方案。这是 R-R-009 HARD 门禁。
 
 #### 场景独立配色
 
@@ -513,7 +513,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 #### 整体品质检查
 
-渲染前对照清单：背景三层（bg ≥2 种视觉元素类型，禁止纯 glow+grid 三件套）、fx 层非空（R-R-008 HARD）、相邻场景 bg 风格可区分（R-R-012 HARD）、光晕、卡片三栏、配色区分、CTA 完整、字号达标、安全区、居中（flexbox）、`__hf`（duration + seek）、场景 id 映射、GSAP timeline、音频、无 anim-in、无 HTML 实体、scene-wrap padding、视觉密度、无多余 composition、**`.clip` 必须是 `inset:0`（禁止 top/right/bottom/left 偏移 → 黑边）**。
+> 渲染前品质检查清单见 `shared/quality-checklist.md`。
 
 ### 动画规则
 
@@ -559,7 +559,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
    - 标题 ≥56px 时渐变效果最佳
    - 渐变色从场景主题色推导（暖色场景用金→橙，冷色场景用青→紫）
 3. **bg 层不可只用纯色渐变**。横屏画幅更大，纯色渐变 bg 在 H.264 编码后呈现为平坦色块。必须叠加纹理元素（等高线、光束、扫描线、噪点等），与竖屏 bg 层质量标准一致。
-4. **相邻场景 bg 必须有可区分的视觉差异**（R-R-012 HARD），横屏尤甚——同质化在宽幅画面上更明显。
+4. **相邻场景 bg 必须有可区分的视觉差异**（R-R-010 HARD），横屏尤甚——同质化在宽幅画面上更明显。
 
 ### 动画设计原则（HyperFrames 时长模型）
 
@@ -720,51 +720,9 @@ final.mp4      = cover.png + output.mp4
 final_no_bgm.mp4 = cover.png + output_no_bgm.mp4
 ```
 
-## 6.8 封面帧拼接
+> 封面帧拼接由 Stage 7 §7.3 的 `assemble_final.sh` 统一处理，Stage 6 不负责。
 
-> **ffmpeg concat filter 拼接封面帧 + 正片视频，不碰音频。**
-
-```bash
-cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
-
-# ── 创建封面帧（1帧 H264）──
-ffmpeg -y -loop 1 -i cover.png -c:v libx264 -b:v 5M -t 0.0333 \
-  -pix_fmt yuv420p -r 30 cover_clip.mp4
-
-# ── 拼接：封面帧 + 正片 ──
-# final.mp4 = cover + output.mp4（含 BGM）
-ffmpeg -y -i cover_clip.mp4 -i output.mp4 \
-  -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[outv]" \
-  -map "[outv]" -map 1:a \
-  -c:v libx264 -b:v 5M -c:a copy \
-  final.mp4
-
-# final_no_bgm.mp4 = cover + output_no_bgm.mp4（仅旁白）
-ffmpeg -y -i cover_clip.mp4 -i output_no_bgm.mp4 \
-  -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[outv]" \
-  -map "[outv]" -map 1:a \
-  -c:v libx264 -b:v 5M -c:a copy \
-  final_no_bgm.mp4
-
-# ── 清理临时文件 ──
-rm -f cover_clip.mp4
-```
-
-### BGM 音量
-
-> BGM 音量由 Stage 4 的 `bgm_gap_check.py` 自动查表校准，值存储在 `segment_durations.json` 的 `meta.bgm_volume`。渲染前从该文件读取并写入 HTML `data-volume`。
-
-### 致命约束
-
-| 约束 | 违反后果 |
-|------|---------|
-| **output_no_bgm.mp4 必须用 narration.mp3 合成** | 用 `-map 0:a:0` 从 output.mp4 提取只得到混合轨，BGM 无法消除 |
-| **ffmpeg 只做封面帧拼接，不碰 output.mp4/output_no_bgm.mp4 的音频** | concat filter 只拼接视频流，音频从源文件直接 copy |
-| **BGM 音量在渲染前写入 HTML** | 渲染后无法修改 HyperFrames 已混入的 BGM 音量 |
-
-> 封面帧仅增加 ~33ms，对音画同步无影响。`cover.png` 另行上传平台。
-
-## 6.9 Stage 6 完成门禁
+## 6.8 Stage 6 完成门禁
 
 ```bash
 # ── Stage 6 完成门禁 ──
@@ -780,6 +738,6 @@ python3 .claude/commands/clipforge/scripts/frame_analysis.py .
 
 ## 约束声明
 
-**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成 = 双版本输出失败。
+**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.7）= 双版本输出失败。
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage6-production` 获取完整约束 prompt。

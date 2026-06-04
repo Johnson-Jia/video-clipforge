@@ -14,7 +14,7 @@ from collections import Counter
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
-from engine.lib.models import Rule, Scope
+from engine.lib.models import Rule
 from engine.lib.delta import create_delta, save_delta, shadow_validate, load_deltas
 from engine.trace import query_traces
 
@@ -119,6 +119,9 @@ def produce_deltas_for_findings(
             deltas.append(delta)
 
     # 膨胀警报中的零命中率规则 → DEPRECATED Delta
+    # 注意：hit_count 仅存在于进程内存（不写回 YAML），每次运行归零。
+    # 因此"零命中"= "本次运行中未被 inject"≠"历史上从未命中"。
+    # 这是有意设计：YAML 是人类维护的规则定义，不应被程序自动修改。
     for alert in findings.get("bloat", []):
         if alert.get("type") == "scope_bloat":
             zero_hit = [r for r in rules
@@ -145,12 +148,14 @@ def produce_deltas_for_findings(
 
 
 def get_stats(rules: list[Rule]) -> dict:
+    """规则统计。hit_count 仅反映本次进程内的 inject 记录，不跨进程持久化。"""
     return {
         "total": len(rules),
         "by_severity": dict(Counter(r.severity.value for r in rules)),
         "by_class": dict(Counter(r.rule_class.value for r in rules)),
         "by_scope": dict(Counter(r.scope.value for r in rules)),
         "zero_hit": [r.id for r in rules if r.hit_count == 0],
+        "note": "hit_count 仅反映本次运行，不跨进程持久化",
     }
 
 

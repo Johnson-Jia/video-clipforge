@@ -2,7 +2,7 @@
 
 > 此文件是 `/clipforge-category-setup` 生成定时任务时的参考骨架。生成的 cron 文件必须是自包含的 LLM prompt — 所有执行规则内联写入，不使用跨文件引用。
 
-## 前置准备
+## §1 前置准备
 
 ```bash
 export LANG=zh_CN.UTF-8
@@ -15,7 +15,7 @@ mkdir -p "${PROJECT_DIR}"
 > **代理：** 如果本机需要代理才能访问外网，请在执行前设置 `https_proxy` / `http_proxy` 环境变量。
 > **`export LANG=zh_CN.UTF-8` 必须设置**：Windows Git Bash 默认 locale 可能是 GBK，导致中文目录名编码错乱。
 
-## Step 1: 数据采集
+## §2 Step 1: 数据采集
 
 从分类配置的 `data_source` 和 `data_validation` 段获取：
 - **采集命令**：具体的脚本/API 调用命令（必须可直接执行）
@@ -27,14 +27,14 @@ mkdir -p "${PROJECT_DIR}"
 2. 验证阈值和失败处理逻辑
 3. 输出文件路径确认
 
-## Step 2: 内容整理
+## §3 Step 2: 内容整理
 
 从分类配置的 `selection_strategy` 和 `preparation_rules` 段获取：
 - **选取规则**：从原始数据中筛选多少条目、按什么排序
 - **格式转换**：原始数据 → 中文素材的转换规则
 - **额外管理**：如月度清单、跨期去重等（可选）
 
-## Step 3: DAG 编排
+## §4 Step 3: DAG 编排
 
 > **引擎命令基础路径**：所有 `python engine/` 和 `bash scripts/` 命令在 `.claude/commands/clipforge/` 目录下执行。
 
@@ -69,8 +69,7 @@ mkdir -p "${PROJECT_DIR}"
 > - 全部通过：报告通过，继续
 > ```
 >
-> **事故记录：2026-05-30 github-trending 视频黑屏事故，因 SubAgent-3 未运行 gate.py，
-> 导致 R-R-001（opacity:0）和 R-S6-011（composition 结构）等已有规则未触发拦截。**
+> **⚠ Gate 是防线不是装饰。跳过 gate = 已有规则全部失效。**
 
 ### SubAgent-1: content → design → narration
 
@@ -223,9 +222,12 @@ LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字
 
 **验证**：`ls ${PROJECT_DIR}/score_report.json` 确认评分存在，`ls ${PROJECT_DIR}/` 确认中间文件已清理，`du -sh ${PROJECT_DIR}` 确认 < 30 MB。
 
-## Step 3.5: 确保播放数据提醒已注册
+## §5 Step 3.5: 确保播放数据提醒已注册
 
 > 自进化系统需要平台播放数据来校准机器评分。注册一个每日检查任务，如数据超过 3 天未更新则提醒用户。
+
+> ⚠️ 以下检查逻辑是 `shared/playback-reminder.md` 的独立副本（cron 文件必须是自包含 prompt）。
+> 修改 `playback-reminder.md` 时必须同步更新此处。
 
 检查 CronList 中是否已有 `playback-reminder` 关键词的任务：
 - 如已存在 → 跳过
@@ -269,13 +271,13 @@ prompt 内容：
 
 注册完成后，执行 `shared/cron-renew` 为此任务续期（关键词：`playback-reminder`）。
 
-## Step 4: 自续期
+## §6 Step 4: 自续期
 
 > **无论前序步骤是否成功，都必须执行此步骤。**
 
 执行 `clipforge/shared/cron-renew` 定时任务自续期模式，传入任务关键词。
 
-## 输出汇报
+## §7 输出汇报
 
 完成后汇报：
 

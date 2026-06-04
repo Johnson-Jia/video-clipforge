@@ -1,6 +1,6 @@
 """正向重述引擎 — 将负向规则转换为正向表述注入 prompt。"""
 from __future__ import annotations
-from .models import Rule, Scope
+from .models import Rule
 
 
 def rewrite_rule(rule: Rule) -> dict[str, str]:
@@ -71,19 +71,3 @@ def _fallback_rewrite(pattern: str) -> str:
 
     # 通用正向化：将禁止内容转为"确保..."
     return f"确保：{cleaned.strip('，。、')}"
-
-
-def build_injection_segment(rules: list[Rule], include_guardrails: bool = False) -> str:
-    """构建约束注入 prompt 段。"""
-    lines = ["## 行为准则（请遵循）"]
-    for r in rules:
-        if r.severity.value == "HARD":
-            lines.append(f"- **[HARD]** {rewrite_rule(r)['positive']}")
-        else:
-            lines.append(f"- [SOFT] {rewrite_rule(r)['positive']}")
-    if include_guardrails:
-        lines.append("")
-        lines.append("## 校验规则（guardrail，不注入 prompt，仅供校验引擎使用）")
-        for r in rules:
-            lines.append(f"- [{r.severity.value}] {rewrite_rule(r)['guardrail']}")
-    return "\n".join(lines)

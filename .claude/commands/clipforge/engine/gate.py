@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from engine.lib.rule_parser import load_skill, load_rules_by_scope, RULES_DIR, SKILLS_DIR
+from engine.lib.rule_parser import load_skill
 from engine.lib.models import (
-    GateReport, Violation, Severity, GateType, SkillDefinition, RuleClass,
+    GateReport, Violation, Severity, GateType, SkillDefinition,
 )
 
 
@@ -134,6 +134,34 @@ def check_duration_in_range(project_dir: Path, params: dict) -> tuple[bool, str]
         return False, f"时长检查异常: {e}"
 
 
+def check_design_storyboard_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """校验 design.md 包含必需字段且 emotion_curve 为 6 元素数组。"""
+    required_keys = params.get("required_keys", ["style", "mood", "color_direction", "storyboard"])
+    emotion_curve_length = params.get("emotion_curve_length", 6)
+
+    design_path = project_dir / "design.md"
+    if not design_path.exists():
+        return False, f"design.md 不存在: {design_path}"
+
+    content = design_path.read_text(encoding="utf-8")
+
+    # 校验 required keys
+    missing = [k for k in required_keys if k + ":" not in content and k + " :" not in content]
+    if missing:
+        return False, f"design.md 缺少必需字段: {', '.join(missing)}"
+
+    # 校验 emotion_curve
+    ec_match = re.search(r"emotion_curve:\s*\[([^\]]*)\]", content)
+    if not ec_match:
+        return False, "design.md 未找到 emotion_curve 数组"
+
+    elements = [e.strip().strip("'\"") for e in ec_match.group(1).split(",") if e.strip()]
+    if len(elements) != emotion_curve_length:
+        return False, f"emotion_curve 应为 {emotion_curve_length} 元素数组，实际 {len(elements)} 元素: {elements}"
+
+    return True, f"design.md 字段完整，emotion_curve = {elements}"
+
+
 GATE_CHECKERS = {
     GateType.file_exists: check_file_exists,
     GateType.json_valid: check_json_valid,
@@ -143,6 +171,7 @@ GATE_CHECKERS = {
     GateType.no_url_in_output: check_no_url,
     GateType.duration_in_range: check_duration_in_range,
     GateType.hook_pattern_verified: None,  # 占位，在下面实现
+    GateType.design_storyboard_valid: check_design_storyboard_valid,
 }
 
 
@@ -909,11 +938,11 @@ def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, st
 
     事故记录：2026-05-30 github-trending 项目 HyperFrames 渲染输出 17 kbps 黑屏视频，
     因 index.html 使用 CSS class 切换可见性而非 GSAP timeline，所有场景 opacity:0。
-    1080x1920 正常视频应 > 100 kbps。
+    1080x1920 正常视频应 > 500 kbps。
 
     检测策略：
     1. 用 ffprobe 获取视频码率
-    2. 低于 min_bitrate_kbps（默认 80 kbps）判定为黑屏/异常
+    2. 低于 min_bitrate_kbps（默认 500 kbps）判定为黑屏/异常
     """
     video_file = project_dir / params.get("file", "output.mp4")
     if not video_file.exists():
@@ -958,7 +987,7 @@ def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, st
         bit_rate = int((file_size * 8) / duration)
 
     bitrate_kbps = bit_rate / 1000 if bit_rate else 0
-    min_kbps = params.get("min_bitrate_kbps", 80)
+    min_kbps = params.get("min_bitrate_kbps", 500)
 
     if bitrate_kbps < min_kbps:
         return False, (
@@ -1009,7 +1038,7 @@ def check_html_no_css_visibility(project_dir: Path, params: dict) -> tuple[bool,
         issues.append(f"发现 CSS class 切换可见性模式（{len(active_patterns)} 处），HyperFrames 通过 GSAP seek 驱动，不会切换 class")
 
     if issues:
-        return False, f"R-S6-013: {'; '.join(issues)}。正确方式：GSAP timeline .set()/.fromTo() 控制场景可见性"
+        return False, f"R-S6-011: {'; '.join(issues)}。正确方式：GSAP timeline .set()/.fromTo() 控制场景可见性"
 
     return True, "未检测到 CSS class 可见性切换模式"
 
@@ -1019,7 +1048,7 @@ GATE_CHECKERS[GateType.html_no_css_visibility] = check_html_no_css_visibility
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# HTML 内容级检测器 — R-R-008 / R-R-011 / R-R-012
+# HTML 内容级检测器 — R-R-008 / R-R-009 / R-R-010
 # ═══════════════════════════════════════════════════════════════════════
 
 def _split_into_scenes(html: str) -> list[tuple[str, str]]:
@@ -1102,7 +1131,7 @@ def _bg_style_fingerprint(bg_chunk: str) -> str:
 
 
 def check_bg_visual_diversity(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-R-011: bg 层必须 ≥2 种视觉元素类型，禁止 glow+grid 三件套。"""
+    """R-R-009: bg 层必须 ≥2 种视觉元素类型，禁止 glow+grid 三件套。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -1122,12 +1151,12 @@ def check_bg_visual_diversity(project_dir: Path, params: dict) -> tuple[bool, st
         elif len(types) < 2:
             violations.append(f"{sid}: 类型不足 ({', '.join(sorted(types)) or '空'})")
     if violations:
-        return False, f"R-R-011: {'; '.join(violations[:6])}"
+        return False, f"R-R-009: {'; '.join(violations[:6])}"
     return True, f"{len(scenes)} 场景 bg 视觉多样性合格"
 
 
 def check_adjacent_bg_diversity(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-R-012: 相邻场景 bg 必须有可区分的视觉差异。"""
+    """R-R-010: 相邻场景 bg 必须有可区分的视觉差异。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -1147,12 +1176,12 @@ def check_adjacent_bg_diversity(project_dir: Path, params: dict) -> tuple[bool, 
     min_styles = max(len(scenes) // 5, 3)
     if violations:
         return False, (
-            f"R-R-012: {len(violations)} 对相邻同质 "
+            f"R-R-010: {len(violations)} 对相邻同质 "
             f"({unique_styles} 种风格/{len(scenes)} 场景, 需≥{min_styles}); "
             f"{'; '.join(violations[:4])}"
         )
     if unique_styles < min_styles:
-        return False, f"R-R-012: 风格组不足 ({unique_styles}/{min_styles})"
+        return False, f"R-R-010: 风格组不足 ({unique_styles}/{min_styles})"
     return True, f"相邻 bg 可区分 ({unique_styles} 种风格/{len(scenes)} 场景)"
 
 
@@ -1217,28 +1246,20 @@ def check_fx_animation_present(project_dir: Path, params: dict) -> tuple[bool, s
         if len(fx_children) <= 1:  # 只有 layer-fx 自身
             continue
 
-        # 在整个 HTML 中查找该场景的 GSAP timeline 代码
-        # 提取该场景相关的 GSAP 动画调用
-        scene_timeline = _extract_scene_timeline(html, sid) if '_extract_scene_timeline' in dir() else ""
+        # 使用正则搜索 GSAP 动画调用
+        # 匹配 tl.to/tl.from/tl.fromTo 中包含 #sN 的选择器
+        gsap_pattern = rf'tl\.\w+\(\s*["\'][^"\']*{re.escape(sid)}[^"\']*["\']'
+        gsap_calls = re.findall(gsap_pattern, html)
 
-        # 如果没有专门的提取函数，用正则在全文搜索
-        if not scene_timeline:
-            # 查找 window.__timelines 或 <script> 中包含该场景 id 的 GSAP 调用
-            # 匹配 tl.to/tl.from/tl.fromTo 中包含 #sN 的选择器
-            gsap_pattern = rf'tl\.\w+\(\s*["\'][^"\']*{re.escape(sid)}[^"\']*["\']'
-            gsap_calls = re.findall(gsap_pattern, html)
+        # 也匹配 .layer-fx 直接选择器
+        fx_gsap_pattern = rf'tl\.\w+\(\s*["\'][^"\']*layer-fx[^"\']*["\']'
+        fx_gsap_calls = re.findall(fx_gsap_pattern, html)
 
-            # 也匹配 .layer-fx 直接选择器
-            fx_gsap_pattern = rf'tl\.\w+\(\s*["\'][^"\']*layer-fx[^"\']*["\']'
-            fx_gsap_calls = re.findall(fx_gsap_pattern, html)
+        # 匹配场景内常见 fx 元素类的 GSAP 调用
+        fx_class_pattern = rf'tl\.\w+\(\s*["\'][^"\']*{re.escape(sid)}\s+\.(?:orb|ray|particle|streak|ring|pulse|glow|beam|wave|scan|border|drop|char|line)[^"\']*["\']'
+        fx_class_calls = re.findall(fx_class_pattern, html)
 
-            # 匹配场景内常见 fx 元素类的 GSAP 调用
-            fx_class_pattern = rf'tl\.\w+\(\s*["\'][^"\']*{re.escape(sid)}\s+\.(?:orb|ray|particle|streak|ring|pulse|glow|beam|wave|scan|border|drop|char|line)[^"\']*["\']'
-            fx_class_calls = re.findall(fx_class_pattern, html)
-
-            has_fx_animation = bool(gsap_calls) or bool(fx_gsap_calls) or bool(fx_class_calls)
-        else:
-            has_fx_animation = bool(scene_timeline)
+        has_fx_animation = bool(gsap_calls) or bool(fx_gsap_calls) or bool(fx_class_calls)
 
         if not has_fx_animation:
             violations.append(sid)

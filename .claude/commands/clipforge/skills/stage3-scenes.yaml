@@ -48,6 +48,9 @@ skill:
       - gate: hook_pattern_verified
         params:
           file: "narration_segments.json"
+      - gate: no_forbidden_speech
+        params:
+          files: ["narration.txt"]
     soft: []
     max_retries: 2
   trace:

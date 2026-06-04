@@ -20,7 +20,13 @@ skill:
     red_flags: []
     spirit_vs_letter: []
   gate:
-    hard: []
+    hard:
+      - gate: file_exists
+        params:
+          files: ["clip_durations.json"]
+      - gate: json_valid
+        params:
+          files: ["clip_durations.json"]
     soft: []
     max_retries: 2
   trace:
