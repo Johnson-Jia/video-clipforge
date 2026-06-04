@@ -676,12 +676,8 @@ cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json'))['meta'].get('bgm_volume', 0.15))")
 
 # BGM 音量预检
-if [ "$(echo "$BGM_VOL < 0.10" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
-    echo "BLOCKED: bgm_volume=${BGM_VOL} < 0.10，BGM 不可听。回退 Stage 4 重新校准。"
-    exit 1
-fi
-if [ "$(echo "$BGM_VOL > 0.50" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
-    echo "BLOCKED: bgm_volume=${BGM_VOL} > 0.50，BGM 过响。回退 Stage 4 重新校准。"
+if [ "$(echo "$BGM_VOL <= 0" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+    echo "BLOCKED: bgm_volume=${BGM_VOL} <= 0，BGM 静音。回退 Stage 4 重新校准。"
     exit 1
 fi
 echo "OK: bgm_volume=${BGM_VOL}"

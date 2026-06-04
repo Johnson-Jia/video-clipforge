@@ -173,7 +173,9 @@ def fix(text: str) -> str:
         return preprocessed
 
     # 获取每个字的上下文感知拼音
-    pinyin_list = pinyin(preprocessed, style=Style.TONE3)
+    # errors=lambda 确保非汉字字符逐字符返回，维持 pinyin_list 与 chars 长度对齐
+    # 否则连续外文（如 Docker、CPU）会被合并为一个元素，导致 zip 对齐错位
+    pinyin_list = pinyin(preprocessed, style=Style.TONE3, errors=lambda x: list(x))
 
     chars = list(preprocessed)
     modified = False

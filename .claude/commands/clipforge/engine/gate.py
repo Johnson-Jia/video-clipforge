@@ -1418,16 +1418,13 @@ def check_bgm_volume_provenance(project_dir: Path, params: dict) -> tuple[bool, 
 
     bgm_pipeline.sh 首次运行时:
     1. 创建 bgm_orig.wav 作为原始备份
-    2. 调用 bgm_gap_check.py 查表自动确定 volume
+    2. 调用 bgm_gap_check.py 公式计算 volume
     3. 写入 segment_durations.json
-
-    事故记录：2026-06-01 三个项目全部硬编码 bgm_volume=0.35，bgm_pipeline.sh
-    从未执行，导致 BGM 普遍过响盖过旁白。
 
     检查策略（三选一通过）：
     A. bgm_orig.wav 存在 = 管线执行过（最强证据）
-    B. segment_durations.json 含 meta.bgm_volume_source = "bgm_pipeline" 标记
-    C. 都不满足 → 检查是否命中硬编码值黑名单
+    B. segment_durations.json 含 meta.bgm_volume_source = "formula" 标记
+    C. 都不满足 → 拒绝（疑似手动硬编码）
     """
     # 策略 A: bgm_orig.wav 存在性
     bgm_orig = project_dir / "bgm_orig.wav"
@@ -1443,10 +1440,10 @@ def check_bgm_volume_provenance(project_dir: Path, params: dict) -> tuple[bool, 
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         return False, f"segment_durations.json 解析失败: {e}"
 
-    # 策略 B: 来源标记
+    # 策略 B: 来源标记（formula=当前公式，bgm_pipeline/bgm_gap_check.py=历史合法来源）
     source = data.get("meta", {}).get("bgm_volume_source", "")
-    if source == "bgm_pipeline":
-        return True, "meta.bgm_volume_source = bgm_pipeline → 管线校准"
+    if source in ("formula", "bgm_pipeline", "bgm_gap_check.py"):
+        return True, f"meta.bgm_volume_source = {source} → 校准已执行"
 
     # 策略 C: 无溯源标记 → 拒绝
     vol = data.get("meta", {}).get("bgm_volume", 0)
@@ -1461,39 +1458,17 @@ GATE_CHECKERS[GateType.narration_sample_rate_valid] = check_narration_sample_rat
 GATE_CHECKERS[GateType.bgm_volume_provenance_valid] = check_bgm_volume_provenance
 
 
-# ── 响度表定义（与 bgm_gap_check.py 保持同步） ──
-_VOLUME_TABLE = [
-    (-4,   0.07),   # 极端响
-    (-6,   0.09),   # 非常响
-    (-8,   0.11),   # 很响
-    (-10,  0.13),   # 响
-    (-12,  0.14),   # 偏响
-    (-14,  0.18),   # 中等
-    (-16,  0.22),   # 标准
-    (-18,  0.34),   # 偏安静
-    (-20,  0.40),   # 安静
-    (-22,  0.45),   # 很安静
-    (-24,  0.48),   # 极安静
-    (-27,  0.50),   # 接近极限
-]
-
-
-def _lookup_volume(mean_db: float) -> float | None:
-    for threshold, vol in _VOLUME_TABLE:
-        if mean_db > threshold:
-            return vol
-    return None
-
-
 def check_bgm_volume_table_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """验证 bgm_volume 是否与响度表匹配。
+    """验证 bgm_volume 是否由公式正确计算。
 
-    前提：bgm_gap_check.py 已将 bgm_mean_db 和 bgm_volume 写入 segment_durations.json。
-    门禁反查表验证：用存储的 bgm_mean_db 查表，对比实际 bgm_volume。
-
-    这确保了即使 cleanup 删除了 bgm_orig.wav，仍可验证音量来源的合理性。
+    用 bgm_gap_check.py 的 calc_volume 函数，以存储的 bgm_mean_db 和 bgm_max_db
+    重新计算预期 volume，与实际 bgm_volume 对比。
     """
     import math
+    import sys
+    scripts_dir = Path(__file__).parent.parent / "scripts"
+    sys.path.insert(0, str(scripts_dir))
+    from bgm_gap_check import calc_volume, NARR_MEAN_REF
 
     sd_file = project_dir / params.get("file", "segment_durations.json")
     if not sd_file.exists():
@@ -1506,50 +1481,45 @@ def check_bgm_volume_table_valid(project_dir: Path, params: dict) -> tuple[bool,
 
     meta = data.get("meta", {})
     bgm_mean = meta.get("bgm_mean_db")
+    bgm_max = meta.get("bgm_max_db")
     bgm_volume = meta.get("bgm_volume")
-    note = meta.get("bgm_volume_table_note", "")
 
     if bgm_mean is None:
         return False, (
             "meta.bgm_mean_db 缺失 — bgm_gap_check.py 未写入溯源数据。"
-            "修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
+            "修复: python scripts/bgm_gap_check.py <mean> <max> <narr_max>"
         )
 
     if bgm_volume is None:
         return False, "meta.bgm_volume 缺失"
 
-    # 查表获取预期 volume
-    expected = _lookup_volume(bgm_mean)
-    if expected is None:
+    if bgm_max is None:
         return False, (
-            f"BGM mean_volume={bgm_mean:.1f} dB 超出响度表范围（< -27 dB），"
-            f"建议更换更响的 BGM 素材"
+            "meta.bgm_max_db 缺失 — bgm_gap_check.py 未写入峰值数据。"
+            "修复: python scripts/bgm_gap_check.py <mean> <max> <narr_max>"
         )
 
-    # 允许 ±0.03 容差（bgm_gap_check.py 可能因间距修正调整了查表值）
-    tolerance = params.get("tolerance", 0.03)
+    # 优先使用存储的 narr_max（精确还原计算），兜底 params 或默认值
+    narr_max = meta.get("bgm_narr_max_db") or params.get("narr_max", -1.5)
+    expected, reason = calc_volume(bgm_mean, bgm_max, NARR_MEAN_REF, narr_max)
+
+    # 允许 ±0.02 容差（round 精度）
+    tolerance = params.get("tolerance", 0.02)
     diff = abs(bgm_volume - expected)
 
     if diff <= tolerance:
+        eff_mean = bgm_mean + 20 * math.log10(bgm_volume) if bgm_volume > 0 else -120
+        gap = NARR_MEAN_REF - eff_mean
         return True, (
-            f"bgm_volume={bgm_volume} 与响度表匹配 "
-            f"(mean={bgm_mean:.1f} dB → 表值={expected}, 档位=\"{note}\", 偏差={diff:.2f})"
-        )
-
-    # 偏差较大，检查是否因均值/峰值间距修正导致
-    adjusted = meta.get("bgm_volume_adjusted", False)
-    if adjusted and bgm_volume < expected:
-        # 间距修正确认降低音量是合理的
-        return True, (
-            f"bgm_volume={bgm_volume} 经间距修正（表值={expected}）"
-            f"(mean={bgm_mean:.1f} dB, \"{note}\", 修正后降低)"
+            f"bgm_volume={bgm_volume} 公式验证通过 "
+            f"(mean={bgm_mean:.1f} dB, gap={gap:.1f} dB, 方式={reason})"
         )
 
     return False, (
-        f"bgm_volume={bgm_volume} 与响度表不匹配: "
-        f"mean={bgm_mean:.1f} dB → 表值={expected}, 实际={bgm_volume}, "
+        f"bgm_volume={bgm_volume} 公式不匹配: "
+        f"mean={bgm_mean:.1f} dB → 公式值={expected}, 实际={bgm_volume}, "
         f"偏差={diff:.2f} > 容差={tolerance}。"
-        f"修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
+        f"修复: python scripts/bgm_gap_check.py {bgm_mean} {bgm_max} {narr_max}"
     )
 
 
