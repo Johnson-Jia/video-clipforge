@@ -336,7 +336,7 @@ def render_skeleton(
     # 加载 BGM 音量
     dur_data = _load_json(project_dir / "segment_durations.json")
     bgm_volume = (
-        dur_data.get("meta", {}).get("bgm_volume", 0.06)
+        dur_data.get("meta", {}).get("bgm_volume", 0.15)
         if isinstance(dur_data, dict)
         else 0.06
     )

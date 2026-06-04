@@ -77,13 +77,13 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 **阶段 B — BGM 管线**（选曲完成后全自动）：
 
 ```bash
-# BGM 管线：音量校验 → 查表校准 → 峰值间距 → 时长对齐（全自动）
+# BGM 管线：音量校验 → 公式校准 → 峰值间距 → 时长对齐（全自动）
 bash .claude/commands/clipforge/scripts/bgm_pipeline.sh
 ```
 
-> `bgm_pipeline.sh` 自动执行：音量守恒校验 → 查表获取推荐 volume → 峰值间距双向校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，concat 拼接 + 裁剪 + 淡入淡出）。无需手动查表或写 JSON。
+> `bgm_pipeline.sh` 自动执行：静音段验证清理 → 音量守恒校验 → 公式计算 volume → 峰值间距校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，concat 拼接 + 裁剪 + 淡入淡出）。无需手动计算或写 JSON。
 >
-> **时长对齐保证：** Step 3 将 bgm.wav 对齐到旁白时长 + 1s 缓冲，添加 1.5s 淡入 + 2s 淡出。使用 concat 拼接（非 stream_loop），确保 WAV 格式下 100% 有声覆盖。
+> **管线顺序：** Step 1 音量守恒 → Step 2 全段验证（bgm_validate.py 检测并移除静音段）→ Step 3 公式校准（基于清理后的 BGM 测量）→ Step 4 时长对齐（精确匹配旁白时长，1.5s 淡入 + 2s 淡出）。
 
 ### 来源优先级（唯一权威）
 
@@ -160,9 +160,9 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 
 ### BGM 音量守恒铁律
 
-- `bgm_volume` 必须 ≥ 0.10 且 ≤ 0.50。`bgm_pipeline.sh` Step 2.5 自动校验此范围。
-- **禁止手动设置 `bgm_volume`**，只能由 `bgm_pipeline.sh` 通过 `bgm_gap_check.py` 查表自动确定。
-- `bgm_pipeline.sh` 执行后，必须验证 `segment_durations.json` 的 `meta.bgm_volume` 在 [0.10, 0.50] 范围内。
+- `bgm_volume` 由 `bgm_gap_check.py` 公式自动计算（目标：BGM 有效均值比旁白低 12 dB），范围 (0, 1.0]。
+- **禁止手动设置 `bgm_volume`**，只能由 `bgm_pipeline.sh` 通过 `bgm_gap_check.py` 公式自动确定。
+- `bgm_pipeline.sh` 执行后，必须验证 `segment_durations.json` 的 `meta.bgm_volume` 存在且 > 0。
 
 > **Red Flag — bgm_volume < 0.10**：BGM 全程听不见，等于没有配乐。
 >
@@ -170,7 +170,7 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 
 ### BGM 全程有声门禁（IRON LAW — 每次必须执行）
 
-> **IRON LAW：** BGM 必须全程覆盖旁白时长，禁止出现后半段静音。`bgm_pipeline.sh` 内置静音尾段检测。
+> **IRON LAW：** BGM 必须全程覆盖旁白时长，禁止出现后半段静音。`bgm_pipeline.sh` Step 2 调用 `bgm_validate.py` 全段扫描静音段并自动清理。
 
 **bgm.wav 生成后、进入 Stage 6 之前，必须执行此门禁：**
 
@@ -188,7 +188,7 @@ python .claude/commands/clipforge/scripts/bgm_silence_check.py bgm.wav "$NARR_DU
 
 **不通过 = 禁止进入 Stage 6。** 必须更换 BGM 源文件或修复 bgm.wav 后重新检测。
 
-> 此门禁独立于 `bgm_pipeline.sh` 的 Step 2.7，是最后一道防线。即使 bgm_pipeline.sh 已执行，也必须再跑此门禁。SubAgent 不得跳过。
+> 此门禁独立于 `bgm_pipeline.sh` 的 Step 2（bgm_validate.py），是最后一道防线。即使 bgm_pipeline.sh 已执行，也必须再跑此门禁。SubAgent 不得跳过。
 
 ## 4.3 电影音频处理（电影解读模式）
 

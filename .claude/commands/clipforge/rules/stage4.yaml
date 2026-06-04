@@ -50,7 +50,7 @@ rules:
   - id: "R-S4-005"
     type: REQUIRED_METHOD
     pattern: "bgm_volume 由手动硬编码而非 bgm_pipeline.sh 自动校准"
-    positive: "bgm_volume 必须由 bgm_pipeline.sh → bgm_gap_check.py 查表自动确定，禁止手动设置"
+    positive: "bgm_volume 必须由 bgm_pipeline.sh → bgm_gap_check.py 公式自动确定，禁止手动设置"
     guardrail: "bgm_orig.wav 不存在 + bgm_volume 为常见硬编码值，bgm_pipeline.sh 未执行"
     detection: {keywords: [], semantic_check: false}
     severity: HARD
