@@ -156,12 +156,68 @@ HARD 门禁失败时：修复问题，重新渲染，再次运行门禁。最多
 
 **执行顺序**：
 1. delivery（封面 + 双版本 final.mp4）
+   - **封面生成（脚本化，禁止手写 HTML）**：
+     1. LLM 从 `design.md` 推导配色方案，从 `narration_segments.json` / `content_summary.md` 提取内容数据
+     2. LLM 生成 `cover_params.json`（内容参数 + 3 个核心色值），schema 见下方
+     3. 运行脚本：`cd <clipforge-dir> && python scripts/generate_cover.py --project-dir <PROJECT_DIR> --render`
+     4. 脚本自动生成 `cover.html` + `cover.png`
+   - **禁止 SubAgent 手写 cover.html**。结构由模板控制，LLM 只提供内容参数和色彩方案
+   - 封面之后的步骤（douyin.md、assemble_final.sh）照常执行
 2. delivery 门禁校验：`cd <clipforge-dir> && python engine/gate.py --skill stage7-delivery --project-dir <PROJECT_DIR>`
-   - 检查 cover.html 封面 7 层结构是否完整
+   - 检查 cover.html 封面 7 层结构 + 结构性合规（.cover 容器、:root 变量、字体、画布尺寸等）
    - 检查 douyin.md 是否含 URL
    - 门禁失败则修复后重试，最多 2 次
 3. machine-scoring（gate 全量校验 → `score_report.json`）
 4. cleanup（按 `shared/cleanup-rules.md` 白名单清理中间产物）
+
+### cover_params.json Schema
+
+LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字段的值；结构由模板锁定。
+
+```json
+{
+  "orientation": "portrait",
+  "date": "2026年6月4日",
+  "scene_label": "GITHUB TRENDING",
+  "badge": "6个项目",
+  "title": [
+    {"text": "今日GitHub", "style": "white"},
+    {"text": "热门", "style": "accent"}
+  ],
+  "data_subtitle": "20万星项目首上榜",
+  "cards": [
+    {"num": "205K", "label": "ECC"},
+    {"num": "179K", "label": "hermes-agent"},
+    {"num": "35K", "label": "trivy"}
+  ],
+  "colors": {
+    "accent_warm": "#f9a825",
+    "accent_cool": "#00f5d4",
+    "bg_dark": "#0a0e1a",
+    "glow_warm_opacity": "0.18",
+    "glow_cool_opacity": "0.10"
+  }
+}
+```
+
+**字段说明：**
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| orientation | 是 | `portrait`（默认）或 `landscape` |
+| date | 是 | 中文日期格式 |
+| scene_label | 是 | 场景分类标签 |
+| badge | 是 | 胶囊徽章文案 |
+| title | 是 | 标题色段数组，每项 `{text, style}`，style 可选 `white`/`accent`/`cool` |
+| data_subtitle | 是 | 数据说明文案 |
+| cards | 是 | 1-3 个数据卡片，每项 `{num, label}` |
+| colors.accent_warm | 是 | 主强调色（hex），脚本自动派生 soft/rgb 变体 |
+| colors.accent_cool | 是 | 辅助色（hex），脚本自动派生 |
+| colors.bg_dark | 是 | 深色背景（hex），脚本自动派生 mid/bottom 变体 |
+| colors.glow_warm_opacity | 否 | 暖光晕强度，默认 0.18 |
+| colors.glow_cool_opacity | 否 | 冷光晕强度，默认 0.10 |
+
+> **设计哲学：** LLM 只需提供 3 个核心色值（warm/cool/bg），脚本自动派生完整 12 色调色板。LLM 的创造力聚焦于"什么颜色最适合这个内容"，而非"怎么写 CSS"。
 
 > **⛔ 清理必须通过 SubAgent-4 执行，主编排禁止直接手动清理。** 如 SubAgent-4 跳过或失败，用脚本补救：`bash .claude/commands/clipforge/scripts/cleanup_project.sh "${PROJECT_DIR}"`。禁止手动 `rm -f` 批量删除中间文件。
 

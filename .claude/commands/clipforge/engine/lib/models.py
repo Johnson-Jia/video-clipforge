@@ -66,6 +66,7 @@ class GateType(str, Enum):
     bgm_volume_provenance_valid = "bgm_volume_provenance_valid"
     bgm_volume_table_valid = "bgm_volume_table_valid"
     grad_text_shorthand_valid = "grad_text_shorthand_valid"
+    phase_visibility_present = "phase_visibility_present"
 
 
 class Rigor(str, Enum):
@@ -311,6 +312,10 @@ class CreativeSlot:
     visual_theme: dict = field(default_factory=dict)
     # 节奏引导文字
     rhythm_guidance: str = ""
+
+    # ── Phase 元数据（告知 LLM 该插槽属于多 phase 场景） ──
+    has_multiple_phases: bool = False
+    phase_breakpoints: list[float] = field(default_factory=list)
 
     # 可选：组件库参考
     suggested_components: list[str] = field(default_factory=list)

@@ -146,6 +146,10 @@ skill:
       - gate: grad_text_shorthand_valid
         params:
           file: "index.html"
+      - gate: phase_visibility_present
+        params:
+          html_file: "index.html"
+          segments_file: "narration_segments.json"
     soft:
       - gate: phase_anchor_coverage
         params:

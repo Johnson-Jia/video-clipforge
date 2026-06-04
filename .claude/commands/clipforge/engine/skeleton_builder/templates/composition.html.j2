@@ -120,9 +120,10 @@
     {% endif %}
     {% endfor %}
 
-    // ── Phase 自动切换（从 phase_timings.json 校准） ──
+    // ── Phase 自动切换（优先 phase_timings.json 校准，回退 breakpoints 均分） ──
     const PHASE_TIMINGS = {{ phase_timings_json | default('{}') }};
     if (PHASE_TIMINGS.scenes) {
+      // Path A: 精确校准（phase_calibrator.py 产出，精度 ±50ms）
       PHASE_TIMINGS.scenes.forEach(sc => {
         sc.phases.forEach((p, i) => {
           if (i === 0) return; // phase-1 默认可见，无需切换
@@ -131,6 +132,16 @@
           tl.to(`#${sc.scene} .phase-${i + 1}`, { opacity: 1, duration: 0.4 }, t + 0.1);
         });
       });
+    } else {
+      // Path B: 回退（phase_breakpoints 文本比例估算）
+{% for scene in scenes %}
+{% if scene.phase_breakpoints | length > 0 %}
+{% for bp_idx in range(scene.phase_breakpoints | length) %}
+      tl.to("#{{ scene.scene_id }} .phase-{{ bp_idx + 1 }}", { opacity: 0, duration: 0.3 }, {{ scene.start }} + {{ scene.phase_breakpoints[bp_idx] }});
+      tl.to("#{{ scene.scene_id }} .phase-{{ bp_idx + 2 }}", { opacity: 1, duration: 0.4 }, {{ scene.start }} + {{ scene.phase_breakpoints[bp_idx] }} + 0.1);
+{% endfor %}
+{% endif %}
+{% endfor %}
     }
 
     // ══════════════════════════════════════════════════════════════

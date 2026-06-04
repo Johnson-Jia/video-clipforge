@@ -65,6 +65,7 @@
 | `douyin.md` | 抖音发布文案 | 核心产出物 |
 | `score_report.json` | 机器评分报告 | Stage 8 反馈校准输入 |
 | `content.md` | 内容摘要（如有） | 重新理解项目内容 |
+| `cover_params.json` | 封面生成参数 | 换配色/内容时重生成封面需要 |
 
 ### 文章项目保留清单
 
@@ -174,6 +175,7 @@ workspace/<YYYY>/<MM>/<DD>/<项目名>/
 ├── output_no_bgm.mp4      # 渲染原始（无 BGM，换封面需要）
 ├── cover.html             # 封面 HTML（可重渲染）
 ├── cover.png              # 封面图
+├── cover_params.json      # 封面生成参数（换配色/内容需要）
 ├── index.html             # HTML 组合（可重渲染）
 ├── design.md              # 视觉风格
 ├── narration_segments.json # 分段旁白定义
