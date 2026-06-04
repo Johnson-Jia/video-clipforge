@@ -27,6 +27,7 @@ def record_trace(
     context: dict | None = None,
     performance: dict | None = None,
     traces_dir: Path | None = None,
+    category: str | None = None,
 ) -> Path:
     traces_dir = traces_dir or TRACES_DIR
     traces_dir.mkdir(parents=True, exist_ok=True)
@@ -65,6 +66,16 @@ def record_trace(
             existing = []
     existing.append(trace)
     filepath.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # 规则命中统计
+    if result == "pass" and skill_id:
+        try:
+            from engine.lib.rule_parser import load_rules_by_scope, update_hit_counts
+            injected_rules = load_rules_by_scope(skill_id, category)
+            update_hit_counts("global", [r.id for r in injected_rules])
+        except Exception:
+            pass  # 统计失败不阻塞 trace 记录
+
     return filepath
 
 

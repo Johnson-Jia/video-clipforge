@@ -22,7 +22,7 @@
 - **禁止在 CSS 样式表中写 `.phase-2 { opacity: 0 }`**，必须通过 GSAP timeline 的 `.set()` 调用实现
 - 原因：CSS `opacity:0` 在 HyperFrames seek 时不会被清除，而 GSAP `.set()` 会被正确回放
 - Phase 间切换使用 `.to({opacity: 0})` 淡化旧阶段（完全消失，避免重叠重影）+ `.to({opacity: 1})` 显示新阶段
-- **Phase 断点计算禁止均分**——`gap = duration / phase_count` 会导致旁白与画面严重不同步（偏差 5-12 秒）。必须逐场景分析旁白文本话题转换点，按字数比例换算时间戳。方法见 `stages/stage6-production.md` §6.4b
+- **Phase 断点禁止均分**——详见 `shared/visual-phasing.md` §4（均分偏差可达 5-12 秒）
 
 ### 1.1b 特效元素默认可见规则
 

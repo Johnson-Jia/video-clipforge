@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.trace import query_traces, query_traces_with_performance, TRACES_DIR
 from engine.lib.delta import create_delta, save_delta, DELTAS_DIR
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
-from engine.lib.models import Severity, Platform, PerformanceRecord
+from engine.lib.models import Severity, Platform
 
 
 PATTERNS_DIR = Path(__file__).parent.parent / "patterns"

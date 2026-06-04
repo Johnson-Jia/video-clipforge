@@ -11,7 +11,7 @@ rules:
     skill: "stage3-scenes"
     source: "stage3-scenes.md 节奏铁律（5s 完播率 ≥44% 对应 36K 播放）"
 
-  - id: "R-S3-001b"
+  - id: "R-S3-002"
     type: FORBIDDEN_ACTION
     pattern: "hook 使用疑问/互动模式（平均播放仅 1,195）"
     positive: "hook 使用反直觉/冲突（首选）或数字锚定模式，禁止疑问句式（'你知道…吗？''有没有想过…？'）"
@@ -23,7 +23,7 @@ rules:
     skill: "stage3-scenes"
     source: "2026-05-27 数据分析：疑问/互动模式平均 1,195 播放（最低）"
 
-  - id: "R-S3-001c"
+  - id: "R-S3-003"
     type: FORBIDDEN_ACTION
     pattern: "hook 前 5 秒包含项目名或功能描述"
     positive: "前 5 秒只允许：震撼数据 / 反直觉陈述 / 强对比，项目名和功能描述从第 2 个场景开始"
@@ -35,7 +35,7 @@ rules:
     skill: "stage3-scenes"
     source: "2026-05-27 数据分析：5s 完播率 ≥44% 对应 36K 播放 vs <38% 仅 3.1K"
 
-  - id: "R-S3-002"
+  - id: "R-S3-004"
     type: FORBIDDEN_ACTION
     pattern: "场景数量不在合理范围（3-8 个）"
     positive: "标准视频 4-7 个场景，深度解析 5-10 个场景"
@@ -47,7 +47,7 @@ rules:
     skill: "stage3-scenes"
     source: "stage3-scenes.md Red Flags"
 
-  - id: "R-S3-003"
+  - id: "R-S3-005"
     type: FORBIDDEN_ACTION
     pattern: "场景间缺少情绪起伏设计"
     positive: "每个场景必须定义 emotion 字段，相邻场景 emotion 不应完全相同"
@@ -59,7 +59,7 @@ rules:
     skill: "stage3-scenes"
     source: "stage3-scenes.md 节奏铁律"
 
-  - id: "R-S3-004"
+  - id: "R-S3-006"
     type: FORBIDDEN_ACTION
     pattern: "总旁白字数超出目标范围"
     positive: "标准模式 250-380 字，深度解析 300-450 字"
@@ -71,7 +71,7 @@ rules:
     skill: "stage3-scenes"
     source: "stage3-scenes.md Red Flags"
 
-  - id: "R-S3-005"
+  - id: "R-S3-007"
     type: FORBIDDEN_METHOD
     pattern: "未从 design.md 的 immersion_mode 推导视觉风格"
     positive: "每个场景的 visual_type 必须与 design.md 的 immersion_mode 一致"

@@ -25,7 +25,7 @@ rules:
     skill: "stage7-delivery"
     source: "feedback-cover-design.md"
 
-  - id: "R-S7-004"
+  - id: "R-S7-003"
     type: FORBIDDEN_ACTION
     pattern: "封面文字使用英文"
     positive: "封面所有可见文字使用中文，仅保留项目名和技术缩写英文"
@@ -37,7 +37,7 @@ rules:
     skill: "stage7-delivery"
     source: "shared/shared-rules.md §2"
 
-  - id: "R-S7-005"
+  - id: "R-S7-004"
     type: FORBIDDEN_ACTION
     pattern: "未执行 cleanup 阶段"
     positive: "delivery 完成后必须执行 shared/cleanup-rules，删除临时文件"
@@ -48,3 +48,19 @@ rules:
     scope: SKILL
     skill: "stage7-delivery"
     source: "CLAUDE.md 核心原则 5"
+
+  # R-S7-006: gate.py checker 内联校验规则，编号与 gate.py 输出消息对齐
+
+  - id: "R-S7-006"
+    type: FORBIDDEN_ACTION
+    pattern: "douyin.md 缺少多平台文案或评论区自评格式"
+    positive: "douyin.md 必须包含三平台适配文案（标题+正文），GitHub 项目评论区必须同时包含搜索方式和完整路径格式"
+    guardrail: "评论区缺少'GitHub搜索: Xxx'格式或'owner/repo'路径格式"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: SKILL
+    skill: "stage7-delivery"
+    source: "engine/gate.py check_douyin_platforms_complete"

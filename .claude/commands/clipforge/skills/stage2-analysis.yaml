@@ -38,6 +38,10 @@ skill:
       - gate: file_exists
         params:
           files: ["design.md"]
+      - gate: design_storyboard_valid
+        params:
+          required_keys: ["style", "mood", "color_direction", "storyboard"]
+          emotion_curve_length: 6
     soft: []
     max_retries: 2
   trace:

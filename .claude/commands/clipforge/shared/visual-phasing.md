@@ -2,7 +2,7 @@
 
 > **当场景时长 >15 秒时必须使用。** 将一个 `.clip` 拆分为多个视觉阶段（phase），每 phase 8-15 秒，通过 GSAP timeline 控制渐进揭示。遵守 `shared/shared-rules` §6 的切换频率规则。
 
-## 核心原理
+## §1 核心原理
 
 ```
 改造前: 1 段旁白 ──→ 1 个 clip ──→ 1 个静态画面（30-57 秒不动）
@@ -13,7 +13,7 @@
 - `.clip` 数量不变：仍然一个 narration segment 对应一个 clip
 - phase 是 `.layer-content` 内的多个子 div，通过 GSAP opacity 控制显示/隐藏
 
-## Phase HTML 结构
+## §2 Phase HTML 结构
 
 ```html
 <div class="clip s-biz-elderly" data-start="394" data-duration="50.14">
@@ -46,7 +46,7 @@
 - Phase 2+ **不在 CSS 中设 opacity:0**，由 GSAP `.set()` 在运行时初始化（遵守 §1.1a 豁免）
 - 所有 phase 共享同一个 `.layer-bg` 和 `.layer-fx`（背景和特效不随 phase 切换）
 
-## GSAP Phase 切换机制
+## §3 GSAP Phase 切换机制
 
 ```javascript
 const SCENE_START = 394;   // clip 的 data-start
@@ -80,7 +80,7 @@ tl.to('.s-biz-elderly .phase-3', {opacity: 0, duration: 0.3}, SCENE_START + BP3)
 - **Phase 断点必须与旁白话题转换对齐，禁止均分**（见下方）
 - Phase 间 GSAP 动画offset：`SCENE_START + BP[i][n-1] + offset`（BP 为内容对齐断点数组）
 
-## Phase 断点计算（自动校准，禁止手工估算）
+## §4 Phase 断点计算（自动校准，禁止手工估算）
 
 > **禁止手工估算断点。** Edge TTS 按 SRT 输出句子级时间戳（精度 ±10ms），配合 `narration_anchor` 自动校准，取代一切手工断点。
 
@@ -151,7 +151,7 @@ PT.scenes.forEach(sc => {
 
 **验证标准**：phase_timings.json 中每个 phase 的 `calibration` 字段必须为 `sentence-anchor`（HARD）。`auto-split` 触发 SOFT 警告。
 
-## Phase 内容来源
+## §5 Phase 内容来源
 
 读取 `narration_segments.json` 的 `visual_phases` 数组：
 
@@ -168,7 +168,7 @@ PT.scenes.forEach(sc => {
 - `visual_type` → 选择 `stage6-components.md` 的 Phase 视觉模板
 - `key_data` → 画面上的数据/关键词内容
 
-## Phase 视觉类型 → 模板映射
+## §6 Phase 视觉类型 → 模板映射
 
 | visual_type | 画面布局 | 参考组件 |
 |------------|---------|---------|
@@ -181,11 +181,11 @@ PT.scenes.forEach(sc => {
 
 每种类型的具体 HTML/CSS 骨架见 `stage6-components.md` 的「Phase 视觉模板」章节。
 
-## Phase 完整性验证
+## §7 Phase 完整性验证
 
 > `stage6_gate.sh` 的视觉分镜完整性检查会验证长场景的 phase 数量。HTML 写完后运行门禁即可。
 
-## 呼吸帧插入
+## §8 呼吸帧插入
 
 在场景切换点插入 0.3-0.5s 的视觉呼吸：
 
@@ -194,7 +194,7 @@ tl.to('.current-scene .scene-content', { scale: 1.02, duration: 0.15, ease: 'pow
   .to('.current-scene .scene-content', { scale: 1.0, duration: 0.15, ease: 'power1.inOut' });
 ```
 
-## Canvas 粒子和 Three.js 3D
+## §9 Canvas 粒子和 Three.js 3D
 
 根据沉浸模式决定是否使用 3D 场景：
 

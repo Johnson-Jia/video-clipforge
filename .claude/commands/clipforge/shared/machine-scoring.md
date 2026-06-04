@@ -2,19 +2,19 @@
 
 > delivery 完成后**立即自动执行**。这不是独立 stage，而是 delivery → cleanup 之间的自动评分步骤。由 SubAgent-4 内联调用，不走引擎四原子体系。
 
-## 执行流程
+## §1 执行流程
 
 1. 逐一运行所有 stage 的 gate 校验
 2. 汇总各 stage 的 `hard_passed` 和 `soft_score`
 3. 计算综合 `overall_soft_score`
 4. 将完整结果写入 `score_report.json`
 
-## score_report.json 结构
+## §2 score_report.json 结构
 
 ```json
 {
-  "project": "workspace/2026/05/29/my-project",
-  "timestamp": "2026-05-29T15:30:00Z",
+  "project": "workspace/<YYYY>/<MM>/<DD>/<项目名>",
+  "timestamp": "<ISO 8601>",
   "phases": {
     "stage1-content": {"hard_passed": true, "soft_score": 1.0},
     "stage3-scenes": {"hard_passed": true, "soft_score": 1.0},
@@ -29,7 +29,7 @@
 }
 ```
 
-## 执行命令
+## §3 执行命令
 
 ```bash
 cd .claude/commands/clipforge
@@ -39,7 +39,7 @@ python engine/gate.py --generate-report --project-dir "$PROJECT_DIR"
 无条件运行全阶段门禁，产出 `$PROJECT_DIR/score_report.json`。
 与 stage7 是否通过无关 — 失败的项目更需要评分记录。
 
-## 关键原则
+## §4 关键原则
 
 - **此时无播放数据、无人类评价** → 仅记录，不触发进化
 - `score_report.json` 是机器的**预测分数**

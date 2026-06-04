@@ -187,3 +187,21 @@ def load_all_skills(skills_dir: Path | None = None) -> dict[str, SkillDefinition
         name = fp.stem
         result[name] = skill
     return result
+
+
+def update_hit_counts(scope: str, rule_ids: list[str], rules_db: dict = None):
+    """更新规则命中计数。gate 通过时调用，记录哪些规则被 inject 了。
+
+    Args:
+        scope: 作用域标识（如 "global"），预留扩展用。
+        rule_ids: 命中的规则 ID 列表。
+        rules_db: 规则字典 {rule_id: Rule}。为 None 时从磁盘重新加载。
+    """
+    if rules_db is None:
+        # 无缓存时重新加载并构建索引
+        all_rules = load_all_rules()
+        rules_db = {r.id: r for r in all_rules}
+
+    for rule_id in rule_ids:
+        if rule_id in rules_db:
+            rules_db[rule_id].hit_count += 1

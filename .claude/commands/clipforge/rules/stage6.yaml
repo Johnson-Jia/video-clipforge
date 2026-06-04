@@ -1,5 +1,5 @@
 rules:
-  - id: "R-S6-003"
+  - id: "R-S6-001"
     type: FORBIDDEN_METHOD
     pattern: "Phase 切换使用硬切而非渐变过渡"
     positive: "Phase 间使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0"
@@ -11,7 +11,7 @@ rules:
     skill: "stage6-production"
     source: "stage6-production.md §6.4a"
 
-  - id: "R-S6-004"
+  - id: "R-S6-002"
     type: FORBIDDEN_ACTION
     pattern: "相邻 phase 的 visual_type 重复"
     positive: "相邻 phase 必须使用不同的 visual_type 确保视觉多样性"
@@ -23,7 +23,7 @@ rules:
     skill: "stage6-production"
     source: "shared/shared-rules.md §6"
 
-  - id: "R-S6-005"
+  - id: "R-S6-003"
     type: FORBIDDEN_METHOD
     pattern: "使用 setInterval/setTimeout 控制动画时序"
     positive: "使用 GSAP timeline 控制所有动画时序，确保与音频同步"
@@ -36,7 +36,7 @@ rules:
     skill: "stage6-production"
     source: "stage6-production.md"
 
-  - id: "R-S6-006"
+  - id: "R-S6-004"
     type: FORBIDDEN_ACTION
     pattern: "未从 content_ready.txt 和 design.md 推导视觉效果"
     positive: "所有视觉效果必须从内容自主推导，禁止套用固定特效/查表"
@@ -48,7 +48,7 @@ rules:
     skill: "stage6-production"
     source: "feedback-template-as-reference.md"
 
-  - id: "R-S6-007"
+  - id: "R-S6-005"
     type: FORBIDDEN_METHOD
     pattern: "封面结构与主视频在同一 index.html"
     positive: "封面 HTML 独立文件，渲染前重命名为 .renderbak"
@@ -60,7 +60,7 @@ rules:
     skill: "stage6-production"
     source: "shared/render-safety.md §1.5"
 
-  - id: "R-S6-008"
+  - id: "R-S6-006"
     type: FORBIDDEN_ACTION
     pattern: "清理阶段删除了非目标文件"
     positive: "cleanup 严格按保留清单操作，只删除 schema.yaml 中未声明的临时文件"
@@ -72,7 +72,7 @@ rules:
     skill: "stage6-production"
     source: "feedback-cleanup-overdeletion.md"
 
-  - id: "R-S6-009"
+  - id: "R-S6-007"
     type: FORBIDDEN_ACTION
     pattern: "index.html 缺少 window.__hf 声明"
     positive: "在 </script> 前注入 window.__hf = { duration: TOTAL, seek: fn }，其中 TOTAL 从 segment_durations.json 计算"
@@ -86,7 +86,7 @@ rules:
     skill: "stage6-production"
     source: "事故: 2026-05-28 ai-training-impact 渲染 62% 崩溃 + service-as-software 同类事故"
 
-  - id: "R-S6-010"
+  - id: "R-S6-008"
     type: FORBIDDEN_ACTION
     pattern: "场景包裹 div 缺少 id 属性导致 GSAP 选择器失效"
     positive: "每个场景的包裹 div 必须有 id=\"sN\"（如 id=\"s1\"），与 narration_segments.json 的 scene 字段前缀对应"
@@ -100,7 +100,7 @@ rules:
     skill: "stage6-production"
     source: "事故: 2026-05-28 ai-training-impact s1/s19 缺少 id 导致首尾动画丢失"
 
-  - id: "R-S6-011"
+  - id: "R-S6-009"
     type: FORBIDDEN_ACTION
     pattern: "index.html 缺少 HyperFrames composition 结构"
     positive: "必须包含: (1) data-composition-id 包裹层 (2) window.__timelines 声明并注册 timeline (3) gsap.timeline({paused: true})"
@@ -114,7 +114,7 @@ rules:
     skill: "stage6-production"
     source: "事故: 2026-05-28 ai-training-impact 缺少 composition 结构导致渲染文字重叠"
 
-  - id: "R-S6-012"
+  - id: "R-S6-010"
     type: FORBIDDEN_ACTION
     pattern: "output_no_bgm.mp4 使用 color=c=black 生成导致纯黑屏"
     positive: "output_no_bgm.mp4 必须从 output.mp4 视频轨 + narration.mp3 音频轨合成: ffmpeg -i output.mp4 -i narration.mp3 -map 0:v -map 1:a -c:v copy -c:a aac"
@@ -128,7 +128,7 @@ rules:
     skill: "stage6-production"
     source: "事故: 2026-05-28 ai-training-impact output_no_bgm.mp4 纯黑屏"
 
-  - id: "R-S6-013"
+  - id: "R-S6-011"
     type: FORBIDDEN_METHOD
     pattern: "使用 CSS class 切换场景可见性（.active / .show / .visible）"
     positive: "场景可见性由 GSAP timeline .set()/.fromTo() 控制，HyperFrames 通过 seek 驱动，不执行 CSS class 切换"
@@ -142,7 +142,7 @@ rules:
     skill: "stage6-production"
     source: "事故: 2026-05-30 github-trending 使用 CSS class 切换可见性导致黑屏"
 
-  - id: "R-S6-014"
+  - id: "R-S6-012"
     type: FORBIDDEN_ACTION
     pattern: "渲染输出视频码率异常低（<500 kbps），疑似黑屏"
     positive: "1080x1920 视频正常码率应 >500 kbps。低于 500 kbps 通常意味着内容大面积不可见"
@@ -155,3 +155,48 @@ rules:
     scope: SKILL
     skill: "stage6-production"
     source: "事故: 2026-05-30 github-trending output.mp4 仅 17 kbps（黑屏）"
+
+  # R-S6-020~022: gate.py checker 内联校验规则，无独立 inject prompt
+  # 编号与 gate.py 输出消息对齐，跳过 013-019 保持引用一致
+
+  - id: "R-S6-020"
+    type: FORBIDDEN_ACTION
+    pattern: "design.md 声明的 orientation 与 HTML 实际画布尺寸方向不一致"
+    positive: "design.md 的 orientation 字段（portrait/landscape）必须与 index.html data-width/data-height 的宽高比一致"
+    guardrail: "design.md 写 portrait 但 HTML 画布 width > height（或反之）"
+    detection:
+      keywords: ["orientation", "data-width", "data-height"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "engine/gate.py check_orientation_consistency"
+
+  - id: "R-S6-021"
+    type: FORBIDDEN_METHOD
+    pattern: ".grad-text 元素使用 background: 简写属性"
+    positive: "渐变文字元素使用 background-image: linear-gradient(...) 独立属性，不使用 background: 简写"
+    guardrail: "background: 简写会覆盖 background-clip: text，导致渐变文字失效变为纯色"
+    detection:
+      keywords: ["grad-text", "background:"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "engine/gate.py check_grad_text_shorthand"
+
+  - id: "R-S6-022"
+    type: FORBIDDEN_ACTION
+    pattern: "多 phase 场景的 phase-2+ 无 GSAP 可见性恢复"
+    positive: "骨架将 phase-2+ 设为 opacity:0，GSAP timeline 必须包含 .to()/.set() 将其恢复为 opacity:1"
+    guardrail: "phase 被设为 opacity:0 但从未恢复 → 渲染时该 phase 内容空白"
+    detection:
+      keywords: []
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "engine/gate.py check_phase_visibility_present"

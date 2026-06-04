@@ -40,6 +40,11 @@ clipforge/categories/{category}.md
 
 **如果没有分类配置**（用户直接提供文字/文件/URL），则只使用本文件前面的通用内容获取流程。
 
+### 产出说明
+
+1. `content_ready.txt` — 空标记文件（`touch content_ready.txt`），仅用于 DAG 状态检测
+2. 核心信息点以**对话上下文**形式传递给 Stage 2，不需要额外文件。Stage 1 → Stage 2 在同一会话内顺序执行，LLM 可直接从对话历史中读取内容摘要
+
 ---
 
 ## 约束声明

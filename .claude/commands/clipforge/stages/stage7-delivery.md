@@ -132,7 +132,7 @@ bash .claude/commands/clipforge/scripts/assemble_final.sh
 
 > **禁止绕过 `assemble_final.sh` 自行编写 ffmpeg 拼接命令。** 脚本内置 TS concat + stream copy（无损拼接）+ 输出验证（时长/音频断言）。
 
-> **脚本内含硬性断言：** final.mp4 时长不得超过 output.mp4 + 5 秒，两个文件都必须有音频轨道。断言失败会 exit 1。
+> **脚本内含硬性断言：** final.mp4 时长偏差 < 0.2s，两个文件都必须有音频轨道。断言失败会 exit 1。
 
 ## 7.4 视频交付
 

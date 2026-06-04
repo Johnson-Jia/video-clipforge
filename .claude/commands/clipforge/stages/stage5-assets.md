@@ -23,6 +23,30 @@ ClipForge 视频采用 **纯 CSS/HTML** 渲染，不依赖外部图片素材：
 
 **交付物：** 如有素材，放入 `<project-dir>/assets/` 并在 HTML 中用 `<img src="assets/...">` 引用。无需素材则跳过本阶段，直接进入 Stage 6。
 
+### manifest.md 生成
+
+无论是否有素材，都必须生成 `manifest.md`（schema generates 声明要求）：
+
+**有素材时**：
+```bash
+cat > assets/manifest.md << 'EOF'
+# 素材清单
+
+| 文件 | 用途 | 引用方式 |
+|------|------|---------|
+| logo.svg | 项目 logo | HTML `<img>` |
+EOF
+```
+
+**无素材时**（最常见情况）：
+```bash
+mkdir -p assets && cat > assets/manifest.md << 'EOF'
+# 素材清单
+
+本视频未使用外部素材，全部视觉效果由 CSS/HTML/GSAP 实现。
+EOF
+```
+
 ---
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage5-assets` 获取完整约束 prompt。

@@ -2,7 +2,7 @@
 
 > 每日定时任务。检查 `workspace/sources/视频数据/` 是否有新鲜的平台导出数据。如超过 3 天未更新且存在已交付视频，提醒用户导出数据。
 
-## 检查逻辑
+## §1 检查逻辑
 
 ```bash
 PROJECT_BASE="workspace"
@@ -78,7 +78,7 @@ fi
 然后运行：/clipforge-feedback
 ```
 
-## 注册方式
+## §2 注册方式
 
 此任务由视频交付流程自动注册（确保仅注册 1 个）。注册逻辑：
 
@@ -87,6 +87,6 @@ fi
 3. 如不存在 → CronCreate(recurring=true, durable=true, cron="30 10 * * *")
 4. prompt 内容为此文件的检查步骤（内联，非引用）
 
-## 自续期
+## §3 自续期
 
 此任务通过 cron-renew 的标准机制续期，任务关键词为 `playback-reminder`。

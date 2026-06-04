@@ -24,7 +24,7 @@
 
 ### 1.1 反直觉描述技巧（提高点击率）
 
-> **数据来源：** 爆款视频分析（05-19，11万播放）中，"用 WiFi 信号做空间感知，完全不用摄像头"是点击率最高的钩子句。
+> **数据来源：** 爆款视频分析验证中，"用 WiFi 信号做空间感知，完全不用摄像头"是点击率最高的钩子句。
 
 **反直觉 = 用常见事物做不常见的事。** 以下是参考句式（不是公式，灵感的起点）：
 
@@ -127,7 +127,7 @@
 - Phase 间切换由 GSAP timeline 驱动（详见 `shared/render-safety.md` §1.1a 和 `stages/stage6-production.md` §6.4b）
 - Phase 切换 ≠ 硬切：使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0（完全消失，避免重叠重影），新 phase 从 0 渐显到 1
 - **相邻 phase 的 visual_type 不应重复**（视觉多样性）
-- **Phase 断点必须与旁白话题转换对齐，禁止时间均分**——每个场景逐段分析旁白文本，找到与 visual_phases focus 匹配的话题边界，按字数比例换算为时间戳。详见 `stages/stage6-production.md` §6.4b
+- **Phase 断点禁止均分**——详见 `shared/visual-phasing.md` §4
 
 ## 7. 渲染安全 + 三层架构
 

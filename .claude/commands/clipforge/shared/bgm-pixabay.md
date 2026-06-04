@@ -3,7 +3,7 @@
 > **用途：** 从 Pixabay 批量下载无版权 BGM 到 `workspace/bgm/`，按主题风格分类命名。
 > **触发：** 需要补充 BGM 素材库时，由 Stage 4 调用或独立执行。
 
-## 下载原理
+## §1 下载原理
 
 Pixabay 音频的 CDN 直链格式为：
 
@@ -13,7 +13,7 @@ https://cdn.pixabay.com/audio/YYYY/MM/DD/audio_<hash>.mp3
 
 **必须携带 `Referer: https://pixabay.com/` 头，否则返回 403。** yt-dlp 无法下载（Cloudflare 拦截）。
 
-## 三步流程
+## §2 三步流程
 
 ### Step 1：搜索并提取 CDN URL
 
@@ -67,7 +67,7 @@ ls workspace/bgm/*.mp3 | wc -l
 du -sh workspace/bgm/
 ```
 
-## 主题风格→搜索词映射
+## §3 主题风格→搜索词映射
 
 以下映射对应 HyperFrames 视觉主题的配乐需求：
 
@@ -89,7 +89,7 @@ du -sh workspace/bgm/
 | `inspiring-motivational` | `inspiring motivational` | 励志激励、适合创业/成长类 |
 | `warm-editorial` | `warm acoustic cozy` | 温暖、原声、舒适 |
 
-## 文件命名规范
+## §4 文件命名规范
 
 ```
 workspace/bgm/<主题名>-<序号>.mp3
@@ -99,7 +99,7 @@ workspace/bgm/<主题名>-<序号>.mp3
 - 序号 1-10
 - 例：`bold-energetic-1.mp3`、`dark-premium-3.mp3`
 
-## 批量补全脚本
+## §5 批量补全脚本
 
 当需要一次性补齐所有主题的 BGM 时，按以下流程执行：
 
@@ -113,7 +113,7 @@ workspace/bgm/<主题名>-<序号>.mp3
 
 > **浏览器必须已登录 Pixabay**，否则搜索页可能不返回完整结果。首次使用需用户手动登录一次。
 
-## 注意事项
+## §6 注意事项
 
 | 事项 | 说明 |
 |------|------|

@@ -102,7 +102,7 @@ rules:
     scope: GLOBAL
     source: "shared/render-safety.md §2.4"
 
-  - id: "R-R-011"
+  - id: "R-R-009"
     type: FORBIDDEN_ACTION
     pattern: "bg 层仅使用 glow+grid 三件套模板（线性渐变 + 1-2个模糊光圆 + grid-bg）"
     positive: "bg 层必须包含至少 2 种不同类型的视觉元素（渐变 + 纹理 + 光效/粒子，三者取二以上）。允许的类型：渐变、噪点纹理、等高线、光束射线、扫描线、波纹、暗角聚光、浮动粒子"
@@ -115,7 +115,7 @@ rules:
     scope: GLOBAL
     source: "feedback-bg-fx-quality.md — 2026-05-30 用户反馈 bg 层质量差"
 
-  - id: "R-R-012"
+  - id: "R-R-010"
     type: FORBIDDEN_ACTION
     pattern: "相邻场景 bg 层使用相同的渐变色值组合（视觉同质化）"
     positive: "相邻场景的 bg 层必须有可区分的视觉差异：不同的主色调、不同的纹理类型、或不同的光效模式。20个场景至少有 4-5 种不同的 bg 风格组"
@@ -128,7 +128,7 @@ rules:
     scope: GLOBAL
     source: "feedback-bg-fx-quality.md — 2026-05-30 用户反馈场景间视觉同质化"
 
-  - id: "R-R-009"
+  - id: "R-R-011"
     type: FORBIDDEN_METHOD
     pattern: "CSS animation 从不可见状态开始（scaleY:0 / opacity:0→1 / translateY(-100%)→0）"
     positive: "CSS animation 仅用于可见位置之间的移动（如漂移），'从无到有'用 GSAP .from()"
@@ -141,7 +141,7 @@ rules:
     scope: GLOBAL
     source: "shared/render-safety.md §1.1b"
 
-  - id: "R-R-010"
+  - id: "R-R-012"
     type: FORBIDDEN_ACTION
     pattern: "音频文件不在 index.html 同级目录"
     positive: "确保 narration.mp3 和 bgm.wav 存在于 index.html 同级目录"

@@ -96,6 +96,10 @@ clipforge/categories/
 | `clipforge/shared/bgm-pixabay` | Pixabay BGM 批量下载（CDN 直链提取 + curl 下载） | audio 或独立执行 |
 | `clipforge/shared/director-toolkit` | 导演思维工具包（5 个必答题 + 视觉词汇表 + 爆款导演笔记） | Stage 2/3/6 |
 | `clipforge/shared/machine-scoring` | 即时机器评分（delivery 后自动运行 gate 全量校验） | delivery → cleanup 之间 |
+| `clipforge/shared/quality-checklist` | Stage 6 渲染前品质检查清单（逐项校验） | Stage 6 |
+| `clipforge/shared/narration-anchoring` | narration_anchor 精确标注方法（按句拆分、0-index、Phase 校准） | Stage 3 |
+| `clipforge/shared/visual-phasing` | Phase 视觉分镜规范（断点校准 + GSAP 动画偏移 + 密度分级） | Stage 6 |
+| `clipforge/shared/playback-reminder` | 发布后播放数据检查提醒（自续期 cron 调度） | 定时任务 |
 | `clipforge/categories/{id}` | 分类配置（数据获取、风格、音色、标签等覆盖规则） | 各 stage 按需读取 |
 
 **共享规范按需加载（不全文加载）：**
@@ -124,7 +128,6 @@ ClipForge 引擎层提供四原子约束体系（Intent/Boundary/Gate/Trace）�
 | `engine/gate.py` | 校验产出物（file_exists / loudnorm / no_url 等） | Stage 执行后 |
 | `engine/trace.py` | 记录执行轨迹（skill / result / score / violations） | Stage 完成后 |
 | `engine/attribution.py` | 失败归因（强归因：规则匹配 / 弱归因：概率推断） | 门禁失败时 |
-| `engine/constraints.py` | 约束集合准备（加载 + 去重 + 合并） | inject 内部调用 |
 | `engine/governance.py` | 规则治理（冲突检测 / 膨胀预警） | 维护时使用 |
 
 ### 引擎调用约定
@@ -330,11 +333,13 @@ workspace/
 |------|------|--------|---------|
 | 旁白时长偏差 1-3s | 视频节奏略快/慢 | video | 仅调整 data-duration 并重新渲染 |
 | 旁白时长偏差 >3s | 场景时长严重不匹配 | narration | 重写场景时间轴 → audio → video → delivery |
-| 视觉风格不对 | 配色/字体与内容不搭 | design | 重新推导风格 → assets → video |
+| 视觉风格不对 | 配色/字体与内容不搭 | design | 重新推导风格 → narration → audio → video → delivery |
 | 旁白内容问题 | 文案不通顺/信息错误 | narration | 重写旁白 → audio → video → delivery |
 | BGM 情绪不对 | 音乐与视频调性不搭 | audio | 更换 BGM + 调整 data-volume + 重新渲染 |
 | 电影片段拼接硬切 | 片段间跳转突兀 | movie-clips | 增加 xfade 时长 → audio → video → delivery |
 | 电影原音不清晰 | 对白被 BGM/旁白盖住 | video | 调整 `<audio data-volume>` 参数 |
+| 电影片段提取失败 | clip_durations.json 缺失 | narration | 回退 narration 移除 video_clip 场景 → 重新走标准/深度解析流程 |
+| 封面/交付失败 | final.mp4 缺失 | video | Stage 7 内部三级降级（HyperFrames → Chrome headless → ffmpeg 首帧） |
 
 > **原则：** 只回退到必须修改的最小阶段。DAG 依赖图决定了级联范围——上游改动会级联到所有下游 artifact。
 

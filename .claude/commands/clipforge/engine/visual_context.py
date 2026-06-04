@@ -254,23 +254,23 @@ def _generate_rhythm_guidance(
     # ── 1. 情感位置引导 ──
     if position < 0.15:
         lines.append(
-            "Location: Opening stage — visuals must grab attention, "
-            "but save the best for later to build suspense"
+            "位置：开场阶段 — 视觉必须抓住注意力，"
+            "但保留最强效果用于后续铺垫悬念"
         )
     elif position < 0.5:
         lines.append(
-            "Location: Building stage — visuals can gradually "
-            "enrich layers as content unfolds"
+            "位置：递进阶段 — 视觉可以随内容展开"
+            "逐步丰富层次"
         )
     elif position < 0.75:
         lines.append(
-            "Location: Climax zone — visual intensity should peak, "
-            "be bold with strong effects"
+            "位置：高潮区域 — 视觉力度应达到峰值，"
+            "大胆使用强烈特效"
         )
     else:
         lines.append(
-            "Location: Closing stage — visuals start to收敛, "
-            "echo the opening without repeating it"
+            "位置：收尾阶段 — 视觉开始收敛，"
+            "呼应开场但不重复"
         )
 
     # ── 2. 连贯性引导（基于前序场景） ──
@@ -280,36 +280,36 @@ def _generate_rhythm_guidance(
 
         if prev_colors:
             lines.append(
-                f"Previous scene colors: {', '.join(prev_colors[:3])}"
+                f"前序场景色彩: {', '.join(prev_colors[:3])}"
             )
             lines.append(
-                "  -> Keep at least one color family consistent (warm/cold), "
-                "vary other dimensions"
+                "  -> 至少保留一个色系一致（暖色/冷色），"
+                "在其他维度制造变化"
             )
         if prev_types:
             lines.append(
-                f"Previous bg elements: {', '.join(prev_types)}"
+                f"前序背景元素: {', '.join(prev_types)}"
             )
             lines.append(
-                "  -> Retain one element type, replace others to create "
-                "'familiar yet different' feeling"
+                "  -> 保留一种元素类型，替换其他类型，"
+                "营造'熟悉又不同'的感觉"
             )
     else:
         lines.append(
-            "First scene: establish the visual tone, "
-            "subsequent scenes will build on this"
+            "首个场景：建立视觉基调，"
+            "后续场景将在此基础上构建"
         )
 
     # ── 3. 变化引导（避免单调） ──
     if intensity > 0.6:
         lines.append(
-            "High intensity: introduce previously unused effect types "
-            "or colors to create visual impact"
+            "高强度：引入此前未使用的特效类型或色彩，"
+            "制造视觉冲击"
         )
     elif intensity < 0.3:
         lines.append(
-            "Low intensity: reduce effects, use large-area solid colors / "
-            "gradients / soft light for atmosphere — not 'empty' but 'calm'"
+            "低强度：减少特效，使用大面积纯色/渐变/柔光"
+            "营造氛围 — 不是'空洞'而是'沉静'"
         )
 
     return '\n'.join(lines)
