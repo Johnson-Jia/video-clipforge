@@ -117,6 +117,10 @@ _POLYPHONE_MAP = {
 # 阿拉伯数字 + 行：pypinyin 无法匹配阿拉伯数字上下文
 # "300行" → "300航", "100多行" → "100多航"
 _NUMERIC_ROW_RE = re.compile(r'(\d+)\s*(多?)行')
+# 中文数字组合 + 行：匹配 "四万两千行", "七千行", "一百二十行" 等
+# pypinyin 无法匹配长中文数字串的上下文
+_CN_NUM_CHARS = '一二三四五六七八九十百千万亿两零'
+_CN_NUMERIC_ROW_RE = re.compile(f'([{_CN_NUM_CHARS}]+)行')
 # 长→常：仅限已知 edge-tts 会把长读成 zhǎng 的上下文
 _LONG_AS_CHANG_RE = re.compile(r'长(视频|篇|文|尾|期|线|河|途)')
 
@@ -153,6 +157,11 @@ def fix(text: str) -> str:
     preprocessed = _NUMERIC_ROW_RE.sub(r'\1\2航', brand_replaced)
     if preprocessed != brand_replaced:
         print(f'[polyphone_fix] numeric+行 regex applied')
+
+    # 中文数字组合 + 行 → 航（pypinyin 无法匹配长中文数字串上下文）
+    preprocessed = _CN_NUMERIC_ROW_RE.sub(r'\1航', preprocessed)
+    if preprocessed != brand_replaced:
+        print(f'[polyphone_fix] CN-numeric+行 regex applied')
 
     # 长→常（仅限已知误读上下文，避免全局替换影响字幕）
     preprocessed = _LONG_AS_CHANG_RE.sub(r'常\1', preprocessed)
@@ -230,6 +239,10 @@ if __name__ == '__main__':
             # 阿拉伯数字+行
             ('300行代码', '300航代码'),
             ('100多行代码', '100多航代码'),
+            # 中文大数字组合+行
+            ('四万两千行Python', '四万两千航Python'),
+            ('七千行TypeScript', '七千航TypeScript'),
+            ('一百二十行配置', '一百二十航配置'),
         ]
         passed = 0
         for inp, expected in tests:
