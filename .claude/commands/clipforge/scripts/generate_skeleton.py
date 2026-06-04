@@ -48,6 +48,8 @@ def main():
                     "emotion_intensity": slot.emotion_intensity,
                     "rhythm_guidance": slot.rhythm_guidance[:120] if slot.rhythm_guidance else "",
                     "narration_text": slot.narration_text[:80] if slot.narration_text else "",
+                    "has_multiple_phases": slot.has_multiple_phases,
+                    "phase_breakpoints": slot.phase_breakpoints,
                 })
         Path(args.slots_json).write_text(
             json.dumps(slots_data, ensure_ascii=False, indent=2), encoding="utf-8"

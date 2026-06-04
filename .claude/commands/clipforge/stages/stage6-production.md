@@ -117,6 +117,11 @@ HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>
 ```bash
 cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 
+# 0. 生成 Phase 时间校准（如果 sentence_timestamps.json 存在）
+if [ -f sentence_timestamps.json ]; then
+  python .claude/commands/clipforge/scripts/phase_calibrator.py --project-dir .
+fi
+
 # 1. 生成 HTML 骨架 + 插槽清单
 python .claude/commands/clipforge/scripts/generate_skeleton.py \
   --project-dir . \

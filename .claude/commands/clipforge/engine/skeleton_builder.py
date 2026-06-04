@@ -116,14 +116,17 @@ def _build_css_variables(design: dict) -> str:
     return lines
 
 
-def _compute_phase_breakpoints(segment: dict, phase_timings: dict | None = None) -> list[float]:
+def _compute_phase_breakpoints(segment: dict, phase_timings: dict | None = None, fallback_duration: float | None = None) -> list[float]:
     """为多 phase 场景计算断点。
 
     优先使用 phase_timings.json（TTS 句子锚点校准，精度 ±50ms），
     回退到文本比例估算。
     """
     phases = segment.get("visual_phases", [])
-    if len(phases) <= 1:
+    if isinstance(phases, int):
+        if phases <= 1:
+            return []
+    elif len(phases) <= 1:
         return []
 
     scene_name = segment.get("scene", "")
@@ -139,16 +142,20 @@ def _compute_phase_breakpoints(segment: dict, phase_timings: dict | None = None)
                 return bps
 
     # 回退：按旁白文本比例估算
-    duration = segment.get("duration", segment.get("dur", 10))
-    text = segment.get("text", segment.get("narration_segment", ""))
+    duration = fallback_duration if fallback_duration is not None else segment.get("duration", segment.get("dur", 10))
 
     breakpoints: list[float] = []
-    for i in range(1, len(phases)):
-        focus = phases[i].get("focus", "")
-        ratio = _find_text_boundary(text, focus)
-        if ratio is None:
-            ratio = i / len(phases)
-        breakpoints.append(round(ratio * duration, 2))
+    if isinstance(phases, int):
+        for i in range(1, phases):
+            breakpoints.append(round(i / phases * duration, 2))
+    else:
+        text = segment.get("text", segment.get("narration_segment", ""))
+        for i in range(1, len(phases)):
+            focus = phases[i].get("focus", "")
+            ratio = _find_text_boundary(text, focus)
+            if ratio is None:
+                ratio = i / len(phases)
+            breakpoints.append(round(ratio * duration, 2))
     return breakpoints
 
 
@@ -198,13 +205,18 @@ def build_scene_skeletons(project_dir: Path) -> list[SceneSkeleton]:
         scene_name = seg.get("scene", "")
         scene_id = scene_name.split("-")[0] if "-" in scene_name else scene_name
 
+        # 标准化 visual_phases：int → list，确保 Jinja2 模板兼容
+        vp = seg.get("visual_phases", 1)
+        if isinstance(vp, int):
+            seg["visual_phases"] = [{"phase": i+1, "focus": ""} for i in range(vp)]
+
         # 获取时长
         dur_info = duration_map.get(scene_name, {})
         start = dur_info.get("start", seg.get("start", 0))
         duration = dur_info.get("duration", seg.get("duration", seg.get("dur", 10)))
 
         # Phase 断点（优先 phase_timings.json，回退文本比例估算）
-        phase_breakpoints = _compute_phase_breakpoints(seg, phase_timings)
+        phase_breakpoints = _compute_phase_breakpoints(seg, phase_timings, duration)
 
         # 构建创意插槽
         slots: list[CreativeSlot] = []
@@ -252,7 +264,8 @@ def build_scene_skeletons(project_dir: Path) -> list[SceneSkeleton]:
 
         # content HTML 插槽（单 phase 或多 phase）
         phases = seg.get("visual_phases", [])
-        if len(phases) <= 1:
+        num_phases = phases if isinstance(phases, int) else len(phases)
+        if num_phases <= 1:
             slots.append(
                 CreativeSlot(
                     slot_id=f"{scene_id}-content-html",
@@ -288,6 +301,8 @@ def build_scene_skeletons(project_dir: Path) -> list[SceneSkeleton]:
                 slot_type="gsap",
                 marker=f"<!-- CREATIVE_SLOT:{scene_id}-gsap -->",
                 scene_duration=duration,
+                has_multiple_phases=num_phases > 1,
+                phase_breakpoints=phase_breakpoints,
             )
         )
 
@@ -341,10 +356,10 @@ def render_skeleton(
             {
                 "scene_id": sk.scene_id,
                 "scene_name": sk.scene_name,
-                "start": sk.start,
-                "duration": sk.duration,
+                "start": round(sk.start, 2),
+                "duration": round(sk.duration, 2),
                 "visual_phases": sk.visual_phases,
-                "phase_breakpoints": sk.phase_breakpoints,
+                "phase_breakpoints": [round(bp, 2) for bp in sk.phase_breakpoints],
             }
         )
 
@@ -408,6 +423,8 @@ def main() -> None:
                         "emotion_tags": slot.emotion_tags,
                         "visual_intent": slot.visual_intent,
                         "narration_text": slot.narration_text,
+                        "has_multiple_phases": slot.has_multiple_phases,
+                        "phase_breakpoints": slot.phase_breakpoints,
                     }
                 )
         slots_path = Path(args.slots_json)
