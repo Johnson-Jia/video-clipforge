@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # tts_pipeline.sh — TTS 旁白管线（全自动）
 #
-# 用法: bash scripts/tts_pipeline.sh <voice> <rate>
-# 工作目录必须在项目目录下。
+# 用法: bash scripts/tts_pipeline.sh [--project-dir DIR] [voice] [rate]
+# 无 --project-dir 时检查 CWD 是否为合法项目目录。
 #
 # 产出:
 #   narration_seg_0.mp3 ~ narration_seg_N.mp3
@@ -12,15 +12,25 @@
 
 set -euo pipefail
 
-VOICE="${1:-zh-CN-YunjianNeural}"
-RATE="${2:-+25\%}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/_cd_project.sh" && cd_project "$@"
+
+# 跳过 --project-dir 后，剩余参数为 VOICE 和 RATE
+VOICE="zh-CN-YunjianNeural"
+RATE="+25%"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --project-dir) shift 2 ;;
+    *) [ -z "$VOICE" ] && VOICE="$1" && shift || { RATE="$1"; shift; } ;;
+  esac
+done
 
 echo "=== TTS 管线启动 ==="
 echo "音色: ${VOICE}  语速: ${RATE}"
 
 # ── Step 1: 分段 TTS ──
 echo "--- Step 1: 分段 TTS ---"
-python .claude/commands/clipforge/scripts/tts_segments.py "$VOICE" "$RATE"
+python "${SCRIPT_DIR}/tts_segments.py" "$VOICE" "$RATE"
 
 # ── Step 2: 合并为完整旁白 ──
 echo "--- Step 2: 合并旁白 ---"
@@ -32,11 +42,11 @@ ffmpeg -y -f concat -safe 0 -i concat.txt -c copy narration.mp3
 
 # ── Step 3: 合并 SRT ──
 echo "--- Step 3: 合并字幕 ---"
-python .claude/commands/clipforge/scripts/merge_srt.py
+python "${SCRIPT_DIR}/merge_srt.py"
 
 # ── Step 4: loudnorm 标准化 ──
 echo "--- Step 4: loudnorm 标准化 ---"
-bash .claude/commands/clipforge/scripts/loudnorm.sh narration.mp3
+bash "${SCRIPT_DIR}/loudnorm.sh" narration.mp3
 
 # ── Step 5: loudnorm 校验 ──
 echo "--- Step 5: loudnorm 校验 ---"
@@ -65,7 +75,7 @@ print(f'meta: voice=${VOICE}, rate=${RATE}')
 # ── Step 7: Phase 时间校准 ──
 echo "--- Step 7: Phase 时间校准 ---"
 if [ -f "sentence_timestamps.json" ]; then
-    python .claude/commands/clipforge/scripts/phase_calibrator.py
+    python "${SCRIPT_DIR}/phase_calibrator.py"
     echo "OK: phase_timings.json 已生成"
 else
     echo "SKIP: sentence_timestamps.json 不存在，跳过 phase 校准"

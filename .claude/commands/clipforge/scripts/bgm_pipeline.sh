@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # bgm_pipeline.sh — BGM 配乐管线（AI 选曲后全自动）
 #
-# 用法: bash scripts/bgm_pipeline.sh [bgm_file]
-# 工作目录必须在项目目录下。
+# 用法: bash scripts/bgm_pipeline.sh [--project-dir DIR] [bgm_file] [--extend] [--bgms ...]
+# 无 --project-dir 时检查 CWD 是否为合法项目目录。
 #
 # 前提: bgm.wav 已存在于项目目录（AI 在执行本脚本前已完成选曲）
 #        narration.mp3 已存在（TTS 管线已完成）
@@ -16,7 +16,19 @@
 
 set -euo pipefail
 
-BGM_FILE="${1:-bgm.wav}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/_cd_project.sh" && cd_project "$@"
+
+# 解析剩余参数（cd_project 已消费 --project-dir）
+BGM_FILE="bgm.wav"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --extend) EXTEND_MODE=true; shift ;;
+    --bgms) EXTRA_BGMS="$2"; shift 2 ;;
+    --project-dir) shift 2 ;;
+    *) BGM_FILE="$1"; shift ;;
+  esac
+done
 
 echo "=== BGM 管线启动 ==="
 
@@ -45,7 +57,7 @@ echo "OK: BGM 音量正常"
 # ── Step 2: BGM 全段验证（静音检测 + 清理） ──
 # 在测量之前执行，确保后续测量基于清理后的 BGM。
 echo "--- Step 2: BGM 全段验证 ---"
-python .claude/commands/clipforge/scripts/bgm_validate.py "$BGM_FILE"
+python "${SCRIPT_DIR}/bgm_validate.py" "$BGM_FILE"
 
 # 重新获取时长（验证可能裁剪了文件）
 BGM_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
@@ -60,7 +72,7 @@ NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | g
 echo "BGM: mean=${BGM_MEAN} dB, max=${BGM_MAX} dB"
 echo "旁白: max=${NARR_MAX} dB"
 
-python .claude/commands/clipforge/scripts/bgm_gap_check.py "$BGM_MEAN" "$BGM_MAX" "$NARR_MAX"
+python "${SCRIPT_DIR}/bgm_gap_check.py" "$BGM_MEAN" "$BGM_MAX" "$NARR_MAX"
 echo "OK: 音量校准完成"
 
 # ── Step 3.5: bgm_volume 合理性门禁 ──
@@ -97,18 +109,7 @@ echo "旁白: ${TOTAL_DUR}s | BGM: ${BGM_DUR}s | 目标: ${TARGET_DUR}s"
 RATIO=$(python -c "print(round($TOTAL_DUR / $BGM_DUR, 1))" 2>/dev/null || echo "1")
 echo "旁白/BGM 比率: ${RATIO}x"
 
-# 检查是否指定了 --extend 模式（多首拼接）
-EXTEND_MODE=false
-EXTRA_BGMS=""
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --extend) EXTEND_MODE=true; shift ;;
-        --bgms) EXTRA_BGMS="$2"; shift 2 ;;
-        *) shift ;;
-    esac
-done
-
-if [ "$EXTEND_MODE" = true ] || [ "$(echo "$RATIO > 3" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+if [ "${EXTEND_MODE:-false}" = true ] || [ "$(echo "$RATIO > 3" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
     # ── 多首拼接模式 ──
     echo "--- Step 4a: 多首 BGM 拼接 ---"
 
