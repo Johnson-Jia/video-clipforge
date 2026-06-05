@@ -68,6 +68,11 @@ class GateType(str, Enum):
     grad_text_shorthand_valid = "grad_text_shorthand_valid"
     phase_visibility_present = "phase_visibility_present"
     design_storyboard_valid = "design_storyboard_valid"
+    no_real_person_name = "no_real_person_name"
+    no_school_name = "no_school_name"
+    no_competitor_attack = "no_competitor_attack"
+    no_search_cta = "no_search_cta"
+    gradient_text_no_dark_shadow = "gradient_text_no_dark_shadow"
 
 
 class Rigor(str, Enum):
