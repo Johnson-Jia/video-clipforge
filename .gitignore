@@ -30,6 +30,9 @@ skills-lock.json
 
 .agents/
 
+# FFmpeg loudnorm 中间产物
+loudnorm_stats.json
+
 # Python
 __pycache__/
 *.pyc

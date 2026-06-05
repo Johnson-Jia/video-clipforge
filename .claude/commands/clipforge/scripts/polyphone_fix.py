@@ -113,6 +113,99 @@ _POLYPHONE_MAP = {
     '为': {'wei4': '未'},  # 为 as "because": wèi → 未
 }
 
+# ── K 数字转换：edge-tts 把 K 读成英文字母 ──
+# 规则：1K = 一千, 10K = 一万, 29K = 二万九千, 290K = 二十九万
+# 匹配：整数或小数 + K/k（可能后面跟空格或其他非字母字符）
+_K_PATTERN = re.compile(r'(\d+\.?\d*)\s*[Kk]\b')
+
+# ── 发音易错词替换 ──
+# edge-tts 容易读错的常用词 → 同义且无歧义的替代
+_PRONUNCIATION_FIXES = {
+    '干嘛': '干什么',
+}
+
+
+def _convert_k_to_chinese(num_str: str) -> str:
+    """将数字字符串 + K 转为中文读法。
+
+    规则：
+      一位数字 + K = X千    (1K → 一千, 5K → 五千)
+      两位数字 + K = X万X千  (10K → 一万, 29K → 二万九千)
+      三位数字 + K = XX万X千  (150K → 十五万, 290K → 二十九万)
+    """
+    num = float(num_str)
+    has_decimal = '.' in num_str
+    cn_digits = '零一二三四五六七八九'
+
+    def digit_to_cn(d: int) -> str:
+        return cn_digits[d]
+
+    def int_to_cn(n: int) -> str:
+        """0-999 整数转中文（无单位，纯数字拼接）"""
+        if n == 0:
+            return '零'
+        s = ''
+        hundreds = n // 100
+        if hundreds > 0:
+            s += digit_to_cn(hundreds) + '百'
+            n %= 100
+            if n > 0 and n < 10:
+                s += '零'
+        tens = n // 10
+        if tens > 0:
+            if tens > 1 or hundreds > 0:
+                s += digit_to_cn(tens) + '十'
+            else:
+                s += '十'  # 10-19 的十不需要"一十"
+            n %= 10
+        elif hundreds and hundreds > 0 and n > 0:
+            pass  # already added 零
+        if n > 0:
+            s += digit_to_cn(n)
+        return s
+
+    if has_decimal:
+        int_part = int(num)
+        dec_str = num_str.split('.')[1].rstrip('0')
+        # 小数部分逐位读：28.8K = 二万八千八百
+        wan = int_part // 10
+        qian = int_part % 10
+        result = ''
+        if wan > 0:
+            result += digit_to_cn(wan) + '万'
+        if qian > 0:
+            result += digit_to_cn(qian) + '千'
+        for d in dec_str:
+            result += digit_to_cn(int(d)) + '百'
+            break  # 只处理一位小数
+        return result.rstrip('零') or '零'
+
+    int_val = int(num)
+    if int_val < 10:
+        # X K = X千
+        return digit_to_cn(int_val) + '千'
+    elif int_val < 100:
+        # XX K = X万X千
+        wan = int_val // 10
+        qian = int_val % 10
+        result = ''
+        if wan == 1:
+            result = '一万'
+        else:
+            result = digit_to_cn(wan) + '万'
+        if qian > 0:
+            result += digit_to_cn(qian) + '千'
+        return result
+    else:
+        # XXX K = XX万X千
+        wan_part = int_val // 10
+        qian = int_val % 10
+        result = int_to_cn(wan_part) + '万'
+        if qian > 0:
+            result += digit_to_cn(qian) + '千'
+        return result
+
+
 # ── 正则定向替换（pypinyin 词组匹配失败时的兜底） ──
 # 阿拉伯数字 + 行：pypinyin 无法匹配阿拉伯数字上下文
 # "300行" → "300航", "100多行" → "100多航"
@@ -129,10 +222,16 @@ load_phrases_dict(_CUSTOM_PHRASES)
 
 
 def fix(text: str) -> str:
-    """处理文本中的品牌名外文词 + 多音字，返回替换后的文本。"""
+    """处理文本中的品牌名外文词 + K数字 + 发音易错词 + 多音字，返回替换后的文本。"""
 
     if not text:
         return text
+
+    # ── 第零步：发音易错词替换（在所有处理之前） ──
+    for wrong, correct in _PRONUNCIATION_FIXES.items():
+        if wrong in text:
+            text = text.replace(wrong, correct)
+            print(f'[polyphone_fix] pronunciation fix: {wrong} → {correct}')
 
     # ── 第一步：外文品牌名替换（大小写不敏感） ──
     brand_replaced = _BRAND_PATTERN.sub(
@@ -152,20 +251,28 @@ def fix(text: str) -> str:
             for c in changes:
                 print(c)
 
+    # ── 第一步：K 数字转中文 ──
+    k_replaced = _K_PATTERN.sub(
+        lambda m: _convert_k_to_chinese(m.group(1)),
+        brand_replaced
+    )
+    if k_replaced != brand_replaced:
+        print(f'[polyphone_fix] K-number conversion applied')
+
     # ── 第一步半：正则定向替换 ──
     # 阿拉伯数字 + 行 → 航（pypinyin 无法匹配阿拉伯数字上下文）
-    preprocessed = _NUMERIC_ROW_RE.sub(r'\1\2航', brand_replaced)
-    if preprocessed != brand_replaced:
+    preprocessed = _NUMERIC_ROW_RE.sub(r'\1\2航', k_replaced)
+    if preprocessed != k_replaced:
         print(f'[polyphone_fix] numeric+行 regex applied')
 
     # 中文数字组合 + 行 → 航（pypinyin 无法匹配长中文数字串上下文）
     preprocessed = _CN_NUMERIC_ROW_RE.sub(r'\1航', preprocessed)
-    if preprocessed != brand_replaced:
+    if preprocessed != k_replaced:
         print(f'[polyphone_fix] CN-numeric+行 regex applied')
 
     # 长→常（仅限已知误读上下文，避免全局替换影响字幕）
     preprocessed = _LONG_AS_CHANG_RE.sub(r'常\1', preprocessed)
-    if preprocessed != brand_replaced:
+    if preprocessed != k_replaced:
         print(f'[polyphone_fix] 长→常 regex applied')
 
     # ── 第二步：多音字替换（原逻辑） ──
@@ -245,6 +352,19 @@ if __name__ == '__main__':
             ('四万两千行Python', '四万两千航Python'),
             ('七千行TypeScript', '七千航TypeScript'),
             ('一百二十行配置', '一百二十航配置'),
+            # K 数字转换
+            ('1K Stars', '一千 Stars'),
+            ('5K', '五千'),
+            ('10K', '一万'),
+            ('29K', '二万九千'),
+            ('30K', '三万'),
+            ('150K', '十五万'),
+            ('290K', '二十九万'),
+            ('28.8K', '二万八千八百'),
+            ('Stars从1500暴涨到28800', 'Stars从1500暴涨到28800'),
+            # 发音易错词
+            ('这能干嘛', '这能干什么'),
+            ('你能干嘛呢', '你能干什么呢'),
         ]
         passed = 0
         for inp, expected in tests:
