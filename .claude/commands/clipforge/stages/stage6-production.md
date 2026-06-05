@@ -645,7 +645,7 @@ done
 
 ```bash
 npx hyperframes lint
-npx hyperframes render . --output output.mp4 --video-bitrate 5M
+npx hyperframes render . --output output.mp4 --video-bitrate 5M --concurrency 4
 ```
 
 ### 渲染后恢复
@@ -691,7 +691,7 @@ echo "HTML BGM data-volume set to ${BGM_VOL}"
 
 ```bash
 # ── 渲染: 完整 HTML → output.mp4（旁白 + BGM）──
-npx hyperframes render . --output output.mp4 --video-bitrate 5M
+npx hyperframes render . --output output.mp4 --video-bitrate 5M --concurrency 4
 ```
 
 ### 合成 output_no_bgm.mp4（ffmpeg，不渲染）
