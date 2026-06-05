@@ -161,7 +161,7 @@ skill:
           files: ["index.html"]
       - gate: no_search_cta
         params:
-          files: ["index.html", "narration.txt", "douyin.md"]
+          files: ["index.html", "narration.txt"]
       - gate: gradient_text_no_dark_shadow
         params:
           file: "index.html"
