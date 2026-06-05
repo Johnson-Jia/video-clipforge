@@ -1,0 +1,321 @@
+<!--
+@ComponentMeta
+name: terminal
+layer: content
+tags: [terminal, console, coding, developer, command-line, cli, hack, tech, typing, code-block]
+emotion_range: [tech, focus, immersion, confidence]
+visual_density: compact
+complexity: css-only
+description: 终端模拟器组件，模拟 macOS 风格终端窗口，支持打字动画、命令输出、代码块语法高亮、进度条、Git/npm 等开发者场景。适用于编程类、GitHub 类、技术教程类视频场景
+parameters:
+  window_title: { default: "~/projects/my-app — zsh" }
+  theme: { default: "dark", options: [dark, light] }
+  typing_speed: { default: 45, range: [20, 80] }
+  border_radius: { default: 12, range: [0, 20] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="term-wrap">
+  <div class="term-window">
+    <div class="term-titlebar">
+      <div class="term-dots">
+        <span class="term-dot term-dot-red"></span>
+        <span class="term-dot term-dot-dot-yellow"></span>
+        <span class="term-dot term-dot-green"></span>
+      </div>
+      <span class="term-titlebar-text">{window_title}</span>
+      <span class="term-titlebar-spacer"></span>
+    </div>
+    <div class="term-body" id="term-body-{uid}">
+      <!-- 场景内容由 JS 动态生成 -->
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.term-wrap {
+  position: relative; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px 40px;
+}
+
+.term-window {
+  width: 100%; max-width: 920px;
+  background: #0d1117;
+  border-radius: {border_radius}px;
+  overflow: hidden;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 60px rgba(56,189,248,0.08);
+  border: 1px solid #21262d;
+}
+
+/* ── 标题栏 ── */
+.term-titlebar {
+  background: #161b22;
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid #21262d;
+}
+.term-dots { display: flex; gap: 8px; }
+.term-dot { width: 12px; height: 12px; border-radius: 50%; }
+.term-dot-red { background: #ff5f57; }
+.term-dot-dot-yellow { background: #febc2e; }
+.term-dot-green { background: #28c840; }
+.term-titlebar-text {
+  flex: 1; text-align: center;
+  color: #8b949e; font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+.term-titlebar-spacer { width: 44px; }
+
+/* ── 终端内容 ── */
+.term-body {
+  padding: 20px;
+  min-height: 280px; max-height: 1500px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13.5px; line-height: 1.7;
+  color: #c9d1d9;
+  overflow-y: hidden;
+}
+
+.term-line { white-space: pre-wrap; word-break: break-all; }
+
+/* 提示符 */
+.term-prompt { color: #58a6ff; }
+.term-prompt-path { color: #79c0ff; }
+.term-prompt-symbol { color: #3fb950; }
+.term-cmd { color: #e6edf3; }
+
+/* 输出 */
+.term-out { color: #8b949e; }
+.term-out-success { color: #3fb950; }
+.term-out-warn { color: #d29922; }
+.term-out-error { color: #f85149; }
+.term-out-info { color: #58a6ff; }
+
+/* ── 代码块 ── */
+.term-code-block {
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+.term-code-header {
+  background: #1c2129;
+  padding: 6px 12px;
+  font-size: 11px; color: #8b949e;
+  border-bottom: 1px solid #21262d;
+  display: flex; justify-content: space-between;
+}
+.term-code-body {
+  padding: 12px 16px;
+  font-size: 13px; line-height: 1.8;
+}
+.term-code-body .kw { color: #ff7b72; }
+.term-code-body .str { color: #a5d6ff; }
+.term-code-body .fn { color: #d2a8ff; }
+.term-code-body .cm { color: #8b949e; font-style: italic; }
+.term-code-body .num { color: #79c0ff; }
+.term-code-body .typ { color: #ffa657; }
+.term-line-no {
+  color: #484f58; display: inline-block;
+  width: 28px; text-align: right;
+  margin-right: 16px; user-select: none;
+}
+
+/* ── 进度条 ── */
+.term-progress { display: inline-flex; align-items: center; gap: 8px; width: 100%; }
+.term-progress-track {
+  flex: 1; background: #21262d;
+  height: 6px; border-radius: 3px; overflow: hidden;
+}
+.term-progress-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, #3fb950, #58a6ff);
+  width: 0%; transition: width 0.1s linear;
+}
+.term-progress-pct { color: #8b949e; font-size: 12px; min-width: 60px; text-align: right; }
+
+/* ── 光标 ── */
+.term-cursor {
+  display: inline-block; width: 8px; height: 16px;
+  background: #58a6ff; margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: term-blink 1s step-end infinite;
+}
+@keyframes term-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── 闪屏 ── */
+.term-flash { animation: term-flash-in 0.15s ease-out; }
+@keyframes term-flash-in {
+  0% { filter: brightness(1.8); }
+  100% { filter: brightness(1); }
+}
+</style>
+
+<!-- JS (Terminal Engine) -->
+<script>
+(function() {
+  const uid = '{uid}';
+  const termEl = document.getElementById('term-body-' + uid);
+  if (!termEl) return;
+
+  const SCENES = {scenes_json};
+  const CHAR_DELAY = {typing_speed};
+
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function promptHTML() {
+    return '<span class="term-prompt">~</span>' +
+           '<span class="term-prompt-path">/my-app</span> ' +
+           '<span class="term-prompt-symbol">❯</span> ';
+  }
+
+  function addLine(html) {
+    const div = document.createElement('div');
+    div.className = 'term-line term-flash';
+    div.innerHTML = html;
+    termEl.appendChild(div);
+    termEl.scrollTop = termEl.scrollHeight;
+    return div;
+  }
+
+  function addBlank() {
+    const div = document.createElement('div');
+    div.className = 'term-line';
+    div.innerHTML = '&nbsp;';
+    termEl.appendChild(div);
+  }
+
+  // 打字效果
+  function typeCmd(text) {
+    return new Promise(resolve => {
+      const el = addLine('');
+      const cursor = '<span class="term-cursor"></span>';
+      let i = 0;
+      function next() {
+        if (i <= text.length) {
+          el.innerHTML = promptHTML() + '<span class="term-cmd">' + esc(text.substring(0, i)) + '</span>' + (i < text.length ? cursor : '');
+          i++;
+          setTimeout(next, CHAR_DELAY + Math.random() * 30);
+        } else {
+          resolve();
+        }
+      }
+      next();
+    });
+  }
+
+  // 进度条
+  function animateProgress(duration) {
+    return new Promise(resolve => {
+      const container = addLine('');
+      const label = document.createElement('span');
+      label.className = 'term-out-info';
+      label.textContent = '⠋ ';
+      container.appendChild(label);
+
+      const bar = document.createElement('div');
+      bar.className = 'term-progress';
+      const track = document.createElement('div');
+      track.className = 'term-progress-track';
+      const fill = document.createElement('div');
+      fill.className = 'term-progress-fill';
+      track.appendChild(fill);
+      const pct = document.createElement('span');
+      pct.className = 'term-progress-pct';
+      pct.textContent = '0%';
+      bar.appendChild(track);
+      bar.appendChild(pct);
+      container.appendChild(bar);
+
+      const spinners = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+      let si = 0;
+      const spinIv = setInterval(() => { si = (si + 1) % spinners.length; label.textContent = spinners[si] + ' '; }, 80);
+
+      const start = performance.now();
+      function frame(now) {
+        const p = Math.min((now - start) / duration, 1);
+        fill.style.width = (p * 100) + '%';
+        pct.textContent = Math.floor(p * 100) + '%';
+        if (p < 1) { requestAnimationFrame(frame); }
+        else { clearInterval(spinIv); label.textContent = '✓  '; label.className = 'term-out-success'; resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // 代码块
+  function renderCode(block) {
+    const el = document.createElement('div');
+    el.className = 'term-code-block term-flash';
+    const header = document.createElement('div');
+    header.className = 'term-code-header';
+    header.innerHTML = '<span>' + esc(block.lang || 'code') + '</span><span>' + esc(block.langLabel || '') + '</span>';
+    el.appendChild(header);
+    const body = document.createElement('div');
+    body.className = 'term-code-body';
+    (block.lines || []).forEach((tokens, i) => {
+      const row = document.createElement('div');
+      const no = document.createElement('span');
+      no.className = 'term-line-no';
+      no.textContent = i + 1;
+      row.appendChild(no);
+      let html = '';
+      for (let j = 0; j < tokens.length; j++) {
+        const t = tokens[j];
+        if (t === 'kw' || t === 'str' || t === 'fn' || t === 'cm' || t === 'num' || t === 'typ') {
+          html += '<span class="' + t + '">' + esc(tokens[++j] || '') + '</span>';
+        } else {
+          html += esc(t);
+        }
+      }
+      row.innerHTML += html;
+      body.appendChild(row);
+    });
+    el.appendChild(body);
+    termEl.appendChild(el);
+    termEl.scrollTop = termEl.scrollHeight;
+  }
+
+  // 表格
+  function renderTable(rows) {
+    const container = document.createElement('div');
+    container.className = 'term-line term-flash';
+    rows.forEach(row => {
+      const rowDiv = document.createElement('div');
+      rowDiv.style.fontFamily = "'Cascadia Code','Fira Code','Consolas',monospace";
+      rowDiv.style.fontSize = '13.5px';
+      rowDiv.innerHTML = row.map(c => esc(c)).join('  ');
+      container.appendChild(rowDiv);
+    });
+    termEl.appendChild(container);
+    termEl.scrollTop = termEl.scrollHeight;
+  }
+
+  // 播放引擎
+  async function play() {
+    for (const scene of SCENES) {
+      for (const line of scene.lines) {
+        if (line.delay) await sleep(line.delay);
+        switch (line.type) {
+          case 'blank': addBlank(); break;
+          case 'command': await typeCmd(line.text); break;
+          case 'output': addLine('<span class="' + (line.cls || 'term-out') + '">' + esc(line.text) + '</span>'); break;
+          case 'progress': await animateProgress(line.duration); break;
+          case 'code': renderCode(line); break;
+          case 'table': renderTable(line.rows); break;
+          case 'prompt-only': addLine(promptHTML() + '<span class="term-cursor"></span>'); break;
+        }
+      }
+    }
+  }
+
+  play();
+})();
+</script>

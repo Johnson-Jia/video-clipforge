@@ -407,3 +407,11 @@ components:
     emotion_range: [shock, breakthrough, revelation]
     visual_density: generous
     complexity: css-only
+
+  - name: terminal
+    layer: content
+    file: content/terminal.html
+    tags: [terminal, console, coding, developer, command-line, cli, hack, tech, typing, code-block]
+    emotion_range: [tech, focus, immersion, confidence]
+    visual_density: compact
+    complexity: css-only
