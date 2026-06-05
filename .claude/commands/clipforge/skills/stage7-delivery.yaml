@@ -62,6 +62,15 @@ skill:
       - gate: no_forbidden_speech
         params:
           files: ["narration.txt", "douyin.md"]
+      - gate: no_real_person_name
+        params:
+          files: ["narration.txt", "douyin.md"]
+      - gate: no_school_name
+        params:
+          files: ["narration.txt", "douyin.md"]
+      - gate: no_competitor_attack
+        params:
+          files: ["narration.txt", "douyin.md", "index.html"]
     soft: []
     max_retries: 2
   trace:

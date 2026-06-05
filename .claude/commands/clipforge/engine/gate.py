@@ -78,14 +78,47 @@ def check_bgm_volume_set(project_dir: Path, params: dict) -> tuple[bool, str]:
         return False, f"BGM 音量检查异常: {e}"
 
 
+def _load_sensitive_keywords(project_dir: Path) -> list[str]:
+    """从分类配置 YAML 中读取 sensitive_keywords，合并所有数组返回去重列表。"""
+    import yaml
+    clipforge_dir = Path(__file__).resolve().parent.parent
+    cat_dir = clipforge_dir / "categories"
+    keywords: list[str] = []
+    for cat_file in cat_dir.glob("*.md"):
+        try:
+            text = cat_file.read_text(encoding="utf-8")
+            start = text.find("<!-- CONFIG-START:")
+            end = text.find("<!-- CONFIG-END -->")
+            if start == -1 or end == -1:
+                continue
+            yaml_block = text[start:end]
+            yaml_block = re.sub(r'<!--\s*CONFIG-START:[^>]*>', '', yaml_block)
+            config = yaml.safe_load(yaml_block)
+            if not config:
+                continue
+            content_cfg = config.get("content", {})
+            sk = content_cfg.get("sensitive_keywords", {})
+            for key in ("finance", "extreme_words", "hype_numbers", "ai_deepfake"):
+                words = sk.get(key, [])
+                if isinstance(words, list):
+                    keywords.extend(str(w) for w in words)
+        except Exception:
+            continue
+    return list(set(keywords))
+
+
 def check_no_forbidden_speech(project_dir: Path, params: dict,
                               guardrails: list | None = None) -> tuple[bool, str]:
-    forbidden = [
+    base_forbidden = [
         "必装", "必备", "神器", "赶紧去", "马上去", "立即下载",
         "全网最好", "第一", "最强", "你一定要", "千万别错过",
         "免费领", "福利", "白嫖", "点赞关注", "一键三连",
         "一定", "绝对", "必然",
+        "远超预期", "别人没做的事", "史无前例", "前所未有",
+        "吊打", "碾压", "完爆", "秒杀",
     ]
+    cat_keywords = _load_sensitive_keywords(project_dir)
+    forbidden = list(set(base_forbidden + cat_keywords))
     check_files = params.get("files", ["narration.txt", "douyin.md"])
     found: list[str] = []
     for fname in check_files:
@@ -98,6 +131,132 @@ def check_no_forbidden_speech(project_dir: Path, params: dict,
                 found.append(f"{fname}: '{kw}'")
     if found:
         return False, f"发现违禁词: {'; '.join(found[:5])}"
+    return True, ""
+
+
+def check_no_real_person_name(project_dir: Path, params: dict,
+                               guardrails: list | None = None) -> tuple[bool, str]:
+    """R-G-008: 检测旁白/文案中的真实人名+头衔组合，防平台隐私审核"""
+    import re as _re
+    # 检测"姓名+头衔"模式：X教授、X老师、X博士、X院士
+    name_title_pattern = _re.compile(
+        r'[一-鿿]{1,3}(教授|老师|博士|院士|研究员)'
+    )
+    check_files = params.get("files", ["narration.txt", "douyin.md", "index.html"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        # 去掉 HTML 标签中的 class/id 等技术性内容，只检查可见文字
+        if fname.endswith(".html"):
+            import re as _re2
+            content = _re2.sub(r'<style[^>]*>.*?</style>', '', content, flags=_re2.DOTALL)
+            content = _re2.sub(r'<script[^>]*>.*?</script>', '', content, flags=_re2.DOTALL)
+            content = _re2.sub(r'<[^>]+>', ' ', content)
+        matches = name_title_pattern.findall(content)
+        if matches:
+            for m in name_title_pattern.finditer(content):
+                found.append(f"{fname}: '{m.group()}'")
+    if found:
+        return False, f"R-G-008: 发现真实人名+头衔（触发平台隐私审核）: {'; '.join(found[:5])}"
+    return True, ""
+
+
+def check_no_school_name(project_dir: Path, params: dict,
+                          guardrails: list | None = None) -> tuple[bool, str]:
+    """R-G-009: 检测具体学校名/机构名"""
+    school_names = [
+        "中科大", "中国科学技术大学", "清华大学", "北京大学", "北大",
+        "浙江大学", "浙大", "上海交通大学", "上海交大", "复旦大学", "复旦",
+        "南京大学", "南大", "中科院", "中国科学院",
+    ]
+    check_files = params.get("files", ["narration.txt", "douyin.md", "index.html"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        # 去掉 HTML 标签
+        if fname.endswith(".html"):
+            import re as _re
+            content = _re.sub(r'<style[^>]*>.*?</style>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<script[^>]*>.*?</script>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<[^>]+>', ' ', content)
+        for school in school_names:
+            if school in content:
+                found.append(f"{fname}: '{school}'")
+    if found:
+        return False, f"R-G-009: 发现具体学校/机构名（触发平台隐私审核）: {'; '.join(found[:5])}"
+    return True, ""
+
+
+def check_no_competitor_attack(project_dir: Path, params: dict,
+                                guardrails: list | None = None) -> tuple[bool, str]:
+    """R-G-010: 检测竞品负面对比/拉踩"""
+    attack_patterns = [
+        "不如", "缺实时", "没有XX", "做不到", "比不上",
+        "过时", "落后", "闭源数据不过",
+    ]
+    # 竞品名称列表（常见开源项目 + 商业产品）
+    competitor_names = [
+        "LiveTalking", "HeyGen", "D-ID", "Synthesia",
+    ]
+    check_files = params.get("files", ["narration.txt", "douyin.md", "index.html"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        if fname.endswith(".html"):
+            import re as _re
+            content = _re.sub(r'<style[^>]*>.*?</style>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<script[^>]*>.*?</script>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<[^>]+>', ' ', content)
+        for comp in competitor_names:
+            if comp in content:
+                for pattern in attack_patterns:
+                    if pattern in content:
+                        found.append(f"{fname}: 竞品'{comp}'附近发现负面描述'{pattern}'")
+                        break
+    if found:
+        return False, f"R-G-010: 竞品负面对比（触发'贬低同行'审核）: {'; '.join(found[:5])}"
+    return True, ""
+
+
+def check_no_search_cTA(project_dir: Path, params: dict,
+                        guardrails: list | None = None) -> tuple[bool, str]:
+    """R-G-013: 禁止'去XX搜索''搜XX'等搜索引导话术。
+
+    短视频内容不应引导观众去外部平台搜索特定关键词，
+    这属于推广/导流行为，可能触发平台审核。
+    """
+    search_cta_patterns = [
+        r'去\s*GitHub\s*搜', r'GitHub\s*搜\s*\w',
+        r'在\s*GitHub\s*搜', r'GitHub\s*搜索',
+        r'搜\s*["“”]?\w+["””]?\s*就\s*能',
+        r'搜索\s*\w+\s*就能',
+    ]
+    check_files = params.get("files", ["narration.txt", "douyin.md", "index.html"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        if fname.endswith(".html"):
+            content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.DOTALL)
+            content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL)
+            content = re.sub(r'<[^>]+>', ' ', content)
+        for pat in search_cta_patterns:
+            m = re.search(pat, content)
+            if m:
+                found.append(f"{fname}: '{m.group()}'")
+    if found:
+        return False, f"R-G-013: 搜索引导话术（平台视为导流）: {'; '.join(found[:5])}"
     return True, ""
 
 
@@ -169,6 +328,10 @@ GATE_CHECKERS = {
     GateType.bgm_volume_set: check_bgm_volume_set,
     GateType.no_forbidden_speech: check_no_forbidden_speech,
     GateType.no_url_in_output: check_no_url,
+    GateType.no_real_person_name: check_no_real_person_name,
+    GateType.no_school_name: check_no_school_name,
+    GateType.no_competitor_attack: check_no_competitor_attack,
+    GateType.no_search_cta: check_no_search_cTA,
     GateType.duration_in_range: check_duration_in_range,
     GateType.hook_pattern_verified: None,  # 占位，在下面实现
     GateType.design_storyboard_valid: check_design_storyboard_valid,
@@ -1835,10 +1998,155 @@ def check_grad_text_shorthand(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.grad_text_shorthand_valid] = check_grad_text_shorthand
 
 
+def check_gradient_text_no_dark_shadow(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-S6-023: background-clip:text 渐变文字禁止搭配黑色 text-shadow。
+
+    黑色 text-shadow (rgba(0,0,0,...)) 叠加在透明填充的渐变文字上
+    产生黑色光晕压低文字亮度。纯色文字受同样阴影反而增加层次感，不受影响。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    # Step A: 提取渐变文字类名集合
+    gradient_classes: set[str] = set()
+
+    # A1: 从 <style> 中的 CSS 规则块提取
+    # 匹配 selector { ... background-clip: text ... } 或 -webkit-text-fill-color: transparent
+    css_rule_pattern = re.compile(
+        r'([^{}]+)\{([^}]*)\}',
+        re.DOTALL,
+    )
+    for m in css_rule_pattern.finditer(content):
+        selector = m.group(1).strip()
+        body = m.group(2)
+        has_gradient_text = (
+            re.search(r'background-clip\s*:\s*text', body) or
+            re.search(r'-webkit-text-fill-color\s*:\s*transparent', body)
+        )
+        if has_gradient_text:
+            for cls in re.findall(r'\.([a-zA-Z_][\w-]*)', selector):
+                gradient_classes.add(cls)
+
+    # A2: 从 inline style 提取
+    inline_pattern = re.compile(
+        r'<(\w+)[^>]*class=["\']([^"\']*)["\'][^>]*style=["\']([^"\']*)["\'][^>]*>',
+        re.DOTALL,
+    )
+    inline_pattern_rev = re.compile(
+        r'<(\w+)[^>]*style=["\']([^"\']*)["\'][^>]*class=["\']([^"\']*)["\'][^>]*>',
+        re.DOTALL,
+    )
+    for pattern in (inline_pattern, inline_pattern_rev):
+        for m in pattern.finditer(content):
+            if pattern == inline_pattern:
+                style_val = m.group(3)
+                class_val = m.group(2)
+            else:
+                style_val = m.group(2)
+                class_val = m.group(3)
+            if re.search(r'background-clip\s*:\s*text', style_val):
+                for cls in re.findall(r'([a-zA-Z_][\w-]*)', class_val):
+                    gradient_classes.add(cls)
+
+    if not gradient_classes:
+        return True, "未发现渐变文字（无 background-clip:text），跳过"
+
+    # Step B: 检测黑色 text-shadow 冲突
+    dark_shadow_pattern = re.compile(
+        r'text-shadow\s*:[^;]*rgba\(\s*0\s*,\s*0\s*,\s*0',
+    )
+    # 收集含黑色 text-shadow 的类名（用于多 class 组合检测）
+    shadow_classes: set[str] = set()
+    violations: list[str] = []
+
+    # B1: CSS 规则块中的黑色 text-shadow → 提取类名
+    for m in css_rule_pattern.finditer(content):
+        selector = m.group(1).strip()
+        body = m.group(2)
+        if dark_shadow_pattern.search(body):
+            rule_shadow_classes = set(re.findall(r'\.([a-zA-Z_][\w-]*)', selector))
+            shadow_classes.update(rule_shadow_classes)
+            # 同一规则内交叉检测
+            overlap = rule_shadow_classes & gradient_classes
+            if overlap:
+                violations.append(
+                    f"CSS规则 '{selector.strip()[:60]}' 黑色 text-shadow 命中渐变类: {', '.join(sorted(overlap))}"
+                )
+
+    # B1.5: 多 class 组合检测 — DOM 元素同时携带渐变类 + 阴影类
+    # 先收集"覆盖规则"：组合选择器中含渐变类+阴影类但不带黑色 text-shadow
+    override_selectors: list[set[str]] = []
+    for m in css_rule_pattern.finditer(content):
+        selector = m.group(1).strip()
+        body = m.group(2)
+        sel_classes = set(re.findall(r'\.([a-zA-Z_][\w-]*)', selector))
+        if not sel_classes:
+            continue
+        has_grad = bool(sel_classes & gradient_classes)
+        has_shadow_cls = bool(sel_classes & shadow_classes)
+        if has_grad and has_shadow_cls and not dark_shadow_pattern.search(body):
+            # 组合选择器覆盖了黑色 shadow
+            override_selectors.append(sel_classes)
+
+    if shadow_classes and gradient_classes:
+        element_class_pattern = re.compile(
+            r'<(\w+)[^>]*class=["\']([^"\']*)["\'][^>]*>',
+        )
+        for em in element_class_pattern.finditer(content):
+            el_classes = set(em.group(2).split())
+            has_grad = bool(el_classes & gradient_classes)
+            has_shadow = bool(el_classes & shadow_classes)
+            if has_grad and has_shadow:
+                # 检查是否有覆盖规则匹配此元素（覆盖规则的所有 class 都在元素上）
+                covered = any(
+                    ov <= el_classes for ov in override_selectors
+                )
+                if not covered:
+                    grad_on_el = el_classes & gradient_classes
+                    shadow_on_el = el_classes & shadow_classes
+                    violations.append(
+                        f"DOM 元素 class='{em.group(2)[:50]}' 同时携带渐变类 "
+                        f"({','.join(sorted(grad_on_el))}) + 阴影类 ({','.join(sorted(shadow_on_el))})"
+                    )
+
+    # B2: inline style 中同时含渐变 + 黑色 text-shadow
+    for pattern in (inline_pattern, inline_pattern_rev):
+        for m in pattern.finditer(content):
+            if pattern == inline_pattern:
+                style_val = m.group(3)
+                class_val = m.group(2)
+            else:
+                style_val = m.group(2)
+                class_val = m.group(3)
+            has_gradient = bool(re.search(r'background-clip\s*:\s*text', style_val))
+            has_dark_shadow = bool(dark_shadow_pattern.search(style_val))
+            if has_gradient and has_dark_shadow:
+                violations.append(
+                    f"inline style 同时含渐变+黑色shadow (class='{class_val[:30]}')"
+                )
+
+    if violations:
+        return False, (
+            f"R-S6-023: {len(violations)} 处渐变文字搭配黑色 text-shadow "
+            f"（应使用同色系发光）。违规: {'; '.join(violations[:5])}"
+        )
+
+    return True, f"渐变文字 ({len(gradient_classes)} 个类) 无黑色 text-shadow 冲突"
+
+
+GATE_CHECKERS[GateType.gradient_text_no_dark_shadow] = check_gradient_text_no_dark_shadow
+
+
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
 SAFETY_GATES = {
     GateType.no_forbidden_speech,
     GateType.no_url_in_output,
+    GateType.no_real_person_name,
+    GateType.no_school_name,
+    GateType.no_competitor_attack,
+    GateType.no_search_cta,
 }
 
 

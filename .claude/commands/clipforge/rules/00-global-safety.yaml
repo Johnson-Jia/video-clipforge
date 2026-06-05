@@ -84,3 +84,68 @@ rules:
     class: EXPERIENTIAL
     scope: GLOBAL
     source: "shared/shared-rules.md §2"
+
+  - id: "R-G-008"
+    type: FORBIDDEN_SPEECH
+    pattern: "旁白/画面/文案提及真实人名"
+    positive: "使用泛化表述（如'国内高校团队'、'研究团队'），不提具体姓名"
+    guardrail: "旁白、画面文字或发布文案中出现真实人名（如教授/学者/企业家姓名），触发平台个人隐私保护审核 → 不适宜公开"
+    detection:
+      keywords: ["教授", "老师", "博士", "院士"]
+      semantic_check: true
+      heuristic: "检测'姓名+头衔'组合模式，如'X教授'、'X老师实验室'"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "shared/shared-rules.md §4.2"
+
+  - id: "R-G-009"
+    type: FORBIDDEN_SPEECH
+    pattern: "旁白/画面/文案提及具体学校名/机构名"
+    positive: "使用'国内高校'、'国内研究机构'等泛化表述"
+    guardrail: "出现'中科大'、'清华'、'北大'、'浙大'等具体学校名或'XX实验室'等机构名，触发平台隐私保护审核"
+    detection:
+      keywords: ["中科大", "清华", "北大", "浙江大学", "上海交大", "复旦", "南大", "中科院", "实验室出品"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "shared/shared-rules.md §4.2"
+
+  - id: "R-G-010"
+    type: FORBIDDEN_SPEECH
+    pattern: "竞品负面对比/拉踩"
+    positive: "只正面描述自身项目特点，不提竞品名称和缺点。如需对比，用'同类方案侧重 XX'等中性表述"
+    guardrail: "旁白或画面出现竞品名称+负面描述（如'LiveTalking缺XX'、'XX不如'），触发平台'贬低同行/恶意竞争'审核"
+    detection:
+      keywords: ["不如", "缺实时", "没有XX", "做不到", "比不上", "过时", "落后"]
+      semantic_check: true
+      heuristic: "检测'竞品名+否定描述'模式"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "shared/shared-rules.md §4.2"
+
+  - id: "R-G-011"
+    type: FORBIDDEN_SPEECH
+    pattern: "绝对化/夸大宣传用语"
+    positive: "使用限定性表述（'表现不错'、'值得关注'、'颇有亮点'）"
+    guardrail: "'别人没做的事'、'远超预期'、'都方便'等绝对化/夸大用语，触发平台'虚假宣传'审核"
+    detection:
+      keywords: ["远超预期", "别人没做的事", "史无前例", "前所未有", "都方便", "吊打", "碾压", "完爆", "秒杀"]
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "shared/shared-rules.md §4.2"
+
+  - id: "R-G-012"
+    type: FORBIDDEN_SPEECH
+    pattern: "小红书文案使用'收藏！'等引导词"
+    positive: "去掉'收藏！'前缀，用内容本身的吸引力吸引读者"
+    guardrail: "小红书文案以'收藏！'、'快收藏'、'赶紧收藏'开头，触发小红书限流审核"
+    detection:
+      keywords: ["收藏！", "快收藏", "赶紧收藏", "强烈建议收藏"]
+    severity: SOFT
+    class: EXPERIENTIAL
+    scope: STAGE7
+    source: "shared/shared-rules.md §4.2"

@@ -374,47 +374,110 @@ def scan_data_dir(data_root: Path, date_filter: str | None = None) -> list[dict]
 
 # ── 项目索引与匹配 ─────────────────────────────────────────────────────────────
 
+def _extract_titles_from_douyin_md(content: str) -> list[str]:
+    """从 douyin.md 中提取所有文案标题（支持多种格式）。"""
+    titles = []
+    # 格式 1: "## 抖音" section 下的第一个非空行
+    in_section = False
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if stripped == "## 抖音":
+            in_section = True
+            continue
+        if in_section:
+            if stripped.startswith("## ") or stripped == "---":
+                in_section = False
+                continue
+            if stripped and not stripped.startswith("#"):
+                titles.append(stripped)
+                break
+    # 格式 2: "## 文案 N" sections
+    if not titles:
+        for line in content.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("## 文案") or stripped.startswith("## 标题"):
+                in_section = True
+                continue
+            if in_section:
+                if stripped.startswith("## ") or stripped == "---":
+                    in_section = False
+                    continue
+                if stripped and not stripped.startswith("#"):
+                    titles.append(stripped)
+    return titles
+
+
 def build_project_index(workspace_root: Path) -> list[dict]:
-    """构建项目索引：读取每个项目的 douyin.md 标题。"""
+    """构建项目索引：基于 final.mp4/output.mp4 存在的项目目录。"""
     workspace_root = Path(workspace_root)
     projects = []
+    seen_dirs = set()
 
+    # 第一轮：有 douyin.md 的项目
     for dm in sorted(workspace_root.rglob("douyin.md")):
         project_dir = dm.parent
         rel = project_dir.relative_to(workspace_root)
         parts = rel.parts
         if len(parts) < 3:
             continue
-
-        # 日期路径: 2026/05/29/project-name
         date_path = f"{parts[0]}/{parts[1]}/{parts[2]}"
         project_name = parts[3] if len(parts) > 3 else parts[2]
 
-        # 读取 douyin.md 标题（## 标题 下面的第一个非空行）
-        title = ""
+        titles = []
         try:
             content = dm.read_text(encoding="utf-8")
-            in_title_section = False
-            for line in content.split("\n"):
-                stripped = line.strip()
-                if stripped == "## 标题":
-                    in_title_section = True
-                    continue
-                if in_title_section:
-                    if stripped.startswith("## "):
-                        break
-                    if stripped and not title:
-                        title = stripped
-                        break
+            titles = _extract_titles_from_douyin_md(content)
         except (UnicodeDecodeError, OSError):
             pass
+
+        # 备用：narration.txt 首行
+        narration_first = ""
+        nf = project_dir / "narration.txt"
+        if nf.exists():
+            try:
+                narration_first = nf.read_text(encoding="utf-8").split("\n")[0].strip()
+            except (UnicodeDecodeError, OSError):
+                pass
 
         projects.append({
             "dir": project_dir,
             "rel_path": str(rel),
             "date_path": date_path,
             "project_name": project_name,
-            "douyin_title": title,
+            "douyin_title": titles[0] if titles else "",
+            "douyin_titles": titles,
+            "narration_first": narration_first,
+        })
+        seen_dirs.add(str(project_dir))
+
+    # 第二轮：有 final.mp4 但没有 douyin.md 的项目
+    for fm in sorted(workspace_root.rglob("final.mp4")):
+        project_dir = fm.parent
+        if str(project_dir) in seen_dirs:
+            continue
+        rel = project_dir.relative_to(workspace_root)
+        parts = rel.parts
+        if len(parts) < 3:
+            continue
+        date_path = f"{parts[0]}/{parts[1]}/{parts[2]}"
+        project_name = parts[3] if len(parts) > 3 else parts[2]
+
+        narration_first = ""
+        nf = project_dir / "narration.txt"
+        if nf.exists():
+            try:
+                narration_first = nf.read_text(encoding="utf-8").split("\n")[0].strip()
+            except (UnicodeDecodeError, OSError):
+                pass
+
+        projects.append({
+            "dir": project_dir,
+            "rel_path": str(rel),
+            "date_path": date_path,
+            "project_name": project_name,
+            "douyin_title": "",
+            "douyin_titles": [],
+            "narration_first": narration_first,
         })
 
     return projects
@@ -424,7 +487,13 @@ def match_records_to_projects(
     records: list[dict],
     projects: list[dict],
 ) -> list[dict]:
-    """将记录匹配到项目。返回 [{record, project, score}]。"""
+    """将记录匹配到项目。返回 [{record, project, score}]。
+
+    匹配信号:
+      1. 标题相似度 — 取所有文案标题/narration首行的最佳匹配 (权重 0.5)
+      2. 日期精确匹配 (权重 0.3)
+      3. 关键词重叠 (权重 0.2)
+    """
     matches = []
 
     for record in records:
@@ -438,6 +507,7 @@ def match_records_to_projects(
 
         # 从发布日期提取 YYYY/MM/DD
         date_parts = None
+        dp = None
         if rec_date:
             dp = rec_date[:10].split("-")
             if len(dp) == 3:
@@ -446,16 +516,27 @@ def match_records_to_projects(
         for proj in projects:
             score = 0.0
 
-            # 信号 1: 标题相似度 (权重 0.5)
-            if rec_title and proj["douyin_title"]:
-                ratio = SequenceMatcher(
-                    None,
-                    rec_title[:60].lower(),
-                    proj["douyin_title"][:60].lower(),
-                ).ratio()
-                score += 0.5 * ratio
+            # 信号 1: 标题相似度 — 多源取最佳 (权重 0.5)
+            best_ratio = 0.0
+            if rec_title:
+                candidates = list(proj.get("douyin_titles", []))
+                if proj.get("douyin_title") and proj["douyin_title"] not in candidates:
+                    candidates.insert(0, proj["douyin_title"])
+                if proj.get("narration_first"):
+                    candidates.append(proj["narration_first"])
+                for cand in candidates:
+                    if not cand:
+                        continue
+                    ratio = SequenceMatcher(
+                        None,
+                        rec_title[:80].lower(),
+                        cand[:80].lower(),
+                    ).ratio()
+                    if ratio > best_ratio:
+                        best_ratio = ratio
+            if best_ratio > 0:
+                score += 0.5 * best_ratio
             elif rec_title:
-                # 用项目名匹配
                 proj_name_words = proj["project_name"].replace("-", " ").lower().split()
                 title_lower = rec_title.lower()
                 overlap = sum(1 for w in proj_name_words if len(w) > 2 and w in title_lower)
@@ -466,7 +547,6 @@ def match_records_to_projects(
             if date_parts:
                 if date_parts == proj["date_path"]:
                     score += 0.3
-                # 相邻日期
                 try:
                     from datetime import date, timedelta
                     y, m, d = map(int, dp)
@@ -481,10 +561,15 @@ def match_records_to_projects(
                 except (ValueError, IndexError):
                     pass
 
-            # 信号 3: 内容关键词重叠 (权重 0.2)
+            # 信号 3: 关键词重叠 — 从所有文案标题汇总关键词 (权重 0.2)
             if rec_title:
                 proj_words = set(proj["project_name"].replace("-", " ").lower().split())
-                proj_words.update(proj["douyin_title"][:80].lower().split())
+                for t in proj.get("douyin_titles", []):
+                    proj_words.update(t[:80].lower().split())
+                if proj.get("douyin_title"):
+                    proj_words.update(proj["douyin_title"][:80].lower().split())
+                if proj.get("narration_first"):
+                    proj_words.update(proj["narration_first"][:80].lower().split())
                 rec_words = set(rec_title[:80].lower().split())
                 stop_words = {"的", "了", "是", "在", "和", "与", "及", "到", "有", "不", "这", "那", "一", "个"}
                 proj_words -= stop_words
