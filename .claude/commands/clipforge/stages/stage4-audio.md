@@ -81,9 +81,9 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 bash .claude/commands/clipforge/scripts/bgm_pipeline.sh
 ```
 
-> `bgm_pipeline.sh` 自动执行：静音段验证清理 → 音量守恒校验 → 公式计算 volume → 峰值间距校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，concat 拼接 + 裁剪 + 淡入淡出）。无需手动计算或写 JSON。
+> `bgm_pipeline.sh` 自动执行：静音段验证清理 → 响度标准化 → 音量守恒校验 → 公式计算 volume → 峰值间距校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，concat 拼接 + 裁剪 + 淡入淡出）。无需手动计算或写 JSON。
 >
-> **管线顺序：** Step 1 音量守恒 → Step 2 全段验证（bgm_validate.py 检测并移除静音段）→ Step 3 公式校准（基于清理后的 BGM 测量）→ Step 4 时长对齐（精确匹配旁白时长，1.5s 淡入 + 2s 淡出）。
+> **管线顺序：** Step 1 音量守恒 → Step 2 全段验证（bgm_validate.py 检测并移除静音段）→ Step 2.5 响度标准化（loudnorm I=-18:TP=-2，统一基准，保留动态）→ Step 3 公式校准（基于标准化后的 BGM 测量）→ Step 4 时长对齐（精确匹配旁白时长，1.5s 淡入 + 2s 淡出）。
 
 ### 来源优先级（唯一权威）
 
@@ -160,7 +160,7 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 
 ### BGM 音量守恒铁律
 
-- `bgm_volume` 由 `bgm_gap_check.py` 公式自动计算（目标：BGM 有效均值比旁白低 12 dB），范围 (0, 1.0]。
+- `bgm_volume` 由 `bgm_gap_check.py` 公式自动计算（目标：BGM 有效均值比旁白低 9 dB），范围 (0, 1.0]。
 - **禁止手动设置 `bgm_volume`**，只能由 `bgm_pipeline.sh` 通过 `bgm_gap_check.py` 公式自动确定。
 - `bgm_pipeline.sh` 执行后，必须验证 `segment_durations.json` 的 `meta.bgm_volume` 存在且 > 0。
 

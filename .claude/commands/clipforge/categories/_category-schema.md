@@ -103,7 +103,7 @@ id: "分类ID（与文件名一致，如 github、comics）"
 固定标签列表（如 ["#GitHub热门", "#程序员", "#开源"]）
 
 ### comment_template
-评论区模板（如"在 GitHub 搜项目名"）
+评论区模板（如"项目名 + 一句话描述 + owner/repo 路径"）
 
 ### cover_badge
 封面徽章文案（如"GitHub 热门项目"）

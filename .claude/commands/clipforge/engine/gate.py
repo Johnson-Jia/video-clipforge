@@ -237,8 +237,12 @@ def check_no_search_cTA(project_dir: Path, params: dict,
     search_cta_patterns = [
         r'去\s*GitHub\s*搜', r'GitHub\s*搜\s*\w',
         r'在\s*GitHub\s*搜', r'GitHub\s*搜索',
-        r'搜\s*["“”]?\w+["””]?\s*就\s*能',
+        r'搜\s*[“””]?\w+[“””]?\s*就\s*能',
         r'搜索\s*\w+\s*就能',
+        r'GitHub\s*搜索\s*[:：]',
+        r'搜\s*项目\s*名', r'搜\s*名字\s*就',
+        r'去\s*搜\s*\w', r'去\s*GitHub',
+        r'感兴趣.*搜',
     ]
     check_files = params.get("files", ["narration.txt", "douyin.md", "index.html"])
     found: list[str] = []
@@ -1695,13 +1699,8 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
     stage7-delivery.md §7.5 明确要求:
     1. 三平台文案必填：## 抖音、## 视频号、## 小红书
     2. 评论区自评必填：## 评论区自评（或 --- 分隔线后的自评段）
-    3. 评论区必须包含两种项目介绍格式：
-       a) 搜索方式："GitHub搜索: 项目名"
-       b) 完整路径："owner/repo" 格式
-
-    事故记录：2026-05-31 github-trending 视频只生成了基础交付信息，
-    缺少三平台文案和评论区自评。根因：stage7-delivery.md 有文本指令
-    但无结构化门禁强制执行，LLM 不自觉遵守就漏掉了。
+    3. 评论区包含项目介绍（项目名 + owner/repo 路径）
+    4. 禁止"GitHub搜索:"等搜索引导格式（平台视为导流，触发限流）
     """
     douyin_file = project_dir / params.get("file", "douyin.md")
     if not douyin_file.exists():
@@ -1709,6 +1708,10 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
 
     content = douyin_file.read_text(encoding="utf-8", errors="ignore")
     issues: list[str] = []
+
+    # 0. 检查搜索引导（HARD — 会导致限流）
+    if re.search(r'GitHub\s*搜索\s*[:：]', content):
+        issues.append("R-G-013: 评论区包含 'GitHub搜索:' 搜索引导格式（平台视为导流导致限流），改为只列项目名和 owner/repo 路径")
 
     # 1. 检查三平台文案
     required_platforms = params.get("platforms", ["抖音", "视频号", "小红书"])
@@ -1727,24 +1730,19 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
     if not has_comment_section:
         issues.append("缺少评论区自评（需 ## 评论区自评 段落）")
     else:
-        # 3. 检查两种项目介绍格式
-        # 格式a: 搜索方式 — "GitHub搜索:" 或 "GitHub 搜索:"
-        has_search_format = bool(re.search(r'GitHub\s*搜索\s*[:：]', content))
-        # 格式b: 完整路径 — "owner/repo" 形式（字母/数字/连字符/下划线/点）
+        # 3. 检查项目介绍格式（owner/repo 路径）
         has_path_format = bool(re.search(r'[\w\-\.]+/[\w\-\.]+', content))
 
         format_missing = []
-        if not has_search_format:
-            format_missing.append("搜索方式（如 'GitHub搜索: RuView'）")
         if not has_path_format:
-            format_missing.append("完整路径（如 'openpli/ruview'）")
+            format_missing.append("owner/repo 路径（如 'openpli/ruview'）")
         if format_missing:
             issues.append(f"评论区缺少项目介绍格式: {', '.join(format_missing)}")
 
     if issues:
         return False, f"R-S7-006: {'; '.join(issues)}"
 
-    return True, f"douyin.md 三平台文案 + 评论区自评（搜索+路径）完整"
+    return True, f"douyin.md 三平台文案 + 评论区自评（项目名+路径）完整"
 
 
 GATE_CHECKERS[GateType.douyin_platforms_complete] = check_douyin_platforms_complete

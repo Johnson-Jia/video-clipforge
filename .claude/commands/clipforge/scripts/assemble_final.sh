@@ -52,6 +52,20 @@ ffmpeg -y -f mpegts -i "concat:cover.ts|nobgm.ts" \
   -c copy -movflags +faststart final_no_bgm.mp4 2>/dev/null
 rm -f nobgm.ts cover.ts
 
+# ── Mastering: 平台响度标准化 ──
+# 混音阶段管平衡（旁白 vs BGM），mastering 阶段管响度（匹配平台标准）。
+# 目标 I=-14 LUFS（短视频平台标准），TP=-1 dB（防爆音）。
+# 视频流 copy 不重编码，只重编码音频。
+echo "[assemble_final] Mastering: 响度标准化 (I=-11 LUFS, TP=-0.5 dB)..."
+for FINAL_FILE in final.mp4 final_no_bgm.mp4; do
+    ffmpeg -y -i "$FINAL_FILE" -c:v copy \
+      -af "loudnorm=I=-11:TP=-0.5" \
+      -c:a aac -b:a 192k \
+      "${FINAL_FILE}.mastered.mp4" 2>/dev/null
+    mv "${FINAL_FILE}.mastered.mp4" "$FINAL_FILE"
+done
+echo "[assemble_final] Mastering 完成"
+
 # ── 输出验证 ──
 FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 final.mp4)
 FINAL_AUDIO=$(ffprobe -v quiet -select_streams a -show_entries stream=codec_type -of csv=p=0 final.mp4 | wc -l)
