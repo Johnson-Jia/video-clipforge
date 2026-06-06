@@ -1,0 +1,142 @@
+<!--
+@ComponentMeta
+name: wildfire
+layer: fx
+tags: [fire, spark, wildfire, ember, flame, particles, prairie, ignite, heat, glow]
+emotion_range: [energy, power, climax, passion, determination]
+visual_density: medium
+complexity: canvas-gsap
+description: 星火燎原火焰粒子特效。500 个暖色粒子从随机位置点燃、上升、渐弱，带强度衰减曲线（全火力→篝火→余烬）。适合星火、点燃、燎原等高潮/信仰主题。
+parameters:
+  count: { default: 500, range: [100, 800], description: "粒子数量" }
+  duration: { default: 38, range: [10, 60], description: "动画总时长(秒)，从点燃到余烬" }
+  fade_start: { default: 0.5, range: [0.3, 0.8], description: "强度开始衰减的进度点(0-1)" }
+  fade_floor: { default: 0.12, range: [0.05, 0.3], description: "衰减最低强度(0-1)" }
+  size_min: { default: 2, description: "最小粒子尺寸(px)" }
+  size_max: { default: 7, description: "最大粒子尺寸(px)" }
+  spawn_margin_x: { default: 200, description: "水平生成区域边距(px)" }
+  spawn_margin_top: { default: 300, description: "顶部生成区域边距(px)" }
+  spawn_margin_bottom: { default: 300, description: "底部生成区域边距(px)" }
+  colors: { default: "warm-fire", description: "配色: warm-fire(黄橙红), cool-ember(蓝紫白), golden(纯金色)" }
+/ComponentMeta
+-->
+<!-- HTML (嵌入 .layer-fx 或全局 fixed 层) -->
+<canvas class="wildfire-canvas" width="1080" height="1920" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+
+<!-- CSS -->
+<style>
+.wildfire-canvas { mix-blend-mode: screen; }
+</style>
+
+<!-- JS (确定性 PRNG + Canvas + GSAP seek-driven) -->
+<script>
+(function() {
+  'use strict';
+
+  /* ── 可配置参数 ── */
+  var COUNT = 500;
+  var DURATION = 38;         // 动画总时长(秒)
+  var FADE_START = 0.5;      // 强度衰减起始进度
+  var FADE_FLOOR = 0.12;     // 最低强度
+  var SIZE_MIN = 2;
+  var SIZE_MAX = 7;
+  var SPAWN_MX = 200;        // 水平边距
+  var SPAWN_MT = 300;        // 顶部边距
+  var SPAWN_MB = 300;        // 底部边距
+  var W = 1080, H = 1920;
+
+  /* ── 配色方案 ── */
+  var COLOR_SCHEMES = {
+    'warm-fire': ['#fbbf24','#ff6b35','#ff8c32','#f0883e','#fde68a'],
+    'cool-ember': ['#60a5fa','#a78bfa','#c4b5fd','#93c5fd','#e0e7ff'],
+    'golden':     ['#fbbf24','#f59e0b','#d97706','#fde68a','#fef3c7']
+  };
+  var COLORS = COLOR_SCHEMES['warm-fire'];
+
+  /* ── 确定性 PRNG (mulberry32) ── */
+  var _seed = 42;
+  function srand() {
+    _seed |= 0; _seed = _seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(_seed ^ _seed >>> 15, 1 | _seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+
+  /* ── Canvas 初始化 ── */
+  var canvas = document.querySelector('.wildfire-canvas');
+  var ctx = canvas ? canvas.getContext('2d') : null;
+  if (!ctx) return;
+
+  /* ── 预生成粒子 ── */
+  var particles = [];
+  for (var i = 0; i < COUNT; i++) {
+    var angle = srand() * Math.PI * 2;
+    particles.push({
+      cx: SPAWN_MX + srand() * (W - SPAWN_MX * 2),
+      cy: SPAWN_MT + srand() * (H - SPAWN_MT - SPAWN_MB),
+      vx: Math.cos(angle) * (0.5 + srand() * 3) + (srand() - 0.5) * 0.5,
+      vy: -1 - srand() * 3,
+      size: SIZE_MIN + srand() * (SIZE_MAX - SIZE_MIN),
+      threshold: srand(),     // 激活阈值 (0-1)，按进度依次点燃
+      color: COLORS[Math.floor(srand() * COLORS.length)],
+      x: 0, y: 0, activated: false
+    });
+  }
+
+  /**
+   * 绘制星火粒子
+   * @param {number} p - 进度 0→1（覆盖从点燃到余烬的全过程）
+   */
+  function draw(p) {
+    ctx.clearRect(0, 0, W, H);
+
+    // 强度曲线：前半段全火力 → 后半段线性衰减到余烬
+    var intensity = p <= FADE_START
+      ? 1.0
+      : Math.max(FADE_FLOOR, 1.0 - (p - FADE_START) / (1.0 - FADE_START) * (1.0 - FADE_FLOOR));
+
+    for (var i = 0; i < particles.length; i++) {
+      var q = particles[i];
+
+      // 阈值激活：进度达到阈值时点燃
+      if (!q.activated && p >= q.threshold) {
+        q.activated = true;
+        q.x = q.cx;
+        q.y = q.cy;
+      }
+      if (!q.activated) continue;
+
+      // 粒子运动（受强度影响）
+      q.x += q.vx * intensity;
+      q.y += q.vy * intensity;
+
+      // 生命周期衰减
+      var life = Math.max(0, 1 - (p - q.threshold) * 1.2);
+      if (life > 0) {
+        ctx.globalAlpha = life * intensity;
+        ctx.fillStyle = q.color;
+        ctx.shadowColor = q.color;
+        ctx.shadowBlur = q.size * 3 * intensity;
+        ctx.beginPath();
+        ctx.arc(
+          q.x, q.y,
+          Math.max(0.5, q.size * life * (0.5 + intensity * 0.5)),
+          0, Math.PI * 2
+        );
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+
+  /* ── GSAP seek-driven 动画 ── */
+  var progress = { val: 0 };
+  tl.to(progress, {
+    val: 1,
+    duration: DURATION,
+    ease: 'none',
+    onUpdate: function() { draw(progress.val); }
+  }, startTime);
+})();
+</script>
