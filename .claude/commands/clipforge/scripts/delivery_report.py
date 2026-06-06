@@ -155,7 +155,7 @@ def main():
 - 无配乐版: final_no_bgm.mp4
 """
 
-    output_path = os.path.join(project_dir, 'douyin.md')
+    output_path = os.path.join(project_dir, 'delivery_report.md')
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(report)
 
