@@ -32,7 +32,7 @@ import sys
 NARR_MEAN_REF = -17.0  # loudnorm I=-16 标准化后的稳定均值
 
 # ── 均值层参数 ──
-MEAN_GAP_TARGET = 12.0  # BGM 有效均值比旁白均值低 12 dB（自然融合，不抢不弱）
+MEAN_GAP_TARGET = 9.0  # BGM 有效均值比旁白均值低 9 dB（自然融合，不抢不弱）
 
 # ── 峰值层参数 ──
 PEAK_GAP_MIN = 8.0  # BGM 有效峰值至少比旁白峰值低 8 dB

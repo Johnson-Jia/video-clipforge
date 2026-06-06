@@ -11,8 +11,8 @@
 #   bgm.wav (如需循环则覆盖)
 #   segment_durations.json (更新 meta.bgm_volume)
 #
-# 管线顺序: 验证清理 → 测量 → 校准 → 时长对齐
-# 测量在验证之后、校准之前进行，确保公式基于清理后的 BGM 特征计算。
+# 管线顺序: 验证清理 → 响度标准化 → 测量 → 校准 → 时长对齐
+# 响度标准化消除源文件差异，测量在标准化之后进行，确保公式基于统一的基准计算。
 
 set -euo pipefail
 
@@ -63,7 +63,14 @@ python "${SCRIPT_DIR}/bgm_validate.py" "$BGM_FILE"
 BGM_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
 echo "BGM 时长: ${BGM_DUR}s"
 
-# ── Step 3: 音量校准（基于清理后的 BGM 测量） ──
+# ── Step 2.5: BGM 响度标准化 ──
+echo "--- Step 2.5: BGM 响度标准化 ---"
+ffmpeg -y -i "$BGM_FILE" -af "loudnorm=I=-18:TP=-2" -c:a pcm_s16le -ar 44100 bgm_normalized.wav 2>/dev/null
+mv "$BGM_FILE" bgm_pre_norm.wav
+mv bgm_normalized.wav "$BGM_FILE"
+echo "OK: BGM 已标准化到 -18 LUFS, TP≤-2 dB（动态保留）"
+
+# ── Step 3: 音量校准（基于标准化后的 BGM 测量） ──
 echo "--- Step 3: 音量校准 ---"
 BGM_MEAN=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | grep mean_volume | grep -oP '[\-\d.]+(?= dB)')
 BGM_MAX=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')

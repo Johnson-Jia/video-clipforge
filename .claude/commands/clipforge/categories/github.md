@@ -58,9 +58,9 @@ delivery:
     | 泛流量标签 | #科技 | 获取泛流量触达 |
   comment_template: |
     评论区格式：
-    1. 项目英文名（每行一个）
-    2. "在 GitHub 搜项目名就能找到"
-    3. 不放完整链接
+    1. 项目英文名 + 一句话描述（每行一个）
+    2. 不放完整链接，不提搜索，不提平台名
+    3. 可附 owner/repo 路径（如 openpli/ruview）
 
 design:
   default_style: "暗色科技风"
@@ -367,9 +367,9 @@ true — GitHub 系列视频固定使用 YunjianNeural +25%，不需要查通用
 
 ```
 评论区格式：
-1. 项目英文名（每行一个）
-2. "在 GitHub 搜项目名就能找到"
-3. 不放完整链接
+1. 项目英文名 + 一句话描述（每行一个）
+2. 不放完整链接，不提搜索，不提平台名
+3. 可附 owner/repo 路径（如 openpli/ruview）
 ```
 
 ### cover_badge
