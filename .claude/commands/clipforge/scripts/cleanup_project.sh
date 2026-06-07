@@ -92,7 +92,7 @@ for f in narration_seg_*.txt narration_seg_*.mp3 narration_seg_*.srt \
          stage-handoff.json skills-lock.json webreader_checklist.json \
          cover_final.png cover_segment.mp4 narration.srt \
          cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts \
-         cover_clip.mp4; do
+         cover_clip.mp4 .cleaned; do
   safe_rm "$f"
 done
 [ "$DRY_RUN" = false ] && echo "  已删除中间产物文件"
@@ -106,7 +106,8 @@ safe_rm_rf "backup/"
 safe_rm_rf "lib/"
 safe_rm_rf "frames/"
 safe_rm_rf "segments/"
-[ "$DRY_RUN" = false ] && echo "  已删除 work-*/, .agents/, renders/, snapshots/, backup/, lib/, frames/, segments/"
+safe_rm_rf "raw_tts/"
+[ "$DRY_RUN" = false ] && echo "  已删除 work-*/, .agents/, renders/, snapshots/, backup/, lib/, frames/, segments/, raw_tts/"
 
 # 3. BGM 副本按条件删除
 if [ -f bgm.wav ]; then
