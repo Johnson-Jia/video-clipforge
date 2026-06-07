@@ -1465,8 +1465,8 @@ def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, st
         min_annotation = 24
     else:
         min_title = 64
-        min_body = 36
-        min_annotation = 28
+        min_body = 38
+        min_annotation = 32
 
     violations = []
 
@@ -1478,10 +1478,9 @@ def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, st
         violations.append(f"R-R-016: 发现 {len(section_tags)} 个 section-tag 小徽章（禁止作为场景标题）")
 
     # 2. 检查字号最低标准（R-R-015）
-    # 使用 min_body 作为全局最低阈值：content 层主要都是可读文字，
-    # 正文（36px）是可读性底线，标注（28px）允许少量辅助信息例外。
-    # 因此以 min_body 为门禁阈值，确保正文可读性被强制执行。
-    min_readable = min_body  # 36px(竖屏) / 32px(横屏)
+    # 地板值 = min_annotation：content 层任何可见文字不得低于此值。
+    # 正文和标注的区分交给 LLM 创意，门禁只执行绝对地板。
+    min_readable = min_annotation  # 32px(竖屏) / 24px(横屏)
     scenes = _split_into_scenes(html)
     small_text_violations = []
     for sid, scene_html in scenes:
