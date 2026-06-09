@@ -39,7 +39,7 @@ skill:
         reality: "raw edge-tts 的 max_volume 可能 >= -10dB 但采样率 24000Hz 暴露了真相。loudnorm 不是调音量，是标准化响度分布"
         trigger: "narration.mp3 采样率为 24000 Hz"
       - thought: "bgm_volume 写个常见值就行"
-        reality: "0.35 是 2026-06-01 事故的元凶。bgm_pipeline.sh 通过公式自动计算精确值（BGM 有效均值比旁白低 12 dB）"
+        reality: "手动设 bgm_volume 必导致音量失衡（HARD，gate: bgm_volume_set）。bgm_pipeline.sh 通过公式自动计算精确值（BGM 有效均值比旁白低 12 dB）"
         trigger: "试图手动设置 bgm_volume 而非运行 bgm_pipeline.sh"
     spirit_vs_letter:
       - rule_ref: "R-A-*"

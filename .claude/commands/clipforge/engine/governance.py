@@ -99,6 +99,9 @@ def produce_deltas_for_findings(
     dry_run: bool = True,
 ) -> list[dict]:
     """治理发现产出 Delta，并通过 shadow_validate 检验安全性。"""
+    from engine.lib.rule_parser import get_persistent_hit_counts
+    persistent_counts = get_persistent_hit_counts()
+
     deltas: list[dict] = []
 
     # 冗余规则 → DEPRECATED Delta
@@ -116,17 +119,16 @@ def produce_deltas_for_findings(
             # shadow 验证
             shadow = shadow_validate(delta, rules, traces or [])
             delta["_shadow"] = shadow
+            delta["requires_human_review"] = not shadow.get("safe", True)
             deltas.append(delta)
 
     # 膨胀警报中的零命中率规则 → DEPRECATED Delta
-    # 注意：hit_count 仅存在于进程内存（不写回 YAML），每次运行归零。
-    # 因此"零命中"= "本次运行中未被 inject"≠"历史上从未命中"。
-    # 这是有意设计：YAML 是人类维护的规则定义，不应被程序自动修改。
+    # 使用持久化命中率判断"零命中"（跨进程累积）
     for alert in findings.get("bloat", []):
         if alert.get("type") == "scope_bloat":
             zero_hit = [r for r in rules
                         if (r.scene or r.skill or r.scope.value) == alert["scope"]
-                        and r.hit_count == 0
+                        and persistent_counts.get(r.id, 0) == 0
                         and r.rule_class.value == "EXPERIENTIAL"]
             for r in zero_hit:
                 delta = create_delta(
@@ -138,6 +140,7 @@ def produce_deltas_for_findings(
                 )
                 shadow = shadow_validate(delta, rules, traces or [])
                 delta["_shadow"] = shadow
+                delta["requires_human_review"] = not shadow.get("safe", True)
                 deltas.append(delta)
 
     if not dry_run:
@@ -148,14 +151,18 @@ def produce_deltas_for_findings(
 
 
 def get_stats(rules: list[Rule]) -> dict:
-    """规则统计。hit_count 仅反映本次进程内的 inject 记录，不跨进程持久化。"""
+    """规则统计。命中率从持久化存储读取（跨进程累积）。"""
+    from engine.lib.rule_parser import get_persistent_hit_counts
+    persistent_counts = get_persistent_hit_counts()
+    for r in rules:
+        if r.id in persistent_counts:
+            r.hit_count = persistent_counts[r.id]
     return {
         "total": len(rules),
         "by_severity": dict(Counter(r.severity.value for r in rules)),
         "by_class": dict(Counter(r.rule_class.value for r in rules)),
         "by_scope": dict(Counter(r.scope.value for r in rules)),
         "zero_hit": [r.id for r in rules if r.hit_count == 0],
-        "note": "hit_count 仅反映本次运行，不跨进程持久化",
     }
 
 

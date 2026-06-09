@@ -1,0 +1,37 @@
+douyin:
+  5s_completion_low: 0.4
+  5s_completion_high: 0.44
+  completion_rate_sweet_low: 0.03
+  completion_rate_sweet_high: 0.05
+  plays_low: 3000
+  plays_high: 10000
+  save_rate_high: 0.02
+wechat_video:
+  share_rate_low: 0.02
+  share_rate_high: 0.04
+xiaohongshu:
+  save_to_like_ratio_high: 1.5
+bilibili:
+  bounce_3s_rate_high: 0.4
+  interaction_rate_low: 0.02
+success:
+  douyin:
+    key_metric: completion_5s_rate
+    high: 0.44
+    medium: 0.4
+  wechat_video:
+    key_metric: share_rate
+    high: 0.04
+    medium: 0.02
+  xiaohongshu:
+    key_metric: save_to_like_ratio
+    high: 1.5
+    medium: 1.0
+  bilibili:
+    key_metric: interaction_rate
+    high: 0.05
+    medium: 0.02
+calibration:
+  last_updated: '2026-06-08T07:58:10.558311+00:00'
+  sample_size: 41
+  auto_evolve_version: 1

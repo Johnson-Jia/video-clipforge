@@ -42,7 +42,7 @@
 ### 1.3 安全区 padding 必须存在且只设一次
 
 - 每个场景**必须有四方向安全区 padding**，按画布方向选择：
-  - 竖屏（1080×1920）：`padding: 180px 80px 220px 80px`（上 180px，右 80px，下 220px，左 80px）
+  - 竖屏（1080×1920）：`padding: 180px 90px 220px 90px`（上 180px，右 80px，下 220px，左 80px）
   - 横屏（1920×1080）：`padding: 60px 120px 60px 120px`（上 60px，右 120px，下 60px，左 120px）
 - **padding 只设在一层**，由场景使用的模式决定（见 §1.4b 分类）
 - 缺少 padding 会导致内容贴边缘或渲染塌陷；双重 padding 会导致内容偏左上、可用宽度仅 74%
@@ -57,14 +57,14 @@
 
 ### 1.4 安全边距规则
 
-**竖屏：** 左 80px / 右 80px 对称边距（兼容抖音/小红书/微信视频号三平台）
+**竖屏：** 左 90px / 右 90px 对称边距（兼容抖音/小红书/微信视频号三平台）
 **横屏：** 左 120px / 右 120px 对称边距
 
 - **禁止** `width: 100%` 的内容行没有水平 padding
 
 ### 1.4a 单层 padding 原则（铁律）
 
-- **全项目只允许一个层级设置安全区 padding**（竖屏 `180px 80px 220px 80px` / 横屏 `60px 120px 60px 120px`）
+- **全项目只允许一个层级设置安全区 padding**（竖屏 `180px 90px 220px 90px` / 横屏 `60px 120px 60px 120px`）
 - 禁止 `.scene-wrap` 和 `.phase`（或任何内层元素）同时设置 padding
 - **HARD，gate: double_padding**
 - **director_gate.py 会自动检测双重 padding，渲染前必须通过**
@@ -75,17 +75,17 @@
 
 **Phase 模式**（多视觉阶段场景，最常见）
 - `.scene-wrap` **不设 padding**
-- `.phase` 设置 `padding: 180px 80px 220px 80px`（竖屏）或 `60px 120px 60px 120px`（横屏）`; display:flex; flex-direction:column; justify-content:center`。横屏 `.phase` 加 `align-items:center` 确保子元素水平居中（子元素内容文字仍可左对齐，但整体容器居中）
+- `.phase` 设置 `padding: 180px 90px 220px 90px`（竖屏）或 `60px 120px 60px 120px`（横屏）`; display:flex; flex-direction:column; justify-content:center`。横屏 `.phase` 加 `align-items:center` 确保子元素水平居中（子元素内容文字仍可左对齐，但整体容器居中）
 - 结构：`.scene-wrap(无padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → `.phase(padding+flex居中)`
 
 **自带 padding 组件（full-page 型）**：`hero_card`、`project_full_card`
-- 组件自带 `padding: 180px 80px 220px 80px`（竖屏）或 `60px 120px 60px 120px`（横屏）
+- 组件自带 `padding: 180px 90px 220px 90px`（竖屏）或 `60px 120px 60px 120px`（横屏）
 - 外层 `.scene-wrap` **不设 padding**
 - 结构：`.scene-wrap(无padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(自带padding)
 
 **无 padding 组件（嵌入型）**：其余所有组件
 - 组件无外层 padding
-- `.scene-wrap` 设置 `padding: 180px 80px 220px 80px`（竖屏）或 `60px 120px 60px 120px`（横屏）
+- `.scene-wrap` 设置 `padding: 180px 90px 220px 90px`（竖屏）或 `60px 120px 60px 120px`（横屏）
 - 结构：`.scene-wrap(padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
 
 ### 1.5 渲染前移除所有非 index.html 的 composition 文件

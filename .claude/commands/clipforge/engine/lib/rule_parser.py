@@ -1,5 +1,6 @@
 """规则文件解析器 — 加载 YAML 规则文件和 Skill 声明。"""
 from __future__ import annotations
+import json
 import yaml
 from pathlib import Path
 from .models import (
@@ -11,6 +12,7 @@ from .models import (
 
 RULES_DIR = Path(__file__).parent.parent.parent / "rules"
 SKILLS_DIR = Path(__file__).parent.parent.parent / "skills"
+HIT_COUNTS_FILE = Path(__file__).parent.parent.parent / "hit_counts.json"
 
 
 def _resolve_scope(raw_scope: str) -> tuple[Scope, str | None]:
@@ -189,8 +191,24 @@ def load_all_skills(skills_dir: Path | None = None) -> dict[str, SkillDefinition
     return result
 
 
+def _load_hit_counts() -> dict[str, int]:
+    """从磁盘加载持久化的规则命中计数。"""
+    if HIT_COUNTS_FILE.exists():
+        try:
+            return json.loads(HIT_COUNTS_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return {}
+    return {}
+
+
+def _save_hit_counts(counts: dict[str, int]) -> None:
+    """将规则命中计数持久化到磁盘。"""
+    HIT_COUNTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    HIT_COUNTS_FILE.write_text(json.dumps(counts, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def update_hit_counts(scope: str, rule_ids: list[str], rules_db: dict = None):
-    """更新规则命中计数。gate 通过时调用，记录哪些规则被 inject 了。
+    """更新规则命中计数并持久化。gate 通过时调用。
 
     Args:
         scope: 作用域标识（如 "global"），预留扩展用。
@@ -198,10 +216,17 @@ def update_hit_counts(scope: str, rule_ids: list[str], rules_db: dict = None):
         rules_db: 规则字典 {rule_id: Rule}。为 None 时从磁盘重新加载。
     """
     if rules_db is None:
-        # 无缓存时重新加载并构建索引
         all_rules = load_all_rules()
         rules_db = {r.id: r for r in all_rules}
 
+    counts = _load_hit_counts()
     for rule_id in rule_ids:
         if rule_id in rules_db:
             rules_db[rule_id].hit_count += 1
+        counts[rule_id] = counts.get(rule_id, 0) + 1
+    _save_hit_counts(counts)
+
+
+def get_persistent_hit_counts() -> dict[str, int]:
+    """获取持久化的规则命中计数（跨进程累积）。"""
+    return _load_hit_counts()

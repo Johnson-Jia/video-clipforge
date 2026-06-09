@@ -207,21 +207,26 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 
 ### 组件装配流程
 
-1. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
-2. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
-3. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
-4. **读取 `segment_durations.json`** — 动画断点强制使用 actual_duration（非 estimated_duration）：
+1. **参照模板**（HARD）:
+   写 HTML 前，必须参照一个已验证的 HTML 模板。按以下优先级选择：
+   - **首选**：同分类最近一个已成功渲染的项目的 `index.html`（`output.mp4` 存在且 > 500KB）
+   - **备选**：`templates/golden-portrait.html`（首次运行或无历史项目时使用）
+   - 以参照模板的 DOM 结构和 GSAP 模式为骨架，只替换内容和配色。禁止凭空构思新的 DOM 层级结构或 GSAP 初始化模式。
+2. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
+3. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
+4. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
+5. **读取 `segment_durations.json`** — 动画断点强制使用 actual_duration（非 estimated_duration）：
    - 用 `actual_duration` 计算 BP 断点数组（见 `visual-phasing.md`）
    - GSAP timeline 中所有时间偏移量基于 BP 断点，不使用任何预估时长
    - `data-duration` 属性直接使用 `actual_duration` 值
-5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4a 的匹配流程生成
-6. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
+6. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4a 的匹配流程生成
+7. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
    - 对照反面清单（10 条红线），确保不踩雷
    - 用 CSS 特效参考库的工具实现你的构思
    - **不查表、不套公式、每个场景独立思考**
-6a. **特效组件匹配/创建**（每个场景独立执行）：
+7a. **特效组件匹配/创建**（每个场景独立执行）：
     a) 读取 `narration_segments.json` 该场景的 `visual_intent`
     b) 根据内容情绪和视觉意图，在 `components/registry.yaml` 中搜索匹配的 fx 组件
        - 按 `emotion_range` 和 `tags` 粗筛
@@ -236,7 +241,7 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
        - 创建 `components/fx/<name>.html`，包含 `@ComponentMeta` 头
        - 更新 `components/registry.yaml` 添加元数据
        - 向用户展示新组件 HTML 样例，由用户决定是否入库
-7. **装配 HTML** — 按 HyperFrames composition 结构组装
+8. **装配 HTML** — 按 HyperFrames composition 结构组装
 
 ### 场景 → 组件参考
 
@@ -326,7 +331,7 @@ python3 .claude/commands/clipforge/scripts/director_gate.py .
   {"slot_id": "s1-bg-html", "content": "<div class='nebula'>...</div>"},
   {"slot_id": "s1-fx-html", "content": "<canvas id='particles-s1'>...</canvas>"},
   {"slot_id": "s1-content-html", "content": "<h1 style='font-size:100px;...'>震撼标题</h1>"},
-  {"slot_id": "s1-gsap", "content": "tl.from('#s1 h1', {scale:0.85, opacity:0, duration:0.15, ease:'power3.out'}, 0);"}
+  {"slot_id": "s1-gsap", "content": "tl.from('#s1 h1', {scale:0.85, duration:0.15, ease:'power3.out'}, 0);"}
 ]
 ```
 
@@ -339,7 +344,7 @@ python3 .claude/commands/clipforge/scripts/director_gate.py .
 <!-- END_SLOT:s1-bg-html -->
 
 <!-- CREATIVE_SLOT:s1-gsap -->
-tl.from('#s1 h1', {scale: 0.85, opacity: 0, duration: 0.15, ease: 'power3.out'}, 0);
+tl.from('#s1 h1', {scale: 0.85, duration: 0.15, ease: 'power3.out'}, 0);
 <!-- END_SLOT:s1-gsap -->
 ```
 
@@ -451,14 +456,45 @@ tl.from('#s1 h1', {scale: 0.85, opacity: 0, duration: 0.15, ease: 'power3.out'},
 8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**（完整代码模板见 `shared/render-safety.md` §2）
    - **HARD，gate: hyperframes_api_valid**
    - **门禁自动校验**：`gate.py` 的 `hf_api_present` 检查器会扫描 index.html 中的 `window.__hf` 声明、`duration` 字段和 `seek` 函数
+9. **GSAP 初始化模板（唯一允许的写法，R-S6-026 HARD，gate: gsap_pattern）**:
+
+```html
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+window.__timelines = {};
+var tl = gsap.timeline({ paused: true });
+
+// 内容入场: tl.from() 只用 scale/x/y，禁止 opacity
+tl.from('#s1-title', {scale:0.85, duration:0.15, ease:'power3.out'}, 0);
+
+// FX 动画: tl.to() 允许 repeat:-1 + yoyo:true，允许 opacity
+tl.to('#s1-ring', {scale:1.15, duration:3, ease:'sine.inOut', repeat:-1, yoyo:true}, 0);
+
+window.__hf = {
+  duration: TOTAL_DURATION,
+  seek: function(t) { tl.time(t, false); }
+};
+window.__timelines["main"] = tl;
+</script>
+```
+
+禁止模式（R-S6-026 HARD）:
+  - `DOMContentLoaded` / `addEventListener('DOMContentLoaded')` 包裹 GSAP 代码
+  - `for (var key in window.__timelines)` 循环 seek
+  - `tl.fromTo()` 任何使用场景（用 `tl.from()` + `tl.to()` 替代）
+  - `tl.from()` / `tl.to()` 中对**内容元素**使用 `opacity` 属性（`tl.from({opacity:0})` 导致 HyperFrames seek 时内容不可见）
+  - **fx 元素的 `tl.to({opacity:..., repeat:-1, yoyo:true})` 不受此限制**
 
 ### CSS 规则
 
 > **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
-9. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.scene-wrap` 或组件的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
-10. **⛔ 禁止在 `.grad-text` 元素上使用 `background:` 简写**（R-S6-021 HARD）。CSS `background` 简写会重置 `background-clip` 回 `border-box`，导致 `.grad-text` 的 `background-clip:text` 失效，渐变变成纯色背景块、`color:transparent` 隐藏文字——只看到色块看不到字。**正确：`background-image:linear-gradient(...)`，错误：`background:linear-gradient(...)`**。竖屏横屏均适用。
-11. **⛔ `background-clip:text` 渐变文字禁止搭配黑色 `text-shadow`**（R-S6-023 HARD）。`text-shadow: rgba(0,0,0,...)` 叠加在透明填充的渐变文字上会产生黑色光晕，压低文字亮度。渐变文字应使用同色系发光（如暖渐变用 `rgba(249,168,37,0.5)`，冷渐变用 `rgba(0,212,255,0.5)`）。纯色文字的黑色 `text-shadow` 不受此限制。
+10. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.phase` 的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
+11. **DOM 三层直系铁律**（R-S6-025 HARD，gate: no_scene_wrap）:
+   `.clip` 的直接子元素必须且仅包含 `.layer-bg` + `.layer-fx` + `.layer-content`。
+   禁止任何中间包裹层（`scene-wrap`、额外 `div` 容器等）。内容容器使用 `.phase`（`position:absolute; inset:0; padding:安全区; display:flex; flex-direction:column; justify-content:center; opacity:1`）。
+12. **⛔ 禁止在 `.grad-text` 元素上使用 `background:` 简写**（R-S6-021 HARD）。CSS `background` 简写会重置 `background-clip` 回 `border-box`，导致 `.grad-text` 的 `background-clip:text` 失效，渐变变成纯色背景块、`color:transparent` 隐藏文字——只看到色块看不到字。**正确：`background-image:linear-gradient(...)`，错误：`background:linear-gradient(...)`**。竖屏横屏均适用。
+13. **⛔ `background-clip:text` 渐变文字禁止搭配黑色 `text-shadow`**（R-S6-023 HARD）。`text-shadow: rgba(0,0,0,...)` 叠加在透明填充的渐变文字上会产生黑色光晕，压低文字亮度。渐变文字应使用同色系发光（如暖渐变用 `rgba(249,168,37,0.5)`，冷渐变用 `rgba(0,212,255,0.5)`）。纯色文字的黑色 `text-shadow` 不受此限制。
 
 ### 视觉设计规则（必须遵守）
 
@@ -518,24 +554,24 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 ### 动画规则
 
-10. 入场动画时长 **0.3-0.7 秒**（"快入+静止"模式）
-11. stagger 间隔 **0.2-0.3 秒**
-12. easing: `power3.out` 用于入场
-13. 场景间由框架 transitions 处理，不手动 exit
-14. **动画设计原则：** 每个场景的动画在 1 秒内完成入场，之后保持最终状态静止直到 `data-duration` 结束。
-15. **hook 场景 A/V 同步铁律：** hook（s1）的首个文字动画必须从 t=0 启动，duration ≤ 0.15s，用 `scale` 代替 `y` 位移（缩放冲击感更强）。示例：`tl.from('#s1 h1', {scale:0.85, opacity:0, duration:0.15, ease:'power3.out'}, 0)`。副标题在 0.15s 启动，0.2s 内完成。确保旁白发声（t≈0.1s）时文字已可见，消除"先声后画"的脱节感。
-15. **fx 动画密度**：每个场景的 `.layer-fx` 中，每个特效元素至少有 1 个 GSAP 动画调用。不限动画类型——脉冲、漂浮、旋转、闪烁、扫描、缩放、位移动画都可以。纯静态 fx 元素（div 在 timeline 中无 GSAP 目标）视为违规。
+14. 入场动画时长 **0.3-0.7 秒**（"快入+静止"模式）
+15. stagger 间隔 **0.2-0.3 秒**
+16. easing: `power3.out` 用于入场
+17. 场景间由框架 transitions 处理，不手动 exit
+18. **动画设计原则：** 每个场景的动画在 1 秒内完成入场，之后保持最终状态静止直到 `data-duration` 结束。
+19. **hook 场景 A/V 同步铁律：** hook（s1）的首个文字动画必须从 t=0 启动，duration ≤ 0.15s，用 `scale` 代替 `y` 位移（缩放冲击感更强）。示例：`tl.from('#s1 h1', {scale:0.85, duration:0.15, ease:'power3.out'}, 0)`。副标题在 0.15s 启动，0.2s 内完成。确保旁白发声（t≈0.1s）时文字已可见，消除"先声后画"的脱节感。
+20. **fx 动画密度**：每个场景的 `.layer-fx` 中，每个特效元素至少有 1 个 GSAP 动画调用。不限动画类型——脉冲、漂浮、旋转、闪烁、扫描、缩放、位移动画都可以。纯静态 fx 元素（div 在 timeline 中无 GSAP 目标）视为违规。
 
 ### 字体规则
 
-15. 优先使用 HyperFrames 内置字体映射
-16. **中文渲染**：先渲染一帧验证，异常时用 `font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif`
+21. 优先使用 HyperFrames 内置字体映射
+22. **中文渲染**：先渲染一帧验证，异常时用 `font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif`
 
 ### 渲染规则
 
-17. 渲染传目录路径（`.`），不传文件路径
-18. 渲染前确保 `lint` 通过
-19. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
+23. 渲染传目录路径（`.`），不传文件路径
+24. 渲染前确保 `lint` 通过
+25. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
 ## 6.5 画布方向
 
@@ -572,7 +608,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 > `.phase` 已内置 `flex-direction:column;justify-content:center`，内容自动垂直居中，无需手动添加。
 
-**禁止在 `.scene-wrap` 上加 flex 居中**：Phase 模式下 `.phase` 是 `position:absolute`，不参与 `.scene-wrap` 的 flex 布局，在 scene-wrap 上加 flex 无效。
+**禁止在内容容器外加 flex 居中**：`.phase` 已内置 `display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中。在 `.clip` 或其他外层加 flex 无效。
 
 **禁止紧贴顶部**：不能用 `top: 80px` 等小值。场景内容容器禁止 `position: absolute` + 小 top 值。
 
@@ -612,7 +648,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 
 ### 平台安全区域
 
-**竖屏安全区 padding：** `180px 80px 220px 80px`（完整平台安全区域表见 `render-safety.md` §1.3）
+**竖屏安全区 padding：** `180px 90px 220px 90px`（完整平台安全区域表见 `render-safety.md` §1.3）
 
 **横屏（1920×1080）：**
 - 顶部危险区：上 60px
@@ -631,11 +667,15 @@ cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 # 1. 确认音频文件存在
 ls -la narration.mp3 bgm.wav
 
-# 2. 导演门禁 — HTML 设计意图验证（Layer 1）
+# 2. 渲染前依赖检查（引用文件存在性 + 根属性 + cover.html 冲突）
+python .claude/commands/clipforge/scripts/pre_render_check.py .
+# 未通过则修复后重新执行，不得跳过
+
+# 3. 导演门禁 — HTML 设计意图验证（Layer 1）
 python3 .claude/commands/clipforge/scripts/director_gate.py .
 # 未通过则修复 HTML 后重新执行，不得跳过
 
-# 3. 移除所有非 index.html 的 composition 文件
+# 4. 移除所有非 index.html 的 composition 文件
 for f in cover.html index_with_bgm.html cover.html.bak; do
   [ -f "$f" ] && mv "$f" "$f.renderbak"
 done

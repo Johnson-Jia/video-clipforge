@@ -30,10 +30,10 @@ skill:
         reality: "封面是第二眼看到的内容，必须严格遵循封面模板"
         trigger: "试图简化封面设计"
       - thought: "assemble_final.sh 太简单了，我自己用 ffmpeg 拼更灵活"
-        reality: "自行拼接曾导致 3 秒封面 + A/V 全程脱节（2026-05-31）和 6 分钟时长膨胀（2026-05-30）等事故。assemble_final.sh 用 1 帧 TS concat 是唯一正确方式，stage7-delivery.md §7.3 明确禁止绕过"
+        reality: "自行拼接必导致 A/V 脱节或时长膨胀（HARD，gate: final_duration_close_to_output）。assemble_final.sh 用 1 帧 TS concat 是唯一正确方式"
         trigger: "试图绕过 assemble_final.sh 自行拼接视频"
       - thought: "封面多放几秒让观众看清楚"
-        reality: "封面只应占 1 帧（~0.033s），多出的无音频画面会导致旁白全程领先画面，A/V 全程不同步（2026-05-31 事故：3 秒封面 → 全程 3 秒偏移）"
+        reality: "封面只应占 1 帧（~0.033s），多帧封面导致 A/V 全程偏移（HARD，gate: final_duration_close_to_output）"
         trigger: "试图创建多帧或多秒的封面视频"
     spirit_vs_letter:
       - rule_ref: "R-S7-*"

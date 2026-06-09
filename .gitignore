@@ -42,3 +42,7 @@ __pycache__/
 
 # 引擎运行时 Delta（规则增量变更产物）
 .claude/commands/clipforge/deltas/
+# 引擎运行时命中率持久化
+.claude/commands/clipforge/hit_counts.json
+
+.local

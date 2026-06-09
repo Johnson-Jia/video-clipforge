@@ -23,7 +23,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # 安全区 padding（单层 padding 原则）— 按方向选择
-SAFE_PADDING_PORTRAIT = '180px 80px 220px 80px'
+SAFE_PADDING_PORTRAIT = '180px 90px 220px 90px'
 SAFE_PADDING_LANDSCAPE = '60px 120px 60px 120px'
 
 # 画布尺寸

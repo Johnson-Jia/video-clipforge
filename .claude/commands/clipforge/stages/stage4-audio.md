@@ -71,8 +71,17 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
 **阶段 A — AI 选曲**（需人工决策）：
 
 1. 根据 `design.md` 的 `music_mood` 推导搜索策略
-2. 从来源优先级获取 BGM 文件，保存为 `bgm.wav` 到项目目录
-3. 截取精华片段（跳过前奏，取有节奏的段落）
+2. **查询使用历史，排除最近 5 天用过的 BGM**：
+   ```bash
+   cd .claude/commands/clipforge && python scripts/bgm_history.py --recent 5
+   ```
+   输出的文件名列表为已使用，选曲时必须排除。从剩余素材中选取风格匹配的 BGM。
+3. 从来源优先级获取 BGM 文件，保存为 `bgm.wav` 到项目目录
+4. 截取精华片段（跳过前奏，取有节奏的段落）
+5. **记录使用**（bgm_pipeline.sh 执行成功后）：
+   ```bash
+   cd .claude/commands/clipforge && python scripts/bgm_history.py --record --bgm "<选中的BGM文件名>" --project "<项目名>"
+   ```
 
 **阶段 B — BGM 管线**（选曲完成后全自动）：
 

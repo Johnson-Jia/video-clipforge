@@ -2,7 +2,7 @@
 from __future__ import annotations
 import re
 import yaml
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from .rule_parser import parse_rule, load_rules_from_file
 from .models import Rule, Severity, RuleClass
@@ -21,7 +21,8 @@ def create_delta(
     reason: str | None = None,
     approved_by: str | None = None,
 ) -> dict:
-    delta_id = f"D-{datetime.now().strftime('%Y%m%d')}-{target_rule_id or 'NEW'}"
+    now = datetime.now(timezone.utc)
+    delta_id = f"D-{now.strftime('%Y%m%d')}-{target_rule_id or 'NEW'}"
     delta = {
         "delta": {
             "id": delta_id,
@@ -30,7 +31,7 @@ def create_delta(
             "source": source,
             "confidence": confidence,
             "approved_by": approved_by,
-            "created_at": datetime.now().isoformat(),
+            "created_at": now.isoformat(),
         }
     }
     if operation == "ADDED" and new_rule_raw:
@@ -159,3 +160,34 @@ def shadow_validate(delta: dict, rules: list[Rule], traces: list[dict]) -> dict:
         "delta_id": delta_id,
         "requires_human_review": False,
     }
+
+
+def cleanup_expired_deltas(
+    max_age_days: int = 90,
+    deltas_dir: Path | None = None,
+) -> list[str]:
+    """清理过期 Delta 文件（默认 90 天）。返回被删除的文件名列表。"""
+    deltas_dir = deltas_dir or DELTAS_DIR
+    if not deltas_dir.exists():
+        return []
+    removed: list[str] = []
+    for fp in deltas_dir.glob("*.yaml"):
+        with open(fp, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if not data:
+            fp.unlink()
+            removed.append(fp.name)
+            continue
+        dd = data.get("delta", data)
+        created = dd.get("created_at", "")
+        if not created:
+            continue
+        try:
+            created_dt = datetime.fromisoformat(created)
+            age = (datetime.now(timezone.utc) - created_dt).days
+            if age > max_age_days:
+                fp.unlink()
+                removed.append(fp.name)
+        except (ValueError, TypeError):
+            continue
+    return removed

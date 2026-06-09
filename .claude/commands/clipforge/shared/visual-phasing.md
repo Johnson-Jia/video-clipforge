@@ -39,7 +39,7 @@
 ```
 
 **关键规则：**
-- 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，自带 `padding: 180px 80px 220px 80px; display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中（不需要手动加 inline flex）
+- 每个 `.phase` 用 `position: absolute; inset: 0` 全屏覆盖，自带 `padding: 180px 90px 220px 90px; display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中（不需要手动加 inline flex）
 - **scene-wrap 不设 padding** — padding 统一由 `.phase` 提供（单层 padding 原则）
 - **禁止** scene-wrap 和 .phase 同时设置 padding（单层 padding 原则，见 render-safety §1.3）
 - Phase 1 是 CSS 默认可见（opacity:1），遵守 `shared/render-safety.md` §1.1

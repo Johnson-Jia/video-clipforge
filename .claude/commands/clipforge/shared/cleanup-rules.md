@@ -65,6 +65,7 @@
 | `douyin.md` | 抖音发布文案 | 核心产出物 |
 | `score_report.json` | 机器评分报告 | Stage 8 反馈校准输入 |
 | `content.md` | 内容摘要（如有） | 重新理解项目内容 |
+| `content_summary.md` | 内容摘要备选名 | 同 content.md |
 | `cover_params.json` | 封面生成参数 | 换配色/内容时重生成封面需要 |
 
 ### 文章项目保留清单
@@ -101,15 +102,21 @@ loudnorm_stats.json
 concat.txt
 concat_new.txt
 silence_*.mp3           # 电影模式静音填充
+bgm_orig.wav            # BGM 管线备份（标准化前原始文件）
+bgm_pre_norm.wav        # BGM 管线备份（标准化前备份）
 
-# ffmpeg 封面帧中间产物（Stage 7 assemble_final.sh）
+# ffmpeg 合成中间产物
+output_silent.mp4       # 无音频版本（合成中间步骤）
+output_with_audio.mp4   # 含音频版本（合成中间步骤）
 cover_1frame.mp4        # 1帧封面视频
 cover_1frame_audio.mp4  # 含静音音轨的1帧封面
 cover.ts                # TS 格式封面
 output.ts               # TS 格式输出
+cover_segment.mp4       # 封面片段
+cover_clip.mp4          # 封面剪辑
+cover_final.png         # 封面中间版本
 
 # HyperFrames 工作产物
-.hyperframes/
 hyperframes.json
 frame_check.png
 
@@ -121,6 +128,15 @@ clips_16x9/             # 提取的单段片段（可从源视频重新提取）
 
 # 场景拆解（信息已在 narration_segments.json 和 index.html 中）
 scenes.yaml
+
+# 流程控制文件
+stage-handoff.json
+skills-lock.json
+webreader_checklist.json
+narration.srt
+
+# 清理标记（清理完成后重新生成）
+.cleaned
 ```
 
 ### 必须保留（封面重生成需要）
@@ -143,6 +159,10 @@ renders/                # HyperFrames 历史渲染产物（带时间戳的多次
 snapshots/              # HyperFrames 渲染前 HTML 预览截图（0%/25%/50%/75%/100%）
 backup/                 # 渲染过程备份的旧版 HTML（骨架、早期 index、cover）
 lib/                    # HyperFrames 渲染时下载的本地 JS 库（gsap.min.js 等）
+frames/                 # 帧分析/提取临时帧
+frames_check/           # 帧检查临时帧
+segments/               # 音频分段临时目录
+raw_tts/                # TTS 原始输出（合并前）
 ```
 
 ### 按条件删除
@@ -151,7 +171,6 @@ lib/                    # HyperFrames 渲染时下载的本地 JS 库（gsap.min
 |-----------|---------|------|
 | `bgm.wav` | BGM 来自 `workspace/bgm/` 素材库 | 项目目录的副本，素材库已有原始文件 |
 | `assets/` | 素材全部来自模板库/搜索结果 | 可重新搜索/生成；如是 AI 定制图片则保留 |
-| `narration.srt` | 确认不再需要字幕文件 | 可从 narration_segments 重新生成 |
 | `movie_audio.wav` | 电影模式交付后 | 可从 clips 重新构建 |
 
 ## §7 执行脚本

@@ -90,14 +90,31 @@ def generate_injection(
                     skill_rules.extend([r for r in rules if r.id == rref])
         rules = merge_rules(skill_rules)
 
-    # 应用高置信度 Delta（无需人工审核）
+    # 应用高置信度 Delta（无需人工审核 + 7 天观察期已过）
+    OBSERVATION_DAYS = 7
+    from datetime import datetime as _dt, timezone as _tz
     try:
         deltas = load_deltas()
-        auto_deltas = [
-            d for d in deltas
-            if d.get("delta", d).get("confidence", 0) >= 0.70
-            and not d.get("delta", d).get("requires_human_review", True)
-        ]
+        auto_deltas = []
+        for d in deltas:
+            dd = d.get("delta", d)
+            if dd.get("confidence", 0) < 0.70:
+                continue
+            # requires_human_review 可能在外层（attribution 写法）或内层（手动设置）
+            needs_review = d.get("requires_human_review", dd.get("requires_human_review", True))
+            if needs_review:
+                continue
+            # 7 天观察期：Delta 创建时间距今不足 7 天时不生效
+            created = dd.get("created_at", "")
+            if created:
+                try:
+                    created_dt = _dt.fromisoformat(created)
+                    age_days = (_dt.now(_tz.utc) - created_dt).days
+                    if age_days < OBSERVATION_DAYS:
+                        continue
+                except (ValueError, TypeError):
+                    continue  # 日期解析失败 → 不自动应用
+            auto_deltas.append(d)
         for delta in auto_deltas:
             rules = apply_delta_to_rules(rules, delta)
     except Exception:

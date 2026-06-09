@@ -28,7 +28,7 @@ def _auto_rewrite(pattern: str, rule_type: str) -> str:
     if "HTML 实体" in pattern or "&#9733;" in pattern:
         return "使用 Unicode 字符直接输入（★ 而非 &#9733;）"
     if "padding" in pattern and "双重" in pattern:
-        return "安全区 padding 只设一层（180px 80px 220px 80px），scene-wrap 或 .phase 二选一"
+        return "安全区 padding 只设一层（180px 90px 220px 90px），scene-wrap 或 .phase 二选一"
     if "均分" in pattern or "gap" in pattern:
         return "Phase 断点按旁白话题转换对齐，用字数比例换算时间戳"
     if "预衰减" in pattern or "gain" in pattern or "volume 滤镜" in pattern:

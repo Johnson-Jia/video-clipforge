@@ -28,6 +28,7 @@ def record_trace(
     performance: dict | None = None,
     traces_dir: Path | None = None,
     category: str | None = None,
+    rigor: str | None = None,
 ) -> Path:
     traces_dir = traces_dir or TRACES_DIR
     traces_dir.mkdir(parents=True, exist_ok=True)
@@ -35,6 +36,15 @@ def record_trace(
     trace_id = f"T-{ts}-{skill_id}"
 
     exec_data = execution or {}
+
+    # Rigor 调制（架构 §6.0）：
+    # - LITE: 仅记录 result.status + gate_report（SUMMARY）
+    # - STANDARD: 可降级为 SUMMARY
+    # - STRICT: 完整采集（FULL）
+    if rigor == "LITE":
+        exec_data = {}
+        context = None
+
     trace = {
         "id": trace_id,
         "skill_id": skill_id,
@@ -145,6 +155,7 @@ def main():
     rec.add_argument("--gate-report", default=None)
     rec.add_argument("--execution", default=None, help="JSON: {steps, path_switches, token_usage}")
     rec.add_argument("--performance", default=None, help="JSON: {platform, plays, ...}")
+    rec.add_argument("--rigor", default=None, choices=["LITE", "STANDARD", "STRICT"])
 
     q = sub.add_parser("query")
     q.add_argument("--skill-id", default=None)
@@ -160,7 +171,7 @@ def main():
         gate = json.loads(args.gate_report) if args.gate_report else None
         exec_data = json.loads(args.execution) if args.execution else None
         perf = json.loads(args.performance) if args.performance else None
-        path = record_trace(args.skill_id, args.project_dir, args.result, gate, exec_data, performance=perf)
+        path = record_trace(args.skill_id, args.project_dir, args.result, gate, exec_data, performance=perf, rigor=args.rigor)
         print(json.dumps({"saved": str(path)}))
     elif args.command == "query":
         traces = query_traces(args.skill_id, args.last, has_performance=args.has_performance)

@@ -1,16 +1,15 @@
 skill:
   meta:
     id: "skill.clipforge.stage1-content"
-    version: "1.2.0"
+    version: "1.3.0"
     type: EXECUTIVE
     tags: ["content", "data"]
     rigor: STANDARD
   intent:
     objective: "视频内容素材就绪，数据来源已交叉验证"
     criteria:
-      - "content_ready.txt 存在且非空"
+      - "content.md 存在且非空（含结构化内容摘要）"
       - "数据来源已交叉验证"
-      - "content_summary.md 包含结构化摘要"
   boundary:
     rules:
       - ref: "R-G-*"
@@ -33,7 +32,7 @@ skill:
     hard:
       - gate: file_exists
         params:
-          files: ["content_ready.txt"]
+          files: ["content.md"]
     soft: []
     max_retries: 2
   trace:

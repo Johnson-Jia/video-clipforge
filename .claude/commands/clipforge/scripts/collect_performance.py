@@ -483,6 +483,54 @@ def build_project_index(workspace_root: Path) -> list[dict]:
     return projects
 
 
+def _build_date_project_index(projects: list[dict]) -> dict[str, list[dict]]:
+    """构建日期 → 项目索引，供空标题匹配使用。"""
+    by_date: dict[str, list[dict]] = {}
+    for p in projects:
+        dp = p.get("date_path", "")
+        if dp:
+            by_date.setdefault(dp, []).append(p)
+    return by_date
+
+
+def _build_date_record_ranks(records: list[dict], platform: str) -> dict[str, list[tuple[int, dict]]]:
+    """按日期对同平台记录按播放量排名，返回 {date: [(rank, record), ...]}。"""
+    by_date: dict[str, list[dict]] = {}
+    for r in records:
+        if r.get("platform") != platform or not r.get("published_at"):
+            continue
+        dp = r["published_at"][:10]
+        by_date.setdefault(dp, []).append(r)
+    ranks: dict[str, list[tuple[int, dict]]] = {}
+    for dp, recs in by_date.items():
+        recs.sort(key=lambda x: x.get("plays", 0), reverse=True)
+        ranks[dp] = [(i + 1, r) for i, r in enumerate(recs)]
+    return ranks
+
+
+def _match_empty_title(
+    record: dict,
+    date_projects_index: dict[str, list[dict]],
+    douyin_date_ranks: dict[str, list[tuple[int, dict]]],
+) -> tuple[dict | None, float, float]:
+    """空标题记录的日期匹配。
+
+    策略：同日唯一项目直接匹配；多项目无法消歧则跳过（宁缺毋误）。
+    """
+    rec_date = record.get("published_at", "")[:10]
+    dp = rec_date.replace("-", "/")
+    candidates = date_projects_index.get(dp, [])
+    if not candidates:
+        return None, 0.0, 0.0
+
+    # 同日唯一项目 → 高置信匹配
+    if len(candidates) == 1:
+        return candidates[0], 0.55, 0.0
+
+    # 多项目：无标题无法消歧，跳过
+    return None, 0.0, 0.0
+
+
 def match_records_to_projects(
     records: list[dict],
     projects: list[dict],
@@ -493,8 +541,12 @@ def match_records_to_projects(
       1. 标题相似度 — 取所有文案标题/narration首行的最佳匹配 (权重 0.5)
       2. 日期精确匹配 (权重 0.3)
       3. 关键词重叠 (权重 0.2)
+      4. 空标题时：日期+排名匹配（独立路径）
     """
     matches = []
+    # 预构建索引（空标题匹配用）
+    date_project_idx = _build_date_project_index(projects)
+    xhs_date_ranks = _build_date_record_ranks(records, "xiaohongshu")
 
     for record in records:
         best_project = None
@@ -504,6 +556,20 @@ def match_records_to_projects(
         rec_title = record.get("title", "")
         rec_platform = record.get("platform", "")
         rec_date = record.get("published_at", "")
+
+        # 空标题快速路径：日期+排名匹配
+        if not rec_title.strip():
+            proj, score, second = _match_empty_title(
+                record, date_project_idx, xhs_date_ranks,
+            )
+            matched = proj is not None and score >= 0.40 and (score - second >= 0.10 or score >= 0.55)
+            matches.append({
+                "record": record,
+                "project": proj if matched else None,
+                "score": round(score, 3),
+                "matched": matched,
+            })
+            continue
 
         # 从发布日期提取 YYYY/MM/DD
         date_parts = None
@@ -633,6 +699,7 @@ def backfill_matches(
     for proj_dir_str, group in by_project.items():
         proj_dir = Path(proj_dir_str)
         platforms = {}
+        new_snapshots = []
 
         for m in group:
             rec = m["record"]
@@ -640,18 +707,46 @@ def backfill_matches(
             # 清理内部字段
             perf = {k: v for k, v in rec.items() if not k.startswith("_") and v is not None}
             platforms[platform] = perf
+            # 构建快照
+            snapshot_fields = {"plays", "likes", "comments", "shares", "saves",
+                               "completion_5s_rate", "completion_rate", "cover_ctr",
+                               "share_rate", "like_rate", "save_rate",
+                               "followers_gained", "avg_watch_duration"}
+            snap = {"platform": platform, "source_date": rec.get("_data_date", "")}
+            for f in snapshot_fields:
+                if f in perf:
+                    snap[f] = perf[f]
+            new_snapshots.append(snap)
 
         if not platforms:
             continue
 
-        # 写入 performance.json
+        # 合并历史：读取已有 performance.json，保留 snapshots
+        perf_path = proj_dir / "performance.json"
+        existing_snapshots = []
+        if perf_path.exists():
+            try:
+                old = json.loads(perf_path.read_text(encoding="utf-8"))
+                existing_snapshots = old.get("snapshots", [])
+            except Exception:
+                pass
+
+        # 去重：同 source_date + platform 的旧快照被新数据替换
+        new_keys = {(s["platform"], s["source_date"]) for s in new_snapshots}
+        merged = [s for s in existing_snapshots
+                  if (s.get("platform"), s.get("source_date")) not in new_keys]
+        merged.extend(new_snapshots)
+        # 按时间排序
+        merged.sort(key=lambda s: s.get("source_date", ""))
+
+        # 写入 performance.json（保留历史快照）
         perf_data = {
             "project": str(proj_dir.relative_to(workspace_root)),
             "collected_at": datetime.now(timezone.utc).isoformat(),
             "data_sources": list({m["record"]["_data_date"] for m in group}),
             "platforms": platforms,
+            "snapshots": merged,
         }
-        perf_path = proj_dir / "performance.json"
         perf_path.write_text(json.dumps(perf_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
         # 回填到 trace

@@ -73,6 +73,14 @@ class GateType(str, Enum):
     no_competitor_attack = "no_competitor_attack"
     no_search_cta = "no_search_cta"
     gradient_text_no_dark_shadow = "gradient_text_no_dark_shadow"
+    no_scene_wrap = "no_scene_wrap"
+    gsap_pattern = "gsap_pattern"
+    no_global_text_shadow = "no_global_text_shadow"
+    pre_render_deps = "pre_render_deps"
+    html_structure_valid = "html_structure_valid"
+    output_media_valid = "output_media_valid"
+    bgm_isolation_valid = "bgm_isolation_valid"
+    visual_phases_completeness = "visual_phases_completeness"
 
 
 class Rigor(str, Enum):

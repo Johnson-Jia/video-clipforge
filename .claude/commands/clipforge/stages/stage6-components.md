@@ -8,6 +8,7 @@
 - 组件容器使用 flexbox 居中，不使用 absolute + 固定 top
 - 入场动画由 GSAP timeline 控制，CSS 不设 opacity:0
 - Canvas/Three.js 使用 seek 驱动更新，不用 requestAnimationFrame 独立循环
+- 禁止使用全局通配选择器（如 `.xxx *`）设置 text-shadow、opacity、filter 等视觉属性，会污染渐变文字等特殊样式
 
 ## 组件索引
 
@@ -121,7 +122,8 @@ tl.add('breath-start')
 ✗ **场景无 padding** — 内容贴边，手机端文字被裁切
 ✗ **layer-fx 为空** — 三层架构缺一层，等于没做特效
 ✗ **内容元素 CSS opacity: 0 入场** — HyperFrames 不执行 CSS animation，内容永远不可见
-✗ **文字无 text-shadow** — 深色背景上文字浮不起来，像贴了一张纸
+✗ **文字无 text-shadow** — 纯色文字在深色背景上需 text-shadow 增强可读性
+✗ **全局 `*` 通配选择器设置 text-shadow** — 会污染渐变文字（background-clip:text），导致亮度骤降。text-shadow 只允许设在具体元素上
 ✗ **特效元素 opacity > 0.6** — 抢了内容的视觉权重，主次颠倒
 ✗ **一个场景堆 3+ 种特效** — 像 PowerPoint 动画集锦，不是专业视频
 
