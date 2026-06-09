@@ -60,7 +60,7 @@ echo "[assemble_final] Mastering: 响度标准化 (I=-11 LUFS, TP=-0.5 dB)..."
 for FINAL_FILE in final.mp4 final_no_bgm.mp4; do
     ffmpeg -y -i "$FINAL_FILE" -c:v copy \
       -af "loudnorm=I=-11:TP=-0.5" \
-      -c:a aac -b:a 192k \
+      -c:a aac -b:a 192k -ar 48000 \
       "${FINAL_FILE}.mastered.mp4" 2>/dev/null
     mv "${FINAL_FILE}.mastered.mp4" "$FINAL_FILE"
 done
