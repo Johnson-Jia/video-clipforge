@@ -215,7 +215,8 @@ rules:
       regex: "tl\\.from\\(['\"]#s1[^,]+,[^)]+},\\s*(0\\.[1-9]|[1-9])"
     severity: HARD
     class: QUALITY
-    scope: stage6-production
+    scope: SKILL
+    skill: stage6-production
     source: "stages/stage6-production.md §动画规则 R15 — 2026-05-31 A/V 同步修复"
 
   - id: "R-R-018"
@@ -228,7 +229,8 @@ rules:
       semantic_check: true
     severity: HARD
     class: QUALITY
-    scope: stage7-delivery
+    scope: SKILL
+    skill: stage7-delivery
     source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"
 
   - id: "R-R-019"
@@ -240,7 +242,8 @@ rules:
       regex: "\\.(date|scene-label|badge|main-title|data-subtitle|card|num|label)\\s*\\{[^}]*color:\\s*#[0-9a-fA-F]"
     severity: HARD
     class: QUALITY
-    scope: stage7-delivery
+    scope: SKILL
+    skill: stage7-delivery
     source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"
 
   - id: "R-R-020"
@@ -253,5 +256,6 @@ rules:
       semantic_check: true
     severity: HARD
     class: QUALITY
-    scope: stage6-production
+    scope: SKILL
+    skill: stage6-production
     source: "shared/render-safety.md §3.5 — 2026-05-31 VibeCoding 大赏视频内容偏左事故"

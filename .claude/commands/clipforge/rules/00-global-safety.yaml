@@ -147,5 +147,6 @@ rules:
       keywords: ["收藏！", "快收藏", "赶紧收藏", "强烈建议收藏"]
     severity: SOFT
     class: EXPERIENTIAL
-    scope: STAGE7
+    scope: SKILL
+    skill: stage7-delivery
     source: "shared/shared-rules.md §4.2"

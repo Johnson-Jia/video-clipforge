@@ -508,7 +508,7 @@ intent:
 rule:
   id: "R-2024-001"
   category: content_safety
-  type: FORBIDDEN_ACTION
+  type: FORBIDDEN_ACTION                   # FORBIDDEN_ACTION | FORBIDDEN_SPEECH | FORBIDDEN_LOGIC | FORBIDDEN_METHOD | REQUIRED_METHOD
   pattern: "未经核实的数据引用"
   detection:
     regex: null
@@ -516,7 +516,7 @@ rule:
     semantic_check: true
   severity: HARD                           # HARD | SOFT
   scope: "GLOBAL"                          # GLOBAL | SCENE | SKILL
-  class: SAFETY                            # SAFETY | EXPERIENTIAL
+  class: SAFETY                            # SAFETY | EXPERIENTIAL | QUALITY
   source: "INC-2024-012"                   # 可追溯
   created_at: "2024-03-15"
   hit_count: 0                             # 运行时统计
@@ -587,12 +587,13 @@ delta:
 | 约束类型 | 标记 | 继承规则 | 典型内容 |
 |----------|------|----------|----------|
 | **安全约束**（Safety） | `class: SAFETY` | **只收紧不放宽**——子级只能新增，不能覆盖或取消父级约束 | 法律合规、内容安全红线、权限边界 |
-| **经验约束**（Experiential） | `class: EXPERIENTIAL` | **可收紧也可放宽**——但放宽必须由正向闭环提供证据支撑 | 风格偏好、质量标准、效率优化 |
+| **经验约束**（Experiential） | `class: EXPERIENTIAL` | **可收紧也可放宽**——但放宽必须由正向闭环提供证据支撑 | 风格偏好、效率优化 |
+| **质量约束**（Quality） | `class: QUALITY` | **可收紧也可放宽**——与 EXPERIENTIAL 同级保护，需证据支撑 | 渲染质量基线、视觉标准、可读性底线 |
 
 ```yaml
 rule:
   id: "R-2024-001"
-  class: SAFETY                          # SAFETY | EXPERIENTIAL
+  class: SAFETY                          # SAFETY | EXPERIENTIAL | QUALITY
   # ... 其余字段同前
 ```
 
@@ -1004,6 +1005,12 @@ seed_rules:
     - { type: FORBIDDEN_SPEECH, pattern: "冒犯性用语", severity: HARD, class: SAFETY }
     - { type: FORBIDDEN_ACTION, pattern: "未确认就执行危险操作", severity: HARD, class: SAFETY }
 ```
+
+**规则类型补充**：
+
+- `REQUIRED_METHOD`：正向必做约束——与 `FORBIDDEN_*` 系列互补。`FORBIDDEN_*` 声明"禁止做什么"，`REQUIRED_METHOD` 声明"必须做什么"。典型场景：必须使用 GSAP timeline 注册（R-R-006）、必须使用封面模板（R-R-018）。检测逻辑为存在性检查（`regex` 或 `semantic_check`），而非禁止性检查。
+
+- `QUALITY`（质量约束）：介于 SAFETY 和 EXPERIENTIAL 之间的质量底线。P6 保护级别与 EXPERIENTIAL 相同——仅 SAFETY 规则不可被 REMOVED 操作删除。QUALITY 规则可收紧也可放宽，但需要正向闭环提供证据支撑。典型场景：渲染视觉质量基线（R-R-008/009/010）、字号可读性底线（R-R-015）、特效动画要求（R-R-013）。
 
 ### 6.7 正向闭环协议（成功进化）
 
@@ -1668,6 +1675,7 @@ PatternStore.effectiveness_report() → EffectivenessReport
 | **经验模式** | 从高分成功案例中提炼的可复用模式，以偏好/few-shot/放宽提案三种形态沉淀 |
 | **安全约束** | `class: SAFETY`，对应组织红线，只收紧不放宽 |
 | **经验约束** | `class: EXPERIENTIAL`，对应历史经验，可收紧也可放宽（需证据+人工确认） |
+| **质量约束** | `class: QUALITY`，质量底线标准，可收紧也可放宽（需证据+人工确认），P6 保护级别与 EXPERIENTIAL 相同 |
 | **种子规则** | 冷启动阶段的人工预设规则基线 |
 | **路径切换** | 触碰规则后切换执行方向（而非重试同一方向） |
 | **元 Skill** | 维护架构本身的 Skill（规则治理、归因判定、成功分析等），遵循同样的四原子规范 |

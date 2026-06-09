@@ -55,14 +55,21 @@ mkdir -p "$TARGET_DIR/${SKILL_NAME}"
 
 echo "📋 复制技能文件..."
 cp "$SRC_DIR/.claude/commands/${SKILL_NAME}.md" "$TARGET_DIR/"
-cp "$SRC_DIR/.claude/commands/${SKILL_NAME}/"*.md "$TARGET_DIR/${SKILL_NAME}/"
 
-# 复制脚本（仅项目级）
-if [ "$MODE" != "--global" ]; then
-  echo "📜 复制工具脚本..."
-  mkdir -p scripts
-  cp "$SRC_DIR/scripts/"* scripts/ 2>/dev/null || true
-  chmod +x scripts/merge_video_audio.sh 2>/dev/null || true
+# 复制 clipforge 目录下所有文件（stages, shared, categories, scripts, etc.）
+for subdir in stages shared categories scripts engine rules skills components patterns; do
+  if [ -d "$SRC_DIR/.claude/commands/${SKILL_NAME}/${subdir}" ]; then
+    mkdir -p "$TARGET_DIR/${SKILL_NAME}/${subdir}"
+    cp -r "$SRC_DIR/.claude/commands/${SKILL_NAME}/${subdir}/"* "$TARGET_DIR/${SKILL_NAME}/${subdir}/" 2>/dev/null || true
+  fi
+done
+
+# 复制 clipforge 目录下的 .md 文件（未被上面覆盖的顶层 md）
+cp "$SRC_DIR/.claude/commands/${SKILL_NAME}/"*.md "$TARGET_DIR/${SKILL_NAME}/" 2>/dev/null || true
+
+# 复制 schema.yaml
+if [ -f "$SRC_DIR/.claude/commands/${SKILL_NAME}/schema.yaml" ]; then
+  cp "$SRC_DIR/.claude/commands/${SKILL_NAME}/schema.yaml" "$TARGET_DIR/${SKILL_NAME}/"
 fi
 
 echo "✅ 技能文件已复制"
@@ -178,10 +185,7 @@ fi
 
 echo ""
 echo " 技能文件: $TARGET_DIR/${SKILL_NAME}.md"
-echo " 阶段文件: $TARGET_DIR/${SKILL_NAME}/stage*.md"
-if [ "$MODE" != "--global" ]; then
-  echo " 工具脚本: scripts/"
-fi
+echo " 完整目录: $TARGET_DIR/${SKILL_NAME}/"
 echo ""
 echo " 使用方式: 在 Claude Code 中输入"
 echo "   /${SKILL_NAME}"
