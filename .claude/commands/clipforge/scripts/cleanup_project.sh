@@ -144,8 +144,17 @@ if [ -d clips_16x9 ]; then
   [ "$DRY_RUN" = false ] && echo "  已删除 clips_16x9/"
 fi
 
-# 5. 清理后验证
-RETAIN_CHECK_FILES=(final.mp4 final_no_bgm.mp4 cover.png douyin.md)
+# 5. 清理后验证（覆盖 §5 保留清单全部文件）
+RETAIN_CHECK_FILES=(
+  final.mp4 final_no_bgm.mp4
+  output.mp4 output_no_bgm.mp4
+  cover.html cover.png cover_params.json
+  index.html design.md
+  narration_segments.json narration.txt
+  segment_durations.json
+  douyin.md score_report.json
+  content.md content_summary.md
+)
 MISSING=0
 for f in "${RETAIN_CHECK_FILES[@]}"; do
   if [ ! -f "$f" ]; then
@@ -153,7 +162,11 @@ for f in "${RETAIN_CHECK_FILES[@]}"; do
     MISSING=$((MISSING+1))
   fi
 done
-[ $MISSING -gt 0 ] && echo "  有 $MISSING 个核心文件被误删！"
+if [ $MISSING -gt 0 ]; then
+  echo "  ⚠ 有 $MISSING 个保留文件被误删！后续微调可能需要重跑整个阶段"
+  exit 1
+fi
+echo "  [验证通过] 所有保留文件完整"
 
 echo "项目大小: $(du -sh . 2>/dev/null | cut -f1)"
 
