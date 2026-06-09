@@ -188,6 +188,44 @@ def extract_patterns(high_score_traces: list[dict], min_samples: int = 3) -> lis
                 "source_trace": best_trace.get("id"),
             }
 
+        # ── 约束放宽提案检测（架构 §6.7.2 as_constraint_relaxation） ──
+        from engine.lib.models import RuleClass, Severity
+        if not hasattr(extract_patterns, '_relax_rules'):
+            extract_patterns._relax_rules = load_all_rules()
+        soft_rule_hits: dict[str, dict] = {}
+        for t in traces:
+            gate = (t.get("result") or {}).get("gate_report") or {}
+            soft_issues = gate.get("soft_issues", [])
+            for issue in soft_issues:
+                for r in extract_patterns._relax_rules:
+                    if (r.severity == Severity.SOFT
+                        and r.rule_class in (RuleClass.EXPERIENTIAL, RuleClass.QUALITY)
+                        and r.id in issue):
+                        soft_rule_hits.setdefault(r.id, {"count": 0, "scores": []})
+                        soft_rule_hits[r.id]["count"] += 1
+                        soft_rule_hits[r.id]["scores"].append(gate.get("soft_score", 0.0))
+
+        for rule_id, data in soft_rule_hits.items():
+            if data["count"] >= 3:
+                avg_score = sum(data["scores"]) / len(data["scores"])
+                if avg_score >= 0.80:
+                    proposal = {
+                        "target_rule": rule_id,
+                        "proposed_action": "SOFT_TO_INFO",
+                        "evidence": {
+                            "count": data["count"],
+                            "avg_score": round(avg_score, 3),
+                            "source_traces": len(traces),
+                        },
+                        "requires_human_review": True,
+                    }
+                    test_pattern = dict(pattern)
+                    test_pattern["as_constraint_relaxation"] = proposal
+                    check = gate_validate_pattern(test_pattern)
+                    if check["valid"]:
+                        pattern["as_constraint_relaxation"] = proposal
+                    break  # 每个 pattern 最多一条放宽提案
+
         patterns.append(pattern)
     return patterns
 

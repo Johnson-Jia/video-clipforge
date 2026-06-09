@@ -65,7 +65,7 @@ ClipForge converts any content — text, URLs, PDFs, GitHub trending data, and m
 | 3 | narration | Scene breakdown + 6-beat emotional rhythm + segmented narration |
 | 4 | audio | Segmented TTS + loudnorm + BGM selection + 7-level volume calibration |
 | 5 | assets | Visual asset preparation (optional, pure CSS/HTML) |
-| 6 | video | Three-layer HTML + 13 components + GSAP animation → HyperFrames rendering |
+| 6 | video | Three-layer HTML + 52 components + GSAP animation → HyperFrames rendering |
 | 7 | delivery | Cover frame embedding + cover image + 3 Douyin copy styles + dual-version output |
 | — | machine-scoring | Post-delivery gate check + machine prediction score |
 | 8 | feedback | Playback data + human rating → machine scoring calibration (manual trigger, optional) |
@@ -138,7 +138,7 @@ ClipForge follows three design principles:
 | Visual Phasing | `shared/visual-phasing.md` | Phase splitting rules for scenes > 15s |
 | Category Config | `categories/github.md` | GitHub-specific data source, selection strategy, voice, hashtag overrides |
 
-See [Architecture Guide](docs/架构设计.md) for the full DAG semantics, SubAgent dispatch, and error recovery strategy.
+See [Architecture Guide](docs/架构设计.md) for the full DAG semantics, SubAgent dispatch, and error recovery strategy. For the self-evolution engine internals, see [Self-Evolution Architecture](docs/Agent自进化架构设计.md).
 
 ## Self-Evolution
 
@@ -228,13 +228,14 @@ clipforge/
 │       ├── shared/                        # Shared skills (render safety, cleanup, etc.)
 │       ├── categories/                    # Category profiles
 │       │   ├── _category-schema.md        # Category config format spec
-│       │   └── github.md                  # GitHub category
-│       ├── engine/                        # Self-evolution engine (gates/attribution/trace)
+│       │   ├── github.md                  # GitHub category
+│       │   └── intro.md                   # Channel intro category
+│       ├── engine/                        # Self-evolution engine (gates/attribution/trace/observability/lint)
 │       ├── rules/                         # Constraint rules (YAML)
 │       ├── skills/                        # Skill declarations (four-atom model)
 │       ├── patterns/                      # Empirical patterns (data-driven)
 │       ├── scripts/                       # Tool scripts
-│       └── components/                    # Visual component library (13 total)
+│       └── components/                    # Visual component library (52 total)
 ├── install.sh                             # One-shot dependency installer
 └── workspace/                             # Output (gitignored)
 ```

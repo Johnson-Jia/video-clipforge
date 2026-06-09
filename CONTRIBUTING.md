@@ -28,6 +28,19 @@ Thanks for your interest in improving ClipForge. This guide covers how to contri
 3. SubAgent prompts are self-contained — they read stage files directly, no external context files
 4. Test manually before enabling cron scheduling
 
+### Add a New Rule
+
+ClipForge rules are YAML files in `rules/` that define constraints for the gate engine. Rules are auto-loaded by `inject.py` and `gate.py`.
+
+1. Add a rule entry to the appropriate YAML file in `rules/` (or create a new file)
+2. Follow the rule canonical structure: `id`, `type`, `pattern`, `positive`, `guardrail`, `severity`, `class`, `scope`, `source`
+3. Run `python -m engine.lint check` to verify ID uniqueness, enum legality, and scope standardization
+4. Test by running the relevant stage — rules matching the skill scope are auto-injected into the prompt
+
+**Rule types:** `FORBIDDEN_METHOD`, `FORBIDDEN_ACTION`, `FORBIDDEN_SPEECH`, `REQUIRED_METHOD`
+**Severity levels:** `HARD` (gate blocker), `SOFT` (score deduction)
+**Rule classes:** `SAFETY` (immutable), `EXPERIENTIAL` (evolvable), `QUALITY` (relaxable)
+
 ### Add a New Category
 
 ClipForge uses category profiles to define content-specific rules (data acquisition, style, voice, hashtags). To add a new category:
@@ -48,6 +61,23 @@ ClipForge uses category profiles to define content-specific rules (data acquisit
 1. Define mode selection criteria in `clipforge.md` (when to trigger the new mode)
 2. Add mode-specific rules in the relevant stage files (scene count, duration targets, narration structure)
 3. Include an anti-rationalization entry for the new mode's common failure patterns
+
+### Engine Tools
+
+ClipForge includes CLI tools for rule/skill validation and system health monitoring:
+
+```bash
+# Validate all rules, skills, and cross-file consistency
+python -m engine.lint check
+
+# Generate a health report with metrics and alerts
+python -m engine.observability report
+
+# Check circuit breaker status (dispute tracking)
+python -m engine.dispute_tracker check
+```
+
+Run these after any rule or skill changes.
 
 ## Development Guidelines
 
@@ -93,6 +123,7 @@ If a file is not read by any execution path (cron file or interactive mode), it 
 - [ ] Stage files updated if execution steps changed
 - [ ] Cron files updated if SubAgent prompts affected
 - [ ] No new files that aren't referenced in any execution path
+- [ ] Run `python -m engine.lint check` — zero errors
 - [ ] Tested with `/clipforge` in interactive mode
 
 ## Code of Conduct

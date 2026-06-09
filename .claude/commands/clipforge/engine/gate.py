@@ -2747,6 +2747,35 @@ def _activate_closed_loop(report: dict, project_dir: Path) -> None:
                 except Exception as e:
                     print(f"[closed-loop] 归因失败 ({v.get('rule_id','?')}): {e}", file=sys.stderr)
 
+            # False positive detection: 同阶段历史 trace 中违规但本次通过 → 误杀
+            from engine.dispute_tracker import increment_false_positive
+            try:
+                project_traces_file = TRACES_DIR / Path(project_dir).name / "trace.json"
+                if project_traces_file.exists():
+                    prev_traces = json.loads(project_traces_file.read_text(encoding="utf-8"))
+                    if isinstance(prev_traces, list):
+                        # 筛选同 stage 的历史 trace（排除本次刚写入的）
+                        same_stage = [
+                            pt for pt in prev_traces
+                            if pt.get("skill_id") == stage_id
+                        ]
+                        if len(same_stage) >= 2:
+                            prev_trace = same_stage[-2]  # 同阶段上一条 trace
+                            prev_violation_ids = set()
+                            prev_gate = (prev_trace.get("result") or {}).get("gate_report") or {}
+                            for v in prev_gate.get("hard_violations", []):
+                                prev_violation_ids.add(v.get("rule_id", ""))
+                            current_violation_ids = set(v.get("rule_id", "") for v in detail.get("hard_violations", []))
+                            # 同阶段上次违规但本次不再违规 → 可能是误杀
+                            resolved = prev_violation_ids - current_violation_ids
+                            for rid in resolved:
+                                try:
+                                    increment_false_positive(rid.replace("gate:", ""))
+                                except Exception:
+                                    pass
+            except Exception:
+                pass  # false positive detection 是辅助功能，不阻塞主流程
+
 
 def _generate_report(args) -> None:
     """独立评分模式：gate.py --generate-report --project-dir Y

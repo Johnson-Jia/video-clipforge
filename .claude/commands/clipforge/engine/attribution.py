@@ -181,6 +181,12 @@ def weak_attribution(
             validation = shadow_validate(delta, rules, traces)
             delta["shadow_validation"] = validation
             delta["requires_human_review"] = not validation.get("safe", True)
+            # 熔断器：争议率过高时强制人工审核
+            from engine.dispute_tracker import check_circuit_breaker
+            cb = check_circuit_breaker()
+            if cb["triggered"]:
+                delta["requires_human_review"] = True
+                delta["circuit_breaker"] = cb
             delta_path = save_delta(delta)
 
     elif root == "behavior_violation":
@@ -442,6 +448,12 @@ def performance_attribution(
         validation = shadow_validate(delta, rules, traces)
         delta["shadow_validation"] = validation
         delta["requires_human_review"] = not validation.get("safe", True)
+        # 熔断器：争议率过高时强制人工审核
+        from engine.dispute_tracker import check_circuit_breaker
+        cb = check_circuit_breaker()
+        if cb["triggered"]:
+            delta["requires_human_review"] = True
+            delta["circuit_breaker"] = cb
         delta_path = save_delta(delta)
 
     return {
@@ -583,6 +595,11 @@ def calibrate_machine_scoring(
             reason=f"机器评分校准: {diagnosis[:100]}",
         )
         delta["requires_human_review"] = True
+        # 熔断器：争议率过高时附加熔断信息
+        from engine.dispute_tracker import check_circuit_breaker
+        cb = check_circuit_breaker()
+        if cb["triggered"]:
+            delta["circuit_breaker"] = cb
         delta_path = str(save_delta(delta))
 
     elif verdict == "UNDERESTIMATED" and produce_delta:
