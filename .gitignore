@@ -30,6 +30,9 @@ skills-lock.json
 
 .agents/
 
+# Claude Code worktree 隔离副本（并行 Agent 临时目录）
+.claude/worktrees/
+
 # FFmpeg loudnorm 中间产物
 loudnorm_stats.json
 
