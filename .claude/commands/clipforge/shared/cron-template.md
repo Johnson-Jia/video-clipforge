@@ -125,6 +125,12 @@ mkdir -p "${PROJECT_DIR}"
 SubAgent-3 的 prompt 中必须包含以下完整指令：
 
 ```
+### 安全区铁律（HARD）
+
+1. **安全区 padding 固定值**：竖屏 `180px 90px 220px 90px`（上180 右90 下220 左90），横屏 `60px 120px 60px 120px`
+2. **单层 padding 原则**：padding 只设在 `.phase` 或 `.scene-wrap` 上（二选一），禁止在 composition / clip / layer-content 等其他层级设置 padding
+3. **禁止修改值**：安全区 padding 值是平台适配标准，不允许 SubAgent 自行调整
+
 完成 HTML 编写和渲染后，必须执行门禁校验：
 
 cd .claude/commands/clipforge && python engine/gate.py --skill stage6-production --project-dir <PROJECT_DIR>
@@ -162,6 +168,17 @@ HARD 门禁失败时：修复问题，重新渲染，再次运行门禁。最多
      4. 脚本自动生成 `cover.html` + `cover.png`
    - **禁止 SubAgent 手写 cover.html**。结构由模板控制，LLM 只提供内容参数和色彩方案
    - 封面之后的步骤（douyin.md、assemble_final.sh）照常执行
+   - **douyin.md 文案硬性要求（SubAgent 必须遵守）**：
+     1. **三平台差异化文案**：`## 抖音`、`## 视频号`、`## 小红书` 三个标题，每个标题下有完整文案（标题+正文+标签）
+     2. **抖音**：爆款钩子型（反直觉钩子 + 数字锚定，至少 2 个数字）
+     3. **视频号**：必须包含分享引导（如"转发给做开发的朋友"）
+     4. **小红书**：必须包含收藏引导（如"建议收藏备用""先收藏再看"），突出参考价值
+     5. **评论区自评**（`## 评论区自评`）：每个项目必须包含：
+        - 项目英文名 + 一句话中文描述
+        - `路径: owner/repo`
+        - `语言: XX | XX.XK⭐ | 今日+XXX`
+     6. **禁止**：搜索引导（"GitHub搜索:xxx"）、URL/链接、极限词（"最强""必装"）
+     7. 标签 ≥5 个，覆盖核心圈/领域/热点/身份/泛流量
 2. delivery 门禁校验：`cd <clipforge-dir> && python engine/gate.py --skill stage7-delivery --project-dir <PROJECT_DIR>`
    - 检查 cover.html 封面 7 层结构 + 结构性合规（.cover 容器、:root 变量、字体、画布尺寸等）
    - 检查 douyin.md 是否含 URL

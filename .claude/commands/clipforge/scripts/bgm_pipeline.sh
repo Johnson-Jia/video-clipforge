@@ -96,6 +96,17 @@ if [ "$(echo "$BGM_VOL > 1.0" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
 fi
 echo "OK: bgm_volume=${BGM_VOL} 在物理范围内 (0, 1.0]"
 
+# ── Step 3.6: 写入 bgm_source 到 segment_durations.json ──
+BGM_BASENAME=$(basename "$BGM_FILE")
+python -c "
+import json
+d = json.load(open('segment_durations.json'))
+d['meta']['bgm_source'] = '${BGM_BASENAME}'
+with open('segment_durations.json', 'w') as f:
+    json.dump(d, f, ensure_ascii=False, indent=2)
+"
+echo "OK: meta.bgm_source = ${BGM_BASENAME}"
+
 # ── Step 4: BGM 时长对齐（以旁白总时长为基准） ──
 echo "--- Step 4: BGM 时长对齐 ---"
 

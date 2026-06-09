@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_skill
 from engine.lib.models import (
-    GateReport, Violation, Severity, GateType, SkillDefinition,
+    GateReport, Violation, Severity, GateType, Rigor, SkillDefinition,
 )
 
 
@@ -1667,7 +1667,7 @@ def check_bgm_volume_table_valid(project_dir: Path, params: dict) -> tuple[bool,
 
     # 优先使用存储的 narr_max（精确还原计算），兜底 params 或默认值
     narr_max = meta.get("bgm_narr_max_db") or params.get("narr_max", -1.5)
-    expected, reason = calc_volume(bgm_mean, bgm_max, NARR_MEAN_REF, narr_max)
+    expected, reason, _ = calc_volume(bgm_mean, bgm_max, NARR_MEAN_REF, narr_max)
 
     # 允许 ±0.02 容差（round 精度）
     tolerance = params.get("tolerance", 0.02)
@@ -2136,6 +2136,347 @@ def check_gradient_text_no_dark_shadow(project_dir: Path, params: dict) -> tuple
 GATE_CHECKERS[GateType.gradient_text_no_dark_shadow] = check_gradient_text_no_dark_shadow
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# DOM 结构 + GSAP 模式 + CSS 全局选择器检测器 — R-S6-025/026/027
+# ═══════════════════════════════════════════════════════════════════════
+
+def check_no_scene_wrap(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 .clip 和三层之间没有中间包裹层。
+
+    事故：06/08 周榜视频 .clip > .scene-wrap > .layer-bg/fx/content，
+    HyperFrames 期望 .clip > .layer-bg/fx/content 直系结构。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    issues: list[str] = []
+
+    # 找 .clip 内部到 .layer-bg 之间的标签
+    clip_blocks = re.findall(
+        r'class="[^"]*clip[^"]*"[^>]*>(.*?)class="[^"]*layer-bg[^"]*"',
+        content, re.DOTALL
+    )
+    for block in clip_blocks:
+        inner_tags = re.findall(r'<div[^>]*>', block)
+        for tag in inner_tags:
+            class_match = re.search(r'class="([^"]*)"', tag)
+            if class_match:
+                classes = class_match.group(1)
+                issues.append(f".clip 和 .layer-bg 之间存在中间层: class=\"{classes}\"")
+
+    if issues:
+        return False, (f"R-S6-025: DOM 三层直系铁律违反 — {issues[0]}。"
+                       f".clip 必须直接包含 .layer-bg/.layer-fx/.layer-content")
+
+    return True, "DOM 层级正确（.clip 直系三层）"
+
+
+def check_gsap_pattern(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 GSAP 初始化模式符合 HyperFrames 要求。
+
+    事故：06/08 周榜视频使用 DOMContentLoaded 包裹 + __timelines 循环 seek，
+    导致 HyperFrames seek 时内容不可见。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    issues: list[str] = []
+
+    # 1. 禁止 DOMContentLoaded 包裹 GSAP
+    if re.search(r'DOMContentLoaded.*gsap\.timeline', content, re.DOTALL):
+        issues.append("GSAP 代码被 DOMContentLoaded 包裹")
+
+    # 2. 禁止 fromTo
+    if re.search(r'\.fromTo\s*\(', content):
+        issues.append("使用 tl.fromTo()（应使用 tl.from() 或 tl.to()）")
+
+    # 3. 禁止内容元素 from/to 中包含 opacity:0（非 opacity:0.3 等 fx 用法）
+    opacity_in_from = re.findall(
+        r'\.(?:from|to)\s*\([^)]*opacity\s*:\s*0(?:\.0+)?(?!\.?\d)[^)]*\)',
+        content
+    )
+    if opacity_in_from:
+        issues.append(f"tl.from()/tl.to() 中包含 opacity:0（共 {len(opacity_in_from)} 处）")
+
+    # 4. 禁止 __timelines 循环 seek
+    if re.search(r'for\s*\(\s*var\s+\w+\s+in\s+window\.__timelines', content):
+        issues.append("__timelines 循环 seek（应使用 tl.time(t, false)）")
+
+    if issues:
+        return False, f"R-S6-026: GSAP 模式违反 — {'; '.join(issues)}"
+
+    return True, "GSAP 初始化模式正确"
+
+
+def check_no_global_text_shadow(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 CSS 中没有全局通配选择器设置 text-shadow。
+
+    事故：06/08 周榜视频 .safe-pad *{text-shadow:0 2px 12px rgba(0,0,0,0.5)}
+    导致渐变文字整体偏暗。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    content = fp.read_text(encoding="utf-8", errors="ignore")
+
+    issues: list[str] = []
+
+    # 检测 .xxx * { ... text-shadow ... } 或 * { ... text-shadow ... }
+    global_shadow = re.findall(
+        r'(?:\*|\.?\w+\s*\*)\s*\{[^}]*(text-shadow\s*:)[^}]*\}',
+        content
+    )
+    if global_shadow:
+        issues.append(f"全局通配选择器包含 text-shadow（{len(global_shadow)} 处）")
+
+    # 检测全局通配设置 opacity/filter
+    global_opacity = re.findall(
+        r'(?:\*|\.?\w+\s*\*)\s*\{[^}]*(opacity\s*:|filter\s*:)[^}]*\}',
+        content
+    )
+    if global_opacity:
+        issues.append(f"全局通配选择器包含 opacity/filter（{len(global_opacity)} 处）")
+
+    if issues:
+        return False, (f"R-S6-027: {'; '.join(issues)}。"
+                       f"text-shadow/opacity/filter 应设在具体元素上，禁止通配")
+
+    return True, "未检测到全局通配视觉属性"
+
+
+GATE_CHECKERS[GateType.no_scene_wrap] = check_no_scene_wrap
+GATE_CHECKERS[GateType.gsap_pattern] = check_gsap_pattern
+GATE_CHECKERS[GateType.no_global_text_shadow] = check_no_global_text_shadow
+
+
+def check_pre_render_deps(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """渲染前依赖检查 — 调用 scripts/pre_render_check.py 验证所有引用文件存在。"""
+    script = Path(__file__).parent.parent / "scripts" / "pre_render_check.py"
+    if not script.exists():
+        return False, f"pre_render_check.py 不存在: {script}"
+    import subprocess
+    result = subprocess.run(
+        [sys.executable, str(script), str(project_dir)],
+        capture_output=True, text=True, timeout=30,
+    )
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode == 0:
+        return True, output
+    return False, output
+
+
+GATE_CHECKERS[GateType.pre_render_deps] = check_pre_render_deps
+
+
+def check_html_structure_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """HTML 结构完整性检查 — clip/fx 数量匹配、padding 规范、layer-content height。"""
+    html_file = project_dir / params.get("file", "index.html")
+    if not html_file.exists():
+        return False, f"{html_file.name} 不存在"
+    content = html_file.read_text(encoding="utf-8", errors="ignore")
+    failures = []
+
+    # clip 数量与 layer-fx 数量匹配
+    clip_count = content.count('class="clip"')
+    fx_count = content.count('layer-fx')
+    if clip_count != fx_count:
+        failures.append(f"clip({clip_count}) 与 layer-fx({fx_count}) 数量不匹配")
+
+    # 单元素 fx 层检测（<div class="layer-fx"> 只含一个子 div）
+    import re
+    single_fx = re.findall(
+        r'class="layer-fx">\s*<div[^>]*></div>\s*</div>', content
+    )
+    if single_fx:
+        failures.append(f"{len(single_fx)} 个 layer-fx 仅含单元素（需≥3个特效元素）")
+
+    # 双重 padding 检测（.scene-wrap 和 .phase 不能同时有 padding）
+    # render-safety.md §1.4b: Phase 模式下 .phase 有 padding（正确）；嵌入型下 .scene-wrap 有 padding（正确）
+    # 只有两者同时存在才是违规
+    scene_wrap_has_pad = bool(re.search(
+        r'\.scene-wrap[^}]*padding', content
+    ))
+    phase_has_pad = bool(re.search(
+        r'\.phase[^}]*padding:\s*\d+[a-zA-Z%]*\s+\d+[a-zA-Z%]*', content
+    ))
+    if scene_wrap_has_pad and phase_has_pad:
+        failures.append("双重 padding: .scene-wrap 和 .phase 同时有 padding，违反单层原则（render-safety §1.4a）")
+    # .layer-content 有 padding 永远是违规（它不是 padding 载体）
+    lc_has_pad = bool(re.search(
+        r'\.layer-content[^}]*padding', content
+    ))
+    if lc_has_pad:
+        failures.append(".layer-content 含 padding（padding 应在 .phase 或 .scene-wrap 上，不是 layer-content）")
+
+    # layer-content 必须有 height
+    lc_css = re.search(r'\.layer-content\s*\{([^}]*)\}', content)
+    if lc_css and 'height' not in lc_css.group(1):
+        failures.append(".layer-content 缺少 height 声明（Phase 内容会塌陷到顶部）")
+
+    # scene-wrap / hero-card / pfc 缺少 padding 检测
+    scene_wraps = re.findall(
+        r'class="[^"]*\b(scene-wrap|hero-card|project-full-card|pfc)\b[^"]*"', content
+    )
+    has_pad = bool(re.search(r'padding\s*:', content))
+    if scene_wraps and not has_pad:
+        failures.append("存在 scene-wrap/hero-card/pfc 但无 padding 声明（内容将塌陷）")
+
+    # 安全区 padding 值校验（竖屏标准 180px 90px 220px 90px）
+    standard_portrait = "180px90px220px90px"
+    portrait_pads = re.findall(r'\.phase[^}]*padding:\s*([^;]+)', content)
+    wrong_pads = [p.strip() for p in portrait_pads if p.strip().replace(" ", "") != standard_portrait]
+    if wrong_pads:
+        failures.append(
+            f"安全区 padding 值不规范（应为 180px 90px 220px 90px），实际: {wrong_pads[0]}"
+        )
+    # 缺失检测：.phase 和 .scene-wrap 都无 padding → 内容贴边
+    if not portrait_pads and not scene_wrap_has_pad:
+        failures.append("安全区 padding 缺失：.phase 和 .scene-wrap 均无 padding（内容将贴边缘）")
+
+
+
+    if failures:
+        return False, "; ".join(failures)
+    return True, f"HTML 结构检查通过（{clip_count} scenes）"
+
+
+def check_visual_phases_completeness(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """视觉分镜完整性 — 长场景必须有足够的 visual_phases。"""
+    dur_file = project_dir / params.get("segments_file", "segment_durations.json")
+    narr_file = project_dir / params.get("narration_file", "narration_segments.json")
+    if not dur_file.exists() or not narr_file.exists():
+        return True, "分镜文件缺失，跳过"
+    try:
+        dur_segs = json.loads(dur_file.read_text(encoding="utf-8"))["segments"]
+        narr_raw = json.loads(narr_file.read_text(encoding="utf-8"))
+        narr_segs = narr_raw["segments"] if isinstance(narr_raw, dict) else narr_raw
+    except Exception:
+        return True, "分镜文件解析失败，跳过"
+
+    failures = []
+    for seg, narr in zip(dur_segs, narr_segs):
+        d = seg["actual_duration"]
+        vp = narr.get("visual_phases", [])
+        vp_count = len(vp) if isinstance(vp, list) else 0
+        scene_name = narr.get("scene", "?")
+        if d > 15 and vp_count < 2:
+            failures.append(f"{scene_name} ({d:.1f}s) 需要 >= 2 visual_phases，当前 {vp_count}")
+        elif d > 25 and vp_count < 3:
+            failures.append(f"{scene_name} ({d:.1f}s) 建议 >= 3 visual_phases，当前 {vp_count}")
+
+    if failures:
+        return False, "; ".join(failures)
+    return True, "视觉分镜完整性检查通过"
+
+
+def check_output_media_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """输出视频/音频检查 — 编码格式、分辨率、时长合理性。"""
+    import subprocess
+    failures = []
+    files = params.get("files", ["output.mp4", "output_no_bgm.mp4"])
+
+    for fname in files:
+        fpath = project_dir / fname
+        if not fpath.exists() or fpath.stat().st_size == 0:
+            failures.append(f"{fname} 不存在或为空")
+            continue
+
+        streams = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_streams", str(fpath)],
+            capture_output=True, text=True, timeout=15,
+        ).stdout
+
+        if "codec_name=h264" not in streams:
+            failures.append(f"{fname} 无视频轨（非 h264）")
+        if "codec_name=aac" not in streams:
+            failures.append(f"{fname} 无音频轨（非 aac）")
+
+        # 分辨率
+        w = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "stream=width",
+             "-of", "csv=p=0", "-select_streams", "v:0", str(fpath)],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        h = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "stream=height",
+             "-of", "csv=p=0", "-select_streams", "v:0", str(fpath)],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        if w and h:
+            valid = (w == "1080" and h == "1920") or (w == "1920" and h == "1080")
+            if not valid:
+                failures.append(f"{fname} 分辨率异常 {w}x{h}")
+
+        # 时长 > 5s（取整数部分比较，与旧 bash ${DUR%.*} 行为一致）
+        dur = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", str(fpath)],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        if dur:
+            try:
+                if int(float(dur)) <= 5:
+                    failures.append(f"{fname} 时长过短 ({dur}s)")
+            except ValueError:
+                pass
+
+    # final.mp4 / final_no_bgm.mp4 采样率必须为 48000
+    for fname in ["final.mp4", "final_no_bgm.mp4"]:
+        fpath = project_dir / fname
+        if fpath.exists():
+            sr = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-select_streams", "a",
+                 "-show_entries", "stream=sample_rate", "-of", "csv=p=0", str(fpath)],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip()
+            if sr != "48000":
+                failures.append(f"{fname} 采样率={sr or '未知'}，应为 48000")
+
+    if failures:
+        return False, "; ".join(failures)
+    return True, f"输出视频检查通过（{len(files)} 个文件）"
+
+
+def check_bgm_isolation_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """BGM 隔离性校验 — output.mp4 vs output_no_bgm.mp4 音量差 >= 2dB。"""
+    import subprocess
+    with_file = project_dir / params.get("with_bgm", "output.mp4")
+    without_file = project_dir / params.get("without_bgm", "output_no_bgm.mp4")
+
+    if not with_file.exists() or not without_file.exists():
+        return False, "BGM 隔离校验：输出文件缺失"
+
+    def _mean_vol(fpath):
+        r = subprocess.run(
+            ["ffmpeg", "-i", str(fpath), "-af", "volumedetect", "-f", "null", "-"],
+            capture_output=True, text=True, timeout=30,
+        )
+        m = re.search(r'mean_volume:\s*([-\d.]+)', r.stderr)
+        return float(m.group(1)) if m else None
+
+    vol_with = _mean_vol(with_file)
+    vol_without = _mean_vol(without_file)
+
+    if vol_with is None or vol_without is None:
+        return False, "BGM volumedetect 数据缺失"
+
+    diff = vol_with - vol_without
+    if diff < 2.0:
+        return False, f"no_bgm 文件 BGM 未消除（差值仅 {diff:.1f} dB，需 >= 2dB）"
+
+    return True, f"BGM 隔离校验通过（差值 {diff:.1f} dB）"
+
+
+GATE_CHECKERS[GateType.html_structure_valid] = check_html_structure_valid
+GATE_CHECKERS[GateType.output_media_valid] = check_output_media_valid
+GATE_CHECKERS[GateType.bgm_isolation_valid] = check_bgm_isolation_valid
+GATE_CHECKERS[GateType.visual_phases_completeness] = check_visual_phases_completeness
+
+
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复
 SAFETY_GATES = {
     GateType.no_forbidden_speech,
@@ -2150,6 +2491,7 @@ SAFETY_GATES = {
 def run_gate(skill: SkillDefinition, project_dir: Path) -> GateReport:
     hard_violations: list[Violation] = []
     hard_passed = True
+    rigor = skill.rigor_level
 
     for gd in skill.gate.hard:
         checker = GATE_CHECKERS.get(gd.gate)
@@ -2168,16 +2510,20 @@ def run_gate(skill: SkillDefinition, project_dir: Path) -> GateReport:
                 details=msg,
             ))
 
+    # Rigor 调制（架构 §6.0）：
+    # - LITE: 仅 HARD gates，跳过 SOFT
+    # - STANDARD / STRICT: HARD + SOFT gates
     soft_score = 1.0
     soft_issues: list[str] = []
-    for gd in skill.gate.soft:
-        checker = GATE_CHECKERS.get(gd.gate)
-        if not checker:
-            continue
-        ok, msg = checker(project_dir, gd.params)
-        if not ok:
-            soft_score -= 0.15
-            soft_issues.append(msg)
+    if rigor != Rigor.LITE:
+        for gd in skill.gate.soft:
+            checker = GATE_CHECKERS.get(gd.gate)
+            if not checker:
+                continue
+            ok, msg = checker(project_dir, gd.params)
+            if not ok:
+                soft_score -= 0.15
+                soft_issues.append(msg)
 
     return GateReport(
         hard_passed=hard_passed,
@@ -2267,6 +2613,7 @@ def _run_single_skill(args) -> None:
             project_dir=str(project_dir),
             result=trace_result,
             gate_report=gate_dict,
+            rigor=skill.rigor_level.value,
         )
     except Exception:
         pass
@@ -2331,7 +2678,7 @@ def _activate_closed_loop(report: dict, project_dir: Path) -> None:
     try:
         from engine.trace import record_trace, TRACES_DIR
         from engine.attribution import strong_attribution, weak_attribution
-        from engine.lib.rule_parser import load_all_rules
+        from engine.lib.rule_parser import load_all_rules, load_skill
         all_rules = load_all_rules()
     except Exception as e:
         print(f"[closed-loop] 初始化失败: {e}", file=sys.stderr)
@@ -2365,11 +2712,20 @@ def _activate_closed_loop(report: dict, project_dir: Path) -> None:
         }
         try:
             trace_result = "pass" if phase_data.get("hard_passed") else "fail"
+            # 加载 skill 以获取 rigor_level
+            rigor_val = None
+            try:
+                sk = load_skill(stage_id)
+                if sk:
+                    rigor_val = sk.rigor_level.value
+            except Exception:
+                pass
             record_trace(
                 skill_id=stage_id,
                 project_dir=str(project_dir),
                 result=trace_result,
                 gate_report=gate_dict,
+                rigor=rigor_val,
             )
         except Exception as e:
             print(f"[closed-loop] trace 记录失败 ({stage_id}): {e}", file=sys.stderr)

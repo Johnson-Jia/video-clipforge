@@ -9,8 +9,8 @@ artifacts:
     template: "stages/stage0-env"
 
   content:
-    generates: "**/content_ready.txt"
-    description: "当环境已就绪但 content_ready.txt 不存在时使用 — 从 URL、GitHub 或用户输入获取并准备原始内容"
+    generates: "**/content.md"
+    description: "当环境已就绪但 content.md 不存在时使用 — 从 URL、GitHub 或用户输入获取并准备原始内容摘要"
     template: "stages/stage1-content"
     requires: [env-check]
 

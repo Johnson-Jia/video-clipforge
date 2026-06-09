@@ -18,6 +18,7 @@ from engine.trace import query_traces, query_traces_with_performance, TRACES_DIR
 from engine.lib.delta import create_delta, save_delta, DELTAS_DIR
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
 from engine.lib.models import Severity, Platform
+from engine.lib.thresholds import get_platform_success as _get_platform_thresholds
 
 
 PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
@@ -85,14 +86,42 @@ def gate_validate_pattern(
         issues.append(f"偏好描述过于泛化: {pref_text[:50]}")
 
     # P7 负向闭环否决权：检查模式文本是否包含 HARD 规则的违禁关键词
+    # 同时检查 detection.keywords 和 rule.pattern 的子串匹配
     pref_text_lower = pref_text.lower()
     rules = load_all_rules(rules_dir or RULES_DIR)
     for r in rules:
         if r.severity != Severity.HARD:
             continue
+        # 优先检查 detection.keywords
+        matched = False
         for kw in r.detection.keywords:
-            if kw.lower() in pref_text_lower:
+            if kw and kw.lower() in pref_text_lower:
                 issues.append(f"P7 否决: 偏好包含硬门禁关键词 '{kw}'（规则 {r.id}）")
+                matched = True
+                break
+        if matched:
+            continue
+        # detection.keywords 为空时，检查 rule.pattern 中的核心片段
+        # 去掉否定前缀后，将剩余 pattern 按子串检查
+        if not r.detection.keywords and r.pattern:
+            cleaned = r.pattern
+            for neg in ("禁止", "不得", "不能", "不可", "不要", "避免", "拒绝"):
+                if cleaned.startswith(neg):
+                    cleaned = cleaned[len(neg):]
+                    break
+            if len(cleaned) <= 3:
+                # 短 pattern 直接做包含检查
+                if cleaned and cleaned in pref_text_lower:
+                    issues.append(f"P7 否决: 偏好包含硬门禁内容 '{cleaned}'（规则 {r.id}）")
+                    matched = True
+            else:
+                # 逐 4 字滑动窗口检查
+                for i in range(len(cleaned) - 3):
+                    fragment = cleaned[i:i+4]
+                    if fragment in pref_text_lower:
+                        issues.append(f"P7 否决: 偏好包含硬门禁内容 '{fragment}'（规则 {r.id}）")
+                        matched = True
+                        break
 
     return {"valid": len(issues) == 0, "issues": issues}
 
@@ -107,6 +136,9 @@ def extract_patterns(high_score_traces: list[dict], min_samples: int = 3) -> lis
         skill_groups.setdefault(sid, []).append(t)
 
     decision_points = extract_decision_points(high_score_traces)
+
+    FEWSHOT_MIN_SAMPLES = 5
+    FEWSHOT_MIN_CONFIDENCE = 0.80
 
     patterns: list[dict] = []
     for sid, traces in skill_groups.items():
@@ -146,6 +178,16 @@ def extract_patterns(high_score_traces: list[dict], min_samples: int = 3) -> lis
                 "source_pattern": f"P-{sid}",
             },
         }
+
+        # fewshot 沉淀需 ≥5 样本且 confidence > 0.8（架构 §6.7.2）
+        if len(traces) >= FEWSHOT_MIN_SAMPLES and confidence > FEWSHOT_MIN_CONFIDENCE:
+            best_trace = max(traces, key=lambda t: t.get("result", {}).get("gate_report", {}).get("soft_score", 0))
+            pattern["as_fewshot"] = {
+                "context": f"执行 Skill {sid} 时",
+                "example_output": pref_text[:200],
+                "source_trace": best_trace.get("id"),
+            }
+
         patterns.append(pattern)
     return patterns
 
@@ -163,34 +205,42 @@ def save_pattern(pattern: dict, patterns_dir: Path | None = None) -> Path:
 
 # ── 平台区分成功判定 ──────────────────────────────────────────────────────────
 
-PLATFORM_THRESHOLDS = {
-    Platform.DOUYIN.value: {
-        "key_metric": "completion_5s_rate",
-        "high_threshold": 0.44,
-        "medium_threshold": 0.38,
-    },
-    Platform.WECHAT_VIDEO.value: {
-        "key_metric": "share_rate",
-        "high_threshold": 0.04,
-        "medium_threshold": 0.02,
-    },
-    Platform.XIAOHONGSHU.value: {
-        "key_metric": "save_to_like_ratio",
-        "high_threshold": 1.5,
-        "medium_threshold": 1.0,
-    },
-    Platform.BILIBILI.value: {
-        "key_metric": "interaction_rate",
-        "high_threshold": 0.05,
-        "medium_threshold": 0.02,
-    },
+# 硬编码默认值，由 thresholds.yaml 覆盖
+_DEFAULT_THRESHOLDS = {
+    Platform.DOUYIN.value: {"key_metric": "completion_5s_rate", "high_threshold": 0.44, "medium_threshold": 0.40},
+    Platform.WECHAT_VIDEO.value: {"key_metric": "share_rate", "high_threshold": 0.04, "medium_threshold": 0.02},
+    Platform.XIAOHONGSHU.value: {"key_metric": "save_to_like_ratio", "high_threshold": 1.5, "medium_threshold": 1.0},
+    Platform.BILIBILI.value: {"key_metric": "interaction_rate", "high_threshold": 0.05, "medium_threshold": 0.02},
 }
+
+
+def _get_thresholds() -> dict:
+    try:
+        yaml_t = _get_platform_thresholds()
+        result = {}
+        for plat_key, defaults in _DEFAULT_THRESHOLDS.items():
+            plat_name = plat_key.value if isinstance(plat_key, Platform) else plat_key
+            yaml_vals = yaml_t.get(plat_name, {})
+            if yaml_vals:
+                result[plat_key] = {
+                    "key_metric": yaml_vals.get("key_metric", defaults["key_metric"]),
+                    "high_threshold": yaml_vals.get("high", defaults["high_threshold"]),
+                    "medium_threshold": yaml_vals.get("medium", defaults["medium_threshold"]),
+                }
+            else:
+                result[plat_key] = defaults
+        return result
+    except Exception:
+        return _DEFAULT_THRESHOLDS
+
+
+PLATFORM_THRESHOLDS = _DEFAULT_THRESHOLDS
 
 
 def _is_platform_success(performance: dict) -> bool:
     """按平台特定指标判断是否为成功案例。"""
     platform = performance.get("platform", "")
-    thresholds = PLATFORM_THRESHOLDS.get(platform)
+    thresholds = _get_thresholds().get(platform)
     if not thresholds:
         return performance.get("plays", 0) > 0
 
@@ -211,7 +261,7 @@ def _is_platform_success(performance: dict) -> bool:
 def _platform_success_score(performance: dict) -> float:
     """计算平台特定的成功分数（0-1）。"""
     platform = performance.get("platform", "")
-    thresholds = PLATFORM_THRESHOLDS.get(platform)
+    thresholds = _get_thresholds().get(platform)
     if not thresholds:
         plays = performance.get("plays", 0)
         return min(plays / 50000, 1.0)

@@ -38,7 +38,7 @@ rules:
 
   - id: "R-S6-004"
     type: FORBIDDEN_ACTION
-    pattern: "未从 content_ready.txt 和 design.md 推导视觉效果"
+    pattern: "未从 content.md 和 design.md 推导视觉效果"
     positive: "所有视觉效果必须从内容自主推导，禁止套用固定特效/查表"
     guardrail: "视觉组件选择不基于内容主题而是固定模板"
     detection: {keywords: [], semantic_check: true}

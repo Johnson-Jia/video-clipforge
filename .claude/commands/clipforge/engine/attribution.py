@@ -32,6 +32,7 @@ def _get_hook_anchors() -> tuple[str, ...]:
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
 from engine.lib.models import Rule, Platform
 from engine.lib.delta import create_delta, save_delta, shadow_validate
+from engine.lib.thresholds import get_douyin
 
 
 def _evidence_confidence(violation: dict, trace: dict | None = None) -> float:
@@ -178,9 +179,8 @@ def weak_attribution(
                     except (json.JSONDecodeError, UnicodeDecodeError):
                         pass
             validation = shadow_validate(delta, rules, traces)
-            if not validation.get("safe", True):
-                delta["shadow_validation"] = validation
-                delta["requires_human_review"] = True
+            delta["shadow_validation"] = validation
+            delta["requires_human_review"] = not validation.get("safe", True)
             delta_path = save_delta(delta)
 
     elif root == "behavior_violation":
@@ -194,7 +194,7 @@ def weak_attribution(
         "action": action,
         "candidate_rule": candidate,
         "delta_path": str(delta_path) if delta_path else None,
-        "requires_human_review": confidence < 0.55,
+        "requires_human_review": confidence < 0.70,
     }
 
 
@@ -233,13 +233,21 @@ def analyze_trace(trace_file: Path, rules_dir: Path | None = None) -> dict:
 # - 小红书：收藏 > 1.5x 点赞 → 高价值
 
 _DOUYIN_THRESHOLDS = {
-    "5s_completion_low": 0.38,
+    "5s_completion_low": 0.40,
     "5s_completion_high": 0.44,
     "completion_rate_sweet_low": 0.03,
     "completion_rate_sweet_high": 0.05,
     "plays_low": 3000,
     "plays_high": 10000,
+    "save_rate_high": 0.025,
 }
+
+
+def _get_douyin_thresholds() -> dict:
+    try:
+        return get_douyin()
+    except Exception:
+        return _DOUYIN_THRESHOLDS
 
 _WECHAT_THRESHOLDS = {
     "share_rate_low": 0.02,
@@ -298,27 +306,28 @@ def performance_attribution(
 
     # ── 抖音归因 ──
     if platform == Platform.DOUYIN.value or platform == "douyin":
+        _dt = _get_douyin_thresholds()
         plays = performance.get("plays", 0)
         c5s = performance.get("completion_5s_rate", 0)
         comp = performance.get("completion_rate", 0)
 
         # 信号 1：5s 完播率低
-        if c5s > 0 and c5s < _DOUYIN_THRESHOLDS["5s_completion_low"]:
+        if c5s > 0 and c5s < _dt.get("5s_completion_low", 0.40):
             causes.append({"cause": "low_5s_completion", "severity": "HIGH",
-                           "detail": f"5s 完播率 {c5s:.1%} < {_DOUYIN_THRESHOLDS['5s_completion_low']:.0%}，平均仅 3,102 播放"})
+                           "detail": f"5s 完播率 {c5s:.1%} < {_dt.get('5s_completion_low', 0.40):.0%}，平均仅 3,102 播放"})
             evidence.append(f"5s 完播率 {c5s:.1%}（阈值 ≥44% 对应 36K 播放）")
 
         # 信号 2：完播率不在甜蜜区
-        if comp > 0 and (comp < _DOUYIN_THRESHOLDS["completion_rate_sweet_low"] or
-                         comp > _DOUYIN_THRESHOLDS["completion_rate_sweet_high"] * 2):
+        if comp > 0 and (comp < _dt.get("completion_rate_sweet_low", 0.03) or
+                         comp > _dt.get("completion_rate_sweet_high", 0.05) * 2):
             causes.append({"cause": "completion_out_of_sweet_spot", "severity": "MEDIUM",
                            "detail": f"完播率 {comp:.1%}，甜蜜区 3-5%（平均 29,871 播放）"})
             evidence.append(f"完播率 {comp:.1%}（甜蜜区 3-5%）")
 
         # 信号 3：播放量低
-        if 0 < plays < _DOUYIN_THRESHOLDS["plays_low"]:
+        if 0 < plays < _dt.get("plays_low", 3000):
             causes.append({"cause": "low_plays", "severity": "HIGH",
-                           "detail": f"播放量 {plays} < {_DOUYIN_THRESHOLDS['plays_low']}（基线）"})
+                           "detail": f"播放量 {plays} < {_dt.get('plays_low', 3000)}（基线）"})
             evidence.append(f"播放量 {plays}")
 
     # ── 视频号归因 ──
@@ -431,9 +440,8 @@ def performance_attribution(
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     pass
         validation = shadow_validate(delta, rules, traces)
-        if not validation.get("safe", True):
-            delta["shadow_validation"] = validation
-            delta["requires_human_review"] = True
+        delta["shadow_validation"] = validation
+        delta["requires_human_review"] = not validation.get("safe", True)
         delta_path = save_delta(delta)
 
     return {
@@ -446,7 +454,7 @@ def performance_attribution(
         "hook_type": hook_type,
         "candidate_rule": candidate,
         "delta_path": str(delta_path) if delta_path else None,
-        "requires_human_review": confidence < 0.55,
+        "requires_human_review": confidence < 0.70,
     }
 
 

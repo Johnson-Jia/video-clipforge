@@ -88,6 +88,9 @@ du -sh workspace/bgm/
 | `suspense-thriller` | `suspense dark thriller` | 悬疑紧张、适合揭秘/深度分析 |
 | `inspiring-motivational` | `inspiring motivational` | 励志激励、适合创业/成长类 |
 | `warm-editorial` | `warm acoustic cozy` | 温暖、原声、舒适 |
+| `epic-uplifting` | `happy uplifting positive` | 阳光积极、正能量、欢快明亮 |
+| `cinematic-grand` | `epic cinematic inspiring` | 大气磅礴、史诗级、电影感 |
+| `motivational-energy` | `motivational inspiring upbeat` | 正能量激励、积极向上 |
 
 ## §4 文件命名规范
 

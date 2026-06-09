@@ -1,6 +1,23 @@
 # Stage 8: 延迟反馈与评分校准（阶段 B）
 
-> 发布后有播放数据时**手动触发**。可选 stage，不阻塞 cleanup。
+> 发布后有播放数据时触发。**全自动**（`auto_evolve.py`），也可手动逐项目操作。
+> 完整自进化文档见 `stages/feedback-audit.md`。
+
+## 自动模式（推荐）
+
+将各平台导出数据放入 `workspace/sources/视频数据/YYYY-MM-DD/`，运行：
+
+```bash
+cd .claude/commands/clipforge
+python scripts/auto_evolve.py
+```
+
+脚本自动完成：数据采集 → 批量分析 → 模式提炼 → Delta 生成 → 阈值校准。
+安全 Delta 自动生效，无需人工审批。
+
+## 手动模式（备选）
+
+> 以下为逐项目手动操作流程，仅在需要人工评分校准时使用。
 
 ## 触发条件
 

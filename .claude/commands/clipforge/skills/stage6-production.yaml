@@ -39,7 +39,7 @@ skill:
         reality: "双重 padding 是最常见的渲染事故，只设一层"
         trigger: "试图同时设置 scene-wrap 和 .phase 的 padding"
       - thought: "window.__hf 是可选的，HyperFrames 会自动处理"
-        reality: "__hf 是 HyperFrames 渲染的必需 API，缺少会导致 45s 超时后渲染崩溃。已有 2 次事故记录"
+        reality: "__hf 是 HyperFrames 渲染的必需 API，缺少会导致 45s 超时后渲染崩溃（HARD，gate: hf_api_present）"
         trigger: "完成 HTML 编写但未注入 window.__hf"
       - thought: "场景 div 不需要 id，用 class 选择器就行"
         reality: "GSAP 动画使用 #sN .xxx 选择器，缺少 id 会导致场景动画静默丢失，尤其是首尾关键场景"
@@ -165,6 +165,22 @@ skill:
       - gate: gradient_text_no_dark_shadow
         params:
           file: "index.html"
+      - gate: pre_render_deps
+        params: {}
+      - gate: html_structure_valid
+        params:
+          file: "index.html"
+      - gate: output_media_valid
+        params:
+          files: ["output.mp4", "output_no_bgm.mp4"]
+      - gate: bgm_isolation_valid
+        params:
+          with_bgm: "output.mp4"
+          without_bgm: "output_no_bgm.mp4"
+      - gate: visual_phases_completeness
+        params:
+          segments_file: "segment_durations.json"
+          narration_file: "narration_segments.json"
     soft:
       - gate: phase_anchor_coverage
         params:

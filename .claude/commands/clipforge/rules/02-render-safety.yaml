@@ -27,7 +27,7 @@ rules:
   - id: "R-R-003"
     type: FORBIDDEN_ACTION
     pattern: "scene-wrap 和 .phase 同时设置 padding（双重 padding）"
-    positive: "安全区 padding 只设一层（180px 80px 220px 80px），scene-wrap 或 .phase 二选一"
+    positive: "安全区 padding 只设一层（180px 90px 220px 90px），scene-wrap 或 .phase 二选一"
     guardrail: ".scene-wrap 和 .phase 都有 padding 属性"
     detection:
       keywords: []
@@ -40,7 +40,7 @@ rules:
   - id: "R-R-004"
     type: FORBIDDEN_ACTION
     pattern: "场景缺少安全区 padding"
-    positive: "每个场景必须有四方向安全区 padding（180px 80px 220px 80px）"
+    positive: "每个场景必须有四方向安全区 padding（180px 90px 220px 90px）"
     guardrail: ".scene-wrap 和 .phase 都没有 padding"
     detection:
       keywords: []

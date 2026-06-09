@@ -18,9 +18,10 @@ BGM 音量校准：均值公式 + 动态分档峰值约束
      旁白均值固定（loudnorm I=-16 后 ≈ -17 dB），BGM 均值实测，
      target_gap 控制BGM比旁白低多少 dB。
   2. 峰值层：根据 BGM 动态范围（peak_spread）自动分档：
-     - flat (≤12 dB):     氛围/lo-fi/钢琴，peak_gap=8  dB
-     - balanced (12-16):  流行/摇滚/民谣，peak_gap=11 dB
-     - dynamic (>16 dB):  电子/交响/电影，peak_gap=14 dB
+     - flat (≤12 dB):       氛围/lo-fi/钢琴，peak_gap=8  dB
+     - balanced (12-14 dB): 轻流行/民谣，peak_gap=11 dB
+     - beat-heavy (14-16):  电子/合成波，peak_gap=15 dB
+     - dynamic (>16 dB):    交响/电影，peak_gap=14 dB
      取 min(均值层, 峰值层) 作为最终 volume。
 
 前提: narration.mp3 已经过 loudnorm I=-16 标准化（均值约 -17 dB，峰值约 -1.5 dB）。
@@ -42,9 +43,10 @@ MEAN_GAP_TARGET = 9.0  # BGM 有效均值比旁白均值低 9 dB（自然融合�
 # spread 大 = 重音猛烈（电子/交响），需要更多峰值余量
 # spread 小 = 平稳柔和（氛围/钢琴），峰值层不限制
 PEAK_TIERS = [
-    {"name": "flat",     "max_spread": 12,  "peak_gap": 8,  "desc": "氛围/lo-fi/钢琴"},
-    {"name": "balanced", "max_spread": 16,  "peak_gap": 11, "desc": "流行/摇滚/民谣"},
-    {"name": "dynamic",  "max_spread": 999, "peak_gap": 14, "desc": "电子/交响/电影"},
+    {"name": "flat",        "max_spread": 12,  "peak_gap": 8,  "desc": "氛围/lo-fi/钢琴"},
+    {"name": "balanced",    "max_spread": 14,  "peak_gap": 11, "desc": "轻流行/民谣"},
+    {"name": "beat-heavy",  "max_spread": 16,  "peak_gap": 15, "desc": "电子/合成波"},
+    {"name": "dynamic",     "max_spread": 999, "peak_gap": 14, "desc": "交响/电影"},
 ]
 
 # ── 物理极限（HTML <audio> volume 范围） ──

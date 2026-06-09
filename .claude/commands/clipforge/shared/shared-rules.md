@@ -186,7 +186,7 @@
 
 - **禁止 `.anim-in` / CSS `opacity:0` 入场**——HyperFrames seek 不执行 CSS animation
 - **禁止 HTML 实体字符**——改用 Unicode 直接输入（`★` 而非 `&#9733;`）
-- **安全区 padding `180px 80px 220px 80px` 只设一层**（`.scene-wrap` 或 `.phase` 二选一，禁止双重——详见 `shared/render-safety.md` §1.4a）
+- **安全区 padding `180px 90px 220px 90px` 只设一层**（`.scene-wrap` 或 `.phase` 二选一，禁止双重——详见 `shared/render-safety.md` §1.4a）
 - **`.clip` 必须 `inset:0` 铺满全画幅**，禁止 top/right/bottom/left 偏移（会导致背景裁剪 → 黑边，详见 `shared/render-safety.md` §1.3a）
 - **`.phase` 统一使用 `display:flex;flex-direction:column;justify-content:center` 垂直居中**——不需要手动加 inline style，CSS class 已包含
 - **渲染前移除非 index.html 的 HTML 文件**——避免 multiple_root_compositions 冲突
