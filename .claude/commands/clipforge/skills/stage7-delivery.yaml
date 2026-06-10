@@ -43,7 +43,7 @@ skill:
     hard:
       - gate: file_exists
         params:
-          files: ["final.mp4", "final_no_bgm.mp4", "cover.png", "douyin.md"]
+          files: ["final.mp4", "final_no_bgm.mp4", "cover.png", "douyin.md", "cover.html", "cover_params.json"]
       - gate: no_url_in_output
         params:
           files: ["douyin.md"]
@@ -52,6 +52,8 @@ skill:
           final_file: "final.mp4"
           output_file: "output.mp4"
           tolerance: 0.2
+      - gate: assemble_final_verified
+        params: {}
       - gate: cover_layers_present
         params:
           file: "cover.html"

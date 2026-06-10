@@ -1,0 +1,317 @@
+<!--
+@ComponentMeta
+name: slide_drawer
+layer: content
+tags: [slide, drawer, reveal, panel, sweep, transition, entrance, kinetic]
+emotion_range: [anticipation, energy, dynamism]
+visual_density: standard
+complexity: css-only
+description: >
+  通用滑入抽屉组件。通过参数组合出 6 种方向 × 3 种入场曲线 × 3 种裁切模式 = 54 种滑入特效。
+  支持：单抽屉、双抽屉（对向/同向）、抽屉内嵌套子元素级联入场。
+parameters:
+  direction: { default: "left", options: ["left", "right", "top", "bottom", "diagonal-bl", "diagonal-tr"] }
+  curve: { default: "power3", options: ["power3", "expo", "back"] }
+  clip_mode: { default: "none", options: ["none", "wipe", "curtain"] }
+  dual: { default: false, description: "双抽屉对向滑入" }
+  cascade: { default: true, description: "子元素级联入场（标题→描述→标签）" }
+  offset: { default: 1100, description: "滑入起始偏移（px）" }
+  duration: { default: 0.7, description: "滑入时长（s）" }
+/ComponentMeta
+-->
+
+<!--
+  ═══════════════════════════════════════════════════════════════
+  slide_drawer — 通用滑入抽屉
+  ═══════════════════════════════════════════════════════════════
+
+  组合公式：6 方向 × 3 曲线 × 3 裁切 = 54 种基础特效
+  + dual 模式（对向/同向双抽屉）+ cascade 子元素级联
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  方向图示（1080×1920 竖屏）                              │
+  │                                                         │
+  │  left          right         top          bottom        │
+  │  ───►          ◄───          ▼            ▲             │
+  │  ┌────┐   ┌────┐    ┌─────┐  ┌─────┐                     │
+  │  │    │   │    │    │     │  │     │                     │
+  │  │    │   │    │    │     │  │     │                     │
+  │  └────┘   └────┘    └─────┘  └─────┘                     │
+  │                                                         │
+  │  diagonal-bl   diagonal-tr                              │
+  │  ───► + ▼      ◄─── + ▲                                │
+  │  斜切入         斜切出                                   │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  裁切模式                                               │
+  │                                                         │
+  │  none:     纯位移滑入，无裁切                            │
+  │  wipe:     clip-path 矩形裁切 + 位移，滑动擦除效果       │
+  │  curtain:  clip-path 渐变裁切 + 位移，幕布揭开效果       │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  曲线                                                   │
+  │                                                         │
+  │  power3:  平稳减速，标准入场                             │
+  │  expo:    急停快入，冲击感强                             │
+  │  back:    弹性过冲，活力感（back.out(1.7)）              │
+  └─────────────────────────────────────────────────────────┘
+
+  用法示例：
+
+  1. 基础左侧滑入：
+     direction="left" curve="power3" clip_mode="none"
+
+  2. 双抽屉对向（VS 对比场景）：
+     direction="left" dual="true"
+
+  3. 幕布揭开标题：
+     direction="bottom" clip_mode="curtain" curve="expo"
+
+  4. 斜切冲击入场：
+     direction="diagonal-bl" curve="back" clip_mode="wipe"
+-->
+
+<!-- HTML -->
+<!-- 单抽屉示例（dual=false） -->
+<div class="sd-stage">
+
+  <!-- 抽屉 A（主抽屉） -->
+  <div class="sd-drawer sd-drawer-a">
+    <div class="sd-drawer-inner">
+      <div class="sd-icon">🚀</div>
+      <div class="sd-title">项目名称</div>
+      <div class="sd-desc">项目描述文本，支持多行内容展示</div>
+      <div class="sd-tags">
+        <span class="sd-tag">标签一</span>
+        <span class="sd-tag">标签二</span>
+        <span class="sd-tag">标签三</span>
+      </div>
+      <div class="sd-metrics">
+        <div class="sd-metric">
+          <div class="sd-metric-val">51.8K</div>
+          <div class="sd-metric-lbl">Stars</div>
+        </div>
+        <div class="sd-metric">
+          <div class="sd-metric-val">+1110</div>
+          <div class="sd-metric-lbl">Today</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 抽屉 B（dual=true 时启用，对向滑入） -->
+  <div class="sd-drawer sd-drawer-b">
+    <div class="sd-drawer-inner">
+      <div class="sd-icon">⚡</div>
+      <div class="sd-title">对比项目</div>
+      <div class="sd-desc">第二个项目的描述内容</div>
+      <div class="sd-tags">
+        <span class="sd-tag">标签A</span>
+        <span class="sd-tag">标签B</span>
+      </div>
+      <div class="sd-metrics">
+        <div class="sd-metric">
+          <div class="sd-metric-val">13.5K</div>
+          <div class="sd-metric-lbl">Stars</div>
+        </div>
+        <div class="sd-metric">
+          <div class="sd-metric-val">+806</div>
+          <div class="sd-metric-lbl">Today</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CSS -->
+<style>
+/* ── 舞台 ── */
+.sd-stage {
+  position: relative;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 24px;
+}
+
+/* ── 抽屉容器 ── */
+.sd-drawer {
+  position: relative;
+  width: 100%;
+  padding: 40px 48px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.sd-drawer-a {
+  border-left: 4px solid var(--accent-cool, #06B6D4);
+}
+.sd-drawer-b {
+  border-left: 4px solid var(--accent-warm, #F59E0B);
+}
+.sd-drawer-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 内容元素 ── */
+.sd-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.sd-title {
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--text-primary, #F9FAFB);
+  margin-bottom: 12px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.sd-desc {
+  font-size: 24px;
+  line-height: 1.6;
+  color: var(--text-secondary, #9CA3AF);
+  margin-bottom: 20px;
+}
+.sd-tags {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.sd-tag {
+  font-size: 16px; font-weight: 600;
+  padding: 6px 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-secondary, #D1D5DB);
+}
+.sd-metrics {
+  display: flex; gap: 24px;
+}
+.sd-metric {
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+.sd-metric-val {
+  font-size: 32px; font-weight: 900;
+  color: var(--accent-cool, #06B6D4);
+}
+.sd-drawer-b .sd-metric-val {
+  color: var(--accent-warm, #F59E0B);
+}
+.sd-metric-lbl {
+  font-size: 14px;
+  color: var(--text-secondary, #9CA3AF);
+  margin-top: 4px;
+}
+</style>
+
+<!-- JS (GSAP) — 组合引擎 -->
+<script>
+// ═══════════════════════════════════════════════════════
+// 滑入抽屉 GSAP 动画引擎
+// SubAgent 通过修改下方 CONFIG 对象组合出不同特效
+// ═══════════════════════════════════════════════════════
+
+var SD = {
+  direction:  'left',       // left | right | top | bottom | diagonal-bl | diagonal-tr
+  curve:      'power3',     // power3 | expo | back
+  clipMode:   'none',       // none | wipe | curtain
+  dual:       false,        // true = 启用抽屉 B 对向滑入
+  cascade:    true,         // true = 子元素级联入场
+  offset:     1100,         // 滑入起始偏移 px
+  duration:   0.7,          // 滑入时长 s
+  startTime:  0             // GSAP timeline 起始时间
+};
+
+// ── 内部：方向 → 初始偏移映射 ──
+function sdOffset(dir, amount) {
+  var m = {
+    'left':         { x: -amount, y: 0 },
+    'right':        { x:  amount, y: 0 },
+    'top':          { x: 0, y: -amount },
+    'bottom':       { x: 0, y:  amount },
+    'diagonal-bl':  { x: -amount, y:  amount * 0.6 },
+    'diagonal-tr':  { x:  amount, y: -amount * 0.6 }
+  };
+  return m[dir] || m['left'];
+}
+
+// ── 内部：反向（dual 模式的抽屉 B 方向） ──
+function sdOpposite(dir) {
+  var m = {
+    'left': 'right', 'right': 'left',
+    'top': 'bottom', 'bottom': 'top',
+    'diagonal-bl': 'diagonal-tr', 'diagonal-tr': 'diagonal-bl'
+  };
+  return m[dir] || 'right';
+}
+
+// ── 内部：裁切 clip-path ──
+function sdClipFrom(dir) {
+  if (SD.clipMode === 'none') return null;
+  var wipe = {
+    'left':         'inset(0 100% 0 0)',
+    'right':        'inset(0 0 0 100%)',
+    'top':          'inset(0 0 100% 0)',
+    'bottom':       'inset(100% 0 0 0)',
+    'diagonal-bl':  'inset(0 100% 0 0)',
+    'diagonal-tr':  'inset(0 0 0 100%)'
+  };
+  return wipe[dir] || wipe['left'];
+}
+
+function sdClipTo() {
+  return 'inset(0 0 0 0)';
+}
+
+// ── 内部：缓动曲线 ──
+function sdEase(name) {
+  var m = {
+    'power3': 'power3.out',
+    'expo':   'expo.out',
+    'back':   'back.out(1.7)'
+  };
+  return m[name] || 'power3.out';
+}
+
+// ── 核心：构建单个抽屉的动画 ──
+function sdAnimateDrawer(tl, selector, direction, startAt) {
+  var off = sdOffset(direction, SD.offset);
+  var ease = sdEase(SD.curve);
+  var d = SD.duration;
+  var clip = sdClipFrom(direction);
+  var fromVars = { opacity: 0, x: off.x, y: off.y };
+  var toVars = { opacity: 1, x: 0, y: 0, duration: d, ease: ease };
+
+  if (clip) {
+    fromVars.clipPath = clip;
+    toVars.clipPath = sdClipTo();
+  }
+
+  tl.fromTo(selector, fromVars, toVars, startAt);
+
+  // ── 子元素级联入场 ──
+  if (SD.cascade) {
+    var s = startAt;
+    tl.from(selector + ' .sd-icon', { opacity: 0, scale: 0, duration: 0.35, ease: 'back.out(1.5)' }, s + 0.2)
+      .from(selector + ' .sd-title', { opacity: 0, y: 20, duration: 0.3, ease: 'power3.out' }, s + 0.35)
+      .from(selector + ' .sd-desc', { opacity: 0, y: 15, duration: 0.25, ease: 'power3.out' }, s + 0.5)
+      .from(selector + ' .sd-tag', { opacity: 0, y: 10, duration: 0.2, ease: 'power3.out', stagger: 0.05 }, s + 0.6)
+      .from(selector + ' .sd-metric', { opacity: 0, y: 15, duration: 0.25, ease: 'power3.out', stagger: 0.08 }, s + 0.7);
+  }
+}
+
+// ── 执行 ──
+sdAnimateDrawer(tl, '.sd-drawer-a', SD.direction, SD.startTime);
+
+if (SD.dual) {
+  // 抽屉 B：对向滑入，延迟 0.15s（营造先后节奏感）
+  sdAnimateDrawer(tl, '.sd-drawer-b', sdOpposite(SD.direction), SD.startTime + 0.15);
+}
+</script>

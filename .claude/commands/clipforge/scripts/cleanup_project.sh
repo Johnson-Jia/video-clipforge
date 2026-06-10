@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# 项目清理（白名单保护 + --dry-run 支持）
+# 项目清理（严格白名单保护 + --dry-run 支持）
 #
 # 用法:
 #   bash scripts/cleanup_project.sh <项目目录>           # 执行清理
 #   bash scripts/cleanup_project.sh <项目目录> --dry-run # 仅预览，不删除
 #
-# 项目目录必填
+# 核心原则：白名单是真正的保护机制。
+# - safe_rm 删除任何文件前必须检查白名单，在白名单中的文件绝对不可删除
+# - 只删除"必删列表"中明确列出的文件/目录
+# - 不在白名单也不在必删列表中的文件：不动（保守策略）
 
 set -e
 DRY_RUN=false
@@ -28,7 +31,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "$PROJECT_DIR"
 
-# ── 前置检查：score_report.json 必须存在──
+# ── 前置检查：score_report.json 必须存在 ──
 if [ ! -f "score_report.json" ]; then
   echo "score_report.json 不存在，自动生成..."
   python "$SCRIPT_DIR/../engine/gate.py" --generate-report --project-dir "$(pwd)" || true
@@ -43,81 +46,149 @@ else
   echo "=== 项目清理 ==="
 fi
 
-# ── 白名单：这些文件绝对不可删除 ──
+# ══════════════════════════════════════════════
+# §1 白名单：这些文件绝对不可删除（严格保护）
+# ══════════════════════════════════════════════
 RETAIN_FILES=(
-  final.mp4 final_no_bgm.mp4
-  output.mp4 output_no_bgm.mp4
-  cover.html cover.png
-  index.html design.md
-  narration_segments.json narration.txt
-  segment_durations.json
-  douyin.md narration.mp3
+  # 核心产出物
+  final.mp4
+  final_no_bgm.mp4
+  cover.png
+  douyin.md
   score_report.json
-  content.md content_summary.md
+  # 数据源
+  raw_trending.json
+  content_ready.txt
+  # 微调输入（严格保留，删了就要重跑阶段）
+  output.mp4
+  output_no_bgm.mp4
+  cover.html
+  cover_params.json
+  index.html
+  design.md
+  narration_segments.json
+  narration.txt
+  segment_durations.json
+  sentence_timestamps.json
+  phase_timings.json
+  content.md
+  content_summary.md
+  narration.mp3
+  bgm.wav
 )
 
+# 构建白名单查找表（O(1) 查找）
+declare -A RETAIN_MAP
 for f in "${RETAIN_FILES[@]}"; do
-  [ -f "$f" ] && echo "  [保留] $f"
+  RETAIN_MAP["$f"]=1
 done
 
-# 辅助函数：安全删除
+echo "白名单保护文件 ($(ls -la ${RETAIN_FILES[@]} 2>/dev/null | grep -c '^-'))："
+for f in "${RETAIN_FILES[@]}"; do
+  if [ -f "$f" ]; then
+    echo "  ✅ [保留] $f"
+  fi
+done
+
+# ══════════════════════════════════════════════
+# §2 安全删除函数（白名单校验 + 删除前确认）
+# ══════════════════════════════════════════════
+DELETE_COUNT=0
+BLOCKED_COUNT=0
+
 safe_rm() {
   local target="$1"
+  local basename_target
+  basename_target="$(basename "$target")"
+
+  # 白名单校验：在白名单中的文件绝对不删
+  if [ -n "${RETAIN_MAP[$basename_target]+x}" ]; then
+    echo "  🛑 [白名单拦截] $basename_target — 保留文件不可删除"
+    BLOCKED_COUNT=$((BLOCKED_COUNT+1))
+    return 1
+  fi
+
+  if [ ! -e "$target" ]; then
+    return 0  # 文件不存在，跳过
+  fi
+
   if [ "$DRY_RUN" = true ]; then
-    if [ -e "$target" ]; then
-      echo "  [将删除] $target"
-    fi
+    echo "  🗑️ [将删除] $target"
   else
     rm -f "$target"
+    echo "  🗑️ [已删除] $target"
   fi
+  DELETE_COUNT=$((DELETE_COUNT+1))
+  return 0
 }
 
 safe_rm_rf() {
   local target="$1"
+
+  if [ ! -e "$target" ]; then
+    return 0
+  fi
+
   if [ "$DRY_RUN" = true ]; then
-    if [ -e "$target" ]; then
-      echo "  [将删除] $target/ ($(du -sh "$target" 2>/dev/null | cut -f1))"
-    fi
+    echo "  🗑️ [将删除] $target/ ($(du -sh "$target" 2>/dev/null | cut -f1))"
   else
     rm -rf "$target"
+    echo "  🗑️ [已删除] $target/"
   fi
+  DELETE_COUNT=$((DELETE_COUNT+1))
+  return 0
 }
 
-# 1. 删除必删文件
+# ══════════════════════════════════════════════
+# §3 删除必删文件（仅删除明确列出的文件）
+# ══════════════════════════════════════════════
+echo ""
+echo "--- 删除中间产物 ---"
+
 for f in narration_seg_*.txt narration_seg_*.mp3 narration_seg_*.srt \
          loudnorm_stats.json concat.txt concat_new.txt \
          output_silent.mp4 output_with_audio.mp4 \
          silence_*.mp3 hyperframes.json frame_check.png \
-         verify_*.png scenes.yaml \
+         verify_*.png check_*.png frame_*.png v2_*.png scenes.yaml \
          stage-handoff.json skills-lock.json webreader_checklist.json \
          cover_final.png cover_segment.mp4 narration.srt \
          cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts \
-         cover_clip.mp4 .cleaned \
-         bgm_orig.wav bgm_pre_norm.wav; do
-  safe_rm "$f"
+         cover_clip.mp4 cover_from_render.mp4 .cleaned \
+         bgm_orig.wav bgm_pre_norm.wav machine_score.json delivery.md \
+         .assemble_marker.json .bgm_pipeline_marker.json; do
+  safe_rm "$f" || true
 done
-[ "$DRY_RUN" = false ] && echo "  已删除中间产物文件"
 
-# 2. 删除临时目录
-safe_rm_rf "work-*/"
-safe_rm_rf ".agents/"
-safe_rm_rf "renders/"
-safe_rm_rf "snapshots/"
-safe_rm_rf "backup/"
-safe_rm_rf "lib/"
-safe_rm_rf "frames/"
-safe_rm_rf "frames_check/"
-safe_rm_rf "segments/"
-safe_rm_rf "raw_tts/"
-[ "$DRY_RUN" = false ] && echo "  已删除 work-*/, .agents/, renders/, snapshots/, backup/, lib/, frames/, segments/, raw_tts/"
+# ══════════════════════════════════════════════
+# §4 删除临时目录
+# ══════════════════════════════════════════════
+echo ""
+echo "--- 删除临时目录 ---"
 
-# 3. BGM 副本按条件删除
+for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" "assets"; do
+  for match in $d; do
+    if [ -d "$match" ]; then
+      safe_rm_rf "$match/"
+    fi
+  done
+done
+
+# ══════════════════════════════════════════════
+# §5 BGM 副本按条件删除
+# ══════════════════════════════════════════════
+echo ""
+echo "--- BGM 条件删除 ---"
+
 if [ -f bgm.wav ]; then
   BGM_FOUND_IN_LIB=false
-  BGM_SOURCE=$(python3 -c "import json; d=json.load(open('segment_durations.json')); print(d.get('meta',{}).get('bgm_source',''))" 2>/dev/null)
+
+  # 方法1：通过 segment_durations.json 的 meta.bgm_source 匹配
+  BGM_SOURCE=$(python3 -c "import json; d=json.load(open('segment_durations.json')); print(d.get('meta',{}).get('bgm_source',''))" 2>/dev/null || echo "")
   if [ -n "$BGM_SOURCE" ] && [ -f "../../workspace/bgm/${BGM_SOURCE}" ]; then
     BGM_FOUND_IN_LIB=true
   fi
+
+  # 方法2：按时长匹配素材库中的文件
   if [ "$BGM_FOUND_IN_LIB" = false ]; then
     BGM_DURATION=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 bgm.wav 2>/dev/null | cut -d. -f1)
     for f in ../../workspace/bgm/*.mp3 ../../workspace/bgm/*.wav; do
@@ -130,50 +201,60 @@ if [ -f bgm.wav ]; then
       fi
     done
   fi
+
   if [ "$BGM_FOUND_IN_LIB" = true ]; then
+    # 从白名单临时移除 bgm.wav 以允许删除
+    unset RETAIN_MAP["bgm.wav"]
     safe_rm "bgm.wav"
-    [ "$DRY_RUN" = false ] && echo "  已删除 bgm.wav（素材库已有）"
+    if [ $? -eq 0 ]; then
+      [ "$DRY_RUN" = false ] && echo "  已删除 bgm.wav（素材库已有）"
+    fi
   else
     echo "  保留 bgm.wav（无法确认素材库来源）"
   fi
 fi
 
-# 4. 电影片段临时目录
-if [ -d clips_16x9 ]; then
-  safe_rm_rf "clips_16x9/"
-  [ "$DRY_RUN" = false ] && echo "  已删除 clips_16x9/"
-fi
+# ══════════════════════════════════════════════
+# §6 清理后验证（只验证核心产出物）
+# ══════════════════════════════════════════════
+echo ""
+echo "--- 验证 ---"
 
-# 5. 清理后验证（覆盖 §5 保留清单全部文件）
-RETAIN_CHECK_FILES=(
-  final.mp4 final_no_bgm.mp4
-  output.mp4 output_no_bgm.mp4
-  cover.html cover.png cover_params.json
-  index.html design.md
-  narration_segments.json narration.txt
-  segment_durations.json
-  douyin.md score_report.json
-  content.md content_summary.md
+VERIFY_FILES=(
+  final.mp4
+  final_no_bgm.mp4
+  cover.png
+  douyin.md
+  score_report.json
 )
-MISSING=0
-for f in "${RETAIN_CHECK_FILES[@]}"; do
+
+VERIFY_OK=true
+for f in "${VERIFY_FILES[@]}"; do
   if [ ! -f "$f" ]; then
-    echo "  严重错误：保留文件 $f 被误删！"
-    MISSING=$((MISSING+1))
+    echo "  ❌ 核心产出物 $f 缺失！"
+    VERIFY_OK=false
   fi
 done
-if [ $MISSING -gt 0 ]; then
-  echo "  ⚠ 有 $MISSING 个保留文件被误删！后续微调可能需要重跑整个阶段"
-  exit 1
-fi
-echo "  [验证通过] 所有保留文件完整"
 
+if [ "$VERIFY_OK" = true ]; then
+  echo "  ✅ 核心产出物验证通过"
+fi
+
+# 统计
+echo ""
+echo "删除: ${DELETE_COUNT} 个文件/目录"
+echo "白名单拦截: ${BLOCKED_COUNT} 次"
 echo "项目大小: $(du -sh . 2>/dev/null | cut -f1)"
 
 if [ "$DRY_RUN" = true ]; then
   echo "=== DRY RUN 完成（未实际删除） ==="
   echo "去掉 --dry-run 参数以执行清理"
 else
-  echo "=== 清理完成 ==="
-  touch .cleaned
+  if [ "$VERIFY_OK" = true ]; then
+    echo "=== 清理完成 ==="
+    touch .cleaned
+  else
+    echo "=== 清理完成（但有核心文件缺失） ==="
+    exit 1
+  fi
 fi

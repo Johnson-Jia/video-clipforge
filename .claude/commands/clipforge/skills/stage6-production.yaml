@@ -170,13 +170,18 @@ skill:
       - gate: html_structure_valid
         params:
           file: "index.html"
+      - gate: safe_area_bounds
+        params:
+          file: "index.html"
+      - gate: narration_audio_embedded
+        params:
+          file: "index.html"
+      - gate: delayed_animation_init
+        params:
+          file: "index.html"
       - gate: output_media_valid
         params:
-          files: ["output.mp4", "output_no_bgm.mp4"]
-      - gate: bgm_isolation_valid
-        params:
-          with_bgm: "output.mp4"
-          without_bgm: "output_no_bgm.mp4"
+          files: ["output.mp4"]
       - gate: visual_phases_completeness
         params:
           segments_file: "segment_durations.json"

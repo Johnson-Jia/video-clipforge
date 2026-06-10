@@ -423,3 +423,11 @@ components:
     emotion_range: [tech, focus, immersion, confidence]
     visual_density: compact
     complexity: css-only
+
+  - name: slide_drawer
+    layer: content
+    file: content/slide_drawer.html
+    tags: [slide, drawer, reveal, panel, sweep, transition, entrance, kinetic, drawer, compare]
+    emotion_range: [anticipation, energy, dynamism]
+    visual_density: standard
+    complexity: css-only
