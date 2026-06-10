@@ -1,0 +1,166 @@
+<!--
+@ComponentMeta
+name: dark_cipher
+layer: bg
+tags: [dark, cipher, suspense, red, crack, fog, mystery, thriller, scan, glitch, rain]
+emotion_range: [tension, mystery, suspense, dark]
+visual_density: high
+complexity: css-only
+description: 深靛紫底（清晰紫色身份）+ 暗红裂缝 + 监控扫描线 + 故障横条闪烁 + 心跳脉冲 + 血色边缘辉光 + 垂直雨线 + 底部浓雾 + 暗红粒子
+parameters:
+  crack_count: { default: 3, range: [2, 4] }
+  fog_intensity: { default: 0.22, range: [0.12, 0.30] }
+  particle_count: { default: 6, range: [4, 8] }
+  scan_period: { default: 6, range: [4, 10] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes crackPulse1 {
+  0%, 100% { opacity: 0.20; }
+  50% { opacity: 0.40; }
+}
+@keyframes crackPulse2 {
+  0%, 100% { opacity: 0.15; }
+  40% { opacity: 0.35; }
+  70% { opacity: 0.10; }
+}
+@keyframes crackPulse3 {
+  0%, 100% { opacity: 0.12; transform: rotate(-32deg) scaleX(1); }
+  50% { opacity: 0.30; transform: rotate(-32deg) scaleX(1.06); }
+}
+@keyframes scanSweep {
+  0% { top: -5%; }
+  100% { top: 105%; }
+}
+@keyframes scanFade {
+  0%, 100% { opacity: 0.30; }
+  50% { opacity: 0.50; }
+}
+@keyframes glitchFlash {
+  0%, 90%, 100% { opacity: 0; }
+  92%, 96% { opacity: 0.18; }
+}
+@keyframes glitchFlash2 {
+  0%, 85%, 100% { opacity: 0; }
+  87%, 91% { opacity: 0.15; }
+}
+@keyframes heartbeatPulse {
+  0% { transform: scale(0.3); opacity: 0.40; }
+  15% { transform: scale(1.2); opacity: 0.15; }
+  30% { transform: scale(0.5); opacity: 0.30; }
+  45% { transform: scale(1.0); opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes fogRise {
+  0%, 100% { transform: translateY(0); opacity: 0.25; }
+  50% { transform: translateY(-15px); opacity: 0.35; }
+}
+@keyframes rainDrop {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.15; }
+  90% { opacity: 0.10; }
+  100% { transform: translateY(200vh); opacity: 0; }
+}
+@keyframes cipherBlink {
+  0%, 100% { opacity: 0.25; }
+  30% { opacity: 0.60; }
+  60% { opacity: 0.15; }
+}
+@keyframes cipherBlink2 {
+  0%, 100% { opacity: 0.30; }
+  50% { opacity: 0.65; }
+}
+@keyframes edgeGlow {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.22; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: dark_cipher -->
+<!-- 深靛紫底（清晰的紫色身份，非脏灰） -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(175deg, hsl(265,40%,10%) 0%, hsl(260,35%,7%) 40%, hsl(270,38%,6%) 100%)"></div>
+<!-- 靛紫核心辉光（让紫色身份明确可读） -->
+<div style="position:absolute;top:28%;left:32%;width:650px;height:650px;border-radius:50%;
+  background:radial-gradient(circle, hsla(270,50%,22%,0.40), hsla(265,42%,16%,0.15), transparent 60%);
+  filter:blur(100px)"></div>
+<!-- 血色左侧边缘辉光（亮红色） -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(90deg, hsla(0,75%,25%,0.20) 0%, hsla(0,65%,18%,0.08) 10%, transparent 25%);
+  animation:edgeGlow 12s ease-in-out infinite"></div>
+<!-- 裂缝 1：暗红对角线（左上→右下，鲜红可辨） -->
+<div style="position:absolute;top:5%;left:10%;width:85%;height:2px;
+  background:linear-gradient(90deg, transparent 0%, hsla(0,80%,42%,0.30) 20%, hsla(0,70%,38%,0.22) 50%, hsla(280,55%,32%,0.18) 80%, transparent 100%);
+  transform:rotate(-8deg);animation:crackPulse1 5s ease-in-out infinite 0s"></div>
+<!-- 裂缝 2：深紫横线 -->
+<div style="position:absolute;top:55%;left:5%;width:90%;height:1.5px;
+  background:linear-gradient(90deg, transparent 0%, hsla(280,55%,32%,0.25) 15%, hsla(0,75%,40%,0.18) 45%, hsla(280,50%,35%,0.15) 75%, transparent 100%);
+  transform:rotate(3deg);animation:crackPulse2 7s ease-in-out infinite 2s"></div>
+<!-- 裂缝 3：细暗红斜线 -->
+<div style="position:absolute;top:25%;left:30%;width:60%;height:1px;
+  background:linear-gradient(90deg, transparent 0%, hsla(0,80%,45%,0.22) 25%, hsla(280,60%,30%,0.15) 70%, transparent 100%);
+  transform:rotate(-32deg);animation:crackPulse3 8s ease-in-out infinite 4s"></div>
+<!-- 监控扫描线（鲜红竖扫，清晰可见） -->
+<div style="position:absolute;left:0;width:100%;height:2px;
+  background:linear-gradient(90deg, transparent 5%, hsla(0,65%,50%,0.35) 30%, hsla(0,75%,58%,0.45) 50%, hsla(0,65%,50%,0.35) 70%, transparent 95%);
+  box-shadow:0 0 18px hsla(0,70%,45%,0.20),0 0 45px hsla(0,60%,40%,0.10);
+  animation:scanSweep 6s linear infinite, scanFade 3s ease-in-out infinite"></div>
+<!-- 故障横条 1 -->
+<div style="position:absolute;top:32%;left:0;width:100%;height:3px;
+  background:linear-gradient(90deg, transparent 0%, hsla(0,60%,45%,0.20) 10%, transparent 30%, hsla(280,50%,35%,0.15) 60%, transparent 80%);
+  animation:glitchFlash 8s ease-in-out infinite 0s"></div>
+<!-- 故障横条 2 -->
+<div style="position:absolute;top:68%;left:0;width:100%;height:2px;
+  background:linear-gradient(90deg, transparent 10%, hsla(280,55%,40%,0.15) 40%, transparent 50%, hsla(0,65%,42%,0.12) 75%, transparent 90%);
+  animation:glitchFlash2 11s ease-in-out infinite 3s"></div>
+<!-- 心跳脉冲（从左下角） -->
+<div style="position:absolute;bottom:20%;left:15%;width:250px;height:250px;border-radius:50%;
+  border:1.5px solid hsla(0,75%,45%,0.30);
+  animation:heartbeatPulse 3s ease-out infinite"></div>
+<div style="position:absolute;bottom:20%;left:15%;width:250px;height:250px;border-radius:50%;
+  border:1px solid hsla(0,65%,38%,0.18);
+  animation:heartbeatPulse 3s ease-out infinite 1.5s"></div>
+<!-- 垂直雨线 1 -->
+<div style="position:absolute;top:0;left:18%;width:1px;height:60%;
+  background:linear-gradient(to bottom, transparent, hsla(0,45%,50%,0.10), hsla(280,40%,42%,0.08), transparent);
+  animation:rainDrop 4s linear infinite 0s"></div>
+<!-- 垂直雨线 2 -->
+<div style="position:absolute;top:0;left:45%;width:1px;height:55%;
+  background:linear-gradient(to bottom, transparent, hsla(0,40%,45%,0.08), transparent);
+  animation:rainDrop 5s linear infinite 1.5s"></div>
+<!-- 垂直雨线 3 -->
+<div style="position:absolute;top:0;left:72%;width:1px;height:50%;
+  background:linear-gradient(to bottom, transparent, hsla(280,35%,40%,0.08), transparent);
+  animation:rainDrop 6s linear infinite 3s"></div>
+<!-- 底部浓雾（紫色调） -->
+<div style="position:absolute;bottom:0;left:-5%;width:110%;height:35%;
+  background:radial-gradient(ellipse 120% 100% at 50% 100%, hsla(265,35%,20%,0.30), hsla(270,30%,15%,0.15) 40%, transparent 75%);
+  animation:fogRise 20s ease-in-out infinite 0s"></div>
+<!-- 暗红粒子 1（亮红色，在紫底上清晰可见） -->
+<div style="position:absolute;top:18%;left:22%;width:3px;height:3px;border-radius:50%;
+  background:hsla(0,80%,50%,0.55);box-shadow:0 0 8px hsla(0,70%,42%,0.40),0 0 16px hsla(0,60%,35%,0.18);
+  animation:cipherBlink 5s ease-in-out infinite 0s"></div>
+<!-- 暗红粒子 2 -->
+<div style="position:absolute;top:42%;left:68%;width:2px;height:2px;border-radius:50%;
+  background:hsla(0,75%,48%,0.50);box-shadow:0 0 6px hsla(0,65%,40%,0.35);
+  animation:cipherBlink 6s ease-in-out infinite 1.5s"></div>
+<!-- 紫色粒子 3 -->
+<div style="position:absolute;top:65%;left:35%;width:2px;height:2px;border-radius:50%;
+  background:hsla(280,60%,42%,0.45);box-shadow:0 0 6px hsla(280,50%,35%,0.30);
+  animation:cipherBlink2 4.5s ease-in-out infinite 3s"></div>
+<!-- 暗红粒子 4 -->
+<div style="position:absolute;top:80%;left:72%;width:2px;height:2px;border-radius:50%;
+  background:hsla(0,70%,45%,0.48);box-shadow:0 0 7px hsla(0,60%,38%,0.32);
+  animation:cipherBlink 5.5s ease-in-out infinite 2s"></div>
+<!-- 暗红粒子 5 -->
+<div style="position:absolute;top:30%;left:82%;width:2px;height:2px;border-radius:50%;
+  background:hsla(0,80%,52%,0.40);box-shadow:0 0 5px hsla(0,70%,42%,0.28);
+  animation:cipherBlink2 7s ease-in-out infinite 4s"></div>
+<!-- 紫色粒子 6 -->
+<div style="position:absolute;top:50%;left:10%;width:2px;height:2px;border-radius:50%;
+  background:hsla(280,55%,38%,0.38);box-shadow:0 0 5px hsla(280,45%,30%,0.25);
+  animation:cipherBlink 6.5s ease-in-out infinite 5s"></div>
+<!-- 暗角晕影（压暗边缘让紫色核心更突出） -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 55% at 50% 45%, transparent 0%, hsla(265,25%,3%,0.55) 100%)"></div>

@@ -86,6 +86,7 @@ class GateType(str, Enum):
     delayed_animation_init = "delayed_animation_init"
     assemble_final_verified = "assemble_final_verified"
     bgm_pipeline_verified = "bgm_pipeline_verified"
+    bg_component_source = "bg_component_source"
 
 
 class Rigor(str, Enum):

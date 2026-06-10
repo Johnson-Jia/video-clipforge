@@ -17,7 +17,7 @@
 
 ### 背景层 (bg/)
 
-> 嵌入 `.layer-bg`，提供渐变、光晕等氛围基底。一个场景选 0-1 个 bg 组件。
+> 嵌入 `.layer-bg`，提供渐变、光晕等氛围基底。一个场景选 1 个 bg 组件（必须）。
 >
 > **R-R-009 HARD 门禁**：禁止仅使用 glow+grid 三件套（线性渐变 + 模糊光圆 + grid-bg）作为 bg 方案。每个场景 bg 层必须包含至少 2 种不同类型的视觉元素。
 
@@ -38,6 +38,11 @@
 | 13 | DiamondLattice | 45° 金色菱形网格 + 对角漂移 + 金色辉光 | pride, confidence, elegance | `components/bg/diamond_lattice.html` |
 | 14 | ElectricPulse | 旋转光弧 + 脉冲环 + 青白能量核心 | excitement, power, climax | `components/bg/electric_pulse.html` |
 | 15 | CosmicPlanet | 地球（海洋/大陆/云层/冰盖/城市灯光）+ 星空 | wonder, epic, mystery | `components/bg/cosmic_planet.html` |
+| 16 | FrostCrystal | 冰蓝渐变 + 能量核心 + 旋转星芒 + 脉冲环 + 极光带 | clinical, precision, cold | `components/bg/frost_crystal.html` |
+| 17 | MossGarden | 深绿渐变 + 树冠光斑 + 萤火虫 + 有机曲线 + 底部薄雾 | organic, growth, nature, calm | `components/bg/moss_garden.html` |
+| 18 | CleanSlate | 钢蓝渐变 + 点阵网格 + 几何装饰线 + 冷蓝聚光灯 + 漂浮形状 | clarity, focus, professional | `components/bg/clean_slate.html` |
+| 19 | DarkCipher | 深靛紫底 + 暗红裂缝 + 监控扫描线 + 故障闪烁 + 心跳脉冲 | tension, mystery, suspense | `components/bg/dark_cipher.html` |
+| 20 | SoftLinen | 琥珀暖色 + 散景圆环 + 烛光脉冲 + 黄金时刻色带 + 漂浮花瓣 | warmth, cozy, gentle, daily | `components/bg/soft_linen.html` |
 
 ### 特效层 (fx/)
 

@@ -183,7 +183,7 @@
 - `.layer-fx` 必须 `pointer-events: none`，防止特效遮挡交互
 - 特效 opacity 建议 0.3-0.6（不遮挡内容但可见）
 - 特效类型不固定，根据场景情绪和内容主题自行推导（见 `stage6-components.md` 情绪映射表）
-- `.layer-bg` 至少包含渐变背景 + 1 个光晕
+- `.layer-bg` 必须使用 `components/bg/` 中的 bg 组件（保留 `<!-- bg-component: NAME -->` 标记），允许换色和叠加背景图片
 - **特效层非空规则（§2.4）见下**
 
 ### 2.4 特效层非空规则

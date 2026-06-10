@@ -1,0 +1,136 @@
+<!--
+@ComponentMeta
+name: frost_crystal
+layer: bg
+tags: [crystal, frost, ice, cold, clinical, sterile, hexagon, aurora, ring, core]
+emotion_range: [clinical, precision, cold, sterile]
+visual_density: medium
+complexity: css-only
+description: 冰蓝渐变底 + 六角结晶纹理 + 冷白能量核心 + 冰霜脉冲环扩散 + 极光色带 + 蓝灰漂浮尘埃 + 暗角聚焦
+parameters:
+  crystal_opacity: { default: 0.06, range: [0.03, 0.10] }
+  orb_count: { default: 2, range: [1, 3] }
+  dust_count: { default: 6, range: [4, 8] }
+  ring_period: { default: 8, range: [6, 12] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes frostDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-15px, 20px) scale(1.03); }
+  66% { transform: translate(10px, -15px) scale(0.97); }
+}
+@keyframes frostCore {
+  0%, 100% { opacity: 0.22; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(1.06); }
+}
+@keyframes frostRing {
+  0% { transform: scale(0.6); opacity: 0.40; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes crystalBreath {
+  0%, 100% { opacity: 0.05; }
+  50% { opacity: 0.09; }
+}
+@keyframes dustFloat {
+  0%, 100% { transform: translateY(0); opacity: 0.20; }
+  50% { transform: translateY(-35px); opacity: 0.50; }
+}
+@keyframes auroraSlide {
+  0% { transform: translateX(-10%) rotate(-2deg); opacity: 0.06; }
+  50% { transform: translateX(5%) rotate(1deg); opacity: 0.10; }
+  100% { transform: translateX(-10%) rotate(-2deg); opacity: 0.06; }
+}
+@keyframes frostFlare {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.20; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: frost_crystal -->
+<!-- 深蓝黑底 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 45% 35%, hsla(210,40%,10%,1), hsla(220,35%,4%,1))"></div>
+<!-- 六角结晶纹理层 -->
+<div style="position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(60deg, transparent, transparent 28px, hsla(200,55%,72%,0.06) 28px, hsla(200,55%,72%,0.06) 29px),
+    repeating-linear-gradient(120deg, transparent, transparent 28px, hsla(200,55%,72%,0.06) 28px, hsla(200,55%,72%,0.06) 29px),
+    repeating-linear-gradient(0deg, transparent, transparent 48px, hsla(210,45%,68%,0.035) 48px, hsla(210,45%,68%,0.035) 49px);
+  animation:crystalBreath 18s ease-in-out infinite"></div>
+<!-- 冷白能量核心 -->
+<div style="position:absolute;top:30%;left:35%;width:350px;height:350px;border-radius:50%;
+  background:radial-gradient(circle,hsla(200,70%,80%,0.28),hsla(210,55%,55%,0.10),transparent 55%);
+  filter:blur(50px);animation:frostCore 6s ease-in-out infinite"></div>
+<!-- 冰晶星芒（旋转锥形光线） -->
+<div style="position:absolute;top:22%;left:28%;width:500px;height:500px;
+  animation:frostFlare 80s linear infinite;
+  background:conic-gradient(from 0deg,
+    transparent 0deg,hsla(200,60%,75%,0.04) 15deg,transparent 30deg,
+    transparent 60deg,hsla(195,55%,70%,0.03) 75deg,transparent 90deg,
+    transparent 120deg,hsla(210,50%,72%,0.035) 135deg,transparent 150deg,
+    transparent 180deg,hsla(205,65%,78%,0.04) 195deg,transparent 210deg,
+    transparent 240deg,hsla(200,55%,70%,0.03) 255deg,transparent 270deg,
+    transparent 300deg,hsla(195,60%,75%,0.035) 315deg,transparent 330deg);
+  filter:blur(8px)"></div>
+<!-- 冰霜脉冲环 1 -->
+<div style="position:absolute;top:calc(38% - 60px);left:calc(38% - 60px);width:120px;height:120px;border-radius:50%;
+  border:1.5px solid hsla(200,60%,75%,0.20);animation:frostRing 8s ease-out infinite 0s"></div>
+<!-- 冰霜脉冲环 2 -->
+<div style="position:absolute;top:calc(38% - 60px);left:calc(38% - 60px);width:120px;height:120px;border-radius:50%;
+  border:1px solid hsla(210,50%,70%,0.14);animation:frostRing 8s ease-out infinite 3s"></div>
+<!-- 冰霜脉冲环 3 -->
+<div style="position:absolute;top:calc(38% - 60px);left:calc(38% - 60px);width:120px;height:120px;border-radius:50%;
+  border:1px solid hsla(195,55%,68%,0.10);animation:frostRing 8s ease-out infinite 5.5s"></div>
+<!-- 冰蓝光球 1 -->
+<div style="position:absolute;top:20%;left:25%;width:450px;height:450px;border-radius:50%;
+  background:radial-gradient(circle,hsla(200,65%,55%,0.20),hsla(210,45%,40%,0.07),transparent 70%);
+  filter:blur(75px);animation:frostDrift 22s ease-in-out infinite 0s"></div>
+<!-- 冰蓝光球 2（小型冷白高亮） -->
+<div style="position:absolute;top:55%;left:60%;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,hsla(210,50%,85%,0.15),hsla(200,35%,60%,0.05),transparent 65%);
+  filter:blur(60px);animation:frostDrift 18s ease-in-out infinite 6s"></div>
+<!-- 极光色带 -->
+<div style="position:absolute;top:15%;left:-15%;width:130%;height:90px;opacity:0.08;
+  background:linear-gradient(95deg,transparent 5%,hsla(190,60%,55%,0.4),hsla(200,50%,60%,0.3),hsla(220,40%,65%,0.35),hsla(195,55%,50%,0.3),transparent 95%);
+  filter:blur(40px);transform:rotate(-3deg);animation:auroraSlide 25s ease-in-out infinite"></div>
+<!-- 对角冷光折射 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(155deg,rgba(180,210,240,0.025) 0%,transparent 30%,transparent 70%,rgba(200,220,245,0.035) 100%);
+  animation:frostCore 20s ease-in-out infinite 4s"></div>
+<!-- 暗角聚焦 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 42% 40%,transparent 30%,hsla(215,35%,4%,0.45) 75%,hsla(220,40%,3%,0.70) 100%)"></div>
+<!-- 漂浮尘埃 1 -->
+<div style="position:absolute;top:18%;left:22%;width:2px;height:2px;border-radius:50%;
+  background:hsla(210,30%,85%,0.5);box-shadow:0 0 4px hsla(210,25%,75%,0.3);
+  animation:dustFloat 12s ease-in-out infinite 0s"></div>
+<!-- 漂浮尘埃 2 -->
+<div style="position:absolute;top:42%;left:72%;width:3px;height:3px;border-radius:50%;
+  background:hsla(200,25%,80%,0.45);box-shadow:0 0 5px hsla(200,20%,70%,0.3);
+  animation:dustFloat 15s ease-in-out infinite 3s"></div>
+<!-- 漂浮尘埃 3 -->
+<div style="position:absolute;top:65%;left:38%;width:2px;height:2px;border-radius:50%;
+  background:hsla(215,35%,88%,0.40);box-shadow:0 0 4px hsla(215,25%,78%,0.25);
+  animation:dustFloat 10s ease-in-out infinite 7s"></div>
+<!-- 漂浮尘埃 4 -->
+<div style="position:absolute;top:80%;left:55%;width:2px;height:2px;border-radius:50%;
+  background:hsla(205,20%,75%,0.35);box-shadow:0 0 3px hsla(205,15%,65%,0.2);
+  animation:dustFloat 14s ease-in-out infinite 2s"></div>
+<!-- 漂浮尘埃 5 -->
+<div style="position:absolute;top:30%;left:82%;width:2px;height:2px;border-radius:50%;
+  background:hsla(195,28%,82%,0.38);box-shadow:0 0 4px hsla(195,20%,72%,0.25);
+  animation:dustFloat 11s ease-in-out infinite 5s"></div>
+<!-- 漂浮尘埃 6 -->
+<div style="position:absolute;top:50%;left:12%;width:3px;height:3px;border-radius:50%;
+  background:hsla(210,22%,80%,0.32);box-shadow:0 0 4px hsla(210,18%,70%,0.2);
+  animation:dustFloat 16s ease-in-out infinite 9s"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(200,225,245,0.02) 0%,transparent 35%,transparent 65%,rgba(180,210,240,0.025) 100%);
+  animation:glassShimmer 10s ease-in-out infinite"></div>

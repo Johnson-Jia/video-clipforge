@@ -1398,6 +1398,32 @@ GATE_CHECKERS[GateType.adjacent_bg_diversity] = check_adjacent_bg_diversity
 GATE_CHECKERS[GateType.fx_layer_not_empty] = check_fx_layer_not_empty
 
 
+def check_bg_component_source(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-R-021: bg 层必须使用组件库中的 bg 组件。"""
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+    scenes = _split_into_scenes(html)
+    if not scenes:
+        return True, "无场景可检查"
+
+    violations = []
+    for sid, scene_html in scenes:
+        bg = _extract_layer_chunk(scene_html, "layer-bg")
+        if not bg.strip():
+            continue  # 空 bg 由其他规则检查
+        if not re.search(r'<!--\s*bg-component:', bg):
+            violations.append(sid)
+
+    if violations:
+        return False, f"R-R-021: {len(violations)} 个场景 bg 层未使用组件库组件 ({', '.join(violations[:6])})"
+    return True, f"{len(scenes)} 场景 bg 组件来源合格"
+
+
+GATE_CHECKERS[GateType.bg_component_source] = check_bg_component_source
+
+
 def check_fx_animation_present(project_dir: Path, params: dict) -> tuple[bool, str]:
     """R-R-013: fx 层元素必须有 GSAP 动画目标。
 
