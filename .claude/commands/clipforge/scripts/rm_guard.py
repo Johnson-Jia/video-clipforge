@@ -33,6 +33,10 @@ PROTECTED = {
     "content.md", "content_summary.md",
     # Audio (optional but costly to regenerate)
     "narration.mp3",
+    # Data source
+    "raw_trending.json", "content_ready.txt",
+    # BGM (conditional, but guard blocks direct rm)
+    "bgm.wav",
 }
 
 

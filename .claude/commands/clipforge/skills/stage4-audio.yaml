@@ -68,6 +68,8 @@ skill:
         params:
           file: "segment_durations.json"
           key: "meta.bgm_volume"
+      - gate: bgm_pipeline_verified
+        params: {}
       - gate: bgm_duration_covers
         params:
           bgm_file: "bgm.wav"

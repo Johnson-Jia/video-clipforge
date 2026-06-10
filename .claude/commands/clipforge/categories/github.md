@@ -238,6 +238,45 @@ gh api repos/{owner}/{repo}/contents/ --jq '.[].name'
 | 与昨日不完全相同（如存在） | 必须 | — |
 | 活跃度（30 天内有更新） | >= 80% | >= 80% |
 
+### authenticity_verification — 项目真实性验证
+
+> **⛔ 虚假项目零容忍。** GitHub Trending 存在刷榜项目（购买 star、fork 农场），向用户推荐虚假项目严重损害频道信誉。每个入选项目必须通过真实性验证。
+
+**验证时机**：`selection_strategy` 选取项目后、进入内容整理之前。未通过验证的项目直接剔除，从候选列表中补选。
+
+**验证方法**（通过 `gh` API 自动检测）：
+
+```bash
+# 对每个入选项目执行以下检查
+gh api repos/{owner}/{repo} --jq '{stars: .stargazers_count, forks: .forks_count, watchers: .subscribers_count, created: .created_at, pushed: .pushed_at, size: .size, language: .language, topics: .topics}'
+gh api users/{owner} --jq '{created: .created_at, public_repos: .public_repos, followers: .followers, following: .following}'
+gh api repos/{owner}/{repo}/contributors --jq '.[] | "\(.login) \(.contributions)"' | head -10
+```
+
+**判定规则**（任一 HARD 条件触发即标记为可疑并剔除）：
+
+| 检查项 | HARD（直接剔除） | 警告（需人工确认） |
+|--------|------------------|-------------------|
+| 作者账号年龄 | < 30 天 | < 90 天 |
+| 作者其他项目 | 0 个公开仓库 | 仅 1-2 个，且与本项目无技术关联 |
+| Star/Fork 比 | > 500:1（正常约 10-30:1） | > 100:1 |
+| Watcher 数 | Watchers < 5（8000★ 项目只有 3 个 watcher = 刷星） | Watchers < Star 的 0.5% |
+| 贡献者集中度 | 100% 来自 1 人且提交 < 20 次 | > 95% 来自 1 人但提交 > 50 次 |
+| 仓库体积 | < 100 KB（空壳项目） | < 500 KB |
+| README 长度 | < 1 KB（无实质内容） | < 3 KB |
+| 提交活跃度 | 创建后 < 5 次提交 | 创建后 < 15 次提交 |
+| Star 增长模式 | 首日 star > 总 star 的 80%（一次性刷入） | — |
+
+**综合判定**：
+- 0 个 HARD + 0-1 个警告 → ✅ 通过
+- 0 个 HARD + 2+ 个警告 → ⚠️ 需人工确认（全自动模式下剔除）
+- 1+ 个 HARD → ❌ 剔除
+
+**剔除后处理**：
+1. 从候选列表移除该项目
+2. 按 `selection_strategy` 优先级补选下一个项目
+3. 在 `content_ready.txt` 末尾记录：`> ⚠️ 剔除可疑项目: {owner}/{repo} ({原因})`
+
 ### monthly_inventory — 月度清单管理
 
 每日数据抓取后立即写入月度清单（在 DAG 长流程之前，避免 context 压缩丢失）：

@@ -15,6 +15,12 @@ mkdir -p "${PROJECT_DIR}"
 > **代理：** 如果本机需要代理才能访问外网，请在执行前设置 `https_proxy` / `http_proxy` 环境变量。
 > **`export LANG=zh_CN.UTF-8` 必须设置**：Windows Git Bash 默认 locale 可能是 GBK，导致中文目录名编码错乱。
 
+## §1.5 Step 0: 自续期（必须最先执行）
+
+> **铁律：续期在任何管线工作之前执行。** 无论后续步骤是否成功，续期保证任务不会因 7 天过期而断档。续期在末尾的旧模式已废弃——管线中断会导致续期被跳过。
+
+执行 `clipforge/shared/cron-renew` 定时任务自续期模式，传入任务关键词。
+
 ## §2 Step 1: 数据采集
 
 从分类配置的 `data_source` 和 `data_validation` 段获取：
@@ -295,13 +301,7 @@ prompt 内容：
 
 注册完成后，执行 `shared/cron-renew` 为此任务续期（关键词：`playback-reminder`）。
 
-## §6 Step 4: 自续期
-
-> **无论前序步骤是否成功，都必须执行此步骤。**
-
-执行 `clipforge/shared/cron-renew` 定时任务自续期模式，传入任务关键词。
-
-## §7 输出汇报
+## §6 输出汇报
 
 完成后汇报：
 

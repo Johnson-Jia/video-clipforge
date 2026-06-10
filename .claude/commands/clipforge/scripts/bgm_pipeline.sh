@@ -84,7 +84,7 @@ echo "OK: 音量校准完成"
 
 # ── Step 3.5: bgm_volume 合理性门禁 ──
 echo "--- Step 3.5: bgm_volume 合理性门禁 ---"
-BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json'))['meta']['bgm_volume'])")
+BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])")
 echo "bgm_volume = ${BGM_VOL}"
 if [ "$(echo "$BGM_VOL < 0.01" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
     echo "ERROR: bgm_volume=${BGM_VOL} < 0.01，BGM 几乎静音。检查 bgm_gap_check.py 输出。"
@@ -100,9 +100,9 @@ echo "OK: bgm_volume=${BGM_VOL} 在物理范围内 (0, 1.0]"
 BGM_BASENAME=$(basename "$BGM_FILE")
 python -c "
 import json
-d = json.load(open('segment_durations.json'))
+d = json.load(open('segment_durations.json', encoding='utf-8'))
 d['meta']['bgm_source'] = '${BGM_BASENAME}'
-with open('segment_durations.json', 'w') as f:
+with open('segment_durations.json', 'w', encoding='utf-8') as f:
     json.dump(d, f, ensure_ascii=False, indent=2)
 "
 echo "OK: meta.bgm_source = ${BGM_BASENAME}"
@@ -113,7 +113,7 @@ echo "--- Step 4: BGM 时长对齐 ---"
 # 优先从 segment_durations.json 获取精确旁白总时长，兜底 narration.mp3
 TOTAL_DUR=$(python -c "
 import json
-d = json.load(open('segment_durations.json'))
+d = json.load(open('segment_durations.json', encoding='utf-8'))
 print(round(sum(s['actual_duration'] for s in d['segments']), 2))
 " 2>/dev/null || ffprobe -v quiet -show_entries format=duration -of csv=p=0 narration.mp3)
 
@@ -136,7 +136,7 @@ if [ "${EXTEND_MODE:-false}" = true ] || [ "$(echo "$RATIO > 3" | bc 2>/dev/null
     STYLE_TAG=$(python -c "
 import json, re
 try:
-    d = json.load(open('segment_durations.json'))
+    d = json.load(open('segment_durations.json', encoding='utf-8'))
     src = d.get('meta', {}).get('bgm_source', '')
     if src:
         base = re.sub(r'\.\w+$', '', src)
@@ -223,6 +223,22 @@ except Exception:
             rm -f /tmp/bgm_part_*.wav /tmp/bgm_merged_*.wav
 
             echo "OK: 多首 BGM 拼接完成，总时长 ${TARGET_DUR}s（${IDX} 首，xfade ${XFADE_DUR}s）"
+
+            # ── 写标记文件（多首拼接模式）──
+            FINAL_BGM_VOL=$(python3 -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
+            BGM_FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE" 2>/dev/null || echo "0")
+            cat > .bgm_pipeline_marker.json <<EOFMarker
+{
+  "script": "bgm_pipeline.sh",
+  "timestamp": "$(date -Iseconds)",
+  "bgm_duration": $BGM_FINAL_DUR,
+  "bgm_volume": $FINAL_BGM_VOL,
+  "target_duration": $TARGET_DUR,
+  "mode": "multi",
+  "songs": $IDX
+}
+EOFMarker
+            echo "[bgm_pipeline] 标记文件已写入: .bgm_pipeline_marker.json"
             echo "=== BGM 管线完成 ==="
             exit 0
         fi
@@ -254,3 +270,18 @@ echo "OK: BGM 已拼接对齐到 ${TARGET_DUR}s（${COPIES} 份 concat + 淡入 
 
 echo "=== BGM 管线完成 ==="
 echo "segment_durations.json meta.bgm_volume 已更新"
+
+# ── 写标记文件（gate 据此判断 bgm_pipeline.sh 是否执行过）──
+BGM_FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE" 2>/dev/null || echo "0")
+FINAL_BGM_VOL=$(python3 -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
+cat > .bgm_pipeline_marker.json <<EOFMarker
+{
+  "script": "bgm_pipeline.sh",
+  "timestamp": "$(date -Iseconds)",
+  "bgm_duration": $BGM_FINAL_DUR,
+  "bgm_volume": $FINAL_BGM_VOL,
+  "target_duration": $TARGET_DUR,
+  "mode": "${EXTEND_MODE:-concat}"
+}
+EOFMarker
+echo "[bgm_pipeline] 标记文件已写入: .bgm_pipeline_marker.json"

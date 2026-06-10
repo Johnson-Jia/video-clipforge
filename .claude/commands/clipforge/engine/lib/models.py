@@ -81,6 +81,11 @@ class GateType(str, Enum):
     output_media_valid = "output_media_valid"
     bgm_isolation_valid = "bgm_isolation_valid"
     visual_phases_completeness = "visual_phases_completeness"
+    safe_area_bounds = "safe_area_bounds"
+    narration_audio_embedded = "narration_audio_embedded"
+    delayed_animation_init = "delayed_animation_init"
+    assemble_final_verified = "assemble_final_verified"
+    bgm_pipeline_verified = "bgm_pipeline_verified"
 
 
 class Rigor(str, Enum):

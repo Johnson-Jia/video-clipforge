@@ -467,6 +467,9 @@ def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
     missing: list[str] = []
     for seg in segments:
         scene = seg.get("scene", "")
+        # 确保 scene 是字符串
+        if not isinstance(scene, str):
+            scene = str(scene) if scene is not None else ""
         # 从 "s1-hook" 提取 "s1"
         scene_id = scene.split("-")[0] if "-" in scene else scene
         if scene_id.startswith("s") and scene_id not in html_ids:
@@ -809,14 +812,17 @@ def check_data_duration_source(project_dir: Path, params: dict) -> tuple[bool, s
     if "estimated_duration" in html_content:
         return False, "index.html 包含 'estimated_duration' 关键词（应为 actual_duration）"
 
-    # 提取 clip 级别的 data-duration 值（排除 root composition）
+    # 提取 clip 级别的 data-duration 值（排除 root composition 和 audio/video 标签）
     html_durations = []
     for m in re.finditer(r'data-duration=["\']?([\d.]+)', html_content):
         tag_start = html_content.rfind('<', 0, m.start())
         tag_end = html_content.find('>', m.start())
         tag = html_content[tag_start:tag_end] if tag_start >= 0 and tag_end >= 0 else ""
-        if 'data-composition-id' not in tag:
-            html_durations.append(float(m.group(1)))
+        if 'data-composition-id' in tag:
+            continue
+        if tag.lstrip().startswith('<audio') or tag.lstrip().startswith('<video'):
+            continue
+        html_durations.append(float(m.group(1)))
 
     if not html_durations:
         return False, "index.html 未找到 data-duration 属性"
@@ -1050,9 +1056,12 @@ def check_phase_visibility_present(project_dir: Path, params: dict) -> tuple[boo
     """
     narr_file = project_dir / params.get("segments_file", "narration_segments.json")
     html_file = project_dir / params.get("html_file", "index.html")
+    pt_file = project_dir / "phase_timings.json"
 
     if not narr_file.exists():
         return True, "narration_segments.json 缺失，跳过 phase visibility 检查"
+    if not pt_file.exists():
+        return True, "phase_timings.json 缺失，HTML 未使用 phase 分镜模式，跳过"
     if not html_file.exists():
         return True, "index.html 缺失，跳过"
 
@@ -1068,8 +1077,9 @@ def check_phase_visibility_present(project_dir: Path, params: dict) -> tuple[boo
         num = phases if isinstance(phases, int) else len(phases)
         if num > 1:
             scene = seg.get("scene", "")
-            scene_id = scene.split("-")[0] if "-" in scene else scene
-            multi_phase.append((scene, scene_id, num))
+            scene_str = str(scene)
+            scene_id = scene_str.split("-")[0] if "-" in scene_str else scene_str
+            multi_phase.append((scene_str, scene_id, num))
 
     if not multi_phase:
         return True, "无多 phase 场景，跳过"
@@ -1579,6 +1589,82 @@ def check_narration_sample_rate(project_dir: Path, params: dict) -> tuple[bool, 
     return True, f"narration.mp3 采样率: {sample_rate} Hz (loudnorm 已执行)"
 
 
+def check_bgm_pipeline_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """验证 BGM 音量由 bgm_pipeline.sh 校准，而非手动硬编码。
+
+    bgm_pipeline.sh 完成后写入 .bgm_pipeline_marker.json 标记文件。
+    如果 segment_durations.json 含 bgm_volume 但无标记文件 → SubAgent 跳过管线 → FAIL。
+
+    交叉验证标记中的 bgm_volume 与 segment_durations.json 中的一致，防止伪造。
+    """
+    marker_file = project_dir / ".bgm_pipeline_marker.json"
+    sd_file = project_dir / params.get("sd_file", "segment_durations.json")
+    bgm_file = project_dir / "bgm.wav"
+
+    # bgm.wav 不存在时不阻塞（可能还没到音频阶段）
+    if not bgm_file.exists():
+        return True, "bgm.wav 尚未生成，跳过管线验证"
+
+    # segment_durations.json 不存在时也不阻塞
+    if not sd_file.exists():
+        return True, "segment_durations.json 尚未生成，跳过管线验证"
+
+    # 读取 bgm_volume
+    try:
+        sd_data = json.loads(sd_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return True, "segment_durations.json 解析失败，跳过管线验证"
+
+    bgm_volume = sd_data.get("meta", {}).get("bgm_volume")
+    if bgm_volume is None:
+        # bgm_volume 尚未写入，可能管线还没执行到这一步
+        return True, "meta.bgm_volume 尚未写入，跳过管线验证"
+
+    # 标记文件缺失 → 跳过了 bgm_pipeline.sh
+    if not marker_file.exists():
+        return False, (
+            f"meta.bgm_volume={bgm_volume} 存在但无 .bgm_pipeline_marker.json — "
+            f"未使用 bgm_pipeline.sh 校准 BGM 音量（HARD）。"
+            f"修复: bash .claude/commands/clipforge/scripts/bgm_pipeline.sh"
+        )
+
+    # 验证标记文件内容
+    try:
+        marker = json.loads(marker_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        return False, f".bgm_pipeline_marker.json 解析失败: {e}"
+
+    if marker.get("script") != "bgm_pipeline.sh":
+        return False, f"标记文件 script 字段异常: {marker.get('script')}"
+
+    # 交叉验证 bgm_volume 一致
+    marker_vol = marker.get("bgm_volume")
+    if marker_vol is not None:
+        try:
+            vol_diff = abs(float(marker_vol) - float(bgm_volume))
+            if vol_diff > 0.02:
+                return False, (
+                    f"标记文件 bgm_volume={marker_vol} 与 segment_durations.json "
+                    f"bgm_volume={bgm_volume} 不一致（偏差 {vol_diff:.2f}）— "
+                    f"标记可能伪造或文件被覆盖"
+                )
+        except (ValueError, TypeError):
+            return False, f"bgm_volume 格式异常: marker={marker_vol}, sd={bgm_volume}"
+
+    # 验证 bgm_duration 合理
+    marker_dur = marker.get("bgm_duration", 0)
+    try:
+        if float(marker_dur) <= 0:
+            return False, "标记文件 bgm_duration ≤ 0"
+    except (ValueError, TypeError):
+        return False, f"标记文件 bgm_duration 格式异常: {marker_dur}"
+
+    return True, f"BGM 由 bgm_pipeline.sh 校准（volume={bgm_volume}, mode={marker.get('mode', 'N/A')}）"
+
+
+GATE_CHECKERS[GateType.bgm_pipeline_verified] = check_bgm_pipeline_verified
+
+
 def check_bgm_volume_provenance(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 bgm_volume 来源合规性（bgm_pipeline.sh 执行证明）。
 
@@ -1888,7 +1974,7 @@ def check_final_duration_close_to_output(project_dir: Path, params: dict) -> tup
     """
     final_file = project_dir / params.get("final_file", "final.mp4")
     output_file = project_dir / params.get("output_file", "output.mp4")
-    tolerance = params.get("tolerance", 0.2)
+    tolerance = params.get("tolerance", 0.1)
 
     if not final_file.exists():
         return True, "final.mp4 尚未生成，跳过时长比对"
@@ -1927,6 +2013,95 @@ def check_final_duration_close_to_output(project_dir: Path, params: dict) -> tup
 
 
 GATE_CHECKERS[GateType.final_duration_close_to_output] = check_final_duration_close_to_output
+
+
+def check_assemble_final_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """验证 final.mp4 由 assemble_final.sh 生成，而非手写 ffmpeg 拼接。
+
+    assemble_final.sh 完成后会写入 .assemble_marker.json 标记文件。
+    如果 final.mp4 存在但无标记文件 → SubAgent 绕过脚本自行拼接 → FAIL。
+
+    同时验证标记文件中的时长与实际文件一致，防止伪造标记。
+    """
+    marker_file = project_dir / ".assemble_marker.json"
+    final_file = project_dir / "final.mp4"
+    final_nobgm_file = project_dir / "final_no_bgm.mp4"
+
+    # final.mp4 不存在时不阻塞（可能还没到 delivery 阶段）
+    if not final_file.exists():
+        return True, "final.mp4 尚未生成，跳过脚本调用验证"
+
+    # 标记文件缺失 → 绕过了 assemble_final.sh
+    if not marker_file.exists():
+        return False, (
+            "final.mp4 存在但无 .assemble_marker.json 标记文件 — "
+            "未使用 assemble_final.sh 生成 final.mp4（HARD）。"
+            "修复: bash .claude/commands/clipforge/scripts/assemble_final.sh <项目目录>"
+        )
+
+    # 验证标记文件内容完整性
+    try:
+        marker = json.loads(marker_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        return False, f".assemble_marker.json 解析失败: {e}"
+
+    required_keys = {"script", "source_duration", "final_duration", "cover_frames"}
+    missing = required_keys - set(marker.keys())
+    if missing:
+        return False, f".assemble_marker.json 缺少字段: {missing}"
+
+    # 验证标记中的脚本名
+    if marker.get("script") != "assemble_final.sh":
+        return False, f"标记文件 script 字段异常: {marker.get('script')}"
+
+    # 验证封面帧数
+    cover_frames = marker.get("cover_frames", 0)
+    if cover_frames != 1:
+        return False, f"封面帧数异常: {cover_frames}（应为 1）"
+
+    # 交叉验证：标记中的时长 vs 实际 ffprobe 时长
+    def _get_duration(f: Path) -> float | None:
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(f)],
+                capture_output=True, text=True, timeout=10,
+            )
+            return float(result.stdout.strip())
+        except Exception:
+            return None
+
+    actual_final_dur = _get_duration(final_file)
+    if actual_final_dur is not None:
+        marker_dur = marker.get("final_duration", 0)
+        # 允许 0.5s 容差（mastering loudnorm 可能微调时长）
+        if abs(actual_final_dur - marker_dur) > 0.5:
+            return False, (
+                f"标记文件时长 ({marker_dur:.2f}s) 与实际 final.mp4 时长 "
+                f"({actual_final_dur:.2f}s) 不一致 — 标记可能伪造或文件被覆盖"
+            )
+
+    # 验证 final_no_bgm.mp4 也存在（assemble_final.sh 同时产出两个文件）
+    if not final_nobgm_file.exists():
+        return False, "final_no_bgm.mp4 缺失 — assemble_final.sh 应同时产出双版本"
+
+    # 验证 no_bgm 音频来源是 narration.mp3（非 output.mp4 音频轨）
+    no_bgm_source = marker.get("no_bgm_audio_source", "")
+    if no_bgm_source != "narration.mp3":
+        return False, (
+            f"no_bgm 音频来源异常: {no_bgm_source}（应为 narration.mp3）"
+        )
+
+    issues = []
+    if not marker.get("timestamp"):
+        issues.append("缺少 timestamp")
+    if issues:
+        return False, f".assemble_marker.json 不完整: {issues}"
+
+    return True, "final.mp4 由 assemble_final.sh 生成（标记验证通过，no_bgm 音频来源: narration.mp3）"
+
+
+GATE_CHECKERS[GateType.assemble_final_verified] = check_assemble_final_verified
 
 
 def check_grad_text_shorthand(project_dir: Path, params: dict) -> tuple[bool, str]:
@@ -2273,7 +2448,10 @@ GATE_CHECKERS[GateType.pre_render_deps] = check_pre_render_deps
 
 
 def check_html_structure_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """HTML 结构完整性检查 — clip/fx 数量匹配、padding 规范、layer-content height。"""
+    """HTML 结构完整性检查 — clip/fx 数量匹配、layer-content height。
+
+    注意：安全区 padding 检查已移至 check_safe_area_bounds 门禁（类名无关）。
+    """
     html_file = project_dir / params.get("file", "index.html")
     if not html_file.exists():
         return False, f"{html_file.name} 不存在"
@@ -2294,17 +2472,6 @@ def check_html_structure_valid(project_dir: Path, params: dict) -> tuple[bool, s
     if single_fx:
         failures.append(f"{len(single_fx)} 个 layer-fx 仅含单元素（需≥3个特效元素）")
 
-    # 双重 padding 检测（.scene-wrap 和 .phase 不能同时有 padding）
-    # render-safety.md §1.4b: Phase 模式下 .phase 有 padding（正确）；嵌入型下 .scene-wrap 有 padding（正确）
-    # 只有两者同时存在才是违规
-    scene_wrap_has_pad = bool(re.search(
-        r'\.scene-wrap[^}]*padding', content
-    ))
-    phase_has_pad = bool(re.search(
-        r'\.phase[^}]*padding:\s*\d+[a-zA-Z%]*\s+\d+[a-zA-Z%]*', content
-    ))
-    if scene_wrap_has_pad and phase_has_pad:
-        failures.append("双重 padding: .scene-wrap 和 .phase 同时有 padding，违反单层原则（render-safety §1.4a）")
     # .layer-content 有 padding 永远是违规（它不是 padding 载体）
     lc_has_pad = bool(re.search(
         r'\.layer-content[^}]*padding', content
@@ -2317,39 +2484,321 @@ def check_html_structure_valid(project_dir: Path, params: dict) -> tuple[bool, s
     if lc_css and 'height' not in lc_css.group(1):
         failures.append(".layer-content 缺少 height 声明（Phase 内容会塌陷到顶部）")
 
-    # scene-wrap / hero-card / pfc 缺少 padding 检测
-    scene_wraps = re.findall(
-        r'class="[^"]*\b(scene-wrap|hero-card|project-full-card|pfc)\b[^"]*"', content
-    )
-    has_pad = bool(re.search(r'padding\s*:', content))
-    if scene_wraps and not has_pad:
-        failures.append("存在 scene-wrap/hero-card/pfc 但无 padding 声明（内容将塌陷）")
-
-    # 安全区 padding 值校验（竖屏标准 180px 90px 220px 90px）
-    standard_portrait = "180px90px220px90px"
-    portrait_pads = re.findall(r'\.phase[^}]*padding:\s*([^;]+)', content)
-    wrong_pads = [p.strip() for p in portrait_pads if p.strip().replace(" ", "") != standard_portrait]
-    if wrong_pads:
-        failures.append(
-            f"安全区 padding 值不规范（应为 180px 90px 220px 90px），实际: {wrong_pads[0]}"
-        )
-    # 缺失检测：.phase 和 .scene-wrap 都无 padding → 内容贴边
-    if not portrait_pads and not scene_wrap_has_pad:
-        failures.append("安全区 padding 缺失：.phase 和 .scene-wrap 均无 padding（内容将贴边缘）")
-
-
-
     if failures:
         return False, "; ".join(failures)
     return True, f"HTML 结构检查通过（{clip_count} scenes）"
+
+
+# ---------------------------------------------------------------------------
+# safe_area_bounds: 类名无关的逐场景 padding 累加下限检测
+# ---------------------------------------------------------------------------
+
+def _parse_box_value(raw: str):
+    """解析 CSS padding/margin 值为 4-tuple (top, right, bottom, left)。
+    支持 1-4 值简写和独立属性。
+    """
+    raw = raw.strip()
+    if not raw or 'calc(' in raw or 'var(' in raw:
+        return None
+    values = re.findall(r'([\d.]+)\s*(?:px)?', raw)
+    if not values:
+        return None
+    nums = [float(v) for v in values]
+    if len(nums) == 1:
+        return (nums[0], nums[0], nums[0], nums[0])
+    elif len(nums) == 2:
+        return (nums[0], nums[1], nums[0], nums[1])
+    elif len(nums) == 3:
+        return (nums[0], nums[1], nums[2], nums[1])
+    else:
+        return (nums[0], nums[1], nums[2], nums[3])
+
+
+def _is_decorative(t, r, b, l):
+    """全维度 <50px → 装饰性（tag/badge），不参与安全区累加。"""
+    return all(v < 50 for v in (t, r, b, l))
+
+
+def _extract_padding_rules(content: str):
+    """从 HTML 中提取所有 padding 声明。
+
+    返回 list of (scene_scope, base_selector, (t,r,b,l), raw_value)
+    - scene_scope: "scene-2" 或 "all"
+    - base_selector: ".content-inner", ".phase" 等
+    """
+    rules = []
+
+    # --- 从 <style> 块提取 ---
+    for style_block in re.findall(r'<style[^>]*>(.*?)</style>', content, re.DOTALL):
+        for rule_match in re.finditer(r'([^\{]+)\{([^}]+)\}', style_block):
+            selector_raw = rule_match.group(1).strip()
+            body = rule_match.group(2)
+
+            # 跳过重置
+            if selector_raw.startswith('*'):
+                continue
+
+            # 跳过背景/特效层
+            if any(x in selector_raw for x in ('layer-bg', 'layer-fx', '.bg-', '.fx-')):
+                continue
+
+            # 提取 padding
+            pad_match = re.search(r'(?:^|;)\s*padding\s*:\s*([^;]+)', body)
+            if not pad_match:
+                # 检查独立属性
+                pt = re.search(r'padding-top\s*:\s*([^;]+)', body)
+                pr = re.search(r'padding-right\s*:\s*([^;]+)', body)
+                pb = re.search(r'padding-bottom\s*:\s*([^;]+)', body)
+                pl = re.search(r'padding-left\s*:\s*([^;]+)', body)
+                if pt or pr or pb or pl:
+                    # 分别解析各方向
+                    def _sv(m):
+                        return float(re.findall(r'([\d.]+)', m.group(1))[0]) if m else 0.0
+                    pad_tuple = (_sv(pt), _sv(pr), _sv(pb), _sv(pl))
+                    if all(v == 0 for v in pad_tuple):
+                        continue
+                else:
+                    continue
+            else:
+                pad_tuple = _parse_box_value(pad_match.group(1))
+                if pad_tuple is None or all(v == 0 for v in pad_tuple):
+                    continue
+
+            # 解析选择器：提取 scene scope 和 base selector
+            # 场景特定: #scene-2 .content-inner → scope="scene-2", base=".content-inner"
+            # 通用: .phase → scope="all", base=".phase"
+            scene_match = re.match(r'#(scene-\d+)\s+(.*)', selector_raw)
+            if scene_match:
+                scene_scope = scene_match.group(1)
+                base_sel = scene_match.group(2).strip()
+            else:
+                scene_scope = "all"
+                base_sel = selector_raw
+
+            raw_val = pad_match.group(1).strip() if pad_match else "individual"
+            rules.append((scene_scope, base_sel, pad_tuple, raw_val))
+
+    # --- 从 inline style 提取 ---
+    # 找到每个 inline style 所属的 scene
+    for inline_match in re.finditer(
+        r'<div[^>]*(?:id="(scene-\d+)"|class="[^"]*clip[^"]*")[^>]*>.*?'
+        r'(?:<div[^>]*?)?style="[^"]*padding\s*:\s*([^";]+)[^"]*"',
+        content, re.DOTALL
+    ):
+        pass  # inline 解析太复杂，下面用更简单的方式
+
+    # 更简单的 inline 解析：逐个找 style 含 padding 的标签，向上找 scene
+    lines = content.split('\n')
+    current_scene = "all"
+    for i, line in enumerate(lines):
+        # 追踪当前 scene
+        scene_open = re.search(r'id="(scene-\d+)"', line)
+        if scene_open:
+            current_scene = scene_open.group(1)
+        # 检测 scene 关闭（新 clip 开始或文件结束）
+        if re.search(r'class="clip"', line) and not scene_open:
+            current_scene = "all"
+
+        # 提取 inline padding
+        inline_pad = re.search(r'style="[^"]*padding\s*:\s*([^";]+)', line)
+        if inline_pad:
+            pad_tuple = _parse_box_value(inline_pad.group(1))
+            if pad_tuple and not all(v == 0 for v in pad_tuple):
+                rules.append((current_scene, "(inline)", pad_tuple, inline_pad.group(1).strip()))
+
+    return rules
+
+
+def check_safe_area_bounds(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """安全区下限检测 — 逐场景 padding 累加 + 下限校验。
+
+    核心逻辑：每个场景的内容区域距画布边缘的 padding 累加和
+    不得低于标准值（竖屏 180/90/220/90，横屏 60/120/60/120）。
+    """
+    html_file = project_dir / params.get("file", "index.html")
+    if not html_file.exists():
+        return False, f"{html_file.name} 不存在"
+    content = html_file.read_text(encoding="utf-8", errors="ignore")
+    failures = []
+
+    # --- Step A: 方向检测 ---
+    w_match = re.search(r'data-width=["\']?(\d+)', content)
+    h_match = re.search(r'data-height=["\']?(\d+)', content)
+    if w_match and h_match:
+        is_portrait = int(h_match.group(1)) > int(w_match.group(1))
+    else:
+        is_portrait = True
+
+    if is_portrait:
+        MIN_PAD = {"top": 180, "right": 90, "bottom": 220, "left": 90}
+        STD_LABEL = "180px 90px 220px 90px"
+        ORIENT = "竖屏"
+    else:
+        MIN_PAD = {"top": 60, "right": 120, "bottom": 60, "left": 120}
+        STD_LABEL = "60px 120px 60px 120px"
+        ORIENT = "横屏"
+
+    # --- Step B: 提取所有场景 ID ---
+    scene_ids = re.findall(r'id="(scene-\d+)"', content)
+    if not scene_ids:
+        # 可能是旧格式 clip，用 data-clip-id
+        scene_ids = re.findall(r'data-clip-id="(scene-\d+)"', content)
+    if not scene_ids:
+        # 无场景划分，整页作为一个场景检查
+        scene_ids = ["__whole__"]
+
+    # --- Step C: 提取所有 padding 规则 ---
+    all_rules = _extract_padding_rules(content)
+
+    # --- Step D: 逐场景累加校验 ---
+    for scene_id in scene_ids:
+        # 按 base_selector 去重：场景特定 > 通用
+        scene_rules = {}  # base_selector → (pad_tuple, raw_val)
+        for scope, base_sel, pad_tuple, raw_val in all_rules:
+            if scope != "all" and scope != scene_id:
+                continue
+            if base_sel in scene_rules and scope == "all":
+                continue  # 有场景特定规则，丢弃通用（CSS 优先级）
+            scene_rules[base_sel] = (pad_tuple, raw_val)
+
+        # 过滤装饰性，累加
+        non_deco = {}
+        for sel, (pad, raw) in scene_rules.items():
+            if not _is_decorative(*pad):
+                non_deco[sel] = (pad, raw)
+
+        sum_t = sum(p[0] for p, _ in non_deco.values())
+        sum_r = sum(p[1] for p, _ in non_deco.values())
+        sum_b = sum(p[2] for p, _ in non_deco.values())
+        sum_l = sum(p[3] for p, _ in non_deco.values())
+
+        def _dim_label(d, val, minimum):
+            return f"{d}={val}px < {minimum}px" if val < minimum else None
+
+        shortfalls = []
+        for dim, val, mn in [("top", sum_t, MIN_PAD["top"]),
+                              ("right", sum_r, MIN_PAD["right"]),
+                              ("bottom", sum_b, MIN_PAD["bottom"]),
+                              ("left", sum_l, MIN_PAD["left"])]:
+            if val < mn:
+                shortfalls.append(f"{dim}={val}<{mn}")
+
+        scene_label = f"#{scene_id}" if scene_id != "__whole__" else "全局"
+
+        if shortfalls:
+            carriers = "; ".join(f"{s}={r}" for s, (_, r) in non_deco.items()) or "无"
+            failures.append(
+                f"{scene_label} padding 不足 [{', '.join(shortfalls)}] "
+                f"(标准 {STD_LABEL}, carriers: [{carriers}])"
+            )
+
+    # --- Step E: 全画幅容器无 padding 检测 ---
+    # 只捕获完全没有 padding 的容器（主检查已覆盖"有 padding 但不足"的情况）
+    for style_block in re.findall(r'<style[^>]*>(.*?)</style>', content, re.DOTALL):
+        for rule_match in re.finditer(r'([^\{]+)\{([^}]+)\}', style_block):
+            selector = rule_match.group(1).strip()
+            body = rule_match.group(2)
+            if selector.startswith('*'):
+                continue
+            has_inset_0 = bool(re.search(r'inset\s*:\s*0', body))
+            has_full = (bool(re.search(r'top\s*:\s*0', body)) and
+                        bool(re.search(r'left\s*:\s*0', body)) and
+                        bool(re.search(r'width\s*:\s*100%', body)))
+            if not (has_inset_0 or has_full):
+                continue
+            is_content = bool(re.search(r'flex|justify-content|align-items', body))
+            if not is_content:
+                continue
+            pad_m = re.search(r'padding\s*:\s*([^;]+)', body)
+            if pad_m:
+                pad_t = _parse_box_value(pad_m.group(1))
+                # 有 padding 且任一主要维度(top/bottom) ≥ 50px → 主检查会处理，不重复报告
+                if pad_t and (pad_t[0] >= 50 or pad_t[2] >= 50):
+                    continue
+            failures.append(
+                f"全画幅内容容器无 padding ({selector}): "
+                f"inset:0 + flex 但无安全区 padding（内容贴边缘）"
+            )
+
+    # --- Step F: 危险 margin 检测（内容容器 margin >50px） ---
+    for style_block in re.findall(r'<style[^>]*>(.*?)</style>', content, re.DOTALL):
+        for rule_match in re.finditer(r'([^\{]+)\{([^}]+)\}', style_block):
+            selector = rule_match.group(1).strip()
+            body = rule_match.group(2)
+            if selector.startswith('*') or selector.startswith('#'):
+                continue
+            if any(x in selector for x in ('layer-bg', 'layer-fx')):
+                continue
+            margin_m = re.search(r'margin\s*:\s*([^;]+)', body)
+            if not margin_m:
+                continue
+            m_tuple = _parse_box_value(margin_m.group(1))
+            if m_tuple is None:
+                continue
+            # 排除居中模式 margin: 0 auto
+            raw_m = margin_m.group(1).strip().replace(' ', '')
+            if '0auto' in raw_m:
+                continue
+            if any(v > 50 for v in m_tuple):
+                failures.append(
+                    f"危险 margin ({selector}): {margin_m.group(1).strip()} "
+                    f"— 单维度 >50px 可能将内容推出安全区"
+                )
+
+    # --- Step G: 绝对定位越界检测 ---
+    abs_pattern = re.compile(
+        r'([^\{]+)\{[^}]*(?:position\s*:\s*absolute)'
+        r'[^}]*(?:top|bottom|left|right)\s*:\s*([\d.]+)\s*px'
+        r'[^}]*\}',
+        re.DOTALL
+    )
+    for abs_match in abs_pattern.finditer(content):
+        selector = abs_match.group(1).strip()
+        if selector.startswith('*'):
+            continue
+        if any(x in selector for x in ('layer-bg', 'layer-fx', 'bg-grad', 'grid',
+                                         'particle', 'dot', 'line', 'shape',
+                                         'prism', 'ring', 'band')):
+            continue
+        body = abs_match.group(0)
+        for pos_m in re.finditer(r'(top|bottom|left|right)\s*:\s*([\d.]+)\s*px', body):
+            prop = pos_m.group(1)
+            val = float(pos_m.group(2))
+            if prop == "top" and val > 0 and val < MIN_PAD["top"]:
+                failures.append(
+                    f"绝对定位越界 ({selector}): {prop}={val}px < "
+                    f"安全区 top 下限 {MIN_PAD['top']}px"
+                )
+            if prop == "bottom" and val > 0 and val < MIN_PAD["bottom"]:
+                failures.append(
+                    f"绝对定位越界 ({selector}): {prop}={val}px < "
+                    f"安全区 bottom 下限 {MIN_PAD['bottom']}px"
+                )
+            if prop == "left" and val > 0 and val < MIN_PAD["left"]:
+                failures.append(
+                    f"绝对定位越界 ({selector}): {prop}={val}px < "
+                    f"安全区 left 下限 {MIN_PAD['left']}px"
+                )
+            if prop == "right" and val > 0 and val < MIN_PAD["right"]:
+                failures.append(
+                    f"绝对定位越界 ({selector}): {prop}={val}px < "
+                    f"安全区 right 下限 {MIN_PAD['right']}px"
+                )
+
+    if failures:
+        return False, "; ".join(failures)
+    return True, f"安全区检查通过 ({ORIENT}, 标准 {STD_LABEL})"
 
 
 def check_visual_phases_completeness(project_dir: Path, params: dict) -> tuple[bool, str]:
     """视觉分镜完整性 — 长场景必须有足够的 visual_phases。"""
     dur_file = project_dir / params.get("segments_file", "segment_durations.json")
     narr_file = project_dir / params.get("narration_file", "narration_segments.json")
+    pt_file = project_dir / "phase_timings.json"
     if not dur_file.exists() or not narr_file.exists():
         return True, "分镜文件缺失，跳过"
+    if not pt_file.exists():
+        return True, "phase_timings.json 缺失，HTML 未使用 phase 分镜模式，跳过"
     try:
         dur_segs = json.loads(dur_file.read_text(encoding="utf-8"))["segments"]
         narr_raw = json.loads(narr_file.read_text(encoding="utf-8"))
@@ -2359,7 +2808,9 @@ def check_visual_phases_completeness(project_dir: Path, params: dict) -> tuple[b
 
     failures = []
     for seg, narr in zip(dur_segs, narr_segs):
-        d = seg["actual_duration"]
+        d = seg.get("actual_duration") or seg.get("duration") or 0
+        if not d:
+            continue
         vp = narr.get("visual_phases", [])
         vp_count = len(vp) if isinstance(vp, list) else 0
         scene_name = narr.get("scene", "?")
@@ -2465,16 +2916,272 @@ def check_bgm_isolation_valid(project_dir: Path, params: dict) -> tuple[bool, st
         return False, "BGM volumedetect 数据缺失"
 
     diff = vol_with - vol_without
-    if diff < 2.0:
-        return False, f"no_bgm 文件 BGM 未消除（差值仅 {diff:.1f} dB，需 >= 2dB）"
+    # diff < 0: no_bgm 比 with_bgm 更响 → BGM 音量极低，混音后总音量微降 → 正确行为
+    # diff >= 0 但 < 2: BGM 可能在 no_bgm 中残留 → 需警告但降级为 soft
+    if diff >= 0 and diff < 2.0:
+        return False, (
+            f"no_bgm 文件 BGM 未消除（差值仅 {diff:.1f} dB，需 >= 2dB）。"
+            f"with_bgm={vol_with:.1f}dB, no_bgm={vol_without:.1f}dB"
+        )
 
     return True, f"BGM 隔离校验通过（差值 {diff:.1f} dB）"
+
+
+def check_narration_audio_embedded(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """旁白音频嵌入检查 — index.html 必须包含 narration.mp3 的 <audio> 元素。
+
+    HyperFrames 通过 HTML 内嵌 <audio> 元素混音。缺少旁白 <audio> 会导致渲染出的视频没有旁白声音。
+    """
+    html_file = project_dir / params.get("file", "index.html")
+    if not html_file.exists():
+        return False, f"HTML 文件不存在: {html_file}"
+
+    content = html_file.read_text(encoding="utf-8")
+
+    # 检查是否有 narration.mp3 的 <audio> 元素
+    narration_audio = re.search(
+        r'<audio[^>]*src=["\']narration\.mp3["\']', content
+    )
+    if not narration_audio:
+        # 也检查 data-src 属性
+        narration_audio = re.search(
+            r'<audio[^>]*data-src=["\']narration\.mp3["\']', content
+        )
+
+    if not narration_audio:
+        return False, (
+            "index.html 缺少旁白 <audio> 元素。"
+            "必须添加: <audio data-track-index=\"1\" data-volume=\"1\" "
+            "data-start=\"0\" src=\"narration.mp3\" preload=\"auto\"></audio>"
+        )
+
+    return True, "旁白音频嵌入检查通过"
+
+
+def check_delayed_animation_init(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """延迟入场动画初始化检查 — 时间偏移 > 2s 的 .from()/.to() 必须有对应 .set()，
+    且 .set() 的偏移量必须足以将元素完全推出画布。
+
+    HyperFrames 通过 GSAP timeline seek 驱动帧渲染。当 .from() 的时间偏移 > 0 时，
+    seek 到动画触发前的帧时，元素保持 DOM 原位（可见）。必须在 timeline 开始处用
+    .set() 初始化离屏状态，且偏移量必须 ≥ 画布尺寸（完全隐藏）。
+    """
+    html_file = project_dir / params.get("file", "index.html")
+    if not html_file.exists():
+        return False, f"HTML 文件不存在: {html_file}"
+
+    content = html_file.read_text(encoding="utf-8")
+
+    # 检测方向（竖屏/横屏）
+    root_w = re.search(r'data-width=["\'](\d+)["\']', content)
+    root_h = re.search(r'data-height=["\'](\d+)["\']', content)
+    if root_w and root_h:
+        w, h = int(root_w.group(1)), int(root_h.group(1))
+        is_portrait = h > w
+    else:
+        is_portrait = True  # 默认竖屏
+
+    # 偏移量硬标准
+    MIN_X = 1080 if is_portrait else 1920
+    MIN_Y = 1920 if is_portrait else 1080
+    orient_label = "竖屏" if is_portrait else "横屏"
+
+    failures = []
+    delay_threshold = 2.0  # 只检查明显延迟入场的元素
+
+    for script_match in re.finditer(r'<script[^>]*>(.*?)</script>', content, re.DOTALL):
+        script = script_match.group(1)
+
+        tl_assignments = list(re.finditer(
+            r'(\w+)\s*=\s*gsap\.timeline\([^)]*\)\s*',
+            script
+        ))
+
+        for i, assign in enumerate(tl_assignments):
+            tl_name = assign.group(1)
+            start_pos = assign.end()
+            end_pos = tl_assignments[i + 1].start() if i + 1 < len(tl_assignments) else len(script)
+            block = script[start_pos:end_pos]
+
+            # 找所有 .from() 调用，提取选择器、属性和时间偏移
+            from_pattern = re.compile(
+                r'\.from\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*\{([^}]*)\}\s*,\s*([\'"][^\'"]*[\'"]|[\d.]+)\s*\)',
+                re.DOTALL
+            )
+
+            # 找所有 .to() 调用，提取选择器、属性和时间偏移
+            to_pattern = re.compile(
+                r'\.to\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*\{([^}]*)\}\s*,\s*([\'"][^\'"]*[\'"]|[\d.]+)\s*\)',
+                re.DOTALL
+            )
+
+            # 找所有 .set() 调用，提取选择器和 { ... } 属性值
+            set_detail_pattern = re.compile(
+                r'\.set\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*\{([^}]*)\}',
+                re.DOTALL
+            )
+            # selector → { 属性字典 }
+            set_details = {}
+            assign_line_start = script.rfind('\n', 0, assign.start()) + 1
+            assign_to_block = script[assign_line_start:start_pos]
+            for region in [assign_to_block, block]:
+                for sm in set_detail_pattern.finditer(region):
+                    sel = sm.group(1).strip()
+                    props_str = sm.group(2)
+                    props = {}
+                    for pm in re.finditer(r'(\w[\w-]*)\s*:\s*([^,}]+)', props_str):
+                        key = pm.group(1).strip()
+                        val = pm.group(2).strip()
+                        try:
+                            props[key] = float(val)
+                        except ValueError:
+                            props[key] = val
+                    set_details[sel] = props
+
+            set_selectors = set(set_details.keys())
+
+            # 检查 .from() 和 .to() 中延迟 > 2s 的调用
+            for pattern, method_name in [(from_pattern, "from"), (to_pattern, "to")]:
+                for m in pattern.finditer(block):
+                    selector = m.group(1).strip()
+                    anim_props = m.group(2)  # 动画属性字符串
+                    time_arg = m.group(3).strip().strip("'\"")
+
+                    try:
+                        time_offset = float(time_arg)
+                    except (ValueError, TypeError):
+                        continue
+
+                    if time_offset <= delay_threshold:
+                        continue
+
+                    # 判断是否为滑动/抽屉特效（动画本身含 x/y/translate 属性）
+                    is_slide_effect = bool(re.search(
+                        r'\b([xy]|translate[XY])\s*:', anim_props))
+
+                    if not is_slide_effect:
+                        continue  # 非滑动特效（scale/opacity/fade 等），跳过偏移量检查
+
+                    # 查找匹配的 .set()（分两轮：先精确，再部分匹配）
+                    matched_set_sel = None
+                    matched_set_props = None
+                    # 第一轮：精确匹配
+                    for s, props in set_details.items():
+                        if s == selector:
+                            matched_set_sel = s
+                            matched_set_props = props
+                            break
+                    # 第二轮：ID 交集部分匹配（仅当精确匹配失败时）
+                    if matched_set_sel is None:
+                        # 部分匹配：要求 .set() 选择器的最后一级 ID 与 .to() 选择器一致
+                        # 且 .set() 层级 ≤ .to() 层级（子元素不能覆盖父元素）
+                        # 例如 .set('#card-2') 匹配 .to('#scene-2 #card-2')（同一元素，更短）
+                        # 但 .set('#card-2 .proj-stars') 不匹配 .to('#card-2')（子元素，更长）
+                        sel_id_list = re.findall(r'#[\w-]+', selector)
+                        sel_last_id = sel_id_list[-1] if sel_id_list else None
+                        sel_segments = len(selector.split())
+                        if sel_last_id:
+                            for s, props in set_details.items():
+                                set_id_list = re.findall(r'#[\w-]+', s)
+                                set_last_id = set_id_list[-1] if set_id_list else None
+                                set_segments = len(s.split())
+                                if (set_last_id and set_last_id == sel_last_id
+                                        and set_segments <= sel_segments):
+                                    matched_set_sel = s
+                                    matched_set_props = props
+                                    break
+
+                    if matched_set_sel is None:
+                        failures.append(
+                            f"{tl_name}: .{method_name}('{selector}', {{...}}, {time_offset}s) "
+                            f"偏移 > {delay_threshold}s 但无对应 .set() 初始化离屏状态。"
+                            f"应添加: {tl_name}.set('{selector}', {{ x: {MIN_X} }})"
+                        )
+                        continue
+
+                    # .set() 存在，检查偏移量是否足够
+                    props = matched_set_props or {}
+                    # 检查是否有 scale:0 或 opacity:0（视为完全隐藏，跳过偏移量检查）
+                    if _is_fully_hidden_by_scale_or_opacity(props):
+                        continue
+
+                    # 后代选择器豁免：如果父元素已有足够偏移，后代只需微调动画
+                    if _is_covered_by_parent(matched_set_sel, set_details, MIN_X, MIN_Y):
+                        continue
+
+                    # 检查位移偏移量
+                    max_offset = 0
+                    offset_axis = ""
+                    for key, val in props.items():
+                        if key in ('x', 'translateX') and isinstance(val, (int, float)):
+                            if abs(val) > max_offset:
+                                max_offset = abs(val)
+                                offset_axis = f"{key}:{val}"
+                        if key in ('y', 'translateY') and isinstance(val, (int, float)):
+                            if abs(val) > max_offset:
+                                max_offset = abs(val)
+                                offset_axis = f"{key}:{val}"
+
+                    if max_offset > 0:
+                        # 判断是水平还是垂直偏移
+                        is_x_axis = any(k in props for k in ('x', 'translateX'))
+                        threshold = MIN_X if is_x_axis else MIN_Y
+                        if max_offset < threshold:
+                            failures.append(
+                                f"{tl_name}: .set('{matched_set_sel}', {{{offset_axis}}}) "
+                                f"偏移量 {max_offset}px < {orient_label}最低标准 {threshold}px "
+                                f"— 元素未完全推出画布，会半露。"
+                                f"应设为 ≥ {threshold}"
+                            )
+
+    if failures:
+        return False, "; ".join(failures)
+    return True, "延迟入场动画初始化检查通过"
+
+
+def _is_fully_hidden_by_scale_or_opacity(props: dict) -> bool:
+    """检查 .set() 属性中是否有 scale:0 或 opacity:0（完全隐藏元素）。"""
+    for key, val in props.items():
+        if key == 'scale' and isinstance(val, (int, float)) and val == 0:
+            return True
+        if key == 'opacity' and isinstance(val, (int, float)) and val == 0:
+            return True
+    return False
+
+
+def _is_covered_by_parent(selector: str, set_details: dict, min_x: int, min_y: int) -> bool:
+    """后代选择器豁免：检查父元素是否已有足够偏移完全隐藏。
+    例如 #scene-2 #card-2 .proj-desc 的父 #scene-2 #card-2 已有 x:1100 → 子 y:20 是微调，豁免。
+    使用选择器前缀匹配（非 ID 交集）确保只有真正的 DOM 祖先才被认可。
+    """
+    # 只对后代选择器（含空格）生效
+    if ' ' not in selector:
+        return False
+
+    # 遍历所有 .set() 选择器，用前缀匹配找真正的祖先
+    for ps, pp in set_details.items():
+        # ps 必须是 selector 的严格前缀（ps + 空格 = selector 的前缀）
+        if not selector.startswith(ps + ' '):
+            continue
+        # ps 是祖先选择器，检查其偏移是否足够
+        if _is_fully_hidden_by_scale_or_opacity(pp):
+            return True
+        for k, v in pp.items():
+            if k in ('x', 'translateX') and isinstance(v, (int, float)) and abs(v) >= min_x:
+                return True
+            if k in ('y', 'translateY') and isinstance(v, (int, float)) and abs(v) >= min_y:
+                return True
+
+    return False
 
 
 GATE_CHECKERS[GateType.html_structure_valid] = check_html_structure_valid
 GATE_CHECKERS[GateType.output_media_valid] = check_output_media_valid
 GATE_CHECKERS[GateType.bgm_isolation_valid] = check_bgm_isolation_valid
 GATE_CHECKERS[GateType.visual_phases_completeness] = check_visual_phases_completeness
+GATE_CHECKERS[GateType.safe_area_bounds] = check_safe_area_bounds
+GATE_CHECKERS[GateType.narration_audio_embedded] = check_narration_audio_embedded
+GATE_CHECKERS[GateType.delayed_animation_init] = check_delayed_animation_init
 
 
 # SAFETY 级 gate：违反即安全事故，不可通过归因自动修复

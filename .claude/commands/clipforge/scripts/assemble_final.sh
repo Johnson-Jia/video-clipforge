@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# 封面拼接 + final 输出
+# 封面拼接 + final 输出（统一交付入口）
 #
 # 用法: bash scripts/assemble_final.sh [项目目录]
 # 项目目录默认为当前目录
 #
-# 前置: cover.png + output.mp4 + output_no_bgm.mp4 必须存在
-# 输出: final.mp4 + final_no_bgm.mp4
+# 前置: cover.png + output.mp4 + narration.mp3 必须存在
+# 输出: output_no_bgm.mp4 + final.mp4 + final_no_bgm.mp4
 #
 # 方式: TS concat + stream copy（不重编码主视频，无损拼接）
 # 封面只占 1 帧，对时长和音频几乎无影响
+# output_no_bgm.mp4 由本脚本从 output.mp4 视频 + narration.mp3 音频合成
 
 set -e
 PROJECT_DIR="${1:-.}"
@@ -19,7 +20,7 @@ echo "[assemble_final] 封面嵌入视频第一帧..."
 # ── 门禁 ──
 [ -s cover.png ] || { echo "FAIL: cover.png 缺失"; exit 1; }
 [ -s output.mp4 ] || { echo "FAIL: output.mp4 缺失"; exit 1; }
-[ -s output_no_bgm.mp4 ] || { echo "FAIL: output_no_bgm.mp4 缺失"; exit 1; }
+[ -s narration.mp3 ] || { echo "FAIL: narration.mp3 缺失"; exit 1; }
 
 # ── 从 output.mp4 读取编码参数 + 分辨率 ──
 FPS=$(ffprobe -v quiet -show_entries stream=r_frame_rate -select_streams v -of csv=p=0 output.mp4 | head -1)
@@ -30,6 +31,15 @@ FRAME_DUR=$(awk "BEGIN {printf \"%.6f\", 1/$FPS_NUM}")
 VIDEO_W=$(ffprobe -v quiet -show_entries stream=width -select_streams v -of csv=p=0 output.mp4 | head -1)
 VIDEO_H=$(ffprobe -v quiet -show_entries stream=height -select_streams v -of csv=p=0 output.mp4 | head -1)
 echo "[assemble_final] 源视频: ${SOURCE_DUR}s, ${FPS}fps, profile=${PROFILE}, ${VIDEO_W}x${VIDEO_H}, 封面帧长: ${FRAME_DUR}s"
+
+# ── 生成 output_no_bgm.mp4（从 output.mp4 视频 + narration.mp3 音频）──
+# 这是唯一正确的生成方式：禁止从 output.mp4 提取音频轨
+echo "[assemble_final] 生成 output_no_bgm.mp4（output.mp4 视频 + narration.mp3 音频）..."
+ffmpeg -y -i output.mp4 -i narration.mp3 \
+  -c:v copy -c:a aac -b:a 192k \
+  -map 0:v -map 1:a -shortest \
+  output_no_bgm.mp4 2>/dev/null
+echo "[assemble_final] output_no_bgm.mp4 已生成"
 
 # ── 封面片段制备（1 帧，TS 格式，匹配源视频参数）──
 ffmpeg -y -loop 1 -t $FRAME_DUR -framerate $FPS -i cover.png \
@@ -77,9 +87,8 @@ echo "  final.mp4: $(du -h final.mp4 | cut -f1), ${FINAL_DUR}s, 音频轨道: ${
 echo "  final_no_bgm.mp4: $(du -h final_no_bgm.mp4 | cut -f1), ${NOBGM_DUR}s, 音频轨道: ${NOBGM_AUDIO}"
 
 # ── 硬性断言：时长不膨胀 + 音频不丢失 ──
-# final.mp4 时长不应超过 output.mp4 + 0.2 秒（1帧封面 ≈ 0.033s + 余量）
-# 事故记录：2026-05-31 SubAgent 绕过本脚本创建 3s 封面视频，导致 A/V 全程脱节
-if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.2)}"; then
+# final.mp4 时长不应超过 output.mp4 + 0.1 秒（1帧封面 ≈ 0.033s + TS对齐开销 ≤ 0.06s）
+if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.1)}"; then
   echo "FAIL: final.mp4 时长 ($FINAL_DUR) 远超源视频 ($SOURCE_DUR)，封面膨胀导致 A/V 脱节风险"
   exit 1
 fi
@@ -93,3 +102,18 @@ if [ "$NOBGM_AUDIO" -eq 0 ]; then
 fi
 
 echo "[assemble_final] 验证通过"
+
+# ── 写标记文件（gate 据此判断 final.mp4 是否由本脚本生成）──
+cat > .assemble_marker.json <<EOFMarker
+{
+  "script": "assemble_final.sh",
+  "timestamp": "$(date -Iseconds)",
+  "source_duration": $SOURCE_DUR,
+  "final_duration": $FINAL_DUR,
+  "final_no_bgm_duration": $NOBGM_DUR,
+  "cover_frames": 1,
+  "fps": "$FPS",
+  "no_bgm_audio_source": "narration.mp3"
+}
+EOFMarker
+echo "[assemble_final] 标记文件已写入: .assemble_marker.json"

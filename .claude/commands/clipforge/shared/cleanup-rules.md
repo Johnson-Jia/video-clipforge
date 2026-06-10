@@ -67,6 +67,8 @@
 | `content.md` | 内容摘要（如有） | 重新理解项目内容 |
 | `content_summary.md` | 内容摘要备选名 | 同 content.md |
 | `cover_params.json` | 封面生成参数 | 换配色/内容时重生成封面需要 |
+| `raw_trending.json` | 原始趋势数据（GitHub） | 数据溯源，重跑 content 阶段需要 |
+| `content_ready.txt` | 内容筛选结果 | 记录选中项目和反共识角度 |
 
 ### 文章项目保留清单
 
@@ -122,6 +124,9 @@ frame_check.png
 
 # 视频验证截图
 verify_*.png
+check_*.png              # 门禁/码率检测截图
+frame_*.png              # 逐帧抽检截图
+v2_*.png                 # 修复后重检截图
 
 # 电影片段中间产物
 clips_16x9/             # 提取的单段片段（可从源视频重新提取）
@@ -137,6 +142,8 @@ narration.srt
 
 # 清理标记（清理完成后重新生成）
 .cleaned
+.assemble_marker.json   # assemble_final.sh 门禁标记
+.bgm_pipeline_marker.json  # bgm_pipeline.sh 门禁标记
 ```
 
 ### 必须保留（封面重生成需要）
@@ -203,7 +210,10 @@ workspace/<YYYY>/<MM>/<DD>/<项目名>/
 ├── sentence_timestamps.json # 句子级时间戳
 ├── phase_timings.json    # Phase 切换时间
 ├── narration.mp3          # 合并旁白（可选）
-└── douyin.md              # 抖音文案
+├── douyin.md              # 抖音文案
+├── raw_trending.json      # 原始趋势数据（GitHub 项目）
+├── content_ready.txt      # 内容筛选结果（选中项目+角度）
+└── score_report.json      # 机器评分报告
 ```
 
 文章项目清理后仅包含：

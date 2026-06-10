@@ -26,9 +26,9 @@ rules:
 
   - id: "R-R-003"
     type: FORBIDDEN_ACTION
-    pattern: "scene-wrap 和 .phase 同时设置 padding（双重 padding）"
-    positive: "安全区 padding 只设一层（180px 90px 220px 90px），scene-wrap 或 .phase 二选一"
-    guardrail: ".scene-wrap 和 .phase 都有 padding 属性"
+    pattern: "多个元素同时设置安全区级 padding（双重 padding）"
+    positive: "安全区 padding 只设一层（竖屏 180px 90px 220px 90px），多个元素累加违反单层原则"
+    guardrail: "多个元素含安全区级 padding（累加后超标准），违反单层原则"
     detection:
       keywords: []
       semantic_check: true
@@ -39,9 +39,9 @@ rules:
 
   - id: "R-R-004"
     type: FORBIDDEN_ACTION
-    pattern: "场景缺少安全区 padding"
-    positive: "每个场景必须有四方向安全区 padding（180px 90px 220px 90px）"
-    guardrail: ".scene-wrap 和 .phase 都没有 padding"
+    pattern: "场景 padding 累加总和未达安全区最低标准"
+    positive: "每个场景 padding 累加和必须 ≥ 竖屏 180/90/220/90 或横屏 60/120/60/120"
+    guardrail: "场景 padding 累加总和未达最低标准（竖屏需 ≥180/90/220/90，横屏需 ≥60/120/60/120）"
     detection:
       keywords: []
       semantic_check: true

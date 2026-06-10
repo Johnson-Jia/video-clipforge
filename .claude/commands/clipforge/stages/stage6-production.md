@@ -485,6 +485,33 @@ window.__timelines["main"] = tl;
   - `tl.from()` / `tl.to()` 中对**内容元素**使用 `opacity` 属性（`tl.from({opacity:0})` 导致 HyperFrames seek 时内容不可见）
   - **fx 元素的 `tl.to({opacity:..., repeat:-1, yoyo:true})` 不受此限制**
 
+9b. **延迟入场动画必须 `.set()` 初始化**（R-S6-027 HARD，gate: delayed_animation_init）:
+   HyperFrames 通过 GSAP timeline seek 驱动每帧。当 `.from()` 的时间偏移 > 0 时，seek 到动画触发前的帧时，**元素保持 DOM 原位（可见）**——`.from()` 的"起始值"仅在动画区间生效，seek 到 t < 动画开始时间时不起作用。
+
+   **必须**在 timeline 开始处用 `.set()` 将延迟入场元素初始化为离屏状态，再用 `.to()` 入场：
+
+   ```javascript
+   // ✅ 正确：.set() 初始化离屏 + .to() 入场
+   s2.set('#card-2', { x: 1100 })    // seek t=0 时完全在画布外
+     .to('#card-2', { x: 0, duration: 0.7, ease: 'power3.out' }, 5.5)
+
+   // ❌ 错误：偏移不够 — x:200 时卡片一半仍然可见
+   s2.set('#card-2', { x: 200 })
+
+   // ❌ 错误：仅 .from() — seek 到场景起始帧时 card-2 在 DOM 原位可见
+   s2.from('#card-2', { x: 200, duration: 0.7 }, 5.5)
+   ```
+
+   **判定规则**：`.from()` / `.to()` 的第三个参数（时间位置）> 2s 时，同 timeline 中必须存在对应选择器的 `.set()` 调用。t≤2s 的入场动画不需要 `.set()`（元素在场景开始后极短时间内就进入动画区间，seek 预显示不可察觉）。
+
+   **偏移量硬标准**（HARD，gate: delayed_animation_init）：`.set()` 的偏移量必须足以将元素完全推出画布：
+   - **水平偏移**（x/translateX）：竖屏 ≥ 1080px，横屏 ≥ 1920px
+   - **垂直偏移**（y/translateY）：竖屏 ≥ 1920px，横屏 ≥ 1080px
+   - **缩放隐藏**（scale: 0）：视为完全隐藏，不适用偏移量标准
+   - **透明度隐藏**（opacity: 0）：视为完全隐藏，不适用偏移量标准
+
+   不满足偏移量的 `.set()` 等同于无 `.set()`——元素一半可见。
+
 ### CSS 规则
 
 > **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
@@ -604,17 +631,23 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 字号参考见 `director-toolkit.md` 字号层级表。
 
-### 竖屏垂直居中规则
+### 竖屏垂直居中规则（R-S6-028 HARD）
 
-> `.phase` 已内置 `flex-direction:column;justify-content:center`，内容自动垂直居中，无需手动添加。
+**内容容器必须垂直居中**——无论使用什么 class 名。内容容器（承载主要文字/卡片的 div）必须包含以下 CSS：
 
-**禁止在内容容器外加 flex 居中**：`.phase` 已内置 `display:flex; flex-direction:column; justify-content:center`，内容自动垂直居中。在 `.clip` 或其他外层加 flex 无效。
+```css
+display: flex;
+flex-direction: column;
+justify-content: center;
+```
+
+**常见错误**：只有 `display:flex; flex-direction:column;` 但缺少 `justify-content:center`——内容会从顶部开始排列，视觉偏上。
 
 **禁止紧贴顶部**：不能用 `top: 80px` 等小值。场景内容容器禁止 `position: absolute` + 小 top 值。
 
 ### 布局推导（两级体系）
 
-**垂直方向强制居中**（`.phase` flex 内置），水平方向由布局推导决定：
+**垂直方向强制居中**（内容容器 `justify-content:center`），水平方向由布局推导决定：
 
 #### Level 1：visual_type → 布局框架
 
@@ -667,15 +700,20 @@ cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
 # 1. 确认音频文件存在
 ls -la narration.mp3 bgm.wav
 
-# 2. 渲染前依赖检查（引用文件存在性 + 根属性 + cover.html 冲突）
+# 2. 确认 index.html 包含旁白 <audio> 元素（R-S6-029 HARD）
+#    HyperFrames 通过 HTML 内嵌 <audio> 混音，缺少旁白 <audio> 会导致视频无旁白
+grep -c '<audio[^>]*src="narration\.mp3"' index.html
+# 输出必须 ≥ 1
+
+# 3. 渲染前依赖检查（引用文件存在性 + 根属性 + cover.html 冲突）
 python .claude/commands/clipforge/scripts/pre_render_check.py .
 # 未通过则修复后重新执行，不得跳过
 
-# 3. 导演门禁 — HTML 设计意图验证（Layer 1）
+# 4. 导演门禁 — HTML 设计意图验证（Layer 1）
 python3 .claude/commands/clipforge/scripts/director_gate.py .
 # 未通过则修复 HTML 后重新执行，不得跳过
 
-# 4. 移除所有非 index.html 的 composition 文件
+# 5. 移除所有非 index.html 的 composition 文件
 for f in cover.html index_with_bgm.html cover.html.bak; do
   [ -f "$f" ] && mv "$f" "$f.renderbak"
 done
