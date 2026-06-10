@@ -259,3 +259,17 @@ rules:
     scope: SKILL
     skill: stage6-production
     source: "shared/render-safety.md §3.5 — 2026-05-31 VibeCoding 大赏视频内容偏左事故"
+
+  - id: "R-R-021"
+    type: REQUIRED_METHOD
+    pattern: "bg 层未使用组件库中的 bg 组件"
+    positive: "每个场景的 .layer-bg 必须包含组件库 bg 组件（标记为 <!-- bg-component: NAME -->）。允许换色（CSS 变量/色值替换），允许叠加背景图片，但底色层必须来自组件库"
+    guardrail: ".layer-bg 中不存在 <!-- bg-component: --> 注释"
+    detection:
+      keywords: ["bg-component"]
+      semantic_check: false
+    severity: HARD
+    class: QUALITY
+    scope: SKILL
+    skill: stage6-production
+    source: "shared/render-safety.md §2.3 — bg 组件库强制使用"

@@ -194,7 +194,7 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 - `visual_context.json` — 视觉节奏上下文（不单调、不突兀的引导）
 - `design.md` — 视觉风格方向、storyboard、配色方案
 - `narration_segments.json` — 每段的旁白内容、情感标记、visual_phases
-- `stage6-components.md` — 组件库参考（可选，不是唯一来源）
+- `stage6-components.md` — 组件库参考（bg 层必须从中选用，fx/content 可自由创作）
 
 如果 Stage 5 已制备素材，将 `assets/manifest.md` 中列出的文件路径作为 prompt 上下文传入 HyperFrames，让其在 HTML 中嵌入：
 
@@ -338,6 +338,7 @@ python3 .claude/commands/clipforge/scripts/director_gate.py .
 **格式 B：带标记的代码片段（更自由）**
 ```html
 <!-- CREATIVE_SLOT:s1-bg-html -->
+<!-- bg-component: light_field -->
 <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 70%, rgba(75,0,130,0.8), transparent);">
   <div style="position:absolute;width:300px;height:300px;border-radius:50%;filter:blur(40px);"></div>
 </div>
@@ -352,8 +353,8 @@ tl.from('#s1 h1', {scale: 0.85, duration: 0.15, ease: 'power3.out'}, 0);
 - LLM 可以自由发明任何 CSS 效果（渐变、动画、滤镜、混合模式...）
 - LLM 可以使用 Canvas/WebGL 编写全新特效
 - LLM 可以引用组件库中的组件作为基础并修改
-- LLM 也可以完全不使用组件库，从零创作
-- 组件库是"工具箱和灵感来源"，不是约束
+- **bg 层强制使用组件库**（R-R-021 HARD）：每个场景必须从 `components/bg/` 选用 1 个 bg 组件，保留 `<!-- bg-component: NAME -->` 标记。允许换色（CSS 变量/色值替换）、叠加背景图片，禁止自行编写 bg CSS
+- fx/content 层的组件库仍是工具箱和灵感来源，不强制
 
 ## 6.4a 特效工坊（组件匹配 + 新特效创建）
 

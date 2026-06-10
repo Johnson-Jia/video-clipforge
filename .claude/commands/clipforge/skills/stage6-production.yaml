@@ -68,6 +68,9 @@ skill:
       - thought: "横屏内容左对齐像文档一样更自然"
         reality: "视频不是文档。横屏 1920px 宽幅下所有内容左对齐会导致视觉重心偏向一侧，另一侧空旷失衡。内容容器应居中（max-width+margin:0 auto），文字本身可以左对齐。双栏布局保持左右平衡（R-R-020 HARD）"
         trigger: "横屏场景所有内容偏向画布一侧"
+      - thought: "bg 层我自己写 CSS 渐变就好，不需要用组件库"
+        reality: "bg 层必须使用组件库中的 bg 组件（R-R-021 HARD），保留 <!-- bg-component: NAME --> 标记。允许换色和叠加背景图片"
+        trigger: "试图自行编写 bg 层 CSS 而不使用组件库"
       - thought: "background:linear-gradient(...) 简洁方便，效果一样"
         reality: "CSS background 简写会重置 background-clip 回 border-box，导致 .grad-text 的 background-clip:text 失效。结果是渐变填满整个背景色块，color:transparent 隐藏文字——只看到色块看不到字（R-S6-021 HARD）。正确写法：background-image:linear-gradient(...)"
         trigger: "在 .grad-text 元素上使用 background: 简写属性"
@@ -103,6 +106,9 @@ skill:
         params:
           bgm_file: "output.mp4"
           no_bgm_file: "output_no_bgm.mp4"
+      - gate: bg_component_source
+        params:
+          file: "index.html"
       - gate: bg_visual_diversity
         params:
           file: "index.html"

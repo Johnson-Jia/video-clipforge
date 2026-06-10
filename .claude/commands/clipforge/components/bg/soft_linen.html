@@ -1,0 +1,149 @@
+<!--
+@ComponentMeta
+name: soft_linen
+layer: bg
+tags: [linen, warm, cozy, fabric, gentle, soft, daily, bokeh, candle, petal]
+emotion_range: [warmth, cozy, gentle, daily]
+visual_density: low
+complexity: css-only
+description: 琥珀暖色渐变底（清晰暖色身份）+ 散景圆环（bokeh）+ 织物纹理 + 黄金时刻色带 + 漂浮花瓣 + 烛光中心脉冲 + 淡金微粒
+parameters:
+  bokeh_count: { default: 4, range: [3, 5] }
+  warmth: { default: 0.28, range: [0.16, 0.38] }
+  petal_count: { default: 4, range: [3, 6] }
+  candle_period: { default: 5, range: [3, 8] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes warmDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(20px, -15px) scale(1.03); }
+  66% { transform: translate(-10px, 10px) scale(0.98); }
+}
+@keyframes bokehFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.10; }
+  25% { transform: translate(12px, -18px) scale(1.05); opacity: 0.18; }
+  75% { transform: translate(-8px, 10px) scale(0.97); opacity: 0.14; }
+}
+@keyframes candleFlicker {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  15% { opacity: 0.40; transform: scale(1.03); }
+  30% { opacity: 0.18; transform: scale(0.98); }
+  50% { opacity: 0.35; transform: scale(1.05); }
+  70% { opacity: 0.22; transform: scale(0.99); }
+  85% { opacity: 0.32; transform: scale(1.02); }
+}
+@keyframes goldenHourDrift {
+  0%, 100% { transform: translateY(0); opacity: 0.12; }
+  50% { transform: translateY(-8px); opacity: 0.20; }
+}
+@keyframes petalDrift {
+  0% { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.28; }
+  90% { opacity: 0.20; }
+  100% { transform: translateY(100vh) translateX(30px) rotate(120deg); opacity: 0; }
+}
+@keyframes fabricBreath {
+  0%, 100% { opacity: 0.05; }
+  50% { opacity: 0.08; }
+}
+@keyframes goldenFloat {
+  0%, 100% { transform: translateY(0); opacity: 0.35; }
+  50% { transform: translateY(-25px); opacity: 0.60; }
+}
+@keyframes warmPulse {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.15; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: soft_linen -->
+<!-- 琥珀暖色渐变底（清晰暖色身份，非泥泞灰） -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 45%, hsla(32,40%,14%,1), hsla(28,35%,9%,1))"></div>
+<!-- 琥珀色核心辉光（让暖色身份清晰可辨） -->
+<div style="position:absolute;top:32%;left:35%;width:550px;height:550px;border-radius:50%;
+  background:radial-gradient(circle, hsla(38,55%,28%,0.35), hsla(35,45%,20%,0.12), transparent 65%);
+  filter:blur(90px)"></div>
+<!-- 织物纹理层 -->
+<div style="position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 6px, hsla(38,35%,48%,0.04) 6px, hsla(38,35%,48%,0.04) 7px),
+    repeating-linear-gradient(90deg, transparent, transparent 6px, hsla(35,30%,45%,0.035) 6px, hsla(35,30%,45%,0.035) 7px);
+  animation:fabricBreath 25s ease-in-out infinite"></div>
+<!-- 黄金时刻色带（底部暖金渐变，明确金色） -->
+<div style="position:absolute;bottom:0;left:-5%;width:110%;height:30%;
+  background:linear-gradient(to top, hsla(40,55%,32%,0.15), hsla(42,48%,25%,0.08), transparent);
+  filter:blur(20px);animation:goldenHourDrift 16s ease-in-out infinite"></div>
+<!-- 烛光中心脉冲（明亮金色） -->
+<div style="position:absolute;top:40%;left:42%;width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle, hsla(45,65%,52%,0.30), hsla(42,50%,38%,0.12), transparent 60%);
+  filter:blur(55px);animation:candleFlicker 5s ease-in-out infinite"></div>
+<!-- 暖色光晕 1（明亮淡金） -->
+<div style="position:absolute;top:28%;left:32%;width:480px;height:480px;border-radius:50%;
+  background:radial-gradient(circle,hsla(42,55%,55%,0.22),hsla(38,42%,40%,0.08),transparent 70%);
+  filter:blur(80px);animation:warmDrift 24s ease-in-out infinite 0s"></div>
+<!-- 暖色光晕 2（暖白） -->
+<div style="position:absolute;top:58%;left:58%;width:350px;height:350px;border-radius:50%;
+  background:radial-gradient(circle,hsla(35,30%,60%,0.16),hsla(30,22%,45%,0.05),transparent 65%);
+  filter:blur(70px);animation:warmDrift 20s ease-in-out infinite 5s"></div>
+<!-- 散景圆环 1（大，金色环，清晰可见） -->
+<div style="position:absolute;top:15%;left:60%;width:180px;height:180px;border-radius:50%;
+  border:2px solid hsla(42,50%,55%,0.15);
+  background:radial-gradient(circle, transparent 60%, hsla(42,45%,50%,0.05) 100%);
+  filter:blur(4px);animation:bokehFloat 18s ease-in-out infinite 0s"></div>
+<!-- 散景圆环 2（中，琥珀环） -->
+<div style="position:absolute;top:50%;left:18%;width:120px;height:120px;border-radius:50%;
+  border:1.5px solid hsla(35,45%,50%,0.12);
+  background:radial-gradient(circle, transparent 55%, hsla(35,40%,45%,0.04) 100%);
+  filter:blur(3px);animation:bokehFloat 22s ease-in-out infinite 4s"></div>
+<!-- 散景圆环 3（小，暖白） -->
+<div style="position:absolute;top:70%;left:65%;width:80px;height:80px;border-radius:50%;
+  border:1px solid hsla(38,35%,55%,0.10);
+  background:radial-gradient(circle, transparent 50%, hsla(38,30%,50%,0.03) 100%);
+  filter:blur(2px);animation:bokehFloat 15s ease-in-out infinite 8s"></div>
+<!-- 散景圆环 4 -->
+<div style="position:absolute;top:35%;left:8%;width:100px;height:100px;border-radius:50%;
+  border:1.5px solid hsla(32,40%,48%,0.10);
+  background:radial-gradient(circle, transparent 55%, hsla(32,35%,42%,0.03) 100%);
+  filter:blur(3px);animation:bokehFloat 20s ease-in-out infinite 2s"></div>
+<!-- 漂浮花瓣 1（暖琥珀色） -->
+<div style="position:absolute;top:-5%;left:30%;width:4px;height:8px;border-radius:50% 50% 50% 50%/ 60% 60% 40% 40%;
+  background:hsla(35,45%,48%,0.25);
+  animation:petalDrift 12s linear infinite 0s"></div>
+<!-- 漂浮花瓣 2 -->
+<div style="position:absolute;top:-5%;left:55%;width:3px;height:7px;border-radius:50% 50% 50% 50%/ 60% 60% 40% 40%;
+  background:hsla(40,40%,45%,0.22);
+  animation:petalDrift 15s linear infinite 4s"></div>
+<!-- 漂浮花瓣 3 -->
+<div style="position:absolute;top:-5%;left:75%;width:4px;height:6px;border-radius:50% 50% 50% 50%/ 60% 60% 40% 40%;
+  background:hsla(30,42%,45%,0.24);
+  animation:petalDrift 10s linear infinite 7s"></div>
+<!-- 漂浮花瓣 4 -->
+<div style="position:absolute;top:-5%;left:15%;width:3px;height:6px;border-radius:50% 50% 50% 50%/ 60% 60% 40% 40%;
+  background:hsla(42,38%,42%,0.20);
+  animation:petalDrift 14s linear infinite 2s"></div>
+<!-- 淡金漂浮微粒 1（明亮金色，在暖底上清晰可见） -->
+<div style="position:absolute;top:20%;left:28%;width:3px;height:3px;border-radius:50%;
+  background:hsla(48,60%,60%,0.60);box-shadow:0 0 6px hsla(48,52%,55%,0.40),0 0 12px hsla(48,45%,48%,0.18);
+  animation:goldenFloat 16s ease-in-out infinite 0s"></div>
+<!-- 淡金漂浮微粒 2 -->
+<div style="position:absolute;top:48%;left:72%;width:2px;height:2px;border-radius:50%;
+  background:hsla(45,55%,58%,0.55);box-shadow:0 0 5px hsla(45,48%,52%,0.35);
+  animation:goldenFloat 20s ease-in-out infinite 4s"></div>
+<!-- 淡金漂浮微粒 3 -->
+<div style="position:absolute;top:72%;left:40%;width:3px;height:3px;border-radius:50%;
+  background:hsla(50,58%,62%,0.50);box-shadow:0 0 6px hsla(50,50%,55%,0.35);
+  animation:goldenFloat 14s ease-in-out infinite 2s"></div>
+<!-- 淡金漂浮微粒 4 -->
+<div style="position:absolute;top:85%;left:62%;width:2px;height:2px;border-radius:50%;
+  background:hsla(42,52%,55%,0.45);box-shadow:0 0 4px hsla(42,45%,48%,0.30);
+  animation:goldenFloat 18s ease-in-out infinite 6s"></div>
+<!-- 对角暖光 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(145deg,rgba(200,170,110,0.05) 0%,transparent 40%,transparent 60%,rgba(210,180,120,0.04) 100%);
+  animation:warmPulse 18s ease-in-out infinite 3s"></div>
+<!-- 暗角 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 48%, transparent 35%, hsla(28,20%,4%,0.35) 75%, hsla(25,25%,2%,0.55) 100%)"></div>

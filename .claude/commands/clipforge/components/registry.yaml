@@ -124,6 +124,46 @@ components:
     visual_density: medium
     complexity: css-only
 
+  - name: frost_crystal
+    layer: bg
+    file: bg/frost_crystal.html
+    tags: [ice, crystal, cold, blue, energy, core, starburst, ring, clinical, science]
+    emotion_range: [clinical, precision, cold, sterile]
+    visual_density: medium
+    complexity: css-only
+
+  - name: moss_garden
+    layer: bg
+    file: bg/moss_garden.html
+    tags: [nature, green, organic, moss, garden, growth, calm, leaf, firefly, dapple, mist]
+    emotion_range: [organic, growth, nature, calm]
+    visual_density: medium
+    complexity: css-only
+
+  - name: clean_slate
+    layer: bg
+    file: bg/clean_slate.html
+    tags: [clean, minimal, professional, slate, grid, focus, dark, corporate, geometric, calm]
+    emotion_range: [clarity, focus, professional, minimal]
+    visual_density: low
+    complexity: css-only
+
+  - name: dark_cipher
+    layer: bg
+    file: bg/dark_cipher.html
+    tags: [dark, cipher, suspense, red, crack, fog, mystery, thriller, scan, glitch, rain]
+    emotion_range: [tension, mystery, suspense, dark]
+    visual_density: high
+    complexity: css-only
+
+  - name: soft_linen
+    layer: bg
+    file: bg/soft_linen.html
+    tags: [linen, warm, cozy, fabric, gentle, soft, daily, bokeh, candle, petal]
+    emotion_range: [warmth, cozy, gentle, daily]
+    visual_density: low
+    complexity: css-only
+
   # ── 特效层 ──
   - name: code_rain
     layer: fx
