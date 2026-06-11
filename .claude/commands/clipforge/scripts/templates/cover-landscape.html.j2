@@ -115,10 +115,13 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
     <!-- 第3层：胶囊徽章 -->
     <div class="badge">{{ badge }}</div>
 
-    <!-- 第4层：主标题 -->
+    <!-- 第4层：主标题（title = 行数组，每行 = 段数组） -->
     <div class="main-title">
-      {% for seg in title -%}
-      {%- if not loop.first %}<br>{% endif %}<span class="{{ seg.style }}">{{ seg.text }}</span>
+      {%- for line in title -%}
+      {%- if not loop.first %}<br>{% endif -%}
+      {%- for seg in line -%}
+      <span class="{{ seg.style }}">{{ seg.text }}</span>
+      {%- endfor -%}
       {%- endfor %}
     </div>
 

@@ -8,37 +8,54 @@
 
 set -e
 INPUT="${1:-narration.mp3}"
+NULLDEV="/dev/null"
+# Windows Git Bash 兼容
+[ "$(uname -s 2>/dev/null)" = "MINGW" ] || [ "$(uname -s 2>/dev/null)" = "MSYS" ] && NULLDEV="NUL"
 
 echo "[loudnorm] Pass 1: 分析响度..."
-ffmpeg -i "$INPUT" -af "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json" -f null /dev/null 2>&1 | tail -12 > loudnorm_stats.json
+ffmpeg -i "$INPUT" -af "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json" -f null "$NULLDEV" 2>&1 | python -c "
+import sys, re, json
+
+# 从 ffmpeg stderr 中提取 JSON 块（不依赖行数）
+text = sys.stdin.read()
+
+# 找到最后一个完整的 JSON 对象 {...}
+# loudnorm print_format=json 输出唯一一个 {} 块
+brace_start = text.rfind('{')
+brace_end = text.rfind('}')
+
+if brace_start == -1 or brace_end == -1 or brace_end < brace_start:
+    sys.exit('ERROR: loudnorm 输出中未找到 JSON 块')
+
+json_str = text[brace_start:brace_end+1]
+
+try:
+    stats = json.loads(json_str)
+except json.JSONDecodeError as e:
+    sys.exit(f'ERROR: JSON 解析失败: {e}\n原始 JSON:\n{json_str[:300]}')
+
+# 写入临时文件供 Pass 2 使用
+with open('loudnorm_stats.json', 'w') as f:
+    json.dump(stats, f)
+
+print(f'measured_I={stats[\"input_i\"]}, TP={stats[\"input_tp\"]}, LRA={stats[\"input_lra\"]}, thresh={stats[\"input_thresh\"]}, offset={stats[\"target_offset\"]}')
+"
 
 echo "[loudnorm] Pass 2: 应用标准化..."
 python -c "
-import json, subprocess
+import json, subprocess, sys
+
 with open('loudnorm_stats.json') as f:
-    lines = f.readlines()
-    json_str = ''
-    started = False
-    for line in lines:
-        if '{' in line and not started:
-            started = True
-        if started:
-            json_str += line
-    stats = json.loads(json_str)
-    measured_i = stats['input_i']
-    measured_tp = stats['input_tp']
-    measured_lra = stats['input_lra']
-    measured_thresh = stats['input_thresh']
-    offset = stats['target_offset']
-    print(f'measured_I={measured_i}, measured_TP={measured_tp}, measured_LRA={measured_lra}, measured_thresh={measured_thresh}, offset={offset}')
-    cmd = [
-        'ffmpeg', '-y', '-i', '$INPUT',
-        '-af', f'loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={measured_i}:measured_TP={measured_tp}:measured_LRA={measured_lra}:measured_thresh={measured_thresh}:offset={offset}:linear=true',
-        '-ar', '48000', '-ac', '1',
-        '${INPUT%.*}_norm.${INPUT##*.}'
-    ]
-    subprocess.run(cmd, check=True)
-"
+    stats = json.load(f)
+
+cmd = [
+    'ffmpeg', '-y', '-i', sys.argv[1],
+    '-af', f'loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={stats[\"input_i\"]}:measured_TP={stats[\"input_tp\"]}:measured_LRA={stats[\"input_lra\"]}:measured_thresh={stats[\"input_thresh\"]}:offset={stats[\"target_offset\"]}:linear=true',
+    '-ar', '48000', '-ac', '1',
+    sys.argv[2]
+]
+subprocess.run(cmd, check=True)
+" "$INPUT" "${INPUT%.*}_norm.${INPUT##*.}"
 
 mv "${INPUT%.*}_norm.${INPUT##*.}" "$INPUT"
 rm -f loudnorm_stats.json

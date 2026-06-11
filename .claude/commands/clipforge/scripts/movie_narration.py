@@ -59,13 +59,6 @@ def main():
 
     # loudnorm 标准化
     print('[loudnorm] Pass 1...')
-    subprocess.run([
-        'ffmpeg', '-i', 'narration_new.mp3',
-        '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json',
-        '-f', 'null', '/dev/null'
-    ], capture_output=True)
-
-    # 提取 loudnorm 统计并 pass 2
     result = subprocess.run([
         'ffmpeg', '-i', 'narration_new.mp3',
         '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json',
@@ -73,13 +66,12 @@ def main():
     ], capture_output=True, text=True)
     output = result.stderr
 
-    json_str = ''
-    started = False
-    for line in output.split('\n'):
-        if '{' in line and not started:
-            started = True
-        if started:
-            json_str += line + '\n'
+    # 提取 JSON 块（用 rfind 定位最后一个完整 JSON 对象）
+    brace_start = output.rfind('{')
+    brace_end = output.rfind('}')
+    if brace_start == -1 or brace_end == -1 or brace_end < brace_start:
+        raise RuntimeError(f'loudnorm 输出中未找到 JSON 块\nstderr tail: {output[-500:]}')
+    json_str = output[brace_start:brace_end+1]
     stats = json.loads(json_str)
 
     print('[loudnorm] Pass 2...')

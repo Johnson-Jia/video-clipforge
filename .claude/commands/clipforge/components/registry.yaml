@@ -164,6 +164,62 @@ components:
     visual_density: low
     complexity: css-only
 
+  - name: aurora_night
+    layer: bg
+    file: bg/aurora_night.html
+    tags: [aurora, night, arctic, snow-mountain, stars, moonlight, polar, nature, deep, majestic, glass]
+    emotion_range: [wonder, tranquility, grandeur]
+    visual_density: medium
+    complexity: css-only
+
+  - name: cosmic_void
+    layer: bg
+    file: bg/cosmic_void.html
+    tags: [cosmic, deep-space, planet, star-gate, wormhole, nebula, starlight, energy-flow, star-force, sci-fi, dreamy, majestic, glass]
+    emotion_range: [wonder, awe, grandeur, mystery]
+    visual_density: high
+    complexity: css-only
+
+  - name: ruin_city
+    layer: bg
+    file: bg/ruin_city.html
+    tags: [ruin, city, apocalypse, wasteland, blood-sun, silhouette, danger, desolation, dust, post-apocalyptic, glass]
+    emotion_range: [desolation, danger, tension, melancholy]
+    visual_density: high
+    complexity: css-only
+
+  - name: ancient_relic
+    layer: bg
+    file: bg/ancient_relic.html
+    tags: [relic, ancient, temple, rune, glyph, altar, mystery, sacred, magic, purple-gold, floating-stone, glass]
+    emotion_range: [mystery, sacred, wonder, awe]
+    visual_density: high
+    complexity: css-only
+
+  - name: starforce_ocean
+    layer: bg
+    file: bg/starforce_ocean.html
+    tags: [starforce, energy, golden, ocean, vortex, breakthrough, power, transcendence, flow, cultivation, majestic, glass]
+    emotion_range: [power, transcendence, awe, energy]
+    visual_density: high
+    complexity: css-only
+
+  - name: virtual_universe
+    layer: bg
+    file: bg/virtual_universe.html
+    tags: [virtual, digital, grid, data-stream, hologram, matrix, sci-fi, cyber, futuristic, tech, cyan, glass]
+    emotion_range: [tech, futuristic, immersion, sci-fi]
+    visual_density: high
+    complexity: css-only
+
+  - name: bloodmoon_wild
+    layer: bg
+    file: bg/bloodmoon_wild.html
+    tags: [blood-moon, bloodmoon, wasteland, dead-tree, wilderness, danger, dread, primal, ominous, beast, purple-red, glass]
+    emotion_range: [danger, dread, ominous, tension]
+    visual_density: high
+    complexity: css-only
+
   # ── 特效层 ──
   - name: code_rain
     layer: fx

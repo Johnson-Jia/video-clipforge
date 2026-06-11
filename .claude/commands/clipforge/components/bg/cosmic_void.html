@@ -1,0 +1,165 @@
+<!--
+@ComponentMeta
+name: cosmic_void
+layer: bg
+tags: [cosmic, deep-space, planet, star-gate, nebula, starlight, energy-flow, sci-fi, dreamy, majestic]
+emotion_range: [wonder, awe, grandeur, mystery]
+visual_density: high
+complexity: css-only
+description: 吞噬星空风格深空 — 行星+多层大气光晕 + 虫洞星门（旋转能量漩涡）+ 金色星力流 + 4 团梦幻星云（品红紫/青/金/深紫）+ 密集星尘场 + 银河带 + 玻璃折射
+parameters:
+  nebula_count: { default: 4, range: [3, 5] }
+  planet_size: { default: 280, range: [200, 360], description: "行星直径(px)" }
+  gate_active: { default: true, range: [true, false], description: "是否显示星门" }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes orbDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -40px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(15px, 35px) scale(1.02); }
+}
+@keyframes planetAura {
+  0%, 100% { opacity: 0.80; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+@keyframes gatePulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+@keyframes gateSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes gateAura {
+  0%, 100% { opacity: 0.70; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes energyFlow {
+  0%, 100% { opacity: 0.45; transform: rotate(-12deg) translateX(-25px); }
+  50% { opacity: 0.90; transform: rotate(-12deg) translateX(25px); }
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.50; }
+  50% { opacity: 0.85; }
+}
+@keyframes brightStarTwinkle {
+  0%, 100% { opacity: 0.70; }
+  50% { opacity: 1; }
+}
+@keyframes dustDrift {
+  0%, 100% { transform: translate(0, 0) rotate(-18deg); opacity: 0.12; }
+  50% { transform: translate(12px, -8px) rotate(-18deg); opacity: 0.18; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.28; }
+  50% { opacity: 0.38; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: cosmic_void -->
+<!-- 极深空底色（深蓝紫渐变，比 nebula 更深更紫） -->
+<div style="position:absolute;inset:0;background:linear-gradient(165deg,hsl(250,45%,3%),hsl(258,40%,7%),hsl(245,38%,5%))"></div>
+<!-- 星云 1：品红紫（主星云，最大） -->
+<div style="position:absolute;top:18%;left:30%;width:580px;height:580px;border-radius:50%;
+  background:radial-gradient(circle,hsla(290,72%,52%,0.30),hsla(285,58%,38%,0.12),transparent 70%);
+  filter:blur(110px);animation:orbDrift 26s ease-in-out infinite 0s"></div>
+<!-- 星云 2：青蓝 -->
+<div style="position:absolute;top:50%;left:58%;width:440px;height:440px;border-radius:50%;
+  background:radial-gradient(circle,hsla(195,75%,52%,0.26),hsla(200,60%,38%,0.10),transparent 70%);
+  filter:blur(95px);animation:orbDrift 30s ease-in-out infinite 7s"></div>
+<!-- 星云 3：金橙（点缀暖色对比） -->
+<div style="position:absolute;top:75%;left:15%;width:340px;height:340px;border-radius:50%;
+  background:radial-gradient(circle,hsla(35,80%,55%,0.24),hsla(30,62%,40%,0.08),transparent 70%);
+  filter:blur(85px);animation:orbDrift 24s ease-in-out infinite 13s"></div>
+<!-- 星云 4：深紫（左上补色） -->
+<div style="position:absolute;top:8%;left:2%;width:380px;height:380px;border-radius:50%;
+  background:radial-gradient(circle,hsla(265,68%,48%,0.26),hsla(260,52%,34%,0.10),transparent 70%);
+  filter:blur(90px);animation:orbDrift 28s ease-in-out infinite 4s"></div>
+<!-- 银河星尘带（对角线，紫色调） -->
+<div style="position:absolute;top:30%;left:-10%;width:120%;height:200px;
+  background:linear-gradient(90deg,transparent 5%,hsla(280,45%,48%,0.10) 25%,hsla(255,38%,42%,0.06) 50%,hsla(290,42%,46%,0.09) 75%,transparent 95%);
+  filter:blur(55px);transform:rotate(-18deg);animation:dustDrift 34s ease-in-out infinite"></div>
+<!-- ===== 行星（右上焦点）===== -->
+<!-- 行星外大气光晕（最外层，模糊呼吸） -->
+<div style="position:absolute;top:5%;right:5%;width:360px;height:360px;border-radius:50%;
+  background:radial-gradient(circle,hsla(190,60%,50%,0.14),hsla(200,55%,42%,0.06),transparent 62%);
+  filter:blur(28px);animation:planetAura 8s ease-in-out infinite"></div>
+<!-- 行星本体（多层渐变模拟球面 + 大气边缘高光） -->
+<div style="position:absolute;top:7%;right:7%;width:280px;height:280px;border-radius:50%;
+  background:
+    radial-gradient(circle at 32% 28%,hsla(170,45%,42%,0.75),transparent 38%),
+    radial-gradient(circle at 70% 68%,hsla(205,58%,22%,0.65),transparent 52%),
+    radial-gradient(circle,hsla(195,52%,30%,0.85),hsla(208,62%,14%,0.90));
+  box-shadow:inset -42px -42px 95px rgba(0,0,0,0.60),inset 18px 18px 50px hsla(180,40%,45%,0.18),0 0 55px hsla(190,55%,40%,0.28)"></div>
+<!-- 行星大气边缘高光环（模拟大气层折射） -->
+<div style="position:absolute;top:6.5%;right:6.5%;width:290px;height:290px;border-radius:50%;
+  border:2px solid hsla(185,50%,60%,0.18);
+  box-shadow:inset 0 0 30px hsla(185,50%,60%,0.12);
+  filter:blur(2px)"></div>
+<!-- ===== 虫洞星门（左下能量焦点）===== -->
+<!-- 星门外光晕 -->
+<div style="position:absolute;top:54%;left:13%;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,hsla(290,72%,55%,0.22),hsla(285,60%,45%,0.08),transparent 65%);
+  filter:blur(32px);animation:gateAura 6s ease-in-out infinite"></div>
+<!-- 星门环本体（发光边框） -->
+<div style="position:absolute;top:56%;left:15%;width:160px;height:160px;border-radius:50%;
+  border:2.5px solid hsla(290,74%,62%,0.48);
+  box-shadow:0 0 28px hsla(290,70%,56%,0.38),inset 0 0 28px hsla(285,66%,50%,0.28);
+  animation:gatePulse 5s ease-in-out infinite"></div>
+<!-- 星门内能量漩涡（旋转 conic-gradient） -->
+<div style="position:absolute;top:58.5%;left:17.5%;width:115px;height:115px;border-radius:50%;
+  background:conic-gradient(from 0deg,hsla(290,72%,55%,0.18),hsla(320,68%,58%,0.12),hsla(260,66%,50%,0.16),hsla(300,70%,54%,0.14),hsla(290,72%,55%,0.18));
+  filter:blur(16px);animation:gateSpin 22s linear infinite"></div>
+<!-- 星门中心黑洞点 -->
+<div style="position:absolute;top:62%;left:21%;width:45px;height:45px;border-radius:50%;
+  background:radial-gradient(circle,hsla(260,40%,8%,0.6),transparent 70%);
+  filter:blur(8px)"></div>
+<!-- ===== 星力金色能量流（贯穿对角的流动线条）===== -->
+<!-- 能量流 1（金色主流） -->
+<div style="position:absolute;top:46%;left:-10%;width:120%;height:2.5px;
+  background:linear-gradient(90deg,transparent,hsla(45,90%,62%,0.42),hsla(35,85%,55%,0.55),hsla(45,90%,62%,0.42),transparent);
+  filter:blur(2px);transform:rotate(-12deg);animation:energyFlow 8s ease-in-out infinite"></div>
+<!-- 能量流 2（紫色副流） -->
+<div style="position:absolute;top:52%;left:-10%;width:120%;height:1.5px;
+  background:linear-gradient(90deg,transparent,hsla(285,75%,60%,0.28),hsla(295,70%,55%,0.35),transparent);
+  filter:blur(1.5px);transform:rotate(-10deg);animation:energyFlow 11s ease-in-out infinite 3s"></div>
+<!-- ===== 密集星尘场 ===== -->
+<!-- 亮星 1 -->
+<div style="position:absolute;top:4%;left:28%;width:5px;height:5px;border-radius:50%;background:white;opacity:0.80;box-shadow:0 0 13px rgba(255,255,255,0.85),0 0 26px rgba(210,180,255,0.35);animation:brightStarTwinkle 4s ease-in-out infinite 0s"></div>
+<!-- 亮星 2 -->
+<div style="position:absolute;top:35%;left:88%;width:4px;height:4px;border-radius:50%;background:white;opacity:0.75;box-shadow:0 0 11px rgba(255,255,255,0.8),0 0 22px rgba(180,200,255,0.3);animation:brightStarTwinkle 5s ease-in-out infinite 2s"></div>
+<!-- 亮星 3（带暖色调，呼应星力） -->
+<div style="position:absolute;top:68%;left:78%;width:4px;height:4px;border-radius:50%;background:hsla(45,60%,90%,0.9);opacity:0.75;box-shadow:0 0 10px hsla(45,70%,70%,0.6),0 0 20px hsla(40,60%,55%,0.3);animation:brightStarTwinkle 6s ease-in-out infinite 1s"></div>
+<!-- 星点 4 -->
+<div style="position:absolute;top:14%;left:62%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.65;box-shadow:0 0 8px rgba(255,255,255,0.6);animation:starTwinkle 4.5s ease-in-out infinite 0.5s"></div>
+<!-- 星点 5 -->
+<div style="position:absolute;top:22%;left:48%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.55;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 5.5s ease-in-out infinite 2.5s"></div>
+<!-- 星点 6 -->
+<div style="position:absolute;top:30%;left:18%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.60;box-shadow:0 0 7px rgba(255,255,255,0.55);animation:starTwinkle 4s ease-in-out infinite 4s"></div>
+<!-- 星点 7 -->
+<div style="position:absolute;top:42%;left:5%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.50;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 6s ease-in-out infinite 1.5s"></div>
+<!-- 星点 8 -->
+<div style="position:absolute;top:38%;left:72%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.52;box-shadow:0 0 5px rgba(255,255,255,0.48);animation:starTwinkle 3.5s ease-in-out infinite 3s"></div>
+<!-- 星点 9 -->
+<div style="position:absolute;top:48%;left:40%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.45;box-shadow:0 0 5px rgba(255,255,255,0.42);animation:starTwinkle 5s ease-in-out infinite 0s"></div>
+<!-- 星点 10 -->
+<div style="position:absolute;top:62%;left:48%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.58;box-shadow:0 0 7px rgba(255,255,255,0.55);animation:starTwinkle 4.5s ease-in-out infinite 3.5s"></div>
+<!-- 星点 11 -->
+<div style="position:absolute;top:74%;left:60%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.50;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 5.5s ease-in-out infinite 2s"></div>
+<!-- 星点 12 -->
+<div style="position:absolute;top:82%;left:30%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.48;box-shadow:0 0 5px rgba(255,255,255,0.42);animation:starTwinkle 4s ease-in-out infinite 5s"></div>
+<!-- 星点 13 -->
+<div style="position:absolute;top:88%;left:72%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.55;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 6s ease-in-out infinite 1s"></div>
+<!-- 暗星 1-5（增加密度，吞噬星空太空的星尘感） -->
+<div style="position:absolute;top:10%;left:75%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.35;box-shadow:0 0 3px rgba(255,255,255,0.3)"></div>
+<div style="position:absolute;top:26%;left:8%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.30;box-shadow:0 0 3px rgba(255,255,255,0.25)"></div>
+<div style="position:absolute;top:55%;left:35%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.28;box-shadow:0 0 3px rgba(255,255,255,0.22)"></div>
+<div style="position:absolute;top:70%;left:5%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.32;box-shadow:0 0 3px rgba(255,255,255,0.26)"></div>
+<div style="position:absolute;top:85%;left:50%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.26;box-shadow:0 0 3px rgba(255,255,255,0.22)"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(200,180,255,0.04) 0%,transparent 38%,transparent 62%,rgba(180,200,255,0.05) 100%);
+  animation:glassShimmer 12s ease-in-out infinite"></div>

@@ -920,6 +920,133 @@ GATE_CHECKERS[GateType.data_duration_source_valid] = check_data_duration_source
 GATE_CHECKERS[GateType.estimation_accuracy_valid] = check_estimation_accuracy
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# 描述保真度检测器 — 杜绝从 owner/repo 名杜撰项目描述
+# 事故记录：2026-06-10 refactoringhq/tolaria 原始描述为
+#   "Desktop app to manage markdown knowledge bases"，LLM 看到 owner 名
+#   "refactoringhq" 后杜撰为"AI 代码重构平台"，观众搜索找不到项目。
+# 本门禁要求 content_ready.txt 内嵌原始英文 description，用子串匹配验证。
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _parse_content_ready_projects(text: str) -> list[tuple[str, str]]:
+    """解析 content_ready.txt 中的显式项目条目行，返回 [(owner/repo, full_line), ...]。
+
+    兼容两种格式：
+    - 编号列表：`5. refactoringhq/tolaria | TypeScript | ... | AI 代码重构平台`
+    - Markdown 表格：`| 1 | apple/container | Swift | ... |`
+    提取每行第一个 `owner/repo` token（排除 URL/文件路径）。
+    """
+    projects: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    # 贪心匹配 owner/repo（最长匹配，避免 last30days-skill 被截断）
+    repo_re = re.compile(r"(?<![\w/.])([A-Za-z][\w.-]*/[A-Za-z][\w.-]*)")
+    for line in text.splitlines():
+        stripped = line.lstrip("| ").strip()
+        # 仅处理形如"条目"的行：以数字开头，或表格行含 |
+        is_entry = bool(re.match(r"^\d+[\.\)、\s]", stripped)) or (
+            line.count("|") >= 2 and re.search(r"\| *\d+[\s|]", line)
+        )
+        if not is_entry:
+            continue
+        m = repo_re.search(line)
+        if not m:
+            continue
+        repo = m.group(1).strip(".-")
+        # 排除明显非 GitHub repo 的（含点号像域名、两部分无字母）
+        if "." in repo and not re.search(r"[A-Za-z]", repo.split("/")[-1]):
+            continue
+        if repo not in seen:
+            seen.add(repo)
+            projects.append((repo, line))
+    return projects
+
+
+def check_description_fidelity(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """交叉校验 content_ready.txt 项目描述与 raw_trending.json 原始描述保真度。
+
+    仅当 raw_trending.json 存在（GitHub 分类）时生效，其他分类优雅跳过。
+
+    设计原理：跨语言语义判断（中译英锚点重叠）无法做成零误报的 HARD 门禁
+    ——忠实翻译会把 dossier→档案、methodology→方法论，英文锚点全丢。
+    因此采用"原始描述内嵌"机制：content_ready.txt 必须内嵌每个项目的原始
+    英文 description，门禁用确定性子串匹配验证（零跨语言歧义）。LLM 被迫
+    把真实描述写在中文旁边，从源头杜绝从 owner/repo 名杜撰。
+
+    检查项（任一失败即 HARD）：
+    1. **描述锚点存在**：raw_trending.json 中每个被 content_ready.txt 提及的
+       项目，其 description（非空时）必须以子串形式出现在 content_ready.txt 中。
+    2. **项目存在性**：显式项目条目行中的 owner/repo 必须存在于 raw_trending.json。
+    """
+    content_fp = project_dir / params.get("content_file", "content_ready.txt")
+    raw_fp = project_dir / params.get("raw_file", "raw_trending.json")
+
+    # 非 GitHub 分类（无 raw_trending.json）优雅跳过
+    if not raw_fp.exists():
+        return True, "raw_trending.json 不存在，跳过描述保真度检查（非数据源分类）"
+    if not content_fp.exists():
+        return True, "content_ready.txt 不存在，跳过描述保真度检查"
+
+    try:
+        raw_data = json.loads(raw_fp.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return False, f"raw_trending.json 解析失败: {e}"
+
+    raw_projects = raw_data.get("projects", []) if isinstance(raw_data, dict) else raw_data
+    if not isinstance(raw_projects, list):
+        return True, "raw_trending.json 无 projects 列表，跳过"
+    raw_map: dict[str, dict] = {}
+    for p in raw_projects:
+        if isinstance(p, dict):
+            name = p.get("name") or p.get("full_name") or p.get("repo")
+            if name:
+                raw_map[str(name).strip()] = p
+
+    content_text = content_fp.read_text(encoding="utf-8", errors="ignore")
+    content_lower = content_text.lower()
+    lines = content_text.splitlines()
+
+    # ── 检查 1：描述锚点存在（子串匹配，零跨语言歧义）──
+    missing_anchors: list[str] = []
+    anchor_checked = 0
+    for repo, p in raw_map.items():
+        # 仅校验被 content_ready.txt 提及的项目
+        if not any(repo in line for line in lines):
+            continue
+        raw_desc = (p.get("description") or "").strip()
+        if not raw_desc:
+            continue  # 原始描述为空，无锚点可比对
+        anchor_checked += 1
+        # 子串匹配（大小写不敏感）。原始英文 description 必须原样出现在文件中。
+        if raw_desc.lower() not in content_lower:
+            missing_anchors.append(repo)
+
+    # ── 检查 2：项目存在性（显式条目行中的 repo 必须在 raw_map）──
+    entries = _parse_content_ready_projects(content_text)
+    missing_projects: list[str] = []
+    for repo, _line in entries:
+        if repo not in raw_map:
+            missing_projects.append(repo)
+
+    problems: list[str] = []
+    if missing_anchors:
+        problems.append(
+            f"项目描述锚点缺失（content_ready.txt 未内嵌原始 description）: "
+            f"{', '.join(missing_anchors[:6])}"
+        )
+    if missing_projects:
+        problems.append(
+            f"显式条目项目不在 raw_trending.json（疑似杜撰）: {', '.join(missing_projects[:6])}"
+        )
+
+    if problems:
+        return False, "描述保真度不达标: " + " | ".join(problems)
+    return True, f"{anchor_checked} 个项目描述锚点合格（原始 description 已内嵌）"
+
+
+GATE_CHECKERS[GateType.description_fidelity_valid] = check_description_fidelity
+
+
 def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 phase_timings.json 的完整性：phase 时间覆盖完整场景时长，无间隙/重叠。
 
@@ -1804,14 +1931,59 @@ def check_bgm_volume_table_valid(project_dir: Path, params: dict) -> tuple[bool,
 GATE_CHECKERS[GateType.bgm_volume_table_valid] = check_bgm_volume_table_valid
 
 
-def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 douyin.md 包含三平台文案 + 评论区自评。
+def _parse_douyin_platform_sections(content: str) -> dict[str, list[str]]:
+    """将 douyin.md 按 ## 平台名 拆分为 {平台名: [行列表]}。
 
-    stage7-delivery.md §7.5 明确要求:
-    1. 三平台文案必填：## 抖音、## 视频号、## 小红书
-    2. 评论区自评必填：## 评论区自评（或 --- 分隔线后的自评段）
-    3. 评论区包含项目介绍（项目名 + owner/repo 路径）
-    4. 禁止"GitHub搜索:"等搜索引导格式（平台视为导流，触发限流）
+    每个 section 从 ## 平台名 开始到下一个 ## 或文档结尾。
+    """
+    sections: dict[str, list[str]] = {}
+    current_name = None
+    current_lines: list[str] = []
+
+    for line in content.split("\n"):
+        heading_match = re.match(r"^##\s+(.+)$", line)
+        if heading_match:
+            if current_name is not None:
+                sections[current_name] = current_lines
+            current_name = heading_match.group(1).strip()
+            current_lines = []
+        elif current_name is not None:
+            current_lines.append(line)
+
+    if current_name is not None:
+        sections[current_name] = current_lines
+
+    return sections
+
+
+def _count_title_chars(line: str) -> int:
+    """计算标题行的中文字符数（去掉标签和空白）。"""
+    # 去掉标签部分
+    text = re.sub(r'#\S+', '', line).strip()
+    # 统计字符数（中文=1字，英文单词/数字=0.5字近似，直接按 len 统计视觉宽度）
+    # 简化：直接用 len(text) 作为字数（中文为主的场景足够准确）
+    return len(text.replace(" ", ""))
+
+
+def _extract_tags(line: str) -> list[str]:
+    """从一行文本中提取所有 #标签。"""
+    return re.findall(r'#(\S+)', line)
+
+
+def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 douyin.md 四平台文案质量 + 评论区自评。
+
+    stage7-delivery.md §7.5 + cron-template.md SubAgent-4 段要求:
+    1. 四平台文案必填：## 抖音、## B站、## 视频号、## 小红书
+    2. 每个平台有标题 + 正文 + 标签（结构完整）
+    3. 标题字数上限：抖音≤30 / B站≤80 / 视频号≤16 / 小红书≤20
+    4. 标签数 ≥5 / 平台
+    5. 抖音标题必须包含 ≥2 个数字（数字锚定）
+    6. 视频号必须包含分享引导（"转发""分享"）
+    7. 小红书必须包含收藏引导（"收藏"）
+    8. 评论区自评必填，包含 owner/repo 路径
+    9. 禁止搜索引导（"GitHub搜索:"）
+    10. 禁止 URL/链接
     """
     douyin_file = project_dir / params.get("file", "douyin.md")
     if not douyin_file.exists():
@@ -1820,20 +1992,91 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
     content = douyin_file.read_text(encoding="utf-8", errors="ignore")
     issues: list[str] = []
 
-    # 0. 检查搜索引导（HARD — 会导致限流）
-    if re.search(r'GitHub\s*搜索\s*[:：]', content):
-        issues.append("R-G-013: 评论区包含 'GitHub搜索:' 搜索引导格式（平台视为导流导致限流），改为只列项目名和 owner/repo 路径")
+    # ── 0. 全局搜索引导检查（HARD — 会导致限流） ──
+    search_patterns = [
+        r'GitHub\s*搜索\s*[:：]',
+        r'感兴趣.*搜',
+        r'搜\s*项目\s*名',
+    ]
+    for pat in search_patterns:
+        m = re.search(pat, content)
+        if m:
+            issues.append(f"R-G-013: 搜索引导 '{m.group()}' 会导致平台限流，改为只列项目名和 owner/repo 路径")
+            break  # 只报一次
 
-    # 1. 检查三平台文案
-    required_platforms = params.get("platforms", ["抖音", "视频号", "小红书"])
-    missing_platforms = []
-    for p in required_platforms:
-        if f"## {p}" not in content:
-            missing_platforms.append(p)
+    # ── 1. 全局 URL 检查 ──
+    url_match = re.search(r'https?://\S+', content)
+    if url_match:
+        issues.append(f"R-G-014: douyin.md 包含 URL '{url_match.group()[:60]}'，平台视为导流，删除所有链接")
+
+    # ── 2. 四平台完整性检查 ──
+    required_platforms = params.get("platforms", ["抖音", "B站", "视频号", "小红书"])
+    sections = _parse_douyin_platform_sections(content)
+
+    missing_platforms = [p for p in required_platforms if p not in sections]
     if missing_platforms:
-        issues.append(f"缺少平台文案: {', '.join(missing_platforms)}（需 ## 抖音、## 视频号、## 小红书）")
+        issues.append(f"缺少平台文案: {', '.join(missing_platforms)}（需 ## {'、'.join(required_platforms)}）")
 
-    # 2. 检查评论区自评段
+    # ── 3. 各平台质量检查 ──
+    platform_limits = {
+        "抖音": {"title_max": 30, "min_numbers": 2},
+        "B站": {"title_max": 80},
+        "视频号": {"title_max": 16, "require_share": True},
+        "小红书": {"title_max": 20, "require_collect": True},
+    }
+    min_tags = params.get("min_tags", 5)
+
+    for platform_name, limit in platform_limits.items():
+        if platform_name not in sections:
+            continue  # 缺失已在步骤 2 报告
+
+        lines = sections[platform_name]
+        # 找到非空行（标题 + 正文 + 标签）
+        non_empty = [l.strip() for l in lines if l.strip()]
+        if not non_empty:
+            issues.append(f"{platform_name}：文案为空")
+            continue
+
+        title_line = non_empty[0]
+        title_char_count = _count_title_chars(title_line)
+        title_max = limit["title_max"]
+
+        # 3a. 标题字数检查
+        if title_char_count > title_max:
+            issues.append(
+                f"{platform_name}标题 {title_char_count} 字，超过上限 {title_max} 字: "
+                f"'{title_line[:40]}...'"
+            )
+
+        # 3b. 标签数量检查（扫描整个平台段落）
+        all_tags: list[str] = []
+        for l in lines:
+            all_tags.extend(_extract_tags(l))
+        if len(all_tags) < min_tags:
+            issues.append(f"{platform_name}标签只有 {len(all_tags)} 个，要求 ≥{min_tags} 个")
+
+        # 3c. 抖音数字锚定
+        if "min_numbers" in limit:
+            numbers = re.findall(r'\d+', title_line)
+            if len(numbers) < limit["min_numbers"]:
+                issues.append(
+                    f"抖音标题数字锚定不足：只有 {len(numbers)} 个数字（{numbers or '无'}），"
+                    f"要求 ≥{limit['min_numbers']} 个"
+                )
+
+        # 3d. 视频号分享引导
+        if limit.get("require_share"):
+            platform_text = "\n".join(lines)
+            if not re.search(r"转发|分享|发给", platform_text):
+                issues.append(f"视频号文案缺少分享引导（需包含'转发给做开发的朋友'等）")
+
+        # 3e. 小红书收藏引导
+        if limit.get("require_collect"):
+            platform_text = "\n".join(lines)
+            if not re.search(r"收藏|存下来|先存|备用", platform_text):
+                issues.append(f"小红书文案缺少收藏引导（需包含'收藏备用''值得存下来'等）")
+
+    # ── 4. 评论区自评段 ──
     has_comment_section = (
         "## 评论区自评" in content or
         "评论区自评" in content
@@ -1841,19 +2084,15 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
     if not has_comment_section:
         issues.append("缺少评论区自评（需 ## 评论区自评 段落）")
     else:
-        # 3. 检查项目介绍格式（owner/repo 路径）
+        # 4a. 检查项目介绍格式（owner/repo 路径）
         has_path_format = bool(re.search(r'[\w\-\.]+/[\w\-\.]+', content))
-
-        format_missing = []
         if not has_path_format:
-            format_missing.append("owner/repo 路径（如 'openpli/ruview'）")
-        if format_missing:
-            issues.append(f"评论区缺少项目介绍格式: {', '.join(format_missing)}")
+            issues.append("评论区缺少 owner/repo 路径（如 'apple/container'）")
 
     if issues:
         return False, f"R-S7-006: {'; '.join(issues)}"
 
-    return True, f"douyin.md 三平台文案 + 评论区自评（项目名+路径）完整"
+    return True, f" douyin.md 四平台文案质量检查通过（标题字数/标签数/平台引导/评论区完整）"
 
 
 GATE_CHECKERS[GateType.douyin_platforms_complete] = check_douyin_platforms_complete

@@ -43,6 +43,13 @@
 | 18 | CleanSlate | 钢蓝渐变 + 点阵网格 + 几何装饰线 + 冷蓝聚光灯 + 漂浮形状 | clarity, focus, professional | `components/bg/clean_slate.html` |
 | 19 | DarkCipher | 深靛紫底 + 暗红裂缝 + 监控扫描线 + 故障闪烁 + 心跳脉冲 | tension, mystery, suspense | `components/bg/dark_cipher.html` |
 | 20 | SoftLinen | 琥珀暖色 + 散景圆环 + 烛光脉冲 + 黄金时刻色带 + 漂浮花瓣 | warmth, cozy, gentle, daily | `components/bg/soft_linen.html` |
+| 21 | AuroraNight | 极光帘幕 3 层 + 月光辉光 + 银河雾带 + 雪山剪影 3 层（空气透视） | wonder, tranquility, grandeur | `components/bg/aurora_night.html` |
+| 22 | CosmicVoid | 吞噬星空深空：行星+大气光晕 + 虫洞星门能量漩涡 + 金色星力流 + 4 团梦幻星云 | wonder, awe, grandeur, mystery | `components/bg/cosmic_void.html` |
+| 23 | RuinCity | 吞噬星空荒野区：血色夕阳 + 断壁楼群剪影 + 尘埃雾霾 + 灰烬粒子 | desolation, danger, tension | `components/bg/ruin_city.html` |
+| 24 | AncientRelic | 古文明遗迹：旋转金紫符文阵 + 神圣光柱 + 悬浮石块 + 立柱剪影 | mystery, sacred, wonder | `components/bg/ancient_relic.html` |
+| 25 | StarforceOcean | 星力海洋：金色能量漩涡 + 翻涌能量海 + 倾泻光柱 + 能量流光 | power, transcendence, awe | `components/bg/starforce_ocean.html` |
+| 26 | VirtualUniverse | 虚拟宇宙：透视数据网格 + 竖直数据流 + 全息光面 + 数据核心 | tech, futuristic, sci-fi | `components/bg/virtual_universe.html` |
+| 27 | BloodmoonWild | 血月荒原：巨型血月 + 荒原枯树剪影 + 血雾 + 远处血色闪电 | danger, dread, ominous | `components/bg/bloodmoon_wild.html` |
 
 ### 特效层 (fx/)
 

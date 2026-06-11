@@ -194,8 +194,9 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
   → 扫描 generates 路径，检测已完成 artifact
   → 拓扑排序，确定执行队列
   → 逐个执行 ready artifact：
-     1. 引擎注入：运行 python engine/inject.py --skill <stage-id> [--category <cat>]
-        → 将输出（Intent + 正向规则 + 经验模式 + Guard Red Flags）拼入 stage prompt 前段
+     1. ⛔ **约束注入铁律**：运行 `python engine/inject.py --skill <stage-id> [--category <cat>]`
+        → 将输出（Intent + 正向规则 + 经验模式 + Guard Red Flags）拼入 SubAgent prompt **最前面**
+        → **跳过此步骤 = 自进化全部失效，等同于忽略所有 Delta 演化规则**
         → 若 user_orientation 已记录且当前 skill 为 stage2-analysis → 追加方向指令到 prompt
      2. 模板渲染：运行 python engine/render_stage.py --stage stages/<stage-file> --category <cat>
         → 将分类配置的值确定性替换到通用 stage 模板中（音色、标签、关键词等）
@@ -242,7 +243,7 @@ python scripts/collect_performance.py --scan --dry-run --json
 Controller 读取 schema.yaml
   → 按 DAG 推导 SubAgent 批次
   → 逐批次调度：
-     引擎注入：inject.py --skill <stage-id> 输出拼入 SubAgent prompt
+     ⛔ 引擎注入（铁律）：inject.py --skill <stage-id> 输出拼入 SubAgent prompt 最前面，跳过 = 自进化全部失效
      → 加载对应 stage 技能文件内容
      → SubAgent 完成后扫描 generates 文件验证
      → 引擎门禁：gate.py --skill <stage-id> --project-dir <dir>

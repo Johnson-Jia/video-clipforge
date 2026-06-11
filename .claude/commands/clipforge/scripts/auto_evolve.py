@@ -106,7 +106,7 @@ def _classify_mode(proj_dir: Path) -> str:
 
 def _make_delta(operation, source, confidence, target_rule_id=None,
                 new_rule_raw=None, modified_fields=None, reason=None,
-                rules=None, traces=None) -> dict:
+                rules=None, traces=None, observation_days=3) -> dict:
     d = create_delta(
         operation=operation, source=source, confidence=confidence,
         target_rule_id=target_rule_id, new_rule_raw=new_rule_raw,
@@ -116,7 +116,28 @@ def _make_delta(operation, source, confidence, target_rule_id=None,
     validation = shadow_validate(d, rules or [], safe_traces)
     d["shadow_validation"] = validation
     d["requires_human_review"] = not validation.get("safe", True)
+    # auto_evolve 基于大数据统计，设置短观察期
+    dd = d.get("delta", d)
+    dd["observation_days"] = observation_days
     return d
+
+
+def _cleanup_old_deltas(target_rule: str, keep_filename: str) -> list[str]:
+    """删除同 target_rule 的旧 auto_evolve Delta 文件（保留刚创建的）。"""
+    removed = []
+    for fp in DELTAS_DIR.glob("D-*.yaml"):
+        if fp.name == keep_filename:
+            continue
+        try:
+            import yaml
+            data = yaml.safe_load(fp.read_text(encoding="utf-8"))
+            dd = data.get("delta", data)
+            if dd.get("target_rule") == target_rule and "auto_evolve" in dd.get("source", ""):
+                fp.unlink()
+                removed.append(fp.name)
+        except Exception:
+            pass
+    return removed
 
 
 # ── Phase 实现 ────────────────────────────────────────────────────────────────
@@ -402,10 +423,8 @@ class AutoEvolve:
             saved_ids.append(path.name)
             self._log(f"  {'自动生效' if not d.get('requires_human_review') else '待审核'}: {path.name}")
 
-        # 规则 2: 收藏率与增长关联
-        save_ratio = insights.get("save_ratio", 0)
-        growth_gap = insights.get("growth_c5s_gap", 0)
-        if save_ratio > 3 and valid_count >= 10:
+            # 去重：删除同 target_rule 的旧 auto_evolve Delta
+            _cleanup_old_deltas("R-S3-008", path.name)
             d = _make_delta(
                 operation="ADDED",
                 source="auto_evolve",
@@ -430,6 +449,9 @@ class AutoEvolve:
             path = save_delta(d, DELTAS_DIR)
             saved_ids.append(path.name)
             self._log(f"  {'自动生效' if not d.get('requires_human_review') else '待审核'}: {path.name}")
+
+            # 去重：删除同 target_rule 的旧 auto_evolve Delta
+            _cleanup_old_deltas("R-PAT-high-save-rate", path.name)
 
         if not saved_ids:
             self._log("  无新 Delta（现有规则已充分）")
@@ -536,6 +558,12 @@ class AutoEvolve:
         self._log(f"  阈值变更: {len(self.thresholds_changed)}")
         for c in self.thresholds_changed:
             self._log(f"    {c}")
+
+        # 清理过期 Delta（90 天）
+        from engine.lib.delta import cleanup_expired_deltas
+        expired = cleanup_expired_deltas(max_age_days=90)
+        if expired:
+            self._log(f"  清理过期 Delta: {len(expired)}")
 
         return {
             "projects_analyzed": insights.get("valid_count", 0),

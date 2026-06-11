@@ -84,9 +84,11 @@ def promote_ready(
 ) -> list[dict]:
     """列出满足 promote 条件的 delta（高置信度 + 无需人工审核）。
 
-    Promote 会直接修改规则 YAML 文件，是高风险操作。
     dry_run=True 时只列出候选，不实际修改。
+    dry_run=False 时将 delta 的规则写入对应的 rules/*.yaml 并标记为 PROMOTED。
     """
+    deltas_dir = deltas_dir or DELTAS_DIR
+    rules_dir = rules_dir or RULES_DIR
     deltas = load_deltas(deltas_dir)
     candidates = []
     for d in deltas:
@@ -95,16 +97,120 @@ def promote_ready(
             continue
         if inner.get("requires_human_review", True):
             continue
-        if inner.get("operation") in ("EXPIRED", "DEPRECATED"):
+        if inner.get("operation") in ("EXPIRED", "DEPRECATED", "PROMOTED"):
             continue
         candidates.append({
             "id": inner.get("id"),
             "operation": inner.get("operation"),
             "target_rule": inner.get("target_rule"),
             "confidence": inner.get("confidence"),
+            "new_rule": inner.get("new_rule"),
         })
 
+    if not dry_run and candidates:
+        _apply_promotion(candidates, deltas_dir, rules_dir)
+
     return candidates
+
+
+def _apply_promotion(candidates: list[dict], deltas_dir: Path, rules_dir: Path) -> list[str]:
+    """将候选 delta 写入规则 YAML 并标记为 PROMOTED。"""
+    promoted_ids: list[str] = []
+
+    # 按 target_rule 分组，找到对应的规则 YAML 文件
+    for cand in candidates:
+        target_rule = cand.get("target_rule", "")
+        if not target_rule or not cand.get("new_rule"):
+            continue
+
+        # 确定 target rule 所在的 YAML 文件
+        # 规则 ID 格式: R-S3-008 → stage3.yaml, R-PAT-* → patterns
+        target_file = _resolve_rule_file(target_rule, rules_dir)
+        if not target_file:
+            continue
+
+        # 读取现有规则
+        try:
+            with open(target_file, "r", encoding="utf-8") as f:
+                content = yaml.safe_load(f) or {}
+        except Exception:
+            continue
+
+        rules_list = content.get("rules", [])
+
+        # 查找并更新目标规则
+        new_rule = cand["new_rule"]
+        rule_id = new_rule.get("id", target_rule)
+
+        found = False
+        for i, existing in enumerate(rules_list):
+            if existing.get("id") == rule_id:
+                # 合并：用 new_rule 的字段覆盖
+                merged = {**existing, **new_rule}
+                rules_list[i] = merged
+                found = True
+                break
+
+        if not found:
+            # 新规则，追加
+            rules_list.append(new_rule)
+
+        content["rules"] = rules_list
+
+        # 写回
+        with open(target_file, "w", encoding="utf-8") as f:
+            yaml.dump(content, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+        # 标记 delta 为 PROMOTED
+        for fp in deltas_dir.glob("*.yaml"):
+            try:
+                data = yaml.safe_load(fp.read_text(encoding="utf-8"))
+                dd = data.get("delta", data)
+                if dd.get("id") == cand.get("id"):
+                    dd["operation"] = "PROMOTED"
+                    dd["promoted_at"] = datetime.now().isoformat()
+                    fp.write_text(
+                        yaml.dump(data, allow_unicode=True, default_flow_style=False),
+                        encoding="utf-8",
+                    )
+                    break
+            except Exception:
+                continue
+
+        promoted_ids.append(cand.get("id", "?"))
+
+    return promoted_ids
+
+
+def _resolve_rule_file(rule_id: str, rules_dir: Path) -> Path | None:
+    """根据规则 ID 推断所在的规则文件。"""
+    if not rule_id.startswith("R-"):
+        return None
+
+    # R-S3-008 → stage3.yaml
+    # R-S4-001 → stage4.yaml
+    # R-PAT-* → 不写入（pattern 由 patterns/ 管理）
+    parts = rule_id.split("-")
+    if len(parts) >= 3 and parts[1].startswith("S") and parts[1][1:].isdigit():
+        stage_num = parts[1][1:]
+        candidate = rules_dir / f"stage{stage_num}.yaml"
+        if candidate.exists():
+            return candidate
+
+    # 全局规则
+    candidate = rules_dir / "00-global-safety.yaml"
+    if candidate.exists():
+        # 检查文件中是否有此规则
+        try:
+            with open(candidate, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            for r in data.get("rules", []):
+                if r.get("id") == rule_id:
+                    return candidate
+        except Exception:
+            pass
+
+    return None
 
 
 def main():
