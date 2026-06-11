@@ -1,0 +1,117 @@
+<!--
+@ComponentMeta
+name: aurora_night
+layer: bg
+tags: [aurora, night, arctic, snow-mountain, stars, moonlight, polar, nature, deep, majestic]
+emotion_range: [wonder, tranquility, grandeur]
+visual_density: medium
+complexity: css-only
+description: 极光帘幕 3 层（绿/青/紫）+ 星空底 + 银河雾带 + 月光辉光 + 雪山剪影 3 层（空气透视）+ 玻璃折射
+parameters:
+  aurora_count: { default: 3, range: [2, 4] }
+  wave_period: { default: 14, range: [10, 20] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.50; }
+  50% { opacity: 0.80; }
+}
+@keyframes brightStarTwinkle {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 0.95; }
+}
+@keyframes auroraWave {
+  0%, 100% { transform: translateX(-18px) scaleY(1); opacity: 0.65; }
+  50% { transform: translateX(18px) scaleY(1.30); opacity: 1; }
+}
+@keyframes auroraWaveSlow {
+  0%, 100% { transform: translateX(12px) scaleY(1); opacity: 0.55; }
+  50% { transform: translateX(-12px) scaleY(1.20); opacity: 0.85; }
+}
+@keyframes moonBreath {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.70; transform: scale(1.04); }
+}
+@keyframes dustDrift {
+  0%, 100% { transform: translate(0, 0) rotate(-20deg); opacity: 0.10; }
+  50% { transform: translate(10px, -8px) rotate(-20deg); opacity: 0.15; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.35; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: aurora_night -->
+<!-- 深蓝黑底（极地夜空） -->
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(230,28%,5%),hsl(225,22%,8%),hsl(220,18%,6%))"></div>
+<!-- 月光辉光（右上角，柔和呼吸） -->
+<div style="position:absolute;top:8%;right:12%;width:350px;height:350px;border-radius:50%;
+  background:radial-gradient(circle,hsla(210,30%,85%,0.12),hsla(215,25%,70%,0.05),transparent 55%);
+  filter:blur(50px);animation:moonBreath 8s ease-in-out infinite"></div>
+<!-- 月亮本体（小而亮） -->
+<div style="position:absolute;top:10%;right:15%;width:30px;height:30px;border-radius:50%;
+  background:radial-gradient(circle,hsla(210,20%,92%,0.50),hsla(215,15%,85%,0.30),transparent 70%);
+  filter:blur(8px)"></div>
+<!-- 银河雾带（对角线） -->
+<div style="position:absolute;top:15%;left:-10%;width:120%;height:200px;
+  background:linear-gradient(90deg,transparent 5%,hsla(250,35%,45%,0.08) 25%,hsla(240,30%,40%,0.05) 50%,hsla(260,32%,42%,0.07) 75%,transparent 95%);
+  filter:blur(60px);transform:rotate(-20deg);animation:dustDrift 35s ease-in-out infinite"></div>
+<!-- 极光帘幕 1（高处，宽，绿-青主色调） -->
+<div style="position:absolute;top:35%;left:-10%;width:120%;height:130px;
+  background:linear-gradient(90deg,transparent 5%,hsla(140,62%,48%,0.12) 15%,hsla(160,58%,45%,0.10) 30%,hsla(150,65%,50%,0.14) 50%,hsla(170,55%,44%,0.10) 70%,hsla(145,60%,47%,0.12) 85%,transparent 95%);
+  filter:blur(45px);animation:auroraWave 12s ease-in-out infinite 0s"></div>
+<!-- 极光帘幕 2（中间，窄，青-紫渐变） -->
+<div style="position:absolute;top:50%;left:-10%;width:120%;height:90px;
+  background:linear-gradient(90deg,transparent 10%,hsla(170,55%,42%,0.10) 25%,hsla(185,50%,40%,0.08) 45%,hsla(200,48%,38%,0.10) 60%,hsla(180,52%,41%,0.08) 80%,transparent 90%);
+  filter:blur(38px);animation:auroraWaveSlow 16s ease-in-out infinite 3s"></div>
+<!-- 极光帘幕 3（低处，最窄，偏紫绿混合，最慢） -->
+<div style="position:absolute;top:62%;left:-10%;width:120%;height:70px;
+  background:linear-gradient(90deg,transparent 15%,hsla(130,50%,40%,0.07) 35%,hsla(280,40%,45%,0.06) 55%,hsla(155,45%,38%,0.08) 75%,transparent 90%);
+  filter:blur(32px);animation:auroraWave 20s ease-in-out infinite 7s"></div>
+<!-- 亮星 1 -->
+<div style="position:absolute;top:5%;left:30%;width:5px;height:5px;border-radius:50%;background:white;opacity:0.75;box-shadow:0 0 12px rgba(255,255,255,0.8),0 0 24px rgba(200,210,255,0.3);animation:brightStarTwinkle 4s ease-in-out infinite 0s"></div>
+<!-- 亮星 2 -->
+<div style="position:absolute;top:15%;left:70%;width:4px;height:4px;border-radius:50%;background:white;opacity:0.70;box-shadow:0 0 10px rgba(255,255,255,0.75),0 0 20px rgba(190,200,255,0.25);animation:brightStarTwinkle 5s ease-in-out infinite 2s"></div>
+<!-- 星点 3 -->
+<div style="position:absolute;top:8%;left:55%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.55;box-shadow:0 0 6px rgba(255,255,255,0.5);animation:starTwinkle 4.5s ease-in-out infinite 1s"></div>
+<!-- 星点 4 -->
+<div style="position:absolute;top:22%;left:20%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.50;box-shadow:0 0 6px rgba(255,255,255,0.45);animation:starTwinkle 5.5s ease-in-out infinite 3s"></div>
+<!-- 星点 5 -->
+<div style="position:absolute;top:30%;left:85%;width:3px;height:3px;border-radius:50%;background:white;opacity:0.60;box-shadow:0 0 8px rgba(255,255,255,0.6);animation:starTwinkle 3.5s ease-in-out infinite 0.5s"></div>
+<!-- 星点 6 -->
+<div style="position:absolute;top:45%;left:12%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.48;box-shadow:0 0 5px rgba(255,255,255,0.45);animation:starTwinkle 6s ease-in-out infinite 4s"></div>
+<!-- 星点 7 -->
+<div style="position:absolute;top:38%;left:50%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.45;box-shadow:0 0 5px rgba(255,255,255,0.40);animation:starTwinkle 4s ease-in-out infinite 2.5s"></div>
+<!-- 星点 8 -->
+<div style="position:absolute;top:12%;left:42%;width:2px;height:2px;border-radius:50%;background:white;opacity:0.52;box-shadow:0 0 6px rgba(255,255,255,0.50);animation:starTwinkle 5s ease-in-out infinite 1.5s"></div>
+<!-- 暗星 1 -->
+<div style="position:absolute;top:25%;left:62%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.32;box-shadow:0 0 3px rgba(255,255,255,0.25)"></div>
+<!-- 暗星 2 -->
+<div style="position:absolute;top:18%;left:78%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.28;box-shadow:0 0 3px rgba(255,255,255,0.22)"></div>
+<!-- 暗星 3 -->
+<div style="position:absolute;top:42%;left:32%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.30;box-shadow:0 0 3px rgba(255,255,255,0.24)"></div>
+<!-- 暗星 4 -->
+<div style="position:absolute;top:55%;left:72%;width:1px;height:1px;border-radius:50%;background:white;opacity:0.26;box-shadow:0 0 3px rgba(255,255,255,0.22)"></div>
+<!-- 雪山剪影 1（最远层，最淡，最高山脊线） -->
+<div style="position:absolute;bottom:0;left:-5%;width:110%;height:260px;
+  background:hsla(225,18%,14%,0.40);
+  clip-path:polygon(0 100%,0 50%,3% 38%,7% 42%,12% 28%,16% 35%,22% 18%,26% 30%,30% 22%,35% 32%,40% 25%,44% 35%,48% 20%,52% 30%,56% 24%,60% 34%,65% 28%,70% 38%,75% 30%,80% 40%,85% 32%,90% 42%,95% 35%,100% 45%,100% 100%)"></div>
+<!-- 雪山剪影 2（中间层） -->
+<div style="position:absolute;bottom:0;left:-5%;width:110%;height:200px;
+  background:hsla(222,15%,10%,0.55);
+  clip-path:polygon(0 100%,0 58%,5% 45%,10% 55%,18% 35%,24% 48%,30% 38%,36% 50%,42% 32%,48% 45%,54% 35%,60% 48%,66% 38%,72% 50%,78% 40%,84% 52%,90% 42%,95% 50%,100% 48%,100% 100%)"></div>
+<!-- 雪山剪影 3（最近层，最深，低矮山丘） -->
+<div style="position:absolute;bottom:0;left:-5%;width:110%;height:130px;
+  background:hsla(220,12%,6%,0.70);
+  clip-path:polygon(0 100%,0 60%,8% 48%,16% 58%,25% 42%,32% 55%,40% 45%,48% 56%,55% 48%,62% 55%,70% 45%,78% 52%,85% 48%,92% 55%,100% 50%,100% 100%)"></div>
+<!-- 雪线高光（远山山脊的微弱白雪反光） -->
+<div style="position:absolute;bottom:235px;left:-5%;width:110%;height:1.5px;
+  background:linear-gradient(90deg,transparent 15%,hsla(210,30%,80%,0.12) 25%,hsla(215,25%,75%,0.08) 40%,hsla(205,28%,78%,0.10) 55%,hsla(210,25%,80%,0.08) 70%,transparent 85%);
+  filter:blur(1px)"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(200,220,255,0.03) 0%,transparent 40%,transparent 60%,rgba(200,210,255,0.04) 100%);
+  animation:glassShimmer 11s ease-in-out infinite"></div>

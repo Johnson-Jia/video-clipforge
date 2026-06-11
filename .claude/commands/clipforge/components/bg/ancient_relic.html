@@ -1,0 +1,138 @@
+<!--
+@ComponentMeta
+name: ancient_relic
+layer: bg
+tags: [relic, ancient, temple, rune, glyph, altar, mystery, sacred, magic, purple-gold, floating-stone, glass]
+emotion_range: [mystery, sacred, wonder, awe]
+visual_density: high
+complexity: css-only
+description: 吞噬星空古文明遗迹 — 地面旋转符文阵（金紫 conic）+ 中央神圣光柱 + 3 块悬浮古老石块（漂浮旋转）+ 两侧立柱剪影 + 6 符文节点闪烁 + 金色能量粒子 + 玻璃折射
+parameters:
+  rune_speed: { default: 30, range: [20, 45], description: "符文阵旋转周期(s)" }
+  relic_count: { default: 3, range: [2, 4] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes relicRuneRotate {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+@keyframes relicPillarBreath {
+  0%, 100% { opacity: 0.40; }
+  50% { opacity: 0.58; }
+}
+@keyframes relicFloat1 {
+  0%, 100% { transform: translateY(0) rotate(-8deg); opacity: 0.55; }
+  50% { transform: translateY(-26px) rotate(-13deg); opacity: 0.74; }
+}
+@keyframes relicFloat2 {
+  0%, 100% { transform: translateY(0) rotate(14deg); opacity: 0.50; }
+  50% { transform: translateY(-22px) rotate(9deg); opacity: 0.70; }
+}
+@keyframes runeNodePulse {
+  0%, 100% { opacity: 0.32; transform: scale(1); }
+  50% { opacity: 0.88; transform: scale(1.35); }
+}
+@keyframes relicDustRise {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  20% { opacity: 0.6; }
+  100% { transform: translateY(-130px) translateX(6px); opacity: 0; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.24; }
+  50% { opacity: 0.34; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: ancient_relic -->
+<!-- 深紫黑神秘底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(165deg,hsl(265,42%,5%),hsl(275,36%,8%),hsl(260,40%,6%))"></div>
+<!-- 地面符文阵外辉光（底部居中，宽扁透视椭圆） -->
+<div style="position:absolute;bottom:6%;left:50%;transform:translateX(-50%);width:780px;height:200px;border-radius:50%;
+  background:radial-gradient(ellipse,hsla(45,80%,55%,0.20),hsla(280,55%,45%,0.12),transparent 65%);
+  filter:blur(40px)"></div>
+<!-- 地面符文阵本体（旋转金紫 conic，压扁模拟透视） -->
+<div style="position:absolute;bottom:8%;left:50%;width:680px;height:680px;border-radius:50%;
+  background:conic-gradient(from 0deg,
+    hsla(45,82%,58%,0.30),transparent 25deg,transparent 55deg,
+    hsla(285,70%,55%,0.26) 80deg,transparent 105deg,transparent 135deg,
+    hsla(48,85%,60%,0.24) 160deg,transparent 185deg,transparent 215deg,
+    hsla(275,68%,52%,0.22) 240deg,transparent 265deg,transparent 295deg,
+    hsla(50,80%,56%,0.20) 320deg,transparent 345deg);
+  filter:blur(8px);transform:translateX(-50%) scaleY(0.30);animation:relicRuneRotate 30s linear infinite"></div>
+<!-- 符文阵内圈（更细密，反向感） -->
+<div style="position:absolute;bottom:9%;left:50%;width:440px;height:440px;border-radius:50%;
+  border:2px solid hsla(48,72%,55%,0.22);
+  box-shadow:inset 0 0 40px hsla(45,70%,50%,0.12),0 0 30px hsla(285,55%,50%,0.15);
+  filter:blur(1px);transform:translateX(-50%) scaleY(0.30)"></div>
+<!-- 中央神圣光柱（从阵中心向上，宽渐隐） -->
+<div style="position:absolute;bottom:9%;left:50%;transform:translateX(-50%);width:160px;height:78%;
+  background:linear-gradient(180deg,transparent 0%,hsla(48,85%,62%,0.10) 30%,hsla(45,80%,55%,0.20) 70%,hsla(50,90%,68%,0.30) 100%);
+  filter:blur(28px);animation:relicPillarBreath 8s ease-in-out infinite"></div>
+<!-- 光柱核心亮线 -->
+<div style="position:absolute;bottom:9%;left:50%;transform:translateX(-50%);width:24px;height:72%;
+  background:linear-gradient(180deg,transparent,hsla(50,95%,75%,0.30),hsla(48,90%,70%,0.45));
+  filter:blur(10px)"></div>
+<!-- 左立柱剪影（带顶部辉光） -->
+<div style="position:absolute;bottom:0;left:6%;width:70px;height:62%;
+  background:linear-gradient(180deg,transparent,hsla(265,30%,6%,0.85) 25%,hsla(270,28%,4%,0.92));
+  clip-path:polygon(15% 0,85% 0,100% 8%,92% 100%,8% 100%,0 8%);
+  filter:blur(0.5px)"></div>
+<!-- 右立柱剪影 -->
+<div style="position:absolute;bottom:0;right:6%;width:70px;height:62%;
+  background:linear-gradient(180deg,transparent,hsla(265,30%,6%,0.85) 25%,hsla(270,28%,4%,0.92));
+  clip-path:polygon(15% 0,85% 0,100% 8%,92% 100%,8% 100%,0 8%);
+  filter:blur(0.5px)"></div>
+<!-- 悬浮古老石块 1（左，带金边辉光） -->
+<div style="position:absolute;top:32%;left:22%;width:80px;height:48px;
+  background:linear-gradient(135deg,hsla(265,25%,12%,0.85),hsla(270,20%,8%,0.9));
+  border:1px solid hsla(48,75%,55%,0.30);box-shadow:0 0 18px hsla(45,70%,50%,0.20),inset 0 0 12px hsla(285,40%,40%,0.15);
+  clip-path:polygon(8% 20%,30% 0,75% 12%,100% 45%,88% 88%,40% 100%,5% 70%);
+  animation:relicFloat1 9s ease-in-out infinite 0s"></div>
+<!-- 悬浮古老石块 2（右，更大） -->
+<div style="position:absolute;top:28%;right:20%;width:95px;height:58px;
+  background:linear-gradient(135deg,hsla(268,22%,14%,0.85),hsla(272,18%,9%,0.9));
+  border:1px solid hsla(50,72%,56%,0.28);box-shadow:0 0 20px hsla(48,68%,52%,0.18),inset 0 0 14px hsla(280,38%,42%,0.15);
+  clip-path:polygon(5% 30%,25% 8%,60% 0,92% 22%,100% 60%,78% 92%,30% 100%,0 65%);
+  animation:relicFloat2 11s ease-in-out infinite 2s"></div>
+<!-- 悬浮古老石块 3（中上，小） -->
+<div style="position:absolute;top:18%;left:48%;width:60px;height:38px;
+  background:linear-gradient(135deg,hsla(266,24%,12%,0.82),hsla(270,20%,8%,0.88));
+  border:1px solid hsla(285,65%,55%,0.26);box-shadow:0 0 16px hsla(280,55%,48%,0.18);
+  clip-path:polygon(10% 25%,45% 0,88% 18%,100% 55%,70% 95%,22% 88%,0 50%);
+  animation:relicFloat1 10s ease-in-out infinite 4s"></div>
+<!-- 符文节点 1（阵外圈交点闪烁） -->
+<div style="position:absolute;bottom:16%;left:28%;width:5px;height:5px;border-radius:50%;
+  background:hsla(48,90%,62%,0.8);box-shadow:0 0 12px hsla(45,85%,55%,0.6);animation:runeNodePulse 4s ease-in-out infinite 0s"></div>
+<!-- 符文节点 2 -->
+<div style="position:absolute;bottom:14%;right:26%;width:5px;height:5px;border-radius:50%;
+  background:hsla(285,82%,60%,0.78);box-shadow:0 0 12px hsla(280,75%,52%,0.58);animation:runeNodePulse 4.5s ease-in-out infinite 1s"></div>
+<!-- 符文节点 3 -->
+<div style="position:absolute;bottom:20%;left:42%;width:4px;height:4px;border-radius:50%;
+  background:hsla(50,88%,60%,0.75);box-shadow:0 0 10px hsla(48,82%,52%,0.55);animation:runeNodePulse 5s ease-in-out infinite 2s"></div>
+<!-- 符文节点 4 -->
+<div style="position:absolute;bottom:19%;right:42%;width:4px;height:4px;border-radius:50%;
+  background:hsla(278,80%,58%,0.72);box-shadow:0 0 10px hsla(275,72%,50%,0.52);animation:runeNodePulse 4.2s ease-in-out infinite 0.5s"></div>
+<!-- 符文节点 5 -->
+<div style="position:absolute;bottom:11%;left:36%;width:4px;height:4px;border-radius:50%;
+  background:hsla(46,86%,58%,0.7);box-shadow:0 0 9px hsla(44,80%,50%,0.5);animation:runeNodePulse 5.5s ease-in-out infinite 3s"></div>
+<!-- 符文节点 6 -->
+<div style="position:absolute;bottom:12%;right:36%;width:4px;height:4px;border-radius:50%;
+  background:hsla(290,78%,56%,0.7);box-shadow:0 0 9px hsla(285,70%,48%,0.5);animation:runeNodePulse 4.8s ease-in-out infinite 1.5s"></div>
+<!-- 金色能量粒子 1 -->
+<div style="position:absolute;bottom:20%;left:46%;width:3px;height:3px;border-radius:50%;
+  background:hsla(48,90%,65%,0.7);box-shadow:0 0 8px hsla(45,82%,55%,0.55);animation:relicDustRise 8s linear infinite 0s"></div>
+<!-- 金色能量粒子 2 -->
+<div style="position:absolute;bottom:18%;left:54%;width:2px;height:2px;border-radius:50%;
+  background:hsla(285,80%,62%,0.65);box-shadow:0 0 7px hsla(280,72%,52%,0.5);animation:relicDustRise 9s linear infinite 2s"></div>
+<!-- 金色能量粒子 3 -->
+<div style="position:absolute;bottom:22%;left:38%;width:2px;height:2px;border-radius:50%;
+  background:hsla(50,88%,62%,0.65);box-shadow:0 0 7px hsla(48,80%,52%,0.5);animation:relicDustRise 10s linear infinite 4s"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(180,140,255,0.04) 0%,transparent 38%,transparent 62%,rgba(255,220,140,0.05) 100%);
+  animation:glassShimmer 11s ease-in-out infinite"></div>
+<!-- 暗角聚焦 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 60%,transparent 32%,hsla(265,40%,3%,0.45) 100%)"></div>

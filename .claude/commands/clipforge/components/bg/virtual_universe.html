@@ -1,0 +1,140 @@
+<!--
+@ComponentMeta
+name: virtual_universe
+layer: bg
+tags: [virtual, digital, grid, data-stream, hologram, matrix, sci-fi, cyber, futuristic, tech, cyan, glass]
+emotion_range: [tech, futuristic, immersion, sci-fi]
+visual_density: high
+complexity: css-only
+description: 吞噬星空虚拟宇宙 — 透视数据网格（Tron 风）+ 竖直数据流 + 网格节点闪烁 + 半透明全息光面 + 中央数据核心（青蓝呼吸环）+ 扫描线 + 玻璃折射
+parameters:
+  grid_speed: { default: 12, range: [8, 20], description: "网格流动周期(s)" }
+  stream_density: { default: 5, range: [3, 8] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes vuGridFlow {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 60px; }
+}
+@keyframes vuDataFall {
+  0% { background-position: 0 -120px; opacity: 0; }
+  15% { opacity: 0.8; }
+  85% { opacity: 0.7; }
+  100% { background-position: 0 100vh; opacity: 0; }
+}
+@keyframes vuNodeBlink {
+  0%, 100% { opacity: 0.30; transform: scale(1); }
+  50% { opacity: 0.90; transform: scale(1.4); }
+}
+@keyframes vuCoreBreath {
+  0%, 100% { opacity: 0.48; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.66; transform: translateX(-50%) scale(1.1); }
+}
+@keyframes vuCoreSpin {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+@keyframes vuScanSweep {
+  0% { transform: translateY(-20%); opacity: 0; }
+  20% { opacity: 0.5; }
+  80% { opacity: 0.5; }
+  100% { transform: translateY(120%); opacity: 0; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.26; }
+  50% { opacity: 0.36; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: virtual_universe -->
+<!-- 深蓝黑科技底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(170deg,hsl(212,48%,5%),hsl(200,42%,9%),hsl(220,46%,6%))"></div>
+<!-- 远处地平线辉光（汇聚点光晕） -->
+<div style="position:absolute;top:42%;left:50%;transform:translateX(-50%);width:520px;height:180px;border-radius:50%;
+  background:radial-gradient(ellipse,hsla(190,80%,55%,0.22),hsla(200,70%,45%,0.12),transparent 65%);
+  filter:blur(50px)"></div>
+<!-- 透视数据网格地面（Tron 风格，汇聚远处） -->
+<div style="position:absolute;bottom:-40%;left:-60%;width:220%;height:170%;
+  background-image:
+    linear-gradient(90deg,transparent 49.6%,hsla(190,75%,55%,0.16) 49.8%,hsla(190,75%,55%,0.16) 50.2%,transparent 50.4%),
+    linear-gradient(0deg,transparent 49.6%,hsla(195,72%,52%,0.16) 49.8%,hsla(195,72%,52%,0.16) 50.2%,transparent 50.4%);
+  background-size:64px 64px;
+  transform:perspective(520px) rotateX(74deg);
+  transform-origin:50% 0%;
+  animation:vuGridFlow 12s linear infinite"></div>
+<!-- 网格近端渐隐遮罩（柔化硬边） -->
+<div style="position:absolute;bottom:0;left:0;width:100%;height:35%;
+  background:linear-gradient(180deg,transparent,hsla(210,40%,6%,0.6) 70%,hsla(210,42%,5%,0.9));
+  filter:blur(8px)"></div>
+<!-- 竖直数据流 1（青蓝，下落亮段） -->
+<div style="position:absolute;top:0;left:22%;width:2px;height:100%;
+  background:repeating-linear-gradient(180deg,transparent 0px,transparent 18px,hsla(190,90%,65%,0.85) 22px,hsla(190,90%,65%,0.85) 26px,transparent 30px,transparent 60px);
+  filter:blur(0.5px);animation:vuDataFall 5s linear infinite 0s"></div>
+<!-- 竖直数据流 2（蓝，错相位） -->
+<div style="position:absolute;top:0;left:68%;width:2px;height:100%;
+  background:repeating-linear-gradient(180deg,transparent 0px,transparent 24px,hsla(200,85%,62%,0.75) 28px,hsla(200,85%,62%,0.75) 32px,transparent 36px,transparent 70px);
+  filter:blur(0.5px);animation:vuDataFall 6.5s linear infinite 1.5s"></div>
+<!-- 竖直数据流 3（淡青） -->
+<div style="position:absolute;top:0;left:45%;width:1.5px;height:100%;
+  background:repeating-linear-gradient(180deg,transparent 0px,transparent 30px,hsla(185,88%,63%,0.7) 34px,hsla(185,88%,63%,0.7) 38px,transparent 42px,transparent 80px);
+  filter:blur(0.5px);animation:vuDataFall 7s linear infinite 3s"></div>
+<!-- 竖直数据流 4 -->
+<div style="position:absolute;top:0;left:82%;width:1.5px;height:100%;
+  background:repeating-linear-gradient(180deg,transparent 0px,transparent 20px,hsla(195,86%,60%,0.65) 24px,hsla(195,86%,60%,0.65) 28px,transparent 32px,transparent 65px);
+  filter:blur(0.5px);animation:vuDataFall 5.5s linear infinite 2s"></div>
+<!-- 竖直数据流 5 -->
+<div style="position:absolute;top:0;left:12%;width:1.5px;height:100%;
+  background:repeating-linear-gradient(180deg,transparent 0px,transparent 26px,hsla(190,84%,58%,0.6) 30px,hsla(190,84%,58%,0.6) 34px,transparent 38px,transparent 75px);
+  filter:blur(0.5px);animation:vuDataFall 6s linear infinite 4s"></div>
+<!-- 半透明全息光面 1（菱形） -->
+<div style="position:absolute;top:24%;left:14%;width:120px;height:120px;
+  background:linear-gradient(135deg,hsla(190,75%,55%,0.10),hsla(200,70%,50%,0.05));
+  border:1px solid hsla(190,80%,60%,0.22);
+  transform:rotate(45deg);filter:blur(0.5px)"></div>
+<!-- 半透明全息光面 2（菱形） -->
+<div style="position:absolute;top:30%;right:16%;width:90px;height:90px;
+  background:linear-gradient(135deg,hsla(195,72%,52%,0.10),hsla(205,68%,48%,0.05));
+  border:1px solid hsla(195,78%,58%,0.20);
+  transform:rotate(45deg);filter:blur(0.5px)"></div>
+<!-- 半透明全息光面 3（三角） -->
+<div style="position:absolute;top:52%;left:62%;width:140px;height:70px;
+  background:linear-gradient(180deg,hsla(190,70%,53%,0.08),transparent);
+  border-top:1px solid hsla(190,78%,60%,0.20);
+  clip-path:polygon(50% 0,100% 100%,0 100%);filter:blur(0.5px)"></div>
+<!-- 中央数据核心旋转环（青蓝 conic） -->
+<div style="position:absolute;top:50%;left:50%;width:220px;height:220px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,hsla(190,90%,62%,0.28) 40deg,transparent 80deg,transparent 200deg,hsla(200,85%,58%,0.22) 240deg,transparent 280deg);
+  filter:blur(12px);animation:vuCoreSpin 14s linear infinite"></div>
+<!-- 数据核心本体（青蓝发光球） -->
+<div style="position:absolute;top:50%;left:50%;width:110px;height:110px;border-radius:50%;
+  background:radial-gradient(circle,hsla(190,95%,70%,0.55),hsla(195,85%,52%,0.20),transparent 60%);
+  filter:blur(22px);animation:vuCoreBreath 5s ease-in-out infinite"></div>
+<!-- 数据核心中心亮点 -->
+<div style="position:absolute;top:50%;left:50%;width:26px;height:26px;border-radius:50%;
+  background:radial-gradient(circle,hsla(190,60%,92%,0.6),hsla(195,80%,72%,0.2),transparent 70%);
+  filter:blur(8px)"></div>
+<!-- 网格节点闪烁 1 -->
+<div style="position:absolute;top:48%;left:30%;width:4px;height:4px;border-radius:50%;
+  background:hsla(190,90%,65%,0.8);box-shadow:0 0 10px hsla(190,85%,55%,0.6);animation:vuNodeBlink 4s ease-in-out infinite 0s"></div>
+<!-- 网格节点闪烁 2 -->
+<div style="position:absolute;top:56%;right:28%;width:4px;height:4px;border-radius:50%;
+  background:hsla(200,88%,62%,0.78);box-shadow:0 0 10px hsla(200,82%,52%,0.58);animation:vuNodeBlink 4.5s ease-in-out infinite 1s"></div>
+<!-- 网格节点闪烁 3 -->
+<div style="position:absolute;top:62%;left:55%;width:3px;height:3px;border-radius:50%;
+  background:hsla(185,86%,60%,0.72);box-shadow:0 0 9px hsla(185,80%,52%,0.55);animation:vuNodeBlink 5s ease-in-out infinite 2s"></div>
+<!-- 网格节点闪烁 4 -->
+<div style="position:absolute;top:44%;left:72%;width:3px;height:3px;border-radius:50%;
+  background:hsla(195,84%,58%,0.7);box-shadow:0 0 8px hsla(195,78%,50%,0.5);animation:vuNodeBlink 4.2s ease-in-out infinite 0.5s"></div>
+<!-- 水平扫描线（缓慢扫过） -->
+<div style="position:absolute;top:0;left:0;width:100%;height:2px;
+  background:linear-gradient(90deg,transparent,hsla(190,85%,60%,0.35),hsla(195,80%,55%,0.30),transparent);
+  filter:blur(1.5px);animation:vuScanSweep 11s linear infinite"></div>
+<!-- 玻璃折射层 -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(120,210,255,0.05) 0%,transparent 38%,transparent 62%,rgba(100,200,255,0.06) 100%);
+  animation:glassShimmer 8s ease-in-out infinite"></div>
+<!-- 暗角聚焦核心 -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 50%,transparent 35%,hsla(215,45%,3%,0.45) 100%)"></div>

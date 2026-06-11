@@ -73,18 +73,48 @@ def derive_palette(user_colors: dict) -> dict:
     return colors
 
 
+def _validate_seg(seg: dict, path: str, errors: list[str]) -> None:
+    """Validate a single title segment dict."""
+    if not isinstance(seg, dict) or "text" not in seg or "style" not in seg:
+        errors.append(f"{path} needs 'text' and 'style' fields")
+    elif seg["style"] not in ("white", "accent", "cool"):
+        errors.append(f"{path}.style must be 'white', 'accent', or 'cool', got '{seg['style']}'")
+
+
+def normalize_title(title: list) -> list:
+    """Normalize title to nested format: [[seg, ...], [seg, ...]].
+
+    Accepts two formats:
+      New (nested):  [[{"text":"A","style":"white"}], [{"text":"B","style":"accent"},{"text":"C","style":"cool"}]]
+      Old (flat):     [{"text":"A","style":"white"}, {"text":"B","style":"accent"}]
+
+    Old format auto-wraps each segment into its own line (backward compatible).
+    """
+    if not title:
+        return title
+    # Detect old format: first element is a dict (not a list)
+    if isinstance(title[0], dict):
+        return [[seg] for seg in title]
+    return title
+
+
 def validate_params(params: dict) -> list[str]:
     errors = []
     if "date" not in params:
         errors.append("missing 'date' (e.g. '2026年6月4日')")
     if "title" not in params or not params["title"]:
-        errors.append("missing 'title' array (e.g. [{text:'...', style:'white'}, ...])")
+        errors.append("missing 'title' array")
     else:
-        for i, seg in enumerate(params["title"]):
-            if "text" not in seg or "style" not in seg:
-                errors.append(f"title[{i}] needs 'text' and 'style' fields")
-            if seg["style"] not in ("white", "accent", "cool"):
-                errors.append(f"title[{i}].style must be 'white', 'accent', or 'cool', got '{seg['style']}'")
+        for i, item in enumerate(params["title"]):
+            if isinstance(item, list):
+                # New nested format: line of segments
+                for j, seg in enumerate(item):
+                    _validate_seg(seg, f"title[{i}][{j}]", errors)
+            elif isinstance(item, dict):
+                # Old flat format: single segment
+                _validate_seg(item, f"title[{i}]", errors)
+            else:
+                errors.append(f"title[{i}] must be a dict or list of dicts")
     if "cards" not in params or not params["cards"]:
         errors.append("missing 'cards' array (1-3 cards)")
     elif len(params["cards"]) > 3:
@@ -146,6 +176,9 @@ def main():
 
     colors = derive_palette(params.get("colors", {}))
     params["colors"] = colors
+
+    # Normalize title to nested format (old flat format → each seg = own line)
+    params["title"] = normalize_title(params.get("title", []))
     params.setdefault("orientation", "portrait")
     params.setdefault("scene_label", "")
     params.setdefault("badge", "")

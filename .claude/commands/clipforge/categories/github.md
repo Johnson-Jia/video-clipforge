@@ -146,10 +146,11 @@ gh api repos/{owner}/{repo}/contributors --paginate --jq '.[].id' | wc -l
 **选取流程：**
 
 1. 获取当日 trending 数据（`.claude/commands/clipforge/scripts/github_trending.py` 或 API）
-2. **检查前次视频项目列表**：读取同类型最近一次视频的 `raw_trending.json` 或 `narration_segments.json`，识别哪些项目上次已介绍
-3. **标记三类项目**：新上榜 / 涨星加速 / 连续霸榜
-4. **组合选取 5-6 个**：优先新上榜和涨星加速，补入霸榜项目维持信息连续性
-5. **调整 hook 文案**：如重复率 >50%，hook 改为强调"新增"（如"又冲上来三个新的"）；如以新项目为主，hook 用具体数字锚定（如"涨星最高的一个项目，单日近四千"）；如涨星爆发，可用情绪化表达（如"涨星直接炸了"）
+2. **过滤排除列表**：对照 `exclusion_list`，移除所有命中的项目（不参与后续排序）
+3. **检查前次视频项目列表**：读取同类型最近一次视频的 `raw_trending.json` 或 `narration_segments.json`，识别哪些项目上次已介绍
+4. **标记三类项目**：新上榜 / 涨星加速 / 连续霸榜
+5. **组合选取 5-6 个**：优先新上榜和涨星加速，补入霸榜项目维持信息连续性
+6. **调整 hook 文案**：如重复率 >50%，hook 改为强调"新增"（如"又冲上来三个新的"）；如以新项目为主，hook 用具体数字锚定（如"涨星最高的一个项目，单日近四千"）；如涨星爆发，可用情绪化表达（如"涨星直接炸了"）
 
 **前次视频不存在时**（首次制作）：直接取 TOP 5-6，按排名排序。
 
@@ -277,6 +278,16 @@ gh api repos/{owner}/{repo}/contributors --jq '.[] | "\(.login) \(.contributions
 2. 按 `selection_strategy` 优先级补选下一个项目
 3. 在 `content_ready.txt` 末尾记录：`> ⚠️ 剔除可疑项目: {owner}/{repo} ({原因})`
 
+### exclusion_list — 永久排除列表
+
+> 以下项目经人工判定为虚假、普通人无法实现或存在严重误导，**永久排除，不得入选任何视频**。无论 Star 数多高、涨星多快，一律跳过。
+
+| owner/repo | 排除原因 | 判定日期 |
+|------------|---------|---------|
+| ruvnet/RuView | WiFi 信号感知人体，虚假宣传/普通人无法实现 | 2026-06-11 |
+
+**使用方式**：`selection_strategy` 选取项目后、真实性验证之前，先过滤排除列表中的项目。命中排除列表的项目直接跳过，不记录为"剔除"（因为不是可疑，而是已确认为不适合推荐）。
+
 ### monthly_inventory — 月度清单管理
 
 每日数据抓取后立即写入月度清单（在 DAG 长流程之前，避免 context 压缩丢失）：
@@ -315,6 +326,32 @@ gh api repos/{owner}/{repo}/contributors --jq '.[] | "\(.login) \(.contributions
 - 描述翻译成中文（简洁口语化）
 - 按热度排序
 - 开头用震撼数据做钩子（如"一天涨近四千星"）
+
+**⛔ 描述来源铁律（HARD）**：
+
+> 中文描述**必须忠实翻译** `raw_trending.json` 中该项目的 `description` 字段。**禁止从 owner 名或 repo 名推断项目功能。**
+
+| 做法 | 判定 |
+|------|------|
+| raw: "Desktop app to manage markdown knowledge bases" → 中文: "管理 markdown 知识库的桌面应用" | ✅ 忠实翻译 |
+| raw: "Desktop app to manage markdown knowledge bases"，owner=refactoringhq → 中文: "AI 代码重构平台" | ❌ 从 owner 名推断，与原始描述完全不符 |
+| raw: "AI-powered job search system" → 中文: "AI 驱动的求职自动化工具" | ✅ 核心语义一致 |
+| raw: "Open Source Computer Vision Library" → 中文: "开源计算机视觉库" | ✅ 直译即可 |
+
+**⛔ 原始描述内嵌要求（HARD，门禁强制）**：
+
+> `content_ready.txt` 中每个项目的描述行**必须内嵌原始英文 description**（作为保真锚点），格式：在中文描述后附 `（原: <英文 description>）`。
+
+Stage 1 门禁（`description_fidelity_valid`）会用确定性子串匹配校验：每个被提及项目的 `raw_trending.json` description 字段必须原样出现在 `content_ready.txt` 中。缺失即 HARD 失败。
+
+**为什么**：跨语言语义判断无法做成零误报的自动门禁（忠实翻译会把 dossier→档案，英文锚点全丢）。强制内嵌原始英文描述，让 LLM 把真实描述写在中文旁边，从源头杜绝从 owner/repo 名杜撰——写"原: Desktop app to manage markdown knowledge bases"的同时总结成"AI 代码重构平台"，认知冲突会迫使 LLM 自我纠正。
+
+**正确格式示例**：
+```
+5. refactoringhq/tolaria | TypeScript | 14.4K★ (+829) | 管理 markdown 知识库的桌面应用（原: Desktop app to manage markdown knowledge bases）
+```
+
+**执行方式**：整理 `content_ready.txt` 时，每个项目的中文描述必须对照 `raw_trending.json` 中对应项目的 `description` 字段翻译，并内嵌原文。不得凭 owner/repo 名猜测。如原始描述为空（`null`），才可从 README / API 补充，但必须标注 `（补充自 README）`。
 
 ## design
 
@@ -573,6 +610,8 @@ true — GitHub 系列视频启用码力角色。
 | 数据量 < 最低阈值 | 项目数少于 8 个时停止，数据不足无法支撑标准模式视频 |
 | web-reader 未禁缓存 | 必须设置 `no_cache: true`，否则可能获取过期数据 |
 | 与前次数据完全相同 | 说明命中缓存，需刷新数据源 |
+| 中文描述从 owner/repo 名推断 | 描述必须忠实翻译 raw `description` 字段，owner 名（如 refactoringhq）不代表项目功能 |
+| content_ready.txt 出现 raw_trending.json 中不存在的项目 | 杜撰项目，Stage 1 门禁会拦截 |
 
 ### Common Rationalizations（GitHub 特定）
 
@@ -582,3 +621,5 @@ true — GitHub 系列视频启用码力角色。
 | "README badge 显示的 Star 数够用了" | README badge 是图片或缓存数据，不可靠。必须用 `gh api` 获取实时数据 |
 | "跳过数据验证，直接开始" | 错误 Star 数进入视频 → 观众评论区纠正 → 伤害频道可信度 |
 | "之前的项目列表不用检查" | 不检查重复 → 连续两期视频介绍同样的项目 → 观众流失 |
+| "owner 名叫 refactoringhq，这肯定是个重构工具" | owner 名 ≠ 项目功能。tolaria 的 owner 是 refactoringhq，但项目实际是 markdown 知识库工具。只看 description 字段 |
+| "原始描述太短/太抽象，我补充一下让它更生动" | 翻译可口语化，但核心语义不得偏离原始 description。要补充细节必须读 README 并标注来源 |

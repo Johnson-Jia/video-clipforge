@@ -33,6 +33,10 @@ skill:
       - gate: file_exists
         params:
           files: ["content.md"]
+      - gate: description_fidelity_valid
+        params:
+          content_file: "content_ready.txt"
+          raw_file: "raw_trending.json"
     soft: []
     max_retries: 2
   trace:

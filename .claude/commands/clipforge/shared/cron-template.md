@@ -55,12 +55,44 @@ mkdir -p "${PROJECT_DIR}"
 
 > **movie-clips / assets：** 标准模式下均跳过。按 schema.yaml 条件判断。
 
-### SubAgent 模板加载
+### SubAgent Prompt 组装协议
 
 用 Agent 工具启动 4 个 SubAgent，每个从零上下文启动。prompt 由以下要素构成：
 - 加载对应 stage 技能文件（`skills/stage{N}-*.yaml`）
 - 设置项目目录路径
 - 传入分类特定参数
+
+### ⛔ 约束注入协议（必须执行，不可跳过）
+
+> **每个 SubAgent 启动前，主编排必须执行约束注入。** inject 输出包含最新 Delta 演化的规则，跳过 = 自进化全部失效。
+
+**步骤**：
+
+1. 运行约束注入（在 `.claude/commands/clipforge/` 目录下）：
+   ```bash
+   cd .claude/commands/clipforge && python engine/inject.py --skill <stage-id> --category <category>
+   ```
+
+2. 将 inject 输出作为 **约束段** 附加到 SubAgent prompt 的最前面（在 stage 内容之前）：
+   ```
+   ## 行为约束（引擎注入，不可修改）
+   [inject.py 的完整输出]
+
+   ---
+   以下是你的任务指令：
+   [stage 内容 + 运行参数]
+   ```
+
+3. **SubAgent 对应关系**：
+
+| SubAgent | --skill 参数 |
+|----------|-------------|
+| SubAgent-1 | stage3-scenes（覆盖 stage0-3 全部约束） |
+| SubAgent-2 | stage4-audio |
+| SubAgent-3 | stage6-production |
+| SubAgent-4 | stage7-delivery |
+
+> **⚠ inject 是约束源不是装饰。跳过 inject = 所有 Delta 演化规则全部失效。**
 
 > **⛔ 门禁强制执行铁律：每个 SubAgent 完成其主要任务后，必须运行 `engine/gate.py`。**
 >
@@ -80,6 +112,8 @@ mkdir -p "${PROJECT_DIR}"
 ### SubAgent-1: content → design → narration
 
 加载：`skills/stage0-env.yaml` + `skills/stage1-content.yaml` + `skills/stage2-analysis.yaml` + `skills/stage3-scenes.yaml`
+
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -104,6 +138,8 @@ mkdir -p "${PROJECT_DIR}"
 
 加载：`skills/stage4-audio.yaml`
 
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage4-audio --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
+
 传入参数：
 
 | 参数 | 说明 | 示例 |
@@ -118,6 +154,8 @@ mkdir -p "${PROJECT_DIR}"
 ### SubAgent-3: video
 
 加载：`skills/stage6-production.yaml`
+
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage6-production --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -157,6 +195,8 @@ HARD 门禁失败时：修复问题，重新渲染，再次运行门禁。最多
 ### SubAgent-4: delivery → machine-scoring → cleanup
 
 加载：`skills/stage7-delivery.yaml` + `shared/machine-scoring.md` + `shared/cleanup-rules.md`
+
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage7-delivery --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -210,8 +250,8 @@ LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字
   "scene_label": "GITHUB TRENDING",
   "badge": "6个项目",
   "title": [
-    {"text": "今日GitHub", "style": "white"},
-    {"text": "热门", "style": "accent"}
+    [{"text": "今日GitHub", "style": "white"}],
+    [{"text": "热门", "style": "accent"}]
   ],
   "data_subtitle": "20万星项目首上榜",
   "cards": [
@@ -237,7 +277,7 @@ LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字
 | date | 是 | 中文日期格式 |
 | scene_label | 是 | 场景分类标签 |
 | badge | 是 | 胶囊徽章文案 |
-| title | 是 | 标题色段数组，每项 `{text, style}`，style 可选 `white`/`accent`/`cool` |
+| title | 是 | 嵌套数组：外层=行，内层=同行色段。每段 `{text, style}`，style 可选 `white`/`accent`/`cool`。同行多段不换行，不同行自动 `<br>` |
 | data_subtitle | 是 | 数据说明文案 |
 | cards | 是 | 1-3 个数据卡片，每项 `{num, label}` |
 | colors.accent_warm | 是 | 主强调色（hex），脚本自动派生 soft/rgb 变体 |

@@ -90,8 +90,9 @@ def generate_injection(
                     skill_rules.extend([r for r in rules if r.id == rref])
         rules = merge_rules(skill_rules)
 
-    # 应用高置信度 Delta（无需人工审核 + 7 天观察期已过）
-    OBSERVATION_DAYS = 7
+    # 应用高置信度 Delta（无需人工审核 + 观察期已过）
+    DEFAULT_OBSERVATION_DAYS = 7
+    _applied_deltas: list[str] = []
     from datetime import datetime as _dt, timezone as _tz
     try:
         deltas = load_deltas()
@@ -104,19 +105,37 @@ def generate_injection(
             needs_review = d.get("requires_human_review", dd.get("requires_human_review", True))
             if needs_review:
                 continue
-            # 7 天观察期：Delta 创建时间距今不足 7 天时不生效
+            # 观察期：从 Delta 元数据读取，默认 7 天
+            obs_days = dd.get("observation_days", DEFAULT_OBSERVATION_DAYS)
             created = dd.get("created_at", "")
             if created:
                 try:
                     created_dt = _dt.fromisoformat(created)
                     age_days = (_dt.now(_tz.utc) - created_dt).days
-                    if age_days < OBSERVATION_DAYS:
+                    if age_days < obs_days:
                         continue
                 except (ValueError, TypeError):
                     continue  # 日期解析失败 → 不自动应用
             auto_deltas.append(d)
+
+        # 去重：同 target_rule 只保留 created_at 最新的
+        _by_target: dict[str, dict] = {}
+        for d in auto_deltas:
+            dd = d.get("delta", d)
+            target = dd.get("target_rule", "")
+            created = dd.get("created_at", "")
+            if target in _by_target:
+                if created > _by_target[target]["created_at"]:
+                    # 新的更新，替换旧的
+                    auto_deltas.remove(_by_target[target]["ref"])
+                    _by_target[target] = {"created_at": created, "ref": d}
+            else:
+                _by_target[target] = {"created_at": created, "ref": d}
+
         for delta in auto_deltas:
+            dd = delta.get("delta", delta)
             rules = apply_delta_to_rules(rules, delta)
+            _applied_deltas.append(dd.get("id", "unknown"))
     except Exception:
         pass
 
@@ -194,6 +213,10 @@ def generate_injection(
             for sl in spirit_entries:
                 lines.append(f"- 规则 {sl.rule_ref}: 按意图解释 — {sl.intent}")
             lines.append("")
+
+    # 应用日志：gate.py / trace 系统可追踪哪些 Delta 实际参与
+    if _applied_deltas:
+        lines.append(f"<!-- INJECT_META: applied_deltas={_applied_deltas} -->")
 
     return "\n".join(lines)
 
