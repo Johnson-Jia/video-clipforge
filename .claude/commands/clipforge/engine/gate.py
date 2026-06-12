@@ -1413,7 +1413,7 @@ def _has_visible_content(chunk: str) -> bool:
     style = re.search(r'style="([^"]*)"', cleaned)
     if style:
         s = style.group(1)
-        if re.search(r'(?:^|;)\s*opacity\s*:\s*0(?:\.0+)?\s*(?:;|$|"|)', s):
+        if re.search(r'(?:^|;)\s*opacity\s*:\s*0(?:\.0+)?\s*(?:;|$|")', s):
             return False
         if re.search(r'display\s*:\s*none', s):
             return False
@@ -1519,7 +1519,7 @@ GATE_CHECKERS[GateType.fx_layer_not_empty] = check_fx_layer_not_empty
 
 
 def check_bg_component_source(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-R-021: bg 层必须使用组件库中的 bg 组件。"""
+    """R-R-021: bg 层必须使用组件库中的 bg 组件（标记+内容指纹双重验证）。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -1528,17 +1528,59 @@ def check_bg_component_source(project_dir: Path, params: dict) -> tuple[bool, st
     if not scenes:
         return True, "无场景可检查"
 
-    violations = []
+    _bg_dir = Path(__file__).resolve().parent.parent / "components" / "bg"
+    no_marker = []
+    missing_comp = []
+    fake_marker = []
+
     for sid, scene_html in scenes:
         bg = _extract_layer_chunk(scene_html, "layer-bg")
         if not bg.strip():
             continue  # 空 bg 由其他规则检查
-        if not re.search(r'<!--\s*bg-component:', bg):
-            violations.append(sid)
 
-    if violations:
-        return False, f"R-R-021: {len(violations)} 个场景 bg 层未使用组件库组件 ({', '.join(violations[:6])})"
-    return True, f"{len(scenes)} 场景 bg 组件来源合格"
+        # --- 标记检查 ---
+        marker = re.search(r'<!--\s*bg-component:\s*(\S+)\s*-->', bg)
+        if not marker:
+            no_marker.append(sid)
+            continue
+
+        comp_name = marker.group(1)
+        comp_path = _bg_dir / f"{comp_name}.html"
+
+        # --- 组件文件存在性 ---
+        if not comp_path.exists():
+            missing_comp.append(f"{sid}({comp_name})")
+            continue
+
+        # --- 内容指纹验证 ---
+        # 组件 @keyframes 名称集合 vs layer-bg animation 引用集合
+        comp_content = comp_path.read_text(encoding="utf-8", errors="ignore")
+        comp_kf = set(re.findall(r'@keyframes\s+([\w-]+)', comp_content))
+        bg_anim_names = set()
+        for m in re.finditer(r'animation\s*:\s*([\w-]+)', bg):
+            bg_anim_names.add(m.group(1))
+        used_kf = comp_kf & bg_anim_names
+
+        if comp_kf and not used_kf:
+            # 组件有动画但 layer-bg 未引用任何组件 keyframe → 假标记
+            fake_marker.append(f"{sid}({comp_name}):0/{len(comp_kf)} keyframes引用")
+        elif not comp_kf:
+            # 静态组件：检查 div 数量（真组件 DOM 通常 ≥3 个 div）
+            bg_divs = len(re.findall(r'<div\b', bg))
+            if bg_divs < 3:
+                fake_marker.append(f"{sid}({comp_name}):仅{bg_divs}个div(静态组件)")
+
+    issues = []
+    if no_marker:
+        issues.append(f"{len(no_marker)}个无标记({','.join(no_marker[:4])})")
+    if missing_comp:
+        issues.append(f"{len(missing_comp)}个组件不存在({','.join(missing_comp[:4])})")
+    if fake_marker:
+        issues.append(f"{len(fake_marker)}个假标记({','.join(fake_marker[:4])})")
+
+    if issues:
+        return False, "R-R-021: " + "; ".join(issues)
+    return True, f"{len(scenes)} 场景 bg 组件来源+内容合格"
 
 
 GATE_CHECKERS[GateType.bg_component_source] = check_bg_component_source
