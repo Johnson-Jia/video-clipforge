@@ -85,7 +85,6 @@ du -sh workspace/bgm/
 | `pastel-soft` | `soft gentle ambient calm` | 柔和、轻缓、治愈系 |
 | `retro-80s` | `retro 80s synth pop` | 复古 80 年代、合成器流行、怀旧感 |
 | `upbeat-pop` | `upbeat pop happy` | 欢快流行、轻松愉快、适合科普/日常 |
-| `suspense-thriller` | `suspense dark thriller` | 悬疑紧张、适合揭秘/深度分析 |
 | `inspiring-motivational` | `inspiring motivational` | 励志激励、适合创业/成长类 |
 | `warm-editorial` | `warm acoustic cozy` | 温暖、原声、舒适 |
 | `epic-uplifting` | `happy uplifting positive` | 阳光积极、正能量、欢快明亮 |
@@ -98,7 +97,7 @@ du -sh workspace/bgm/
 
 | mood | 推荐主题 | 适用场景 |
 |------|---------|---------|
-| mysterious | `suspense-thriller` / `dark-premium` | hook 钩子、悬念铺垫、背景揭示 |
+| mysterious | `dark-premium` | hook 钩子、悬念铺垫、背景揭示 |
 | epic | `epic-trailer` / `cinematic-grand` | 高潮、核心数据冲击、商业论点 |
 | contemplative | `monochrome` / `pastel-soft` | 反思、深度分析、现状评估、柔和过渡 |
 | inspiring | `inspiring-motivational` / `epic-uplifting` | CTA 行动号召、未来展望、希望 |
@@ -111,8 +110,8 @@ workspace/bgm/<主题名>-<序号>.mp3
 ```
 
 - 主题名与上表 `主题名` 列一致（kebab-case）
-- 序号 1-10
-- 例：`bold-energetic-1.mp3`、`dark-premium-3.mp3`
+- 序号从 1 开始**连续编号**
+- 例：`bold-energetic-1.mp3`、`dark-premium-1.mp3`
 
 ## §5 批量补全脚本
 
