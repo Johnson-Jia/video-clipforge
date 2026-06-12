@@ -169,13 +169,19 @@ mkdir -p "${PROJECT_DIR}"
 SubAgent-3 的 prompt 中必须包含以下完整指令：
 
 ```
+### 组装铁律（HARD）
+
+1. **LLM 只填 creative/ 碎片**：每个场景写一个 `creative/sNN.html`（纯视觉创意：bg 组件 + fx 动画 + content 文字），**绝不创建、绝不手改 index.html**
+2. **index.html 由 s6_assemble.sh 生成**：碎片填完后必须运行 `bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir <PROJECT_DIR>`，由脚本完成 clip 包裹、data-start/data-duration、GSAP timeline、phase 切换、window.__hf、audio 嵌入、DOCTYPE/HEAD 结构
+3. **门禁失败禁止手补 index.html**：结构类失败（window.__hf / composition / clip id / data-width / audio data-start）一定是碎片内容或组装步骤的问题。**回到 creative/ 修对应碎片，重跑 s6_assemble.sh**。直接编辑 index.html 修补会引入新结构错误，陷入"手写 → 失败 → 再手写"的重试泥潭（trace 实证：手写 HTML 平均需多轮磨，用脚本 0 次结构失败）
+
 ### 安全区铁律（HARD）
 
 1. **安全区 padding 固定值**：竖屏 `180px 90px 220px 90px`（上180 右90 下220 左90），横屏 `60px 120px 60px 120px`
 2. **单层 padding 原则**：padding 只设在 `.phase` 或 `.scene-wrap` 上（二选一），禁止在 composition / clip / layer-content 等其他层级设置 padding
 3. **禁止修改值**：安全区 padding 值是平台适配标准，不允许 SubAgent 自行调整
 
-完成 HTML 编写和渲染后，必须执行门禁校验：
+完成 creative/ 碎片填充 + s6_assemble.sh 组装 + 渲染后，必须执行门禁校验：
 
 cd .claude/commands/clipforge && python engine/gate.py --skill stage6-production --project-dir <PROJECT_DIR>
 

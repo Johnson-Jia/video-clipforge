@@ -14,6 +14,16 @@ from engine.lib.models import (
     GateReport, Violation, Severity, GateType, Rigor, SkillDefinition,
 )
 
+# 结构类失败统一修复指引：window.__hf / composition / clip id / data-width / audio data-start
+# 这些结构由 s6_assemble_html.py 确定性生成（见 s6_assemble.sh）。
+# trace 实证：手写/手改 index.html 是结构门禁反复失败的最常见根因
+# （交互模式监督用脚本 → 0 次结构失败；cron 自动模式 SubAgent 倾向手写 → 多轮磨）。
+# 失败时强制引导回 creative/ 碎片 + 重跑组装脚本，禁止手补 index.html。
+_ASSEMBLE_HINT = (
+    " [修复: 此结构由 s6_assemble.sh 生成，禁止手写/手改 index.html；"
+    "修 creative/ 对应碎片后重跑 bash scripts/s6_assemble.sh]"
+)
+
 
 def check_file_exists(project_dir: Path, params: dict) -> tuple[bool, str]:
     for f in params.get("files", []):
@@ -361,7 +371,7 @@ def _get_hook_anchors(params: dict) -> tuple[str, ...]:
 def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
     """校验 hook 场景文本是否命中高优模式，是否避开禁用模式。
 
-    数据来源：2026-05-27 抖音 58 条视频分析
+    数据来源：抖音 58 条视频分析
     - 禁用模式（疑问词开头）：平均 1,195 播放
     - 高优模式（反直觉/冲突）：平均 46,596 播放
     - 数字锚定模式：平均 42,783 播放
@@ -408,11 +418,7 @@ GATE_CHECKERS[GateType.hook_pattern_verified] = check_hook_pattern_verified
 
 
 def check_hf_api_present(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 index.html 包含 window.__hf 声明，防止 HyperFrames 渲染失败。
-
-    事故记录：2026-05-28 和此前 service-as-software 项目均因遗漏 __hf 导致
-    渲染在 62% 处崩溃（window.__hf not ready after 45000ms）。
-    """
+    """检查 index.html 包含 window.__hf 声明。缺 __hf → HyperFrames 渲染超时崩溃（45s）。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -420,16 +426,16 @@ def check_hf_api_present(project_dir: Path, params: dict) -> tuple[bool, str]:
 
     # 检查 window.__hf 存在
     if "window.__hf" not in content:
-        return False, "index.html 缺少 window.__hf 声明，HyperFrames 渲染会失败（45s 超时）"
+        return False, "index.html 缺少 window.__hf 声明，HyperFrames 渲染会失败（45s 超时）" + _ASSEMBLE_HINT
 
     # 检查 duration 字段
     dur_match = re.search(r"window\.__hf\s*=\s*\{[^}]*duration\s*:\s*([\d.]+)", content)
     if not dur_match:
-        return False, "window.__hf 缺少 duration 字段"
+        return False, "window.__hf 缺少 duration 字段" + _ASSEMBLE_HINT
 
     # 检查 seek 函数
     if "seek" not in content.split("window.__hf")[1].split("}")[0]:
-        return False, "window.__hf 缺少 seek 函数"
+        return False, "window.__hf 缺少 seek 函数" + _ASSEMBLE_HINT
 
     duration = float(dur_match.group(1))
     return True, f"window.__hf 存在, duration={duration}s"
@@ -474,11 +480,11 @@ def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
 
     # 数量检查
     if len(clip_ids) != n:
-        return False, f"clip 数量不匹配: HTML {len(clip_ids)} 个 vs narration {n} 段（GSAP 动画将失效）"
+        return False, f"clip 数量不匹配: HTML {len(clip_ids)} 个 vs narration {n} 段（GSAP 动画将失效）" + _ASSEMBLE_HINT
 
     # id 存在性检查
     if any(not cid for cid in clip_ids):
-        return False, "存在无 id 的 clip（GSAP 动画将失效）"
+        return False, "存在无 id 的 clip（GSAP 动画将失效）" + _ASSEMBLE_HINT
 
     # 唯一性检查
     seen: set[str] = set()
@@ -488,17 +494,13 @@ def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
             dupes.add(cid)
         seen.add(cid)
     if dupes:
-        return False, f"clip id 重复（GSAP 选择器将冲突）: {', '.join(sorted(dupes))}"
+        return False, f"clip id 重复（GSAP 选择器将冲突）: {', '.join(sorted(dupes))}" + _ASSEMBLE_HINT
 
     return True, f"所有 {n} 个 clip id 唯一且存在 ({clip_ids[0]}..{clip_ids[-1]})"
 
 
 def check_composition_structure(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 index.html 包含 HyperFrames composition 结构。
-
-    事故记录：2026-05-28 ai-training-impact 项目缺少 data-composition-id 包裹、
-    __timelines 注册和 timeline {paused: true}，导致渲染后文字层层覆盖。
-    """
+    """检查 index.html 包含 HyperFrames composition 结构。缺 data-composition-id / __timelines 注册 / timeline {paused:true} → 渲染后文字层层覆盖。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -521,18 +523,13 @@ def check_composition_structure(project_dir: Path, params: dict) -> tuple[bool, 
         issues.append("GSAP timeline 未设置 {paused: true}")
 
     if issues:
-        return False, f"composition 结构缺陷: {'; '.join(issues)}"
+        return False, f"composition 结构缺陷: {'; '.join(issues)}" + _ASSEMBLE_HINT
 
     return True, "composition 结构完整（composition-id + __timelines + paused）"
 
 
 def check_root_attributes_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """根组合必须包含 data-width 和 data-height，audio 必须包含 data-start。
-
-    事故记录：2026-05-30 VibeCoding 大赏视频 index.html 根组合缺少 data-width/data-height，
-    HyperFrames viewport 设置错误 → 100% 黑帧（174s 全黑，21kbps）。
-    cover.html 有尺寸属性正常渲染，A/B 实验确认根因。
-    """
+    """根组合必须含 data-width/data-height，audio 必须含 data-start。缺尺寸属性 → HyperFrames viewport 错误 → 全黑帧。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -544,7 +541,7 @@ def check_root_attributes_complete(project_dir: Path, params: dict) -> tuple[boo
     root_pattern = r'<div[^>]*data-composition-id="main"[^>]*>'
     match = re.search(root_pattern, content)
     if not match:
-        return False, '未找到 data-composition-id="main" 的根组合'
+        return False, '未找到 data-composition-id="main" 的根组合' + _ASSEMBLE_HINT
 
     root_tag = match.group(0)
     missing = []
@@ -565,17 +562,13 @@ def check_root_attributes_complete(project_dir: Path, params: dict) -> tuple[boo
         issues.append(f'<audio> 元素缺少 data-start="0": {", ".join(audio_missing)}')
 
     if issues:
-        return False, "; ".join(issues)
+        return False, "; ".join(issues) + _ASSEMBLE_HINT
 
     return True, "根组合尺寸属性完整（data-width + data-height + audio data-start）"
 
 
 def check_output_no_bgm_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 output_no_bgm.mp4 不是黑屏。
-
-    事故记录：2026-05-28 ai-training-impact 项目使用 ffmpeg color=c=black 生成
-    output_no_bgm.mp4，导致纯黑屏。正确方式是从 output.mp4 取视频轨 + narration.mp3 音频轨。
-    """
+    """检查 output_no_bgm.mp4 不是黑屏。误用 ffmpeg color=c=black 会生成纯黑屏；正确方式是从 output.mp4 取视频轨 + narration.mp3 音频轨。"""
     bgm_file = project_dir / params.get("bgm_file", "output.mp4")
     no_bgm_file = project_dir / params.get("no_bgm_file", "output_no_bgm.mp4")
 
@@ -654,10 +647,7 @@ GATE_CHECKERS[GateType.bgm_silence_valid] = check_bgm_silence_valid
 
 
 def check_bgm_duration_covers(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 bgm.wav 时长是否覆盖旁白总时长。
-
-    事故记录：2026-05-28 ai-training-impact 项目 BGM 仅 102s 而旁白 588s，
-    导致后半段视频无背景音乐。bgm_pipeline.sh 未被执行。
+    """检查 bgm.wav 时长是否覆盖旁白总时长。BGM < 旁白 → 后半段无背景音乐（bgm_pipeline.sh 未执行）。
 
     对齐策略（按优先级）：
     1. bgm.wav >= 旁白时长 → 通过
@@ -722,13 +712,9 @@ GATE_CHECKERS[GateType.bgm_duration_covers] = check_bgm_duration_covers
 
 def check_bgm_not_exceeds_narration(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 bgm.wav 时长不超过旁白时长（防止 A/V 漂移）。
-
-    事故记录：2026-05-31 github-trending 视频 BGM 70.92s 而旁白 69.94s，
-    HyperFrames discoveredDuration = max(所有音频轨) = BGM 时长，
-    导致视频渲染到 70.93s，旁白在 69.94s 结束后出现 ~1s 纯画面无旁白。
-
-    根因：bgm_pipeline.sh TARGET_DUR = 旁白 + 1s 缓冲，使 BGM 系统性地
-    比旁白长。HyperFrames 以最长音频轨为视频时长，BGM > 旁白 → 视频延伸。
+    HyperFrames discoveredDuration = max(所有音频轨) = BGM 时长（以最长音频轨为视频时长）。
+    BGM > 旁白 → 视频延伸，旁白结束后出现纯画面无旁白。
+    根因：bgm_pipeline.sh TARGET_DUR = 旁白 + 1s 缓冲，系统性地使 BGM 比旁白长。
 
     本门禁是独立于 bgm_pipeline.sh 的最后防线。
     允许容差 tolerance（默认 0.15s），处理采样精度误差。
@@ -792,11 +778,7 @@ GATE_CHECKERS[GateType.bgm_not_exceeds_narration] = check_bgm_not_exceeds_narrat
 
 def check_data_duration_source(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 HTML data-duration 值与 segment_durations.json 的一致性。
-
-    事故记录：2026-05-30 ai-agent-business-value 10 分钟视频，
-    SubAgent 用 narration_segments.json 的 estimated_duration（偏长 16.9%）
-    计算动画断点，导致旁白与画面节奏不同步。本门禁确保 HTML 中
-    data-duration 值来自 actual_duration 而非 estimated_duration。
+    data-duration 必须取自 actual_duration（实测），不可用 estimated_duration（预估，可偏 16.9%）→ 误用会导致旁白与画面节奏不同步。
 
     检查项：
     1. HTML 中每个 .clip/data-duration 值与 segment_durations.json 逐段对比
@@ -858,11 +840,7 @@ def check_data_duration_source(project_dir: Path, params: dict) -> tuple[bool, s
 
 def check_estimation_accuracy(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 Stage 3 预估时长与 Stage 4 实测时长的偏差。
-
-    事故记录：2026-05-30 ai-agent-business-value 项目 TTS 使用 +0% 语速
-    而非默认 +25%，导致实际时长 508s vs 预估 611s（偏短 16.9%）。
-    单段偏差最大 45%。本门禁在 Stage 4 结束后对比两份时长数据，
-    发现系统性偏差时发出预警。
+    TTS 语速或分段估算偏差会导致 actual vs estimated 系统性偏离（单段可达 45%）。本门禁在 Stage 4 结束后对比两份时长数据，发现系统性偏差时预警。
 
     检查项：
     1. 逐段对比 estimated vs actual：单段偏差 > segment_threshold（默认 30%）→ SOFT
@@ -934,9 +912,7 @@ GATE_CHECKERS[GateType.estimation_accuracy_valid] = check_estimation_accuracy
 
 # ═══════════════════════════════════════════════════════════════════════
 # 描述保真度检测器 — 杜绝从 owner/repo 名杜撰项目描述
-# 事故记录：2026-06-10 refactoringhq/tolaria 原始描述为
-#   "Desktop app to manage markdown knowledge bases"，LLM 看到 owner 名
-#   "refactoringhq" 后杜撰为"AI 代码重构平台"，观众搜索找不到项目。
+# 从 owner/repo 名杜撰项目描述会导致观众搜索找不到项目。
 # 本门禁要求 content_ready.txt 内嵌原始英文 description，用子串匹配验证。
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -1061,9 +1037,7 @@ GATE_CHECKERS[GateType.description_fidelity_valid] = check_description_fidelity
 
 def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 phase_timings.json 的完整性：phase 时间覆盖完整场景时长，无间隙/重叠。
-
-    事故记录：手工 GSAP 硬编码断点导致旁白与画面不同步（偏差 5-12 秒），
-    phase_calibrator.py 自动校准后通过本门禁确保产出完整无遗漏。
+    手工 GSAP 硬编码断点会导致旁白与画面不同步；phase_calibrator.py 自动校准后，本门禁确保产出完整无遗漏。
 
     检查项：
     1. phase_timings.json 存在且可解析
@@ -1266,10 +1240,7 @@ GATE_CHECKERS[GateType.phase_visibility_present] = check_phase_visibility_presen
 
 def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查渲染后的视频码率是否正常，防止黑屏视频通过。
-
-    事故记录：2026-05-30 github-trending 项目 HyperFrames 渲染输出 17 kbps 黑屏视频，
-    因 index.html 使用 CSS class 切换可见性而非 GSAP timeline，所有场景 opacity:0。
-    1080x1920 正常视频应 > 500 kbps。
+    CSS class 切换可见性（非 GSAP timeline）会使所有场景 opacity:0 → 黑屏视频（1080x1920 正常应 > 500 kbps）。
 
     检测策略：
     1. 用 ffprobe 获取视频码率
@@ -1332,12 +1303,7 @@ def check_video_bitrate_valid(project_dir: Path, params: dict) -> tuple[bool, st
 
 def check_html_no_css_visibility(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 index.html 禁止使用 CSS class 切换场景可见性（HyperFrames 不执行 CSS class 切换）。
-
-    事故记录：2026-05-30 github-trending 项目 index.html 使用:
-      .scene-wrap{opacity:0;visibility:hidden}
-      .scene-wrap.active{opacity:1;visibility:visible}
-    HyperFrames 通过 GSAP timeline seek 驱动，不会添加/移除 CSS class，
-    导致所有场景永远 opacity:0 → 黑屏。
+    HyperFrames 通过 GSAP timeline seek 驱动，不添加/移除 CSS class；用 CSS class 切换可见性 → 所有场景永远 opacity:0 → 黑屏。
 
     禁止模式：
     1. CSS 中设置 scene-wrap/scene 的 opacity:0 + visibility:hidden，依赖 .active class 切换
@@ -1579,11 +1545,7 @@ GATE_CHECKERS[GateType.bg_component_source] = check_bg_component_source
 
 
 def check_fx_animation_present(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-R-013: fx 层元素必须有 GSAP 动画目标。
-
-    事故记录：2026-05-30 VibeCoding 大赏视频 20/22 场景 fx 无动画，全是静态 div。
-    根因：无规则要求 fx 有 GSAP 动画，门禁只检查"非空"。
-    """
+    """R-R-013: fx 层元素必须有 GSAP 动画目标。根因：原无规则要求 fx 有 GSAP 动画，门禁只检查"非空" → fx 全是静态 div。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -1630,11 +1592,7 @@ GATE_CHECKERS[GateType.fx_animation_present] = check_fx_animation_present
 
 
 def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-R-015/R-R-016: 竖屏排版门禁 — 检查字号最低标准 + 禁用 section-tag 小徽章。
-
-    事故记录：2026-05-30 VibeCoding 大赏视频正文 18-28px，手机端完全不可读。
-    根因：无字号门禁，导演工具包字号体系未区分竖屏/横屏。
-    """
+    """R-R-015/R-R-016: 竖屏排版门禁 — 检查字号最低标准 + 禁用 section-tag 小徽章。根因：原无字号门禁，字号体系未区分竖屏/横屏 → 正文过小，手机端不可读。"""
     fp = project_dir / params.get("file", "index.html")
     if not fp.exists():
         return False, "index.html 缺失"
@@ -2126,10 +2084,7 @@ GATE_CHECKERS[GateType.douyin_platforms_complete] = check_douyin_platforms_compl
 
 
 def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 cover.html 包含 7 层封面模板结构。
-
-    事故记录：2026-05-30 github-trending 项目封面用浏览器截图生成，未遵循 7 层模板。
-    R-S7-002 原使用 semantic_check 在自动化场景不可靠，改为结构化 HTML 检测。
+    """检查 cover.html 包含 7 层封面模板结构。封面须遵循 7 层模板（不可用浏览器截图替代）；R-S7-002 原 semantic_check 自动化不可靠，改结构化 HTML 检测。
 
     检测的 7 层：
     1. 日期层：中文日期格式（含"年"字）或 class="date"
@@ -2255,12 +2210,8 @@ GATE_CHECKERS[GateType.cover_layers_present] = check_cover_layers_present
 
 def check_final_duration_close_to_output(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 final.mp4 时长与 output.mp4 时长差异不超过容差。
-
-    事故记录：2026-05-31 github-trending 视频交付 SubAgent 绕过 assemble_final.sh，
-    自行用 ffmpeg 将 cover.png 渲染为 3 秒封面视频再拼接到 output.mp4 前面。
-    封面无音频轨 → 旁白从 PTS=0 播放 → 视觉内容在 ~3s 才开始 →
-    每个场景切换处旁白都比画面提前 ~3 秒，全程 A/V 不同步。
-
+    绕过 assemble_final.sh 自行拼接封面（如把 cover.png 渲成数秒封面视频拼到前面），
+    会使封面无音频轨 → 旁白从 PTS=0 播放但视觉延后 → 全程 A/V 不同步。
     assemble_final.sh 正确行为：1 帧封面（~0.033s），几乎不影响时长。
     本门禁是独立于 assemble_final.sh 的最后防线。
     """
@@ -2398,11 +2349,7 @@ GATE_CHECKERS[GateType.assemble_final_verified] = check_assemble_final_verified
 
 def check_grad_text_shorthand(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 .grad-text 元素是否使用了 background: 简写（导致 background-clip:text 失效）。
-
-    事故记录：2026-06-02 github-trending 视频全部 8 个 .grad-text 元素使用
-    background:linear-gradient(...) 简写，CSS background 简写会重置
-    background-clip 回 border-box，导致 background-clip:text 失效，
-    结果是渐变填满整个元素背景色块，color:transparent 又隐藏文字——只看到色块看不到字。
+    background: 简写（含 linear-gradient）会重置 background-clip 回 border-box → background-clip:text 失效 → 渐变填满元素 + color:transparent 隐藏文字 → 只见色块不见字。须用 background-image: 显式声明。
 
     检测逻辑：
     1. 扫描 index.html 中所有 class 含 grad-text 的标签
