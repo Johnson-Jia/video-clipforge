@@ -21,6 +21,7 @@ source "${SCRIPT_DIR}/_cd_project.sh" && cd_project "$@"
 
 # 解析剩余参数（cd_project 已消费 --project-dir）
 BGM_FILE="bgm.wav"
+EXTRA_BGMS=""
 while [[ $# -gt 0 ]]; do
   case $1 in
     --extend) EXTEND_MODE=true; shift ;;
@@ -47,7 +48,7 @@ echo "--- Step 1: BGM 音量守恒校验 ---"
 BGM_MEAN=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | grep mean_volume | grep -oP '[\-\d.]+(?= dB)')
 echo "bgm.wav mean_volume: ${BGM_MEAN} dB"
 
-if [ "$(echo "$BGM_MEAN < -35" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+if [ "$(python -c "print(1 if float('${BGM_MEAN}') < -35 else 0)")" -eq 1 ]; then
     echo "ERROR: bgm.wav 音量异常偏低 (${BGM_MEAN} dB)，疑似被预衰减。"
     echo "正确做法：bgm.wav 保持原始音量，Stage 6 通过 data-volume 控制混音。"
     exit 1
@@ -86,11 +87,11 @@ echo "OK: 音量校准完成"
 echo "--- Step 3.5: bgm_volume 合理性门禁 ---"
 BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])")
 echo "bgm_volume = ${BGM_VOL}"
-if [ "$(echo "$BGM_VOL < 0.01" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+if [ "$(python -c "print(1 if float('${BGM_VOL}') < 0.01 else 0)")" -eq 1 ]; then
     echo "ERROR: bgm_volume=${BGM_VOL} < 0.01，BGM 几乎静音。检查 bgm_gap_check.py 输出。"
     exit 1
 fi
-if [ "$(echo "$BGM_VOL > 1.0" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+if [ "$(python -c "print(1 if float('${BGM_VOL}') > 1.0 else 0)")" -eq 1 ]; then
     echo "ERROR: bgm_volume=${BGM_VOL} > 1.0，超出 HTML audio 物理极限。检查 bgm_gap_check.py 输出。"
     exit 1
 fi
@@ -127,7 +128,121 @@ echo "旁白: ${TOTAL_DUR}s | BGM: ${BGM_DUR}s | 目标: ${TARGET_DUR}s"
 RATIO=$(python -c "print(round($TOTAL_DUR / $BGM_DUR, 1))" 2>/dev/null || echo "1")
 echo "旁白/BGM 比率: ${RATIO}x"
 
-if [ "${EXTEND_MODE:-false}" = true ] || [ "$(echo "$RATIO > 3" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+# ── Step 4p: bgm_playlist.json 情绪分段模式（长视频多情绪 BGM，最高优先）──
+if [ -f "bgm_playlist.json" ]; then
+    echo "--- Step 4p: BGM 情绪分段拼接（bgm_playlist.json）---"
+    PLAYLIST_VERIFY=$(python -c "
+import json, os
+try:
+    d = json.load(open('bgm_playlist.json', encoding='utf-8'))
+    segs = d.get('segments', [])
+    files = [s.get('file','') for s in segs]
+    if not segs or not all(files):
+        print('INVALID')
+    else:
+        miss = [f for f in files if not os.path.exists(f)]
+        print('MISSING:' + ','.join(miss) if miss else 'OK')
+except Exception:
+    print('ERROR')
+" 2>/dev/null || echo "ERROR")
+
+    if [ "$PLAYLIST_VERIFY" = "OK" ]; then
+        PL_FILES=()
+        while IFS= read -r line; do line="${line%$'\r'}"; [ -n "$line" ] && PL_FILES+=("$line"); done < <(
+            python -c "
+import json
+d = json.load(open('bgm_playlist.json', encoding='utf-8'))
+for s in d['segments']:
+    print(s['file'])
+" 2>/dev/null)
+        PLAYLIST_COUNT=${#PL_FILES[@]}
+        echo "playlist 含 ${PLAYLIST_COUNT} 段情绪 BGM，按顺序 crossfade（xfade 3s）"
+        for f in "${PL_FILES[@]}"; do echo "  - $(basename "$f")"; done
+
+        XFADE_DUR=3
+        IDX=0
+        PREV_FILE=""
+        CURRENT_DUR=0
+
+        for f in "${PL_FILES[@]}"; do
+            PADDED_IDX=$(printf "%02d" $IDX)
+            NORM_FILE="/tmp/bgm_pln_${PADDED_IDX}.wav"
+            ffmpeg -y -i "$f" -af "loudnorm=I=-18:TP=-2" -c:a pcm_s16le -ar 44100 "$NORM_FILE" 2>/dev/null
+
+            if [ "$IDX" -eq 0 ]; then
+                PREV_FILE="$NORM_FILE"
+                CURRENT_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$NORM_FILE")
+            else
+                if [ "$(python -c "print(1 if float('${CURRENT_DUR}') >= float('${TARGET_DUR}') else 0)")" -eq 1 ]; then
+                    echo "  已达目标时长 ${TARGET_DUR}s，停止拼接"
+                    break
+                fi
+                MERGED_FILE="/tmp/bgm_plm_${PADDED_IDX}.wav"
+                ffmpeg -y -i "$PREV_FILE" -i "$NORM_FILE" \
+                    -filter_complex "[0:a][1:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[aout]" \
+                    -map "[aout]" -c:a pcm_s16le "$MERGED_FILE" 2>/dev/null
+                PART_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$NORM_FILE")
+                CURRENT_DUR=$(python -c "print(round($CURRENT_DUR + $PART_DUR - $XFADE_DUR, 2))")
+                echo "  拼接 $(basename "$f"): 累计 ${CURRENT_DUR}s / 目标 ${TARGET_DUR}s"
+                PREV_FILE="$MERGED_FILE"
+            fi
+            IDX=$((IDX + 1))
+        done
+
+        mv "$BGM_FILE" bgm_orig.wav
+        ffmpeg -y -i "$PREV_FILE" -t "$TARGET_DUR" \
+            -af "afade=t=in:st=0:d=1.5,afade=t=out:st=${FADE_START}:d=2" \
+            -c:a pcm_s16le "$BGM_FILE"
+        rm -f /tmp/bgm_pln_*.wav /tmp/bgm_plm_*.wav
+
+        # 合并短于目标 → 循环补足
+        MERGED_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
+        if [ "$(python -c "print(1 if float('${MERGED_DUR}') < float('${TARGET_DUR}') - 0.5 else 0)")" -eq 1 ]; then
+            echo "合并 ${MERGED_DUR}s < 目标 ${TARGET_DUR}s，循环补足"
+            COPIES=$(python -c "import math; print(math.ceil($TARGET_DUR / $MERGED_DUR + 0.5))")
+            BGM_ABS=$(python -c "import os; print(os.path.abspath('$BGM_FILE'))")
+            > _bgm_concat.txt
+            for _i in $(seq 1 "$COPIES"); do echo "file '${BGM_ABS}'" >> _bgm_concat.txt; done
+            ffmpeg -y -f concat -safe 0 -i _bgm_concat.txt -t "$TARGET_DUR" \
+                -af "afade=t=in:st=0:d=1.5,afade=t=out:st=${FADE_START}:d=2" \
+                -c:a pcm_s16le bgm_extended.wav
+            mv "$BGM_FILE" bgm_orig2.wav
+            mv bgm_extended.wav "$BGM_FILE"
+            rm -f _bgm_concat.txt
+        fi
+
+        # 全程有声门禁（铁律）
+        echo "--- 全程有声门禁 ---"
+        NARR_DUR=$(python -c "import json; d=json.load(open('segment_durations.json', encoding='utf-8')); print(sum(s.get('actual_duration') or s.get('duration', 0) for s in d['segments']))")
+        python "${SCRIPT_DIR}/bgm_silence_check.py" "$BGM_FILE" "$NARR_DUR" || {
+            echo "FAIL: BGM 全程有声门禁未通过（存在连续静音段）"
+            exit 1
+        }
+        echo "[OK] BGM 全程有声门禁通过"
+
+        BGM_FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
+        FINAL_BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
+        cat > .bgm_pipeline_marker.json <<EOFMarker
+{
+  "script": "bgm_pipeline.sh",
+  "timestamp": "$(date -Iseconds)",
+  "bgm_duration": $BGM_FINAL_DUR,
+  "bgm_volume": $FINAL_BGM_VOL,
+  "target_duration": $TARGET_DUR,
+  "mode": "multi-playlist",
+  "songs": $PLAYLIST_COUNT
+}
+EOFMarker
+        echo "OK: BGM 情绪分段拼接完成（${PLAYLIST_COUNT} 首，xfade ${XFADE_DUR}s，总 ${BGM_FINAL_DUR}s）"
+        echo "[bgm_pipeline] 标记文件已写入: .bgm_pipeline_marker.json"
+        echo "=== BGM 管线完成 ==="
+        exit 0
+    else
+        echo "WARNING: bgm_playlist.json 校验失败（$PLAYLIST_VERIFY），回退到默认模式"
+    fi
+fi
+
+if [ "${EXTEND_MODE:-false}" = true ] || [ "$(python -c "print(1 if float('${RATIO}') > 3 else 0)")" -eq 1 ]; then
     # ── 多首拼接模式 ──
     echo "--- Step 4a: 多首 BGM 拼接 ---"
 
@@ -179,7 +294,7 @@ except Exception:
                 continue
             fi
 
-            if [ "$(echo "$CURRENT_DUR >= $TARGET_DUR" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
+            if [ "$(python -c "print(1 if float('${CURRENT_DUR}') >= float('${TARGET_DUR}') else 0)")" -eq 1 ]; then
                 break
             fi
 
@@ -225,7 +340,7 @@ except Exception:
             echo "OK: 多首 BGM 拼接完成，总时长 ${TARGET_DUR}s（${IDX} 首，xfade ${XFADE_DUR}s）"
 
             # ── 写标记文件（多首拼接模式）──
-            FINAL_BGM_VOL=$(python3 -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
+            FINAL_BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
             BGM_FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE" 2>/dev/null || echo "0")
             cat > .bgm_pipeline_marker.json <<EOFMarker
 {
@@ -268,12 +383,21 @@ mv "$BGM_FILE" bgm_orig.wav
 mv bgm_aligned.wav "$BGM_FILE"
 echo "OK: BGM 已拼接对齐到 ${TARGET_DUR}s（${COPIES} 份 concat + 淡入 1.5s + 淡出 2s）"
 
+# ── 全程有声门禁（铁律）──
+echo "--- 全程有声门禁 ---"
+NARR_DUR=$(python -c "import json; d=json.load(open('segment_durations.json', encoding='utf-8')); print(sum(s.get('actual_duration') or s.get('duration', 0) for s in d['segments']))")
+python "${SCRIPT_DIR}/bgm_silence_check.py" "$BGM_FILE" "$NARR_DUR" || {
+    echo "FAIL: BGM 全程有声门禁未通过（存在连续静音段）"
+    exit 1
+}
+echo "[OK] BGM 全程有声门禁通过"
+
 echo "=== BGM 管线完成 ==="
 echo "segment_durations.json meta.bgm_volume 已更新"
 
 # ── 写标记文件（gate 据此判断 bgm_pipeline.sh 是否执行过）──
 BGM_FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE" 2>/dev/null || echo "0")
-FINAL_BGM_VOL=$(python3 -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
+FINAL_BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])" 2>/dev/null || echo "N/A")
 cat > .bgm_pipeline_marker.json <<EOFMarker
 {
   "script": "bgm_pipeline.sh",

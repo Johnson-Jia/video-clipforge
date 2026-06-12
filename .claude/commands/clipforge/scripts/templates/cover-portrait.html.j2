@@ -108,7 +108,7 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
   <!-- 第4层：主标题 -->
   <div class="main-title">
     {% for seg in title -%}
-    {%- if not loop.first %}<br>{% endif %}<span class="{{ seg.style }}">{{ seg.text }}</span>
+    <span class="{{ seg.style }}">{{ seg.text }}</span>
     {%- endfor %}
   </div>
 

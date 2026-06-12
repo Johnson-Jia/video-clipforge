@@ -26,7 +26,7 @@ echo "=== BGM 音量注入 ==="
 # 确定音量值
 if [ -z "$VOLUME" ]; then
   if [ -s "segment_durations.json" ]; then
-    VOLUME=$(python3 -c "
+    VOLUME=$(python -c "
 import json
 with open('segment_durations.json', 'r', encoding='utf-8') as f:
     d = json.load(f)
@@ -58,7 +58,7 @@ fi
 # 替换 data-volume 属性
 if grep -q 'data-volume=' index.html; then
   # 已有 data-volume，替换值
-  python3 -c "
+  python -c "
 import re, sys
 with open('index.html', 'r', encoding='utf-8') as f:
     html = f.read()
@@ -69,7 +69,7 @@ print(f'data-volume 已更新为 {\"$VOLUME\"}')
 "
 else
   # 无 data-volume，添加到 <audio 标签
-  python3 -c "
+  python -c "
 with open('index.html', 'r', encoding='utf-8') as f:
     html = f.read()
 html = html.replace('<audio ', '<audio data-volume=\"$VOLUME\" ', 1)

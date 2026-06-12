@@ -1,0 +1,334 @@
+#!/usr/bin/env python3
+"""s6_assemble_html.py — 从 creative/ 碎片 + 时间数据自动拼装完整 index.html。
+
+LLM 只负责写 creative/ 目录下的碎片文件（style.css + 每场景 sNN.html）。
+脚本负责所有确定性逻辑：clip 包裹、data-start/duration、GSAP 时间线、
+phase 初始 opacity、audio 嵌入、DOCTYPE/HEAD 结构。
+
+设计原则（CLAUDE.md §7 管线确定化）：
+- 时间轴连续性、场景硬切、phase opacity 切换全部由数据驱动生成
+- LLM 永远不碰 GSAP、不碰 data-start、不碰 clip 包裹
+- 这彻底解决：API 超时（碎片化）+ GSAP 手写易错 + 重名 scene_id 冲突
+
+用法:
+  python scripts/s6_assemble_html.py --project-dir workspace/2026/06/11/xxx
+  python scripts/s6_assemble_html.py --project-dir . --output index.html
+  python scripts/s6_assemble_html.py --project-dir . --validate   # 仅校验碎片完整性
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+
+# fx 层装饰动画约定 class（LLM 在碎片 layer-fx 子元素上用这些 class，
+# assemble 自动注入对应 GSAP 动画。元素颜色/位置/大小由内联 style 自由控制）
+FX_ANIM_CLASSES = {"fx-pulse", "fx-drift", "fx-spin", "fx-blink"}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 基础 CSS（固定，LLM 不碰）— 三层架构 + FX 原语 + Phase 默认隐藏
+# ──────────────────────────────────────────────────────────────────────────
+BASE_CSS = """/* === ClipForge 基础层（自动生成，勿手改）=== */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;color:#fff;overflow:hidden;width:1080px;height:1920px;}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;}
+.clip{position:absolute;top:0;left:0;width:1080px;height:1920px;overflow:hidden;}
+.layer-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;}
+.layer-fx{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+.layer-content{position:relative;z-index:3;height:100%;color:#fff;font-size:48px;}
+.phase{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:180px 90px 220px 90px;}
+/* phase-2+ 默认隐藏，由 GSAP 在正确时间点恢复（消灭 phase_visibility 门禁误报）*/
+.phase:not(.phase-1){opacity:0;}
+audio{display:none;}
+.fx-glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;}
+.fx-line{position:absolute;height:1px;pointer-events:none;}
+.fx-dot{position:absolute;border-radius:50%;pointer-events:none;}
+/* === LLM 自定义组件层（来自 creative/style.css）=== */
+"""
+
+
+def load_json(path: Path) -> dict | list:
+    """加载 JSON，不存在返回空容器。"""
+    if not path.exists():
+        return {} if path.suffix == ".json" else []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def parse_fx_classes(frag_html: str) -> set[str]:
+    """提取碎片 layer-fx 层中出现的 fx 动画 class（约定见 FX_ANIM_CLASSES）。
+
+    只扫描 layer-fx 到 layer-content 之间的片段，避免误读 bg/content 层。
+    """
+    classes: set[str] = set()
+    fx_open = re.search(r'class="[^"]*layer-fx[^"]*"', frag_html)
+    if not fx_open:
+        return classes
+    rest = frag_html[fx_open.end():]
+    next_layer = re.search(r'class="[^"]*layer-content[^"]*"', rest)
+    fx_chunk = rest[: next_layer.start()] if next_layer else rest
+    for cls_str in re.findall(r'class="([^"]+)"', fx_chunk):
+        for c in cls_str.split():
+            if c in FX_ANIM_CLASSES:
+                classes.add(c)
+    return classes
+
+
+def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[str], dict]:
+    """读取每个场景的创意碎片，包裹 clip div。
+
+    Returns: (clips_html, total_duration, missing_scenes, fx_info)
+        fx_info: {sid: set(fx 动画 class)}，供 build_gsap 注入装饰动画
+    """
+    clips: list[str] = []
+    missing: list[str] = []
+    fx_info: dict[str, set[str]] = {}
+    cumulative = 0.0
+
+    for idx, seg in enumerate(segments, 1):
+        sid = f"s{idx:02d}"
+        frag_path = creative_dir / f"{sid}.html"
+
+        if not frag_path.exists() or frag_path.stat().st_size == 0:
+            missing.append(sid)
+            # 占位空骨架，保证时间轴连续（渲染时该场景空白，不阻断流程）
+            body = (
+                '<div class="layer-bg"></div>\n'
+                '<div class="layer-fx"></div>\n'
+                '<div class="layer-content"></div>'
+            )
+            fx_info[sid] = set()
+        else:
+            body = frag_path.read_text(encoding="utf-8").strip()
+            fx_info[sid] = parse_fx_classes(body)
+
+        dur = float(seg.get("actual_duration", seg.get("duration", 0)))
+        clip = (
+            f'<div class="clip" id="{sid}" '
+            f'data-start="{cumulative:.2f}" data-duration="{dur:.2f}">\n'
+            f"{body}\n"
+            f"</div>"
+        )
+        clips.append(clip)
+        cumulative += dur
+
+    return "\n\n".join(clips), cumulative, missing, fx_info
+
+
+def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_info: dict | None = None) -> str:
+    """从时间数据自动生成 GSAP timeline。
+
+    完全确定性：场景硬切时间 = 累计 start；phase 切换 = global_start + start_offset；
+    fx 装饰动画按约定 class 注入。LLM 永不手写这段，根除 phase opacity 漏恢复。
+    """
+    n = len(segments)
+    ids = [f"#s{i+1:02d}" for i in range(n)]
+    fx_info = fx_info or {}
+
+    # 累计起止时间
+    starts: list[float] = []
+    cum = 0.0
+    for s in segments:
+        starts.append(cum)
+        cum += float(s.get("actual_duration", s.get("duration", 0)))
+
+    lines: list[str] = ["var tl = gsap.timeline({ paused: true });"]
+
+    # 初始化：隐藏除第一个外的所有场景
+    if n > 1:
+        quoted = ", ".join(f"'{i}'" for i in ids[1:])
+        lines.append(f"tl.set([{quoted}], {{opacity:0}}, 0);")
+    lines.append(f"tl.set('{ids[0]}', {{opacity:1}}, 0);")
+
+    # 场景硬切（前场景隐藏，当前场景显示）
+    for i in range(1, n):
+        t = starts[i]
+        lines.append(f"tl.set('{ids[i-1]}', {{opacity:0}}, {t:.2f});")
+        lines.append(f"tl.set('{ids[i]}', {{opacity:1}}, {t:.2f});")
+
+    # Phase 切换（phase_timings.json 句子锚点校准，精度 ±50ms）
+    scenes = phase_timings.get("scenes", []) if isinstance(phase_timings, dict) else []
+    for sc in scenes:
+        seg_idx = sc.get("segment_index", 0)
+        base = sc.get(
+            "global_start",
+            starts[seg_idx] if seg_idx < len(starts) else 0.0,
+        )
+        sid = f"s{seg_idx + 1:02d}"
+        for p in sc.get("phases", []):
+            if p.get("phase", 1) > 1:
+                t = base + p["start_offset"]
+                pn = p["phase"]
+                lines.append(
+                    f"tl.set('#{sid} .phase-{pn}', {{opacity:1}}, {t:.2f});"
+                )
+                lines.append(
+                    f"tl.set('#{sid} .phase-{pn-1}', {{opacity:0}}, {t:.2f});"
+                )
+
+    # fx 层装饰动画（确定性注入：LLM 只需在碎片用约定 class）
+    # repeat 按场景时长动态算（HyperFrames lint 禁止 repeat:-1 无限循环）：
+    #   repeat = floor(scene_dur / cycle) - 1
+    FX_ANIM = {
+        # class: (动画属性, 单循环时长, yoyo, ease)
+        "fx-pulse": ("scale:1.18", 2.4, True, "sine.inOut"),
+        "fx-drift": ("y:-30", 3.2, True, "sine.inOut"),
+        "fx-spin": ("rotation:360", 9, False, "none"),
+        "fx-blink": ("opacity:0.25", 1.6, True, "sine.inOut"),
+    }
+    for i, s in enumerate(segments):
+        sid = f"s{i+1:02d}"
+        scene_start = starts[i]
+        scene_dur = float(s.get("actual_duration", s.get("duration", 0)))
+        for cls in sorted(fx_info.get(sid, set())):
+            if cls in FX_ANIM:
+                props, cycle, yoyo, ease = FX_ANIM[cls]
+                repeat = max(0, int(scene_dur // cycle) - 1)
+                yoyo_str = ",yoyo:true" if yoyo else ""
+                lines.append(
+                    f"tl.to('#{sid} .{cls}', {{{props},duration:{cycle},"
+                    f"repeat:{repeat}{yoyo_str},ease:'{ease}'}}, {scene_start:.2f});"
+                )
+
+    # HyperFrames 注册
+    lines.append("window.__timelines=window.__timelines||{};")
+    lines.append('window.__timelines["main"]=tl;')
+    lines.append(
+        f"window.__hf={{duration:{total_duration:.2f},"
+        f"seek:function(ms){{tl.seek(ms/1000);}}}};"
+    )
+
+    return "\n".join(lines)
+
+
+def assemble(project_dir: Path) -> tuple[str, list[str]]:
+    """拼装完整 index.html，返回 (html, missing_scenes)。"""
+    creative_dir = project_dir / "creative"
+
+    # 加载确定性数据
+    dur_data = load_json(project_dir / "segment_durations.json")
+    segments = (
+        dur_data.get("segments", []) if isinstance(dur_data, dict) else dur_data
+    )
+    if not segments:
+        print("[FAIL] segment_durations.json 无 segments 数据", file=sys.stderr)
+        sys.exit(1)
+
+    phase_timings = load_json(project_dir / "phase_timings.json")
+
+    # 读取 LLM 自定义 CSS（可选）
+    custom_css = ""
+    custom_css_path = creative_dir / "style.css"
+    if custom_css_path.exists():
+        custom_css = custom_css_path.read_text(encoding="utf-8").strip()
+
+    # 构建 clips + GSAP
+    clips_html, total_duration, missing, fx_info = build_clips(segments, creative_dir)
+    gsap_js = build_gsap(segments, phase_timings, total_duration, fx_info)
+
+    # 读取 BGM 音量（已在 tts/bgm 管线算好）
+    bgm_volume = (
+        dur_data.get("meta", {}).get("bgm_volume", 0.15)
+        if isinstance(dur_data, dict)
+        else 0.15
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1920">
+<style>
+{BASE_CSS}
+{custom_css}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="{total_duration:.2f}" data-width="1080" data-height="1920">
+<audio id="narration" src="narration.mp3" data-volume="1" data-track="1" data-start="0"></audio>
+<audio id="bgm" src="bgm.wav" data-volume="{bgm_volume}" data-track="2" data-start="0"></audio>
+
+{clips_html}
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script>
+{gsap_js}
+</script>
+</body>
+</html>"""
+
+    return html, missing
+
+
+def validate(project_dir: Path) -> int:
+    """校验 creative/ 目录碎片完整性。"""
+    creative_dir = project_dir / "creative"
+    dur_data = load_json(project_dir / "segment_durations.json")
+    segments = (
+        dur_data.get("segments", []) if isinstance(dur_data, dict) else dur_data
+    )
+    n = len(segments)
+
+    if not creative_dir.exists():
+        print(f"[FAIL] creative/ 目录不存在", file=sys.stderr)
+        return 1
+
+    missing = []
+    empty = []
+    for idx in range(1, n + 1):
+        sid = f"s{idx:02d}"
+        frag = creative_dir / f"{sid}.html"
+        if not frag.exists():
+            missing.append(sid)
+        elif frag.stat().st_size == 0:
+            empty.append(sid)
+
+    style_css = creative_dir / "style.css"
+    style_status = "OK" if style_css.exists() and style_css.stat().st_size > 0 else "MISSING"
+
+    print(f"=== creative/ 碎片校验 ===")
+    print(f"  场景数: {n}")
+    print(f"  style.css: {style_status}")
+    if missing:
+        print(f"  [FAIL] 缺失 {len(missing)} 个碎片: {', '.join(missing)}")
+    if empty:
+        print(f"  [WARN] 空碎片 {len(empty)} 个: {', '.join(empty)}")
+    if not missing and not empty:
+        print(f"  [OK] 全部 {n} 个碎片完整")
+
+    return 1 if missing else 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="ClipForge 创意碎片拼装器（自动生成 index.html）"
+    )
+    parser.add_argument("--project-dir", required=True, help="项目目录")
+    parser.add_argument("--output", default=None, help="输出路径（默认 <project>/index.html）")
+    parser.add_argument("--validate", action="store_true", help="仅校验 creative/ 完整性")
+    args = parser.parse_args()
+
+    project_dir = Path(args.project_dir).resolve()
+
+    if args.validate:
+        sys.exit(validate(project_dir))
+
+    html, missing = assemble(project_dir)
+
+    if missing:
+        print(f"[WARN] {len(missing)} 个场景碎片缺失，已用空骨架占位: {', '.join(missing)}", file=sys.stderr)
+
+    output_path = Path(args.output) if args.output else project_dir / "index.html"
+    output_path.write_text(html, encoding="utf-8")
+
+    print(f"[OK] Assembled: {output_path}")
+    print(f"  场景数: {html.count('class=\"clip\"')}")
+    print(f"  Phase 元素: {html.count('class=\"phase phase-')}")
+
+
+if __name__ == "__main__":
+    main()
