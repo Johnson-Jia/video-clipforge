@@ -73,6 +73,52 @@ def derive_palette(user_colors: dict) -> dict:
     return colors
 
 
+def normalize_title(title_raw: list) -> list[dict]:
+    """Normalize title to flat segment list for template rendering.
+
+    Accepts two formats:
+      1. Flat:   [{text, style}, {text, style}, ...]       — each item is a segment
+      2. Nested: [[{text, style}], [{text, style}, ...]]   — each item is a line of segments
+    Returns flat list with an added '_line_break' flag for line breaks.
+    """
+    if not title_raw:
+        return []
+
+    # Detect format: if first element is a list, it's nested (per-line)
+    first = title_raw[0]
+    if isinstance(first, list):
+        # Nested format: flatten with line break markers
+        flat = []
+        for line_segments in title_raw:
+            for i, seg in enumerate(line_segments):
+                seg = dict(seg)  # copy to avoid mutating input
+                seg['_is_first_in_line'] = (i == 0)
+                flat.append(seg)
+        return flat
+    else:
+        # Flat format: each segment is its own line
+        result = []
+        for i, seg in enumerate(title_raw):
+            seg = dict(seg)
+            seg['_is_first_in_line'] = (i == 0)
+            result.append(seg)
+        return result
+
+
+def _collect_title_segments(title_raw: list) -> list[dict]:
+    """Collect all individual segments from title (flat or nested) for validation."""
+    if not title_raw:
+        return []
+    first = title_raw[0]
+    if isinstance(first, list):
+        segments = []
+        for line_segments in title_raw:
+            segments.extend(line_segments)
+        return segments
+    else:
+        return title_raw
+
+
 def validate_params(params: dict) -> list[str]:
     errors = []
     if "date" not in params:
@@ -80,11 +126,15 @@ def validate_params(params: dict) -> list[str]:
     if "title" not in params or not params["title"]:
         errors.append("missing 'title' array (e.g. [{text:'...', style:'white'}, ...])")
     else:
-        for i, seg in enumerate(params["title"]):
+        segments = _collect_title_segments(params["title"])
+        for i, seg in enumerate(segments):
+            if not isinstance(seg, dict):
+                errors.append(f"title segment[{i}] must be a dict, got {type(seg).__name__}")
+                continue
             if "text" not in seg or "style" not in seg:
-                errors.append(f"title[{i}] needs 'text' and 'style' fields")
-            if seg["style"] not in ("white", "accent", "cool"):
-                errors.append(f"title[{i}].style must be 'white', 'accent', or 'cool', got '{seg['style']}'")
+                errors.append(f"title segment[{i}] needs 'text' and 'style' fields")
+            if "style" in seg and seg["style"] not in ("white", "accent", "cool"):
+                errors.append(f"title segment[{i}].style must be 'white', 'accent', or 'cool', got '{seg['style']}'")
     if "cards" not in params or not params["cards"]:
         errors.append("missing 'cards' array (1-3 cards)")
     elif len(params["cards"]) > 3:
@@ -144,8 +194,16 @@ def main():
             print(f"  - {e}", file=sys.stderr)
         sys.exit(1)
 
-    colors = derive_palette(params.get("colors", {}))
+    # Collect color overrides: prefer params["colors"] dict, but also accept
+    # root-level keys (accent_warm, accent_cool, bg_dark, etc.) for backward compat
+    root_color_keys = {"accent_warm", "accent_cool", "bg_dark", "glow_warm_opacity", "glow_cool_opacity"}
+    color_overrides = dict(params.get("colors", {}))
+    for k in root_color_keys:
+        if k in params and k not in color_overrides:
+            color_overrides[k] = params[k]
+    colors = derive_palette(color_overrides)
     params["colors"] = colors
+    params["title"] = normalize_title(params.get("title", []))
     params.setdefault("orientation", "portrait")
     params.setdefault("scene_label", "")
     params.setdefault("badge", "")

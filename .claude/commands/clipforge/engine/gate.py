@@ -374,11 +374,14 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         return False, f"narration_segments.json 解析失败: {e}"
 
-    segments = data.get("segments", [])
+    # 兼容两种格式：顶层数组 或 {"segments": [...]}
+    segments = data if isinstance(data, list) else data.get("segments", [])
     if not segments:
         return False, "segments 为空"
 
-    hook_text = segments[0].get("narration_segment", "").strip()
+    # 兼容两种字段名：text（Stage 3 规范）或 narration_segment（旧格式）
+    first_seg = segments[0]
+    hook_text = first_seg.get("text", first_seg.get("narration_segment", "")).strip()
     if not hook_text:
         return False, "hook 场景的 narration_segment 为空"
 
@@ -433,10 +436,12 @@ def check_hf_api_present(project_dir: Path, params: dict) -> tuple[bool, str]:
 
 
 def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """检查 index.html 中每个场景都有对应的 id 属性，防止 GSAP 选择器失效。
+    """检查 index.html 中每个 .clip 场景都有唯一 id，防止 GSAP 选择器失效。
 
-    事故记录：2026-05-28 ai-training-impact 项目中 s1 和 s19 缺少 id 属性，
-    导致 GSAP 动画选择器 #s1 .hero-badge 等找不到元素，首尾场景动画丢失。
+    clip id 由组装脚本按位置生成（s01, s02, ...），本检查验证：
+    1) clip 数量与 narration segments 一致
+    2) 每个 clip 都有非空 id
+    3) id 唯一（无重复 → 无 GSAP 选择器冲突）
     """
     html_file = project_dir / params.get("html_file", "index.html")
     segs_file = project_dir / params.get("segments_file", "narration_segments.json")
@@ -453,8 +458,10 @@ def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
 
     html_content = html_file.read_text(encoding="utf-8", errors="ignore")
 
-    # 收集 HTML 中所有 id="sN" 属性
-    html_ids = set(re.findall(r'id=["\']?(s\d+)', html_content))
+    # 提取所有 .clip 元素的 id（按出现顺序）
+    clip_ids: list[str] = re.findall(r'<div[^>]*class="clip"[^>]*\bid="([^"]+)"', html_content)
+    if not clip_ids:
+        clip_ids = re.findall(r'<div[^>]*\bid="([^"]+)"[^>]*class="clip"', html_content)
 
     # 兼容两种格式：顶层数组 或 {"segments": [...]}
     if isinstance(data, list):
@@ -463,22 +470,27 @@ def check_scene_ids_match(project_dir: Path, params: dict) -> tuple[bool, str]:
         segments = data.get("segments", [])
     else:
         return True, "narration_segments.json 格式未知，跳过场景 ID 检查"
+    n = len(segments)
 
-    missing: list[str] = []
-    for seg in segments:
-        scene = seg.get("scene", "")
-        # 确保 scene 是字符串
-        if not isinstance(scene, str):
-            scene = str(scene) if scene is not None else ""
-        # 从 "s1-hook" 提取 "s1"
-        scene_id = scene.split("-")[0] if "-" in scene else scene
-        if scene_id.startswith("s") and scene_id not in html_ids:
-            missing.append(f"{scene} → 缺少 id=\"{scene_id}\"")
+    # 数量检查
+    if len(clip_ids) != n:
+        return False, f"clip 数量不匹配: HTML {len(clip_ids)} 个 vs narration {n} 段（GSAP 动画将失效）"
 
-    if missing:
-        return False, f"场景 ID 缺失（GSAP 动画将失效）: {'; '.join(missing)}"
+    # id 存在性检查
+    if any(not cid for cid in clip_ids):
+        return False, "存在无 id 的 clip（GSAP 动画将失效）"
 
-    return True, f"所有 {len(segments)} 个场景 ID 匹配"
+    # 唯一性检查
+    seen: set[str] = set()
+    dupes: set[str] = set()
+    for cid in clip_ids:
+        if cid in seen:
+            dupes.add(cid)
+        seen.add(cid)
+    if dupes:
+        return False, f"clip id 重复（GSAP 选择器将冲突）: {', '.join(sorted(dupes))}"
+
+    return True, f"所有 {n} 个 clip id 唯一且存在 ({clip_ids[0]}..{clip_ids[-1]})"
 
 
 def check_composition_structure(project_dir: Path, params: dict) -> tuple[bool, str]:
@@ -961,6 +973,10 @@ def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, st
     except Exception as e:
         return False, f"phase_timings.json 解析失败: {e}"
 
+    # 兼容旧格式：纯 list → {"scenes": list}
+    if isinstance(pt_data, list):
+        pt_data = {"scenes": pt_data}
+
     scenes = pt_data.get("scenes", [])
     if not scenes:
         return True, "phase_timings.json 无场景数据，跳过"
@@ -1022,6 +1038,10 @@ def check_phase_anchor_coverage(project_dir: Path, params: dict) -> tuple[bool, 
     except Exception:
         return True, "phase_timings.json 解析失败，跳过 anchor 覆盖检查"
 
+    # 兼容旧格式：纯 list → {"scenes": list}
+    if isinstance(pt_data, list):
+        pt_data = {"scenes": pt_data}
+
     stats = pt_data.get("stats", {})
     anchor_count = stats.get("anchor_calibrated", 0)
     auto_count = stats.get("auto_split", 0)
@@ -1071,27 +1091,34 @@ def check_phase_visibility_present(project_dir: Path, params: dict) -> tuple[boo
         return True, "narration_segments.json 解析失败，跳过"
 
     segs = narr_data if isinstance(narr_data, list) else narr_data.get("segments", [])
+
+    html = html_file.read_text(encoding="utf-8", errors="ignore")
+
+    # 提取 HTML 中所有 clip 的真实 id（按出现顺序，适配 s01/s1 等任意格式）
+    html_clip_ids: list[str] = re.findall(r'<div[^>]*class="clip"[^>]*\bid="([^"]+)"', html)
+    if not html_clip_ids:
+        html_clip_ids = re.findall(r'<div[^>]*\bid="([^"]+)"[^>]*class="clip"', html)
+
     multi_phase = []
-    for seg in segs:
+    for i, seg in enumerate(segs):
         phases = seg.get("visual_phases", [])
         num = phases if isinstance(phases, int) else len(phases)
         if num > 1:
-            scene = seg.get("scene", "")
-            scene_str = str(scene)
-            scene_id = scene_str.split("-")[0] if "-" in scene_str else scene_str
-            multi_phase.append((scene_str, scene_id, num))
+            scene_name = seg.get("scene", f"segment-{i}")
+            # 用 HTML 中的真实 clip id（组装脚本生成），fallback 到 sNN 格式
+            real_id = html_clip_ids[i] if i < len(html_clip_ids) else f"s{i+1:02d}"
+            multi_phase.append((str(scene_name), real_id, num))
 
     if not multi_phase:
         return True, "无多 phase 场景，跳过"
 
-    html = html_file.read_text(encoding="utf-8", errors="ignore")
-
     missing: list[str] = []
-    for scene_name, scene_id, num_phases in multi_phase:
+    # 字符类：匹配 ' " , 空白 ) — 确保选择器 .phase-N 是末尾而非后代前缀
+    _term_chars = "['" + '"' + ",\\s)]"
+    for scene_name, real_id, num_phases in multi_phase:
         for phase_num in range(2, num_phases + 1):
             # Must target the .phase-N container itself (not children like .phase-N > div)
-            # Lookahead (?=[",\s)]) ensures .phase-N is end of selector, not prefix for descendants
-            pat_to = rf'tl\.(to|set)\([^)]*#{re.escape(scene_id)}\s+\.phase-{phase_num}(?=[",\s\)])[^)]*{{[^}}]*opacity\s*:\s*1'
+            pat_to = rf"tl\.(to|set)\([^)]*#{re.escape(real_id)}\s+\.phase-{phase_num}(?={_term_chars})[^)]*\{{[^}}]*opacity\s*:\s*1"
             if not re.search(pat_to, html):
                 missing.append(f"{scene_name} .phase-{phase_num}")
 
@@ -2462,9 +2489,11 @@ def check_pre_render_deps(project_dir: Path, params: dict) -> tuple[bool, str]:
     import subprocess
     result = subprocess.run(
         [sys.executable, str(script), str(project_dir)],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True, timeout=30,
     )
-    output = (result.stdout + result.stderr).strip()
+    stdout = result.stdout.decode('utf-8', errors='replace') if result.stdout else ''
+    stderr = result.stderr.decode('utf-8', errors='replace') if result.stderr else ''
+    output = (stdout + stderr).strip()
     if result.returncode == 0:
         return True, output
     return False, output
@@ -2484,9 +2513,9 @@ def check_html_structure_valid(project_dir: Path, params: dict) -> tuple[bool, s
     content = html_file.read_text(encoding="utf-8", errors="ignore")
     failures = []
 
-    # clip 数量与 layer-fx 数量匹配
+    # clip 数量与 layer-fx 数量匹配（只数 HTML class 属性，排除 CSS 定义）
     clip_count = content.count('class="clip"')
-    fx_count = content.count('layer-fx')
+    fx_count = content.count('class="layer-fx"')
     if clip_count != fx_count:
         failures.append(f"clip({clip_count}) 与 layer-fx({fx_count}) 数量不匹配")
 
@@ -2773,7 +2802,7 @@ def check_safe_area_bounds(project_dir: Path, params: dict) -> tuple[bool, str]:
 
     # --- Step G: 绝对定位越界检测 ---
     abs_pattern = re.compile(
-        r'([^\{]+)\{[^}]*(?:position\s*:\s*absolute)'
+        r'([^\{\}]+)\{[^}]*(?:position\s*:\s*absolute)'
         r'[^}]*(?:top|bottom|left|right)\s*:\s*([\d.]+)\s*px'
         r'[^}]*\}',
         re.DOTALL
@@ -2781,6 +2810,9 @@ def check_safe_area_bounds(project_dir: Path, params: dict) -> tuple[bool, str]:
     for abs_match in abs_pattern.finditer(content):
         selector = abs_match.group(1).strip()
         if selector.startswith('*'):
+            continue
+        # 伪元素（::before/::after）相对宿主元素定位，非画布绝对坐标，且恒为装饰 — 跳过
+        if '::' in selector:
             continue
         if any(x in selector for x in ('layer-bg', 'layer-fx', 'bg-grad', 'grid',
                                          'particle', 'dot', 'line', 'shape',

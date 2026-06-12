@@ -37,11 +37,10 @@ echo "BGM 平均音量: ${BGM_VOL} dB"
 # 如果音量太低，自动增益
 VOLUME_FILTER=""
 if [ -n "$BGM_VOL" ]; then
-    # 用 bc 比较浮点数
-    NEED_BOOST=$(echo "$BGM_VOL < -30" | bc 2>/dev/null || echo "")
+	    # 用 python 比较浮点数（跨平台兼容）
+	    NEED_BOOST=$(python -c "print(1 if float('${BGM_VOL}') < -30 else 0)")
     if [ "$NEED_BOOST" = "1" ]; then
-        GAIN=$(echo "30 + $BGM_VOL" | bc 2>/dev/null || echo "20")
-        GAIN=$(echo "$GAIN" | cut -d. -f1)
+	        GAIN=$(python -c "print(int(30 + float('${BGM_VOL}')))")
         VOLUME_FILTER="volume=${GAIN}dB,"
         echo "⚠ 音量过低，自动增益 +${GAIN}dB"
     fi

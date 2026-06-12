@@ -83,6 +83,23 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
    cd .claude/commands/clipforge && python scripts/bgm_history.py --record --bgm "<选中的BGM文件名>" --project "<项目名>"
    ```
 
+6. **长视频多首 BGM**（视频 ≥3min 时**必须**执行，短视频跳过）：
+   - 根据视频情绪变化（从 `narration_segments.json` 的 scene 类型推导），选择 2-3 首不同情绪的 BGM
+   - 情绪曲线参考：hook→神秘/悬疑、climax→史诗/紧张、reflection→沉思/柔和、CTA→激昂/希望
+   - 下载每首 BGM 到项目目录（`bgm_src_2.wav`、`bgm_src_3.wav`...），第一首保存为 `bgm.wav`
+   - 生成 `bgm_playlist.json`（描述情绪段顺序），格式：
+   ```json
+   {
+     "segments": [
+       {"mood": "mysterious", "file": "bgm.wav", "duration_hint": 45},
+       {"mood": "epic", "file": "bgm_src_2.wav", "duration_hint": 60},
+       {"mood": "contemplative", "file": "bgm_src_3.wav", "duration_hint": 80}
+     ]
+   }
+   ```
+   - `bgm_pipeline.sh` 会自动检测 `bgm_playlist.json`，按顺序 loudnorm 标准化 + crossfade（3s 三角波）合并为单个 `bgm.wav`。最终产出不变（1 个 `bgm.wav`），HTML 音轨无需改动
+   - 无 `bgm_playlist.json` 时回退原有 concat/extend 逻辑（向后兼容）
+
 **阶段 B — BGM 管线**（选曲完成后全自动）：
 
 ```bash
@@ -177,27 +194,18 @@ ffmpeg -i source.mp3 -ss 0:10 -t 0:30 -af "afade=t=in:d=2,afade=t=out:st=27:d=3"
 >
 > **Red Flag — 跳过 bgm_pipeline.sh**：手动写 volume 值未经过峰值间距校验。
 
-### BGM 全程有声门禁（IRON LAW — 每次必须执行）
+### BGM 全程有声门禁（IRON LAW — 已内嵌自动化）
 
-> **IRON LAW：** BGM 必须全程覆盖旁白时长，禁止出现后半段静音。`bgm_pipeline.sh` Step 2 调用 `bgm_validate.py` 全段扫描静音段并自动清理。
-
-**bgm.wav 生成后、进入 Stage 6 之前，必须执行此门禁：**
-
-```bash
-# 获取旁白总时长
-NARR_DUR=$(python -c "import json; d=json.load(open('segment_durations.json')); print(sum(s['actual_duration'] for s in d['segments']))")
-
-# 执行全程有声门禁
-python .claude/commands/clipforge/scripts/bgm_silence_check.py bgm.wav "$NARR_DUR"
-```
+> **IRON LAW：** BGM 必须全程覆盖旁白时长，禁止出现后半段静音。
+>
+> **已内嵌到 `bgm_pipeline.sh`**：管线完成音量校准后自动执行 `bgm_silence_check.py`，不通过则 `bgm_pipeline.sh` exit 1。
+> LLM 无需单独调用此门禁。
 
 **通过条件（全部满足才可通过）：**
 - 旁白时长范围内无连续 >= 3 秒静音段（< -45 dB）
 - 音频覆盖率 >= 80%
 
-**不通过 = 禁止进入 Stage 6。** 必须更换 BGM 源文件或修复 bgm.wav 后重新检测。
-
-> 此门禁独立于 `bgm_pipeline.sh` 的 Step 2（bgm_validate.py），是最后一道防线。即使 bgm_pipeline.sh 已执行，也必须再跑此门禁。SubAgent 不得跳过。
+**不通过 = `bgm_pipeline.sh` 失败 = 禁止进入 Stage 6。** 必须更换 BGM 源文件后重新运行 `bgm_pipeline.sh`。
 
 ## 4.3 电影音频处理（电影解读模式）
 

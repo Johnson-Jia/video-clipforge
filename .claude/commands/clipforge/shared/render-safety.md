@@ -183,7 +183,7 @@
 - `.layer-fx` 必须 `pointer-events: none`，防止特效遮挡交互
 - 特效 opacity 建议 0.3-0.6（不遮挡内容但可见）
 - 特效类型不固定，根据场景情绪和内容主题自行推导（见 `stage6-components.md` 情绪映射表）
-- `.layer-bg` 必须使用 `components/bg/` 中的 bg 组件（保留 `<!-- bg-component: NAME -->` 标记），允许换色和叠加背景图片
+- `.layer-bg` 必须使用 `components/bg/` 中的 bg 组件（保留 `<!-- bg-component: NAME -->` 标记），允许换色和叠加背景图片；底色亮度 L ≥ 12%（hsl 第三参数）、装饰元素 alpha ≥ 0.12，否则渲染平均亮度 < 25/255 被 frame_analysis.py §4 拦截（gate）
 - **特效层非空规则（§2.4）见下**
 
 ### 2.4 特效层非空规则
@@ -225,6 +225,18 @@
 | 数字/数据 | 52px | 核心数据展示，必须一眼看到 |
 
 **违反字号最低标准的文字元素在手机端只有 9-12px，等于不可读。**
+
+**style.css 字号 class 最低标准（director_gate.py §1b 已编码，不达标 → FAIL）：**
+
+| class 语义 | 推荐 class 名 | 最低字号 |
+|-----------|--------------|---------|
+| 正文/描述 | .t-sm / .t-md | 38px |
+| 数据值 | .dval | 38px |
+| 标注/注释 | .cap / .lbl | 32px |
+| 辅助标签 | .dkey / .pill | 32px |
+| 时间轴 | .tl-time | 32px |
+| 标题层 | .t-lg / .t-xl | 64px（推荐） |
+| 冲击数字 | .num-* | 52px（推荐） |
 
 ### 3.2 禁止 section-tag 小徽章标题
 
@@ -298,7 +310,7 @@
 | Phase 断点使用 `gap = duration / phase_count` 均分 | 旁白与画面内容严重不同步，偏差 5-12 秒 |
 | 根组合缺少 `data-width` 或 `data-height` | HyperFrames viewport 错误 → 100% 黑帧（§1.6a） |
 | `<audio>` 缺少 `data-start="0"` | 音频不播放（§1.6a） |
-| 竖屏场景标题 < 64px 或正文 < 38px 或标注 < 32px | 手机端不可读，等于做了白做（§3.1） |
+| 竖屏场景标题 < 64px 或正文 < 38px 或标注 < 32px | 手机端不可读，等于做了白做（§3.1，gate: director_gate.py §1b） |
 | 使用 section-tag 小徽章作为场景标题 | 视觉廉价，不符合竖屏冲击力（§3.2） |
 | 横屏场景正文 < 32px 或标注 < 24px | 手机端不可读，等于做了白做（§3.4） |
 | 横屏场景内容视觉重心偏移（内容偏向一侧） | 画面失衡，观感差（§3.5） |

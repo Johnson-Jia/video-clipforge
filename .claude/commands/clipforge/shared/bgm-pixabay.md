@@ -92,6 +92,18 @@ du -sh workspace/bgm/
 | `cinematic-grand` | `epic cinematic inspiring` | 大气磅礴、史诗级、电影感 |
 | `motivational-energy` | `motivational inspiring upbeat` | 正能量激励、积极向上 |
 
+### 情绪（mood）→ 主题映射（用于 bgm_playlist.json 长视频多段选曲）
+
+长视频按情绪曲线分段时，每种 mood 对应上表的主题，AI 据此下载不同情绪的 BGM：
+
+| mood | 推荐主题 | 适用场景 |
+|------|---------|---------|
+| mysterious | `suspense-thriller` / `dark-premium` | hook 钩子、悬念铺垫、背景揭示 |
+| epic | `epic-trailer` / `cinematic-grand` | 高潮、核心数据冲击、商业论点 |
+| contemplative | `monochrome` / `pastel-soft` | 反思、深度分析、现状评估、柔和过渡 |
+| inspiring | `inspiring-motivational` / `epic-uplifting` | CTA 行动号召、未来展望、希望 |
+| energetic | `bold-energetic` / `motivational-energy` | 开场活力、节奏推进、紧迫感 |
+
 ## §4 文件命名规范
 
 ```

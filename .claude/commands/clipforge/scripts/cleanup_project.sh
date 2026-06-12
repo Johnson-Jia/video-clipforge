@@ -75,7 +75,14 @@ RETAIN_FILES=(
   content_summary.md
   narration.mp3
   bgm.wav
+  # 评分凭证（gate.py 门禁依赖，删除 → 事后重评失败）
+  .assemble_marker.json
+  .bgm_pipeline_marker.json
 )
+
+# 受保护目录（目录名匹配，连同内部所有动态文件一并保护，防 future 回归误删）
+# creative/ 含动态数量的 sNN.html 碎片 + style.css，无法逐个列入文件白名单，故用目录级保护
+PROTECTED_DIRS=("creative")
 
 # 构建白名单查找表（O(1) 查找）
 declare -A RETAIN_MAP
@@ -89,6 +96,14 @@ for f in "${RETAIN_FILES[@]}"; do
     echo "  ✅ [保留] $f"
   fi
 done
+if [ ${#PROTECTED_DIRS[@]} -gt 0 ]; then
+  echo "受保护目录 (${#PROTECTED_DIRS[@]})："
+  for d in "${PROTECTED_DIRS[@]}"; do
+    if [ -d "$d" ]; then
+      echo "  ✅ [保护] $d/ ($(ls "$d" 2>/dev/null | wc -l) 文件)"
+    fi
+  done
+fi
 
 # ══════════════════════════════════════════════
 # §2 安全删除函数（白名单校验 + 删除前确认）
@@ -100,6 +115,16 @@ safe_rm() {
   local target="$1"
   local basename_target
   basename_target="$(basename "$target")"
+
+  # 受保护目录检查：删除路径落在受保护目录内一律拦截（保护动态文件如 creative/sNN.html）
+  local _d
+  for _d in "${PROTECTED_DIRS[@]}"; do
+    if [[ "/${target}/" == *"/${_d}/"* ]]; then
+      echo "  🛑 [受保护目录] $target — ${_d}/ 下文件不可删除"
+      BLOCKED_COUNT=$((BLOCKED_COUNT+1))
+      return 1
+    fi
+  done
 
   # 白名单校验：在白名单中的文件绝对不删
   if [ -n "${RETAIN_MAP[$basename_target]+x}" ]; then
@@ -124,6 +149,16 @@ safe_rm() {
 
 safe_rm_rf() {
   local target="$1"
+
+  # 受保护目录检查：受保护目录本身不可递归删除
+  local _d
+  for _d in "${PROTECTED_DIRS[@]}"; do
+    if [[ "/${target}" == *"/${_d}" ]]; then
+      echo "  🛑 [受保护目录] $target/ — ${_d}/ 不可删除"
+      BLOCKED_COUNT=$((BLOCKED_COUNT+1))
+      return 1
+    fi
+  done
 
   if [ ! -e "$target" ]; then
     return 0
@@ -154,10 +189,12 @@ for f in narration_seg_*.txt narration_seg_*.mp3 narration_seg_*.srt \
          cover_final.png cover_segment.mp4 narration.srt \
          cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts \
          cover_clip.mp4 cover_from_render.mp4 .cleaned \
-         bgm_orig.wav bgm_pre_norm.wav machine_score.json delivery.md \
-         .assemble_marker.json .bgm_pipeline_marker.json; do
+         bgm_orig.wav bgm_pre_norm.wav machine_score.json delivery.md; do
   safe_rm "$f" || true
 done
+# 注意：.assemble_marker.json 和 .bgm_pipeline_marker.json 是评分凭证（gate.py 门禁据此
+# 验证 final.mp4 由 assemble_final.sh 生成、bgm.wav 由 bgm_pipeline.sh 校准）。
+# 删除它们会导致事后重评失败（cleanup→重评的先有鸡先有蛋问题）。已移入 RETAIN_FILES 白名单。
 
 # ══════════════════════════════════════════════
 # §4 删除临时目录
@@ -165,7 +202,7 @@ done
 echo ""
 echo "--- 删除临时目录 ---"
 
-for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" "assets"; do
+for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" "assets" ".diag_frames"; do
   for match in $d; do
     if [ -d "$match" ]; then
       safe_rm_rf "$match/"
@@ -183,7 +220,7 @@ if [ -f bgm.wav ]; then
   BGM_FOUND_IN_LIB=false
 
   # 方法1：通过 segment_durations.json 的 meta.bgm_source 匹配
-  BGM_SOURCE=$(python3 -c "import json; d=json.load(open('segment_durations.json')); print(d.get('meta',{}).get('bgm_source',''))" 2>/dev/null || echo "")
+  BGM_SOURCE=$(python -c "import json; d=json.load(open('segment_durations.json')); print(d.get('meta',{}).get('bgm_source',''))" 2>/dev/null || echo "")
   if [ -n "$BGM_SOURCE" ] && [ -f "../../workspace/bgm/${BGM_SOURCE}" ]; then
     BGM_FOUND_IN_LIB=true
   fi
