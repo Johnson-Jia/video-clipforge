@@ -58,5 +58,5 @@ subprocess.run(cmd, check=True)
 " "$INPUT" "${INPUT%.*}_norm.${INPUT##*.}"
 
 mv "${INPUT%.*}_norm.${INPUT##*.}" "$INPUT"
-rm -f loudnorm_stats.json
+rm -f loudnorm_stats.json loudnorm_full.log
 echo "[loudnorm] 完成: $INPUT 已标准化 (I=-16, TP=-1.5, LRA=11, 48kHz mono)"

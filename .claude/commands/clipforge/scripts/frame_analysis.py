@@ -8,7 +8,7 @@
 检查项:
   1. 帧间视觉差异（相邻帧亮度差 ≥ 阈值 = 场景切换）
   2. 全片色彩多样性（U/V 通道方差）
-  3. 暗帧比例（亮度 < 5 的帧占比）
+  3. 暗帧比例（亮度 < 12 的帧占比）
   4. 总体亮度分布
 
 退出码: 0=通过, 1=视觉问题
@@ -21,6 +21,12 @@ import sys
 import os
 import json
 import re
+
+# Windows GBK console cannot encode Unicode symbols (✓✗⚠)
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 
 def get_duration(video_path):
@@ -119,7 +125,7 @@ def main():
 
         if brightness is not None:
             brightness_data.append({"time": t, "Y": brightness})
-            if brightness < 5:
+            if brightness < 12:
                 dark_frames += 1
 
         if color:
@@ -210,7 +216,9 @@ def main():
         min_y = min(y_vals)
 
         if avg_y < 15:
-            warn(f"平均亮度偏低: {avg_y:.0f}/255（整体画面可能过暗）")
+            fail(f"平均亮度过低: {avg_y:.0f}/255（接近黑屏，bg 组件可能太暗或未生效）")
+        elif avg_y < 25:
+            warn(f"平均亮度偏低: {avg_y:.0f}/255（建议提高 bg 装饰层 alpha）")
         elif avg_y > 200:
             warn(f"平均亮度偏高: {avg_y:.0f}/255（整体画面可能过亮）")
         else:

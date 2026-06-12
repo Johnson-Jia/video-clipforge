@@ -31,11 +31,7 @@ echo "Stage 7 前置检查通过"
 
 1. 从 `design.md` 读取配色方向，从 `narration_segments.json` / 内容摘要读取数据
 2. 创建 `cover_params.json`（schema 见 `shared/cron-template.md` SubAgent-4 段）
-3. 运行脚本：
-   ```bash
-   cd .claude/commands/clipforge && python scripts/generate_cover.py --project-dir <project-dir> --render
-   ```
-4. 脚本输出 `cover.html` + `cover.png`
+3. 运行 `s7_delivery.sh`（§7.2）— 脚本自动调用 `generate_cover.py --render` 生成 `cover.html` + `cover.png`
 
 **LLM 创意域（自由发挥）：**
 - 色彩方案：3 个核心色值（accent_warm / accent_cool / bg_dark），脚本自动派生 12 色调色板
@@ -72,10 +68,8 @@ echo "Stage 7 前置检查通过"
 
 ### 渲染命令
 
-**脚本已内置渲染（推荐）：**
-```bash
-cd .claude/commands/clipforge && python scripts/generate_cover.py --project-dir <project-dir> --render
-```
+> `s7_delivery.sh`（§7.2）已自动调用 `generate_cover.py --render`，无需手动执行。
+> 以下为 `s7_delivery.sh` 失败时的降级方案。
 
 **手动渲染降级（脚本 --render 失败时）：**
 
@@ -97,42 +91,17 @@ rm -rf /tmp/cover-render
 ffmpeg -y -i output.mp4 -vf "scale=1080:1920:flags=lanczos" -vframes 1 cover.png
 ```
 
-## 7.2 封面嵌入前门禁（必须通过）
+## 7.2 交付管线（全自动）
 
-> **门禁目的：** 确保 §7.1 封面生成不会遗漏。
-
-```bash
-# 门禁 1：cover.html 和 cover.png 必须同时存在
-[ -s cover.html ] || { echo "FAIL: cover.html 缺失，请先执行 §7.1 生成封面 HTML"; exit 1; }
-[ -s cover.png ] || { echo "FAIL: cover.png 缺失，请先执行 §7.1 渲染封面"; exit 1; }
-echo "封面存在性检查通过"
-
-# 门禁 2：封面 7 层完整性检查（IRON LAW）
-python .claude/commands/clipforge/scripts/cover_check.py cover.html
-# 退出码非 0 = 封面不合规，必须重建 cover.html 后重新渲染
-```
-
-**如果门禁失败**：
-1. 先回退执行 §7.1（创建 `cover.html` + 渲染 `cover.png`）
-2. 门禁通过后再执行 §7.3
-3. **禁止用 `ffmpeg -i output.mp4 -vframes 1 cover.png` 替代 §7.1** — 视频首帧不是封面，封面是独立设计的高品质视觉图
-
-## 7.3 封面嵌入视频第一帧（双版本，必须执行）
-
-> **前置依赖：§7.2 门禁已通过（`cover.html` + `cover.png` 均存在）。**
-
-将封面作为视频第一帧嵌入，产出两个版本：`final.mp4`（含 BGM）和 `final_no_bgm.mp4`（仅旁白）。
-
-### 必须使用脚本，禁止自行拼接
+> LLM 完成 `cover_params.json` 后，`s7_delivery.sh` 一次性完成: 封面生成+渲染 → 封面门禁 → 封面拼接+Mastering → 磁盘报告。
+>
+> **禁止绕过脚本自行拼接。** 脚本内含硬性断言（封面 7 层完整性、时长偏差 < 0.2s、音频轨道存在）。
 
 ```bash
-# 封面嵌入视频第一帧，产出 final.mp4 + final_no_bgm.mp4
-bash .claude/commands/clipforge/scripts/assemble_final.sh
+bash .claude/commands/clipforge/scripts/s7_delivery.sh --project-dir .
 ```
 
-> **禁止绕过 `assemble_final.sh` 自行编写 ffmpeg 拼接命令。** 脚本内置 TS concat + stream copy（无损拼接）+ 输出验证（时长/音频断言）。
-
-> **脚本内含硬性断言：** final.mp4 时长偏差 < 0.2s，两个文件都必须有音频轨道。断言失败会 exit 1。
+**如果脚本失败**：根据错误信息修复 `cover_params.json` 或 `index.html`，然后重新执行。
 
 ## 7.4 视频交付
 

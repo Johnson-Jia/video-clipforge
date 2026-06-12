@@ -106,51 +106,29 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 
 HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>` 时长，`mediaDurationFloor` 确保视频时间线不短于音频。
 
-## 6.4 编写 HTML 组合（骨架 + 创意插槽模式）
+## 6.4 编写 HTML 组合（创意碎片化 + 组装确定化）
 
-> **代码引擎生成 HTML 骨架（三层架构、composition、audio、GSAP 框架），LLM 只在 `CREATIVE_SLOT` 插槽中编写创意内容。**
+> **代码引擎生成 `creative/` 碎片骨架（每场景一个 `sNN.html`，含三层 div + phase 占位），LLM 逐场景填充视觉创意。组装脚本负责所有确定性结构：clip 包裹、data-start/duration、GSAP 时间线、phase opacity、audio 嵌入、DOCTYPE。**
 
-### §6.4-0 骨架生成（代码引擎自动执行）
+### §6.4-0 碎片骨架生成 + 视觉上下文（代码引擎自动执行）
 
-> 代码引擎自动执行，输出包含 `CREATIVE_SLOT` 标记的 HTML 骨架。
+> `s6_prepare.sh` 一次性完成: phase 校准 → creative/ 碎片骨架生成 → 碎片验证 → 视觉上下文生成。
 
 ```bash
-cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
-
-# 0. 生成 Phase 时间校准（如果 sentence_timestamps.json 存在）
-if [ -f sentence_timestamps.json ]; then
-  python .claude/commands/clipforge/scripts/phase_calibrator.py --project-dir .
-fi
-
-# 1. 生成 HTML 骨架 + 插槽清单
-python .claude/commands/clipforge/scripts/generate_skeleton.py \
-  --project-dir . \
-  --output index_skeleton.html \
-  --slots-json skeleton_slots.json
-
-# 2. 验证骨架结构完整性
-python .claude/commands/clipforge/scripts/validate_skeleton.py \
-  --html index_skeleton.html
+bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 ```
 
-骨架包含：
-- 完整 HTML 文档结构（DOCTYPE、head、body）
-- 三层 div 架构（bg / fx / content），每层都有 `CREATIVE_SLOT` 标记
-- `<audio>` 嵌入（旁白 + BGM，音量从 segment_durations.json 自动读取）
-- GSAP timeline 初始化 + `window.__hf` 注册
-- Phase 初始化和切换占位
-- 每个 scene div 的 `id`、`data-start`、`data-duration` 已精确设置
+生成的 `creative/` 目录包含：
+- `style.css` — 已预填 `:root` CSS 变量（从 design.md 提取配色），LLM 在此追加自定义组件 CSS
+- `s01.html` ~ `sNN.html` — 每个场景一个碎片模板，含三层 div（bg/fx/content）+ phase 占位 + 旁白提示
+- 单 phase 场景：无 phase div 包裹，直接填 layer-content
+- 多 phase 场景：生成 `phase-1`/`phase-2` div，按旁白句子自动分配提示
+
+> **LLM 永远不碰以下内容（组装脚本 `s6_assemble_html.py` 负责）：** clip 包裹、`data-start`/`data-duration`、GSAP timeline、phase opacity 切换、`<audio>` 嵌入、DOCTYPE/HEAD 结构。碎片中**只写三层 div 的内容**。
 
 ### §6.4-1 视觉节奏上下文（代码引擎自动执行）
 
-> 代码引擎自动执行。为每个场景生成视觉上下文 JSON，创作前**必须读取**。
-
-```bash
-# 生成视觉节奏上下文（emotion curve + 前序场景指纹 + 节奏引导）
-python .claude/commands/clipforge/scripts/generate_visual_context.py \
-  --project-dir . \
-  --output visual_context.json
-```
+> `s6_prepare.sh` 已自动生成 `visual_context.json`，创作前**必须读取**。
 
 `visual_context.json` 为每个场景提供：
 
@@ -184,13 +162,34 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 
 ### §6.4-2 创意填充（LLM 自由创作）
 
-> 骨架保证结构性正确，LLM 只需为每个插槽编写创意内容。创作前读取 `visual_context.json`。
+> 碎片保证结构性正确，LLM 只需逐场景填充视觉内容。创作前读取 `visual_context.json`。
 
-**LLM 输出的不是完整 HTML，而是创意内容——逐场景的 CSS + HTML + GSAP 动画。**
+**LLM 逐个填充 `creative/sNN.html` 碎片文件，每个碎片只包含三层 div 的内容（bg/fx/content），不含 clip 包裹和 GSAP。**
+
+**碎片示例（多 phase 场景 `creative/s01.html`）：**
+```html
+<!-- 场景: hook | 时长: 20.0s -->
+<div class="layer-bg">
+  <!-- LLM 填充背景 -->
+</div>
+<div class="layer-fx">
+  <!-- LLM 填充特效 -->
+</div>
+<div class="layer-content">
+<div class="phase phase-1">
+  <!-- phase-1 旁白: 开场钩子... -->
+  <!-- LLM 填充 phase-1 视觉内容 -->
+</div>
+<div class="phase phase-2">
+  <!-- phase-2 旁白: 数据引入... -->
+  <!-- LLM 填充 phase-2 视觉内容 -->
+</div>
+</div>
+```
 
 **读取以下文件作为创作输入：**
-- `index_skeleton.html` — 骨架结构（了解有哪些插槽需要填充）
-- `skeleton_slots.json` — 插槽清单（每个插槽的 scene_id、layer、类型）
+- `creative/sNN.html` — 待填充的场景碎片（了解三层结构和 phase 布局）
+- `creative/style.css` — 已有 CSS 变量和组件样式（在此追加自定义 CSS）
 - `visual_context.json` — 视觉节奏上下文（不单调、不突兀的引导）
 - `design.md` — 视觉风格方向、storyboard、配色方案
 - `narration_segments.json` — 每段的旁白内容、情感标记、visual_phases
@@ -211,37 +210,32 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
    写 HTML 前，必须参照一个已验证的 HTML 模板。按以下优先级选择：
    - **首选**：同分类最近一个已成功渲染的项目的 `index.html`（`output.mp4` 存在且 > 500KB）
    - **备选**：`templates/golden-portrait.html`（首次运行或无历史项目时使用）
-   - 以参照模板的 DOM 结构和 GSAP 模式为骨架，只替换内容和配色。禁止凭空构思新的 DOM 层级结构或 GSAP 初始化模式。
+   - 以参照模板的 DOM 结构为骨架，只替换内容和配色。禁止凭空构思新的 DOM 层级结构。
 2. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 3. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 4. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
-5. **读取 `segment_durations.json`** — 动画断点强制使用 actual_duration（非 estimated_duration）：
-   - 用 `actual_duration` 计算 BP 断点数组（见 `visual-phasing.md`）
-   - GSAP timeline 中所有时间偏移量基于 BP 断点，不使用任何预估时长
-   - `data-duration` 属性直接使用 `actual_duration` 值
-6. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4a 的匹配流程生成
-7. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
+5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4a 的匹配流程生成
+6. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
    - 对照反面清单（10 条红线），确保不踩雷
    - 用 CSS 特效参考库的工具实现你的构思
    - **不查表、不套公式、每个场景独立思考**
-7a. **特效组件匹配/创建**（每个场景独立执行）：
+6a. **特效组件匹配/创建**（每个场景独立执行）：
     a) 读取 `narration_segments.json` 该场景的 `visual_intent`
     b) 根据内容情绪和视觉意图，在 `components/registry.yaml` 中搜索匹配的 fx 组件
        - 按 `emotion_range` 和 `tags` 粗筛
-       - 读取匹配组件文件，确认其 GSAP 动画是否适合当前场景
+       - 读取匹配组件文件，确认其动画是否适合当前场景
     c) 匹配成功 → 使用该组件，按场景参数调整
     d) 匹配不到或现有组件不合适 → **创建新特效**：
        - 从内容自主推导视觉表达（不是查表）
-       - 编写新特效的 HTML + CSS + GSAP 动画
+       - 编写新特效的 HTML + CSS
        - 新特效必须遵守 `render-safety.md` 全部约束
-       - 新特效必须有 GSAP 动画（持续 `repeat:-1` 或入场 `.from()`）
     e) **新组件入库**：如果新特效质量高、可复用，封装为组件：
        - 创建 `components/fx/<name>.html`，包含 `@ComponentMeta` 头
        - 更新 `components/registry.yaml` 添加元数据
        - 向用户展示新组件 HTML 样例，由用户决定是否入库
-8. **装配 HTML** — 按 HyperFrames composition 结构组装
+7. **逐场景填充 `creative/sNN.html`** — 将三层视觉内容写入对应碎片文件，CSS 组件样式写入 `creative/style.css`
 
 ### 场景 → 组件参考
 
@@ -301,59 +295,27 @@ python .claude/commands/clipforge/scripts/generate_visual_context.py \
 
 ### §6.4-3 组装与验证（代码引擎自动执行）
 
-LLM 完成所有插槽的创意内容后，由代码引擎组装为最终 HTML：
+LLM 填充完所有 `creative/sNN.html` 碎片后，`s6_assemble.sh` 一次性完成: 碎片完整性验证 → 碎片组装 index.html → 导演门禁：
 
 ```bash
-cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
-
-# 1. 注入创意内容到骨架
-python .claude/commands/clipforge/scripts/inject_creative.py \
-  --skeleton index_skeleton.html \
-  --creative creative_output.json \
-  --output index.html
-
-# 2. 验证所有插槽已填充
-python .claude/commands/clipforge/scripts/validate_skeleton.py \
-  --html index.html --strict
-
-# 3. 运行导演门禁（重用现有 gate 检查）
-python3 .claude/commands/clipforge/scripts/director_gate.py .
+bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 ```
 
-如果 gate 检查失败，仅修复失败的部分（不需要重写整个 HTML）。修复后重新注入或直接编辑 `index.html`。
+组装脚本自动处理的确定性内容（LLM 无需关心）：
+- 每个 `creative/sNN.html` 碎片被 `<div class="clip" id="sNN" data-start="..." data-duration="...">` 包裹
+- `data-start` 按累计时长精确设置，`data-duration` 取自 `segment_durations.json`
+- GSAP timeline 自动生成：场景硬切（前场景 opacity 0 / 当前场景 1）+ phase 切换（按 `phase_timings.json` 句子锚点）
+- `<audio>` 元素嵌入（旁白 + BGM，BGM 音量从 segment_durations.json 自动读取）
+- DOCTYPE / HEAD / `<style>`（基础层 CSS + creative/style.css）/ body 结构
 
-**LLM 输出格式（两种任选）：**
-
-**格式 A：结构化 JSON**
-```json
-[
-  {"slot_id": "s1-css", "content": "#s1 .layer-bg { background: radial-gradient(...); }"},
-  {"slot_id": "s1-bg-html", "content": "<div class='nebula'>...</div>"},
-  {"slot_id": "s1-fx-html", "content": "<canvas id='particles-s1'>...</canvas>"},
-  {"slot_id": "s1-content-html", "content": "<h1 style='font-size:100px;...'>震撼标题</h1>"},
-  {"slot_id": "s1-gsap", "content": "tl.from('#s1 h1', {scale:0.85, duration:0.15, ease:'power3.out'}, 0);"}
-]
-```
-
-**格式 B：带标记的代码片段（更自由）**
-```html
-<!-- CREATIVE_SLOT:s1-bg-html -->
-<!-- bg-component: light_field -->
-<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 70%, rgba(75,0,130,0.8), transparent);">
-  <div style="position:absolute;width:300px;height:300px;border-radius:50%;filter:blur(40px);"></div>
-</div>
-<!-- END_SLOT:s1-bg-html -->
-
-<!-- CREATIVE_SLOT:s1-gsap -->
-tl.from('#s1 h1', {scale: 0.85, duration: 0.15, ease: 'power3.out'}, 0);
-<!-- END_SLOT:s1-gsap -->
-```
+如果 gate 检查失败，仅修复对应 `creative/sNN.html` 碎片的失败部分（不需要重写整个 HTML）。修复后重新运行 `s6_assemble.sh` 重新组装。
 
 **创意自由度声明：**
 - LLM 可以自由发明任何 CSS 效果（渐变、动画、滤镜、混合模式...）
 - LLM 可以使用 Canvas/WebGL 编写全新特效
 - LLM 可以引用组件库中的组件作为基础并修改
 - **bg 层强制使用组件库**（R-R-021 HARD）：每个场景必须从 `components/bg/` 选用 1 个 bg 组件，保留 `<!-- bg-component: NAME -->` 标记。允许换色（CSS 变量/色值替换）、叠加背景图片，禁止自行编写 bg CSS
+- **bg 亮度底线**（gate: frame_analysis.py §4）：bg 组件底色亮度 L ≥ 12%（hsl 第三参数），装饰元素（线条/光晕/粒子）alpha ≥ 0.12。底色过暗或装饰 alpha 过低 → 渲染平均亮度 < 25/255 → frame_analysis warn/fail。暗调场景（危机/破产）通过降低装饰密度实现"暗"，底色仍需 L ≥ 12%
 - fx/content 层的组件库仍是工具箱和灵感来源，不强制
 
 ## 6.4a 特效工坊（组件匹配 + 新特效创建）
@@ -691,124 +653,27 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 - 安全内容区：60px ~ 1020px（垂直），120px ~ 1800px（水平）
 - padding：`60px 120px 60px 120px`
 
-## 6.6 渲染
+## 6.6 渲染管线（全自动）
 
-### 渲染前检查（必须执行）
-
-```bash
-cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
-
-# 1. 确认音频文件存在
-ls -la narration.mp3 bgm.wav
-
-# 2. 确认 index.html 包含旁白 <audio> 元素（R-S6-029 HARD）
-#    HyperFrames 通过 HTML 内嵌 <audio> 混音，缺少旁白 <audio> 会导致视频无旁白
-grep -c '<audio[^>]*src="narration\.mp3"' index.html
-# 输出必须 ≥ 1
-
-# 3. 渲染前依赖检查（引用文件存在性 + 根属性 + cover.html 冲突）
-python .claude/commands/clipforge/scripts/pre_render_check.py .
-# 未通过则修复后重新执行，不得跳过
-
-# 4. 导演门禁 — HTML 设计意图验证（Layer 1）
-python3 .claude/commands/clipforge/scripts/director_gate.py .
-# 未通过则修复 HTML 后重新执行，不得跳过
-
-# 5. 移除所有非 index.html 的 composition 文件
-for f in cover.html index_with_bgm.html cover.html.bak; do
-  [ -f "$f" ] && mv "$f" "$f.renderbak"
-done
-```
-
-### 渲染命令
+> `s6_render.sh` 一次性完成: 渲染前检查 → 导演门禁 → BGM 音量注入 → renderbak 隔离 → HyperFrames lint + render → renderbak 恢复 → output_no_bgm 合成 → 音频验证 → 完成门禁。
 
 ```bash
-npx hyperframes lint
-npx hyperframes render . --output output.mp4 --video-bitrate 5M --concurrency 4
+bash .claude/commands/clipforge/scripts/s6_render.sh --project-dir .
 ```
 
-### 渲染后恢复
-
-```bash
-for f in cover.html index_with_bgm.html; do
-  [ -f "$f.renderbak" ] && mv "$f.renderbak" "$f"
-done
-rm -f cover.html.bak.renderbak index_with_bgm.html.renderbak
-```
-
-### 渲染后音频验证
-
-```bash
-ffprobe -v quiet -show_streams -select_streams a output.mp4 | grep codec_name
-ffmpeg -i output.mp4 -af "volumedetect" -f null /dev/null 2>&1 | grep volume
-```
-
-## 6.7 单次渲染 + ffmpeg 合成
-
-> HyperFrames 只渲染一次 output.mp4。output_no_bgm.mp4 由 ffmpeg 从 output.mp4 视频轨 + narration.mp3 合成。
-
-### 渲染前准备
-
-```bash
-cd workspace/<YYYY>/<MM>/<DD>/<project-dir>
-
-# 从 segment_durations.json 读取 BGM 音量，写入 HTML
-BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json'))['meta'].get('bgm_volume', 0.15))")
-
-# BGM 音量预检
-if [ "$(echo "$BGM_VOL <= 0" | bc 2>/dev/null || echo "0")" -eq 1 ]; then
-    echo "BLOCKED: bgm_volume=${BGM_VOL} <= 0，BGM 静音。回退 Stage 4 重新校准。"
-    exit 1
-fi
-echo "OK: bgm_volume=${BGM_VOL}"
-
-sed -i "s/id=\"bgm\" data-volume=\"[^\"]*\"/id=\"bgm\" data-volume=\"${BGM_VOL}\"/" index.html
-echo "HTML BGM data-volume set to ${BGM_VOL}"
-```
-
-### 渲染（仅一次）
-
-```bash
-# ── 渲染: 完整 HTML → output.mp4（旁白 + BGM）──
-npx hyperframes render . --output output.mp4 --video-bitrate 5M --concurrency 4
-```
-
-### 合成 output_no_bgm.mp4（ffmpeg，不渲染）
-
-> **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
-> **必须**用 narration.mp3（纯旁白源文件）作为音频源。
-
-```bash
-# ── output_no_bgm.mp4 = output.mp4 视频轨 + narration.mp3 音频轨 ──
-ffmpeg -y -i output.mp4 -i narration.mp3 \
-  -map 0:v -map 1:a \
-  -c:v copy -c:a aac -b:a 128k \
-  -shortest \
-  output_no_bgm.mp4
-```
+**如果任何检查失败，修复问题后重新执行，不得跳过。**
 
 ### 文件逻辑
 
 ```
-output.mp4      = 视频 + 旁白 + BGM（HyperFrames 渲染）
+output.mp4        = 视频 + 旁白 + BGM（HyperFrames 渲染）
 output_no_bgm.mp4 = output.mp4 的视频 + narration.mp3 的音频（ffmpeg 合成）
-final.mp4      = cover.png + output.mp4
-final_no_bgm.mp4 = cover.png + output_no_bgm.mp4
+final.mp4         = cover.png + output.mp4（Stage 7 拼接）
+final_no_bgm.mp4  = cover.png + output_no_bgm.mp4（Stage 7 拼接）
 ```
 
-> 封面帧拼接由 Stage 7 §7.3 的 `assemble_final.sh` 统一处理，Stage 6 不负责。
-
-## 6.8 Stage 6 完成门禁
-
-```bash
-# ── Stage 6 完成门禁 ──
-bash .claude/commands/clipforge/scripts/stage6_gate.sh
-
-# ── 渲染帧视觉分析（Layer 2）──
-python3 .claude/commands/clipforge/scripts/frame_analysis.py .
-```
-
-**如果任何检查失败，修复问题后重新执行，不得跳过。**
+> 封面帧拼接由 Stage 7 的 `s7_delivery.sh` 统一处理，Stage 6 不负责。
+> **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
 
 ---
 
