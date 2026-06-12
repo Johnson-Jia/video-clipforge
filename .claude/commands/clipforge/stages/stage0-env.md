@@ -42,7 +42,6 @@ bash .claude/commands/clipforge/scripts/env_check.sh
 | 依赖 | 自动安装命令 | 说明 |
 |------|------------|------|
 | HyperFrames Skills | `npx skills add heygen-com/hyperframes` | 视频编排技能 |
-| 工具脚本 | `curl` 下载到 `.claude/commands/clipforge/scripts/` | generate_bgm.py + merge_video_audio.sh |
 
 以下依赖**无法自动安装**（需系统级权限），仅提示命令：
 
