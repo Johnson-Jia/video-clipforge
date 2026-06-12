@@ -28,6 +28,9 @@ from pathlib import Path
 # assemble 自动注入对应 GSAP 动画。元素颜色/位置/大小由内联 style 自由控制）
 FX_ANIM_CLASSES = {"fx-pulse", "fx-drift", "fx-spin", "fx-blink"}
 
+# bg 组件库目录（s6_assemble 根据 <!-- bg-component: NAME --> 标记自动注入）
+COMPONENTS_BG_DIR = Path(__file__).resolve().parent.parent / "components" / "bg"
+
 
 # ──────────────────────────────────────────────────────────────────────────
 # 基础 CSS（固定，LLM 不碰）— 三层架构 + FX 原语 + Phase 默认隐藏
@@ -49,6 +52,84 @@ audio{display:none;}
 .fx-dot{position:absolute;border-radius:50%;pointer-events:none;}
 /* === LLM 自定义组件层（来自 creative/style.css）=== */
 """
+
+
+def _parse_bg_component(component_path: Path) -> tuple[str, list[str]]:
+    """解析 bg 组件文件，返回 (dom_html, keyframes_css_list)。
+
+    组件文件三层结构：
+    1. <!-- @ComponentMeta ... --> — 元数据，跳过
+    2. <!-- @keyframes ... --> — CSS 动画，提取注入 index.html <style>
+    3. DOM HTML — 实际元素，注入 layer-bg
+    """
+    content = component_path.read_text(encoding="utf-8").strip()
+
+    # 提取 @keyframes：扫描 <!-- --> 注释块，收集含 @keyframes 的
+    keyframes: list[str] = []
+    for m in re.finditer(r"<!--\s*(.*?)\s*-->", content, re.DOTALL):
+        block = m.group(1).strip()
+        if "@keyframes" in block:
+            keyframes.append(block)
+
+    # DOM = 去掉所有注释后的纯 HTML
+    dom = re.sub(r"<!--.*?-->", "", content, flags=re.DOTALL).strip()
+    return dom, keyframes
+
+
+def _find_layer_bg_range(html: str) -> tuple[int, int]:
+    """定位 layer-bg div 的精确字符范围（正确处理嵌套 div）。
+
+    Returns: (start, end) 含整个 <div class="layer-bg">...</div>；找不到返回 (-1, -1)
+    """
+    start_match = re.search(r'<div\s+class="layer-bg"[^>]*>', html)
+    if not start_match:
+        return -1, -1
+    start = start_match.start()
+    pos = start_match.end()
+    depth = 1
+    while depth > 0 and pos < len(html):
+        next_open = html.find("<div", pos)
+        next_close = html.find("</div>", pos)
+        if next_close == -1:
+            break
+        if next_open != -1 and next_open < next_close:
+            depth += 1
+            pos = next_open + 4
+        else:
+            depth -= 1
+            if depth == 0:
+                return start, next_close + 6
+            pos = next_close + 6
+    return start, pos
+
+
+def _inject_bg_component(frag_html: str, sid: str) -> tuple[str, list[str]]:
+    """根据碎片 layer-bg 中的 <!-- bg-component: NAME --> 标记注入组件 DOM。
+
+    机制：从 components/bg/NAME.html 加载组件，用组件 DOM 覆盖 layer-bg 内所有内容。
+    LLM 在碎片里写的任何 bg CSS 都会被组件覆盖——从机制上消除自写 bg。
+    无标记/组件不存在/无 DOM → 原样返回（不破坏流程，留给 gate 拦截）。
+
+    Returns: (modified_html, keyframes_css_list)
+    """
+    marker_match = re.search(r"<!--\s*bg-component:\s*(\S+)\s*-->", frag_html)
+    if not marker_match:
+        return frag_html, []
+    comp_name = marker_match.group(1)
+    comp_path = COMPONENTS_BG_DIR / f"{comp_name}.html"
+    if not comp_path.exists():
+        print(f"[WARN] {sid}: bg-component '{comp_name}' 不存在于 {COMPONENTS_BG_DIR}", file=sys.stderr)
+        return frag_html, []
+    dom, keyframes = _parse_bg_component(comp_path)
+    if not dom:
+        print(f"[WARN] {sid}: bg-component '{comp_name}' 解析后无 DOM 内容", file=sys.stderr)
+        return frag_html, []
+    start, end = _find_layer_bg_range(frag_html)
+    if start < 0:
+        return frag_html, []
+    marker = marker_match.group(0)
+    new_bg = f'<div class="layer-bg">\n{marker}\n{dom}\n</div>'
+    return frag_html[:start] + new_bg + frag_html[end:], keyframes
 
 
 def load_json(path: Path) -> dict | list:
@@ -77,15 +158,17 @@ def parse_fx_classes(frag_html: str) -> set[str]:
     return classes
 
 
-def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[str], dict]:
+def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[str], dict, list[str]]:
     """读取每个场景的创意碎片，包裹 clip div。
 
-    Returns: (clips_html, total_duration, missing_scenes, fx_info)
+    Returns: (clips_html, total_duration, missing_scenes, fx_info, bg_keyframes)
         fx_info: {sid: set(fx 动画 class)}，供 build_gsap 注入装饰动画
+        bg_keyframes: 所有场景 bg 组件的 @keyframes CSS（去重），注入 <style>
     """
     clips: list[str] = []
     missing: list[str] = []
     fx_info: dict[str, set[str]] = {}
+    bg_keyframes_seen: dict[str, None] = {}
     cumulative = 0.0
 
     for idx, seg in enumerate(segments, 1):
@@ -103,6 +186,10 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
             fx_info[sid] = set()
         else:
             body = frag_path.read_text(encoding="utf-8").strip()
+            # B: bg 组件注入——用组件 DOM 覆盖碎片 layer-bg（LLM 自写 bg 失效）
+            body, kfs = _inject_bg_component(body, sid)
+            for kf in kfs:
+                bg_keyframes_seen[kf] = None
             fx_info[sid] = parse_fx_classes(body)
 
         dur = float(seg.get("actual_duration", seg.get("duration", 0)))
@@ -115,7 +202,7 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
         clips.append(clip)
         cumulative += dur
 
-    return "\n\n".join(clips), cumulative, missing, fx_info
+    return "\n\n".join(clips), cumulative, missing, fx_info, list(bg_keyframes_seen.keys())
 
 
 def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_info: dict | None = None) -> str:
@@ -225,9 +312,10 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
     if custom_css_path.exists():
         custom_css = custom_css_path.read_text(encoding="utf-8").strip()
 
-    # 构建 clips + GSAP
-    clips_html, total_duration, missing, fx_info = build_clips(segments, creative_dir)
+    # 构建 clips + GSAP（B: build_clips 现同时注入 bg 组件并收集 keyframes）
+    clips_html, total_duration, missing, fx_info, bg_keyframes = build_clips(segments, creative_dir)
     gsap_js = build_gsap(segments, phase_timings, total_duration, fx_info)
+    bg_keyframes_css = "\n\n".join(bg_keyframes) if bg_keyframes else ""
 
     # 读取 BGM 音量（已在 tts/bgm 管线算好）
     bgm_volume = (
@@ -244,6 +332,8 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
 <style>
 {BASE_CSS}
 {custom_css}
+/* === bg 组件 @keyframes（自动注入，来自 components/bg/）=== */
+{bg_keyframes_css}
 </style>
 </head>
 <body>
