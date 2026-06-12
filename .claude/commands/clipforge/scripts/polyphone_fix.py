@@ -216,6 +216,8 @@ _CN_NUM_CHARS = '一二三四五六七八九十百千万亿两零'
 _CN_NUMERIC_ROW_RE = re.compile(f'([{_CN_NUM_CHARS}]+)行')
 # 长→常：仅限已知 edge-tts 会把长读成 zhǎng 的上下文
 _LONG_AS_CHANG_RE = re.compile(r'长(视频|篇|文|尾|期|线|河|途)')
+# 周期长→周期常（长作后缀，edge-tts 读成 zhǎng）
+_PERIOD_LONG_AS_CHANG_RE = re.compile(r'(周期)长')
 
 # 初始化：加载自定义词组
 load_phrases_dict(_CUSTOM_PHRASES)
@@ -272,6 +274,7 @@ def fix(text: str) -> str:
 
     # 长→常（仅限已知误读上下文，避免全局替换影响字幕）
     preprocessed = _LONG_AS_CHANG_RE.sub(r'常\1', preprocessed)
+    preprocessed = _PERIOD_LONG_AS_CHANG_RE.sub(r'\1常', preprocessed)
     if preprocessed != k_replaced:
         print(f'[polyphone_fix] 长→常 regex applied')
 
@@ -345,6 +348,9 @@ if __name__ == '__main__':
             # 长视频定向替换
             ('长视频', '常视频'),
             ('长视频和短视频', '常视频和短视频'),
+            # 周期长→周期常（长作后缀）
+            ('企业销售周期长', '企业销售周期常'),
+            ('周期长是客观现实', '周期常是客观现实'),
             # 阿拉伯数字+行
             ('300行代码', '300航代码'),
             ('100多行代码', '100多航代码'),
