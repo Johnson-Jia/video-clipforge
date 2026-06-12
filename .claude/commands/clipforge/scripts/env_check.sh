@@ -5,6 +5,20 @@
 # 检测所有依赖，自动安装 HyperFrames Skills，创建标记文件。
 
 set -e
+
+# ── 定位仓库根（不依赖调用方 cwd）──
+# 脚本路径: <repo-root>/.claude/commands/clipforge/scripts/env_check.sh
+# 历史 bug：脚本用相对路径（.agents/skills/、workspace/）检查与安装，
+# 若调用时 cwd 非仓库根，npx skills add 会在错误目录创建 HyperFrames
+# （表现为 HyperFrames 装到 clipforge/ 子目录下）。此处强制 cd 到仓库根。
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+if [ ! -f "$REPO_ROOT/.claude/commands/clipforge/schema.yaml" ]; then
+  echo "FATAL: 无法定位仓库根（$REPO_ROOT 无 .claude/commands/clipforge/schema.yaml）"
+  exit 1
+fi
+cd "$REPO_ROOT"
+
 MARKER="workspace/.env-checked"
 
 if [ -f "$MARKER" ]; then
@@ -34,17 +48,6 @@ fi
 
 # ── 可选依赖 ──
 python -c "from transformers import MusicgenForConditionalGeneration; print('✅ MusicGen (可选)')" 2>/dev/null || echo "⚠ MusicGen not installed (可选，仅 AI 二创配乐)"
-
-# 工具脚本
-mkdir -p scripts
-if [ ! -f "scripts/generate_bgm.py" ] || [ ! -f "scripts/merge_video_audio.sh" ]; then
-  echo "⏳ 下载工具脚本..."
-  REPO="https://raw.githubusercontent.com/Johnson-Jia/video-clipforge/main/scripts"
-  curl -sL "$REPO/generate_bgm.py" -o scripts/generate_bgm.py 2>/dev/null
-  curl -sL "$REPO/merge_video_audio.sh" -o scripts/merge_video_audio.sh 2>/dev/null
-  chmod +x scripts/merge_video_audio.sh 2>/dev/null
-  echo "✅ 工具脚本就绪"
-fi
 
 echo ""
 echo "=== 检测完成 ==="

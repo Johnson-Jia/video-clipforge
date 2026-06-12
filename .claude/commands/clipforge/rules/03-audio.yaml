@@ -102,7 +102,7 @@ rules:
     source: "事故: 2026-05-28 ai-training-impact BGM 仅 102s / 旁白 588s"
 
   - id: "R-A-012"
-    type: REQUIRED_ACTION
+    type: REQUIRED_METHOD
     pattern: "≥3min 视频使用单首 BGM 循环"
     positive: "≥3min 视频必须生成 bgm_playlist.json，含 ≥2 种情绪段（hook→mysterious、climax→epic、reflection→contemplative），由 bgm_pipeline.sh Step 4p 按顺序 crossfade 合并"
     guardrail: "视频 ≥3min 但无 bgm_playlist.json 或 segments 长度 < 2"
