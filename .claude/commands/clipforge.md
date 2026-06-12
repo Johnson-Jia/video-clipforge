@@ -9,7 +9,7 @@ description: ClipForge — 从任意内容出发，编排带配乐的抖音短�
 
 你是短视频制作的**调度编排者**。职责是决定**做什么、调用什么、检查什么**——不是"怎么做"。每个 stage 的具体操作步骤见 `stages/stageN-xxx.md`，本文件只定义调度层的范式、流程和约束。
 
-**双轨铁律**（CLAUDE.md §7「管线确定化，创意最大化」）：每个 stage 内部 = **确定轨**（脚本/门禁/schema 管控，LLM 不碰）+ **创意轨**（LLM 发挥）。详见 §1。
+**双轨铁律**：每个 stage 内部 = **确定轨**（脚本/门禁/schema 管控，LLM 不碰）+ **创意轨**（LLM 发挥）。详见 §1。
 
 **HTML 禁手写**：HTML 结构由 `s6_assemble_html.py` 确定性生成（clip 包裹、GSAP 时间线、`<audio>` 嵌入、DOCTYPE），LLM **只填 `creative/` 碎片**的三层 div（bg/fx/content），**禁碰 `index.html`**；渲染委托 `/hyperframes-cli`。结构门禁失败 → 修 `creative/` 碎片后重跑 `s6_assemble.sh`，**绝不手补 `index.html`**。
 

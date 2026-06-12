@@ -5,7 +5,7 @@ LLM 只负责写 creative/ 目录下的碎片文件（style.css + 每场景 sNN.
 脚本负责所有确定性逻辑：clip 包裹、data-start/duration、GSAP 时间线、
 phase 初始 opacity、audio 嵌入、DOCTYPE/HEAD 结构。
 
-设计原则（CLAUDE.md §7 管线确定化）：
+设计原则（双轨铁律，确定轨由脚本全自动）：
 - 时间轴连续性、场景硬切、phase opacity 切换全部由数据驱动生成
 - LLM 永远不碰 GSAP、不碰 data-start、不碰 clip 包裹
 - 这彻底解决：API 超时（碎片化）+ GSAP 手写易错 + 重名 scene_id 冲突

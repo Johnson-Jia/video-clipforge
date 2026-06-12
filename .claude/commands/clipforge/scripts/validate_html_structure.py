@@ -7,7 +7,7 @@ phase 元素）溢出到 #root。于是 GSAP 的 `tl.set('#sNN .phase-N', ...)` 
 匹配不到目标，phase 切换静默失效——phase-1 全程可见、phase-2 永不出现。
 HTML 解析器、GSAP、gate.py 对此均静默，只有抽帧内容对比能发现。
 
-确定性校验（CLAUDE.md §7 管线确定化）：
+确定性校验（双轨铁律，确定轨由脚本全自动）：
 1. div 标签平衡 — 无未闭合 <div>，无多余 </div>（s11 第 68 行就死在这条）
 2. 顶层容器 — 必须包含 layer-content（phase 元素的安放处）
 
