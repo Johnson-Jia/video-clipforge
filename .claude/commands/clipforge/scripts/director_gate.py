@@ -22,6 +22,12 @@ import re
 import sys
 import os
 
+# Windows GBK console cannot encode Unicode symbols (✓✗⚠)
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 
 def main():
     project_dir = sys.argv[1] if len(sys.argv) > 1 else "."
@@ -79,6 +85,77 @@ def main():
             warn("无冲击层字号（≥ 80px），hook/climax 可能缺乏冲击力")
     else:
         fail("未找到 font-size 声明")
+
+    # 1b. 字号绝对值下限（render-safety §3.1 竖屏）
+    # 三道防线：① class font-size 下限 ② 内联 font-size 下限 ③ 非 px 单位量化拦截。
+    # 全量扫描：所有 CSS class 的 font-size 都检查（不限白名单），
+    # 只有纯几何/纯装饰 class 豁免；含可见文字的容器（进度条百分比等）不豁免。
+    print("\n── 1b. 字号绝对值下限（render-safety §3.1）──")
+    MIN_TEXT = 32   # 任何可见文本下限 (render-safety §3.1)
+    # 纯几何/纯装饰 class 豁免（无可见文字：光晕、进度槽、圆点、分隔线、布局容器）。
+    # vs-bar* 系列承载进度条百分比文字，不豁免，正常受 MIN_TEXT 约束。
+    # layer-content 48px 是全局继承兜底基准（非容器内文字），保留豁免。
+    FONT_SIZE_EXEMPT = {
+        'fx-glow', 'fx-line', 'fx-dot', 'fx-pulse', 'fx-drift', 'fx-spin', 'fx-blink',
+        'kpi-line', 'tl-dot', 'divider', 'phase', 'clip',
+        'layer-bg', 'layer-fx', 'layer-content',
+    }
+
+    # 收集 CSS：index.html <style> 块 + creative/style.css
+    css_texts = []
+    for _sm in re.finditer(r'<style[^>]*>(.*?)</style>', html, re.DOTALL):
+        css_texts.append(_sm.group(1))
+    style_css_path = os.path.join(project_dir, "creative", "style.css")
+    if os.path.exists(style_css_path):
+        with open(style_css_path, "r", encoding="utf-8", errors="ignore") as f:
+            css_texts.append(f.read())
+    css = "\n".join(css_texts)
+    # 剥离 CSS 注释：注释里的废弃/示例样式（如 /* font-size:1.2rem */）不生效，
+    # 但会被正则误判为违规。剥离后再扫描，只校验实际生效的声明。
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.DOTALL)
+
+    font_violations = []
+    if css:
+        # ① 全量扫描所有 .cls{font-size:Npx}
+        class_sizes = {}
+        for m in re.finditer(r'\.([\w-]+)\s*\{[^}]*font-size:\s*(\d+)px', css):
+            class_sizes[m.group(1)] = int(m.group(2))
+        for cls, size in sorted(class_sizes.items()):
+            if cls in FONT_SIZE_EXEMPT:
+                continue
+            if size < MIN_TEXT:
+                font_violations.append(f".{cls}={size}px < {MIN_TEXT}px(下限)")
+
+        # ② 扫描内联 style font-size（双引号 + 单引号都扫，堵单引号绕过）
+        for m in re.finditer(r'''style=["'][^"']*font-size:\s*(\d+)px''', html):
+            inline_size = int(m.group(1))
+            if inline_size < MIN_TEXT:
+                font_violations.append(f"内联 font-size={inline_size}px < {MIN_TEXT}px(下限)")
+
+        # ③ 非 px 单位 / CSS 函数 font-size —— 绕过量化校验，FAIL
+        #    门禁靠 px 绝对值做下限校验，rem/em/vw/% 与 var()/clamp()/calc() 无法量化
+        #    → 强制 px 约定（render-safety）。inherit 等关键字不触发（跟随父级，由兜底层管）。
+        REL_UNIT = r'(?:rem|em|ex|ch|vw|vh|vmin|vmax|%)'
+        CSS_FUNC = r'(?:var|clamp|min|max|calc)\('
+        # set 去重：style.css 同时存在于 index.html <style> 内嵌 + creative/style.css 文件，
+        # 双扫会让计数翻倍；用 set 统一去重。
+        non_px = set(re.findall(r'font-size:\s*[\d.]+' + REL_UNIT, css))
+        non_px |= set(re.findall(r'''style=["'][^"']*font-size:\s*[\d.]+''' + REL_UNIT, html))
+        func_fs = set(re.findall(r'font-size:\s*' + CSS_FUNC, css))
+        func_fs |= set(re.findall(r'''style=["'][^"']*font-size:\s*''' + CSS_FUNC, html))
+        if non_px:
+            font_violations.append(f"非 px 单位 font-size（无法量化，必须用 px）: {sorted(non_px)[:5]}")
+        if func_fs:
+            font_violations.append(f"CSS 函数 font-size（无法量化，必须用 px）: 检测到 {len(func_fs)} 处 var/clamp/min/max/calc")
+
+        if font_violations:
+            fail(f"字号门禁: {'; '.join(font_violations)}")
+        elif class_sizes:
+            ok(f"所有文本字号 ≥ {MIN_TEXT}px 最低标准（全量扫描 {len(class_sizes)} 个 class）")
+        else:
+            warn("CSS 中未找到命名的字号 class，跳过绝对值检查")
+    else:
+        warn("未找到 CSS（<style> 块或 creative/style.css），跳过字号绝对值检查")
 
     # ── 2. 光晕存在性 + opacity 范围 ──
     print("\n── 2. 光晕系统 ──")
@@ -217,7 +294,7 @@ def main():
     # __timelines 必须是 {} 不是 []
     if re.search(r'window\.__timelines\s*=\s*\[\]', html):
         fail("__timelines 是 []（应为 {}）")
-    elif re.search(r'window\.__timelines\s*=\s*\{', html):
+    elif re.search(r'window\.__timelines\s*=\s*(window\.__timelines\s*\|\|\s*)?\{', html):
         ok("__timelines 是 {} 对象")
     else:
         fail("__timelines 未定义或格式异常")
@@ -234,8 +311,9 @@ def main():
     else:
         fail("缺少 data-composition-id（HyperFrames 无法识别 composition）")
 
-    # 内容元素 opacity:0 检查
-    all_opacity_zero = len(re.findall(r'opacity:\s*0\s*;', html))
+    # 内容元素 opacity:0 检查（先剥离 @keyframes 动画帧，避免把动画起始 opacity:0 误判为内容隐藏）
+    html_no_kf = re.sub(r'@keyframes\s+[\w-]+\s*\{(?:[^{}]|\{[^{}]*\})*\}', '', html, flags=re.DOTALL)
+    all_opacity_zero = len(re.findall(r'opacity:\s*0\s*;', html_no_kf))
     bg_glow_opacity = len(re.findall(
         r'(?:glow-orb|grid-overlay|layer-bg)[^}]*opacity:\s*0\s*;', html, re.DOTALL
     ))

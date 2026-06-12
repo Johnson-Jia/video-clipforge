@@ -359,7 +359,7 @@ def generate_context_for_slots(
 
     contexts: list[dict] = []
     for i, seg in enumerate(segments):
-        scene_name = seg.get("scene", "")
+        scene_name = str(seg.get("scene", ""))
         scene_id = scene_name.split("-")[0] if "-" in scene_name else scene_name
 
         position, intensity = get_emotion_for_scene(i, total, emotion_curve)

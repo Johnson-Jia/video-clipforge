@@ -133,6 +133,9 @@ def _compute_phase_breakpoints(segment: dict, phase_timings: dict | None = None,
 
     # 优先：从 phase_timings.json 获取精确校准时间
     if phase_timings:
+        # 兼容旧格式：纯 list → {"scenes": list}
+        if isinstance(phase_timings, list):
+            phase_timings = {"scenes": phase_timings}
         for sc in phase_timings.get("scenes", []):
             if sc.get("scene") == scene_name:
                 bps = []
@@ -202,7 +205,7 @@ def build_scene_skeletons(project_dir: Path) -> list[SceneSkeleton]:
 
     skeletons: list[SceneSkeleton] = []
     for seg in segments:
-        scene_name = seg.get("scene", "")
+        scene_name = str(seg.get("scene", ""))
         scene_id = scene_name.split("-")[0] if "-" in scene_name else scene_name
 
         # 标准化 visual_phases：int → list，确保 Jinja2 模板兼容

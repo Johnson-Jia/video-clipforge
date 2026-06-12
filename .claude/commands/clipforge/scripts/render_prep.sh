@@ -35,7 +35,7 @@ if [ ! -s "segment_durations.json" ]; then
   echo "FAIL: segment_durations.json 不存在"
   FAIL=1
 else
-  if python3 -c "import json; json.load(open('segment_durations.json'))" 2>/dev/null; then
+  if python -c "import json; json.load(open('segment_durations.json'))" 2>/dev/null; then
     echo "PASS: segment_durations.json 有效 JSON"
   else
     echo "FAIL: segment_durations.json JSON 解析失败"

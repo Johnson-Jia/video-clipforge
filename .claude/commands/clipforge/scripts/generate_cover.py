@@ -174,7 +174,14 @@ def main():
             print(f"  - {e}", file=sys.stderr)
         sys.exit(1)
 
-    colors = derive_palette(params.get("colors", {}))
+    # Collect color overrides: prefer params["colors"] dict, but also accept
+    # root-level keys (accent_warm, accent_cool, bg_dark, etc.) for backward compat
+    root_color_keys = {"accent_warm", "accent_cool", "bg_dark", "glow_warm_opacity", "glow_cool_opacity"}
+    color_overrides = dict(params.get("colors", {}))
+    for k in root_color_keys:
+        if k in params and k not in color_overrides:
+            color_overrides[k] = params[k]
+    colors = derive_palette(color_overrides)
     params["colors"] = colors
 
     # Normalize title to nested format (old flat format → each seg = own line)

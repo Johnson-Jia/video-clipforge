@@ -33,11 +33,14 @@ echo "--- Step 1: 分段 TTS ---"
 python "${SCRIPT_DIR}/tts_segments.py" "$VOICE" "$RATE"
 
 # ── Step 2: 合并为完整旁白 ──
+# 直接遍历实际分段文件（tts_segments.py 生成 narration_seg_NN.mp3，1-indexed 补零）。
+# sort -V 版本序，避免 seg_10 排到 seg_2 之前；兼容 0-indexed 旧命名。
 echo "--- Step 2: 合并旁白 ---"
 echo "" > concat.txt
-for i in $(seq 0 $(($(ls narration_seg_*.mp3 | wc -l) - 1))); do
-    echo "file 'narration_seg_${i}.mp3'" >> concat.txt
+for f in $(ls narration_seg_*.mp3 2>/dev/null | sort -V); do
+    echo "file '${f}'" >> concat.txt
 done
+[ -s concat.txt ] || { echo "FATAL: 未找到 narration_seg_*.mp3 分段文件"; exit 1; }
 ffmpeg -y -f concat -safe 0 -i concat.txt -c copy narration.mp3
 
 # ── Step 3: 合并 SRT ──

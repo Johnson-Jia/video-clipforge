@@ -56,6 +56,7 @@
 | `cover.png` | 封面图 | 核心产出物 + 平台发布需要 |
 | `cover.html` | 封面 HTML | 封面修改后需重新渲染为 cover.png |
 | `index.html` | HTML 组合 | 修改视觉/调整场景后重新渲染必需 |
+| `creative/` | 创意碎片化源目录（style.css + sNN.html 碎片 + FILL_SPEC.md） | 单场景独立修改 + 确定性重组装必需；删了退化为在 105K 单文件里改视觉，碎片化改造价值归零 |
 | `design.md` | 视觉风格定义 | 换风格需回退到此文件 |
 | `narration_segments.json` | 分段旁白定义 | 改旁白/TTS 必需 |
 | `narration.txt` | 完整旁白文案 | 改文案必需 |
@@ -203,6 +204,7 @@ workspace/<YYYY>/<MM>/<DD>/<项目名>/
 ├── cover.png              # 封面图
 ├── cover_params.json      # 封面生成参数（换配色/内容需要）
 ├── index.html             # HTML 组合（可重渲染）
+├── creative/              # 创意碎片化源（style.css + sNN.html，单场景微调必需）
 ├── design.md              # 视觉风格
 ├── narration_segments.json # 分段旁白定义
 ├── narration.txt          # 旁白文案
