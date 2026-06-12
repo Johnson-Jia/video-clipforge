@@ -47,7 +47,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage7-delivery"
-    source: "CLAUDE.md 核心原则 5"
+    source: "clipforge.md 全局原则 10"
 
   # R-S7-006: gate.py checker 内联校验规则，编号与 gate.py 输出消息对齐
 
