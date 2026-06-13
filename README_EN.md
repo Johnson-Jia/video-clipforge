@@ -172,6 +172,16 @@ Place platform export files in `workspace/sources/视频数据/YYYY-MM-DD/`:
 - **Manual**: Run `/clipforge-feedback` to select a project for scoring calibration
 - **Guided**: Simply tell ClipForge "analyze recent playback data" and it handles the full flow
 
+The self-evolution has been upgraded to a full dynamic closed loop — **market-relative decay** (outdated patterns auto-deweighted/retired by "how much they beat the market", immune to market-wide swings), **regression attribution** (marginal net effect after controlling other variables, isolating topic×hook interactions), and **exploration-exploitation** (85% leverage strongest patterns / 15% proactively sample cold dimensions to break the "only-exploit" deadlock). See [Self-Evolution Architecture](docs/Agent自进化架构设计.md).
+
+**Visualization Dashboard:** Visualize all self-evolution data + manually tune weights:
+
+```bash
+cd evolution-dashboard && python server.py    # Open http://127.0.0.1:8765
+```
+
+Inspect per-dimension reach / retention / regression net effects + historical video performance, drag dimension-weight sliders (topic/hook/cover/narration) or adjust individual pattern weights — the next video immediately injects by the new "dimension weight × pattern weight" ranking.
+
 ## Design Philosophy
 
 ClipForge is inspired by two open-source projects:
@@ -230,14 +240,17 @@ clipforge/
 │       │   ├── _category-schema.md        # Category config format spec
 │       │   ├── github.md                  # GitHub category
 │       │   └── intro.md                   # Channel intro category
-│       ├── engine/                        # Self-evolution engine (gates/attribution/trace/observability/lint)
-│       ├── rules/                         # Constraint rules (YAML)
+│       ├── engine/                        # Self-evolution engine (gates/attribution/trace/observability)
+│       │   └── lib/data_paths.py          # Unified data-path resolution
+│       ├── rules/                         # Constraint rules (static, YAML)
 │       ├── skills/                        # Skill declarations (four-atom model)
-│       ├── patterns/                      # Empirical patterns (data-driven)
-│       ├── scripts/                       # Tool scripts
+│       ├── patterns/seed/                 # Hand-authored seed patterns (static, in-repo)
+│       ├── scripts/                       # Tool scripts (evolution/migration/backfill)
 │       └── components/                    # Visual component library (52 total)
+├── evolution-dashboard/                   # Visualization dashboard (standalone service)
 ├── install.sh                             # One-shot dependency installer
 └── workspace/                             # Output (gitignored)
+    └── evolution/                         # Self-evolution runtime data (patterns/traces/deltas/thresholds)
 ```
 
 ## License
