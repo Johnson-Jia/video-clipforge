@@ -22,7 +22,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.2"
+    source: "shared/render-safety.md §1.4"
 
   - id: "R-R-003"
     type: FORBIDDEN_ACTION
@@ -35,7 +35,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.4a"
+    source: "shared/render-safety.md §1.8"
 
   - id: "R-R-004"
     type: FORBIDDEN_ACTION
@@ -48,7 +48,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.3"
+    source: "shared/render-safety.md §1.5"
 
   - id: "R-R-005"
     type: FORBIDDEN_ACTION
@@ -61,7 +61,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.5"
+    source: "shared/render-safety.md §1.10"
 
   - id: "R-R-006"
     type: FORBIDDEN_ACTION
@@ -74,7 +74,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.7"
+    source: "shared/render-safety.md §1.13"
 
   - id: "R-R-007"
     type: FORBIDDEN_ACTION
@@ -113,7 +113,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "feedback-bg-fx-quality.md — 2026-05-30 用户反馈 bg 层质量差"
+    source: "用户反馈: bg 层视觉质量差(bg 组件单薄)"
 
   - id: "R-R-010"
     type: FORBIDDEN_ACTION
@@ -126,7 +126,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "feedback-bg-fx-quality.md — 2026-05-30 用户反馈场景间视觉同质化"
+    source: "用户反馈: 相邻场景视觉同质化"
 
   - id: "R-R-011"
     type: FORBIDDEN_METHOD
@@ -139,7 +139,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.1b"
+    source: "shared/render-safety.md §1.3"
 
   - id: "R-R-012"
     type: FORBIDDEN_ACTION
@@ -152,7 +152,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/render-safety.md §1.6"
+    source: "shared/render-safety.md §1.11"
 
   - id: "R-R-013"
     type: FORBIDDEN_ACTION
@@ -165,7 +165,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §2.5 — 2026-05-30 VibeCoding 大赏视频 20/22 场景 fx 无动画事故"
+    source: "shared/render-safety.md §2.5 — fx 层无 GSAP 动画"
 
   - id: "R-R-014"
     type: FORBIDDEN_ACTION
@@ -178,7 +178,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "feedback-missing-dims-black-screen.md — 2026-05-30 VibeCoding 视频 100% 黑帧事故"
+    source: "事故: bg 层缺少尺寸属性导致黑帧"
 
   - id: "R-R-015"
     type: FORBIDDEN_ACTION
@@ -191,7 +191,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §3.1 — 2026-05-30 竖屏文字手机端不可读事故"
+    source: "shared/render-safety.md §3.1 — 竖屏文字手机端不可读"
 
   - id: "R-R-016"
     type: FORBIDDEN_METHOD
@@ -204,7 +204,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §3.2 — 2026-05-30 用户反馈小标签视觉廉价"
+    source: "shared/render-safety.md §3.2 — 用户反馈小标签视觉廉价"
 
   - id: "R-R-017"
     type: REQUIRED_METHOD
@@ -217,7 +217,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage6-production
-    source: "stages/stage6-production.md §动画规则 R15 — 2026-05-31 A/V 同步修复"
+    source: "stages/stage6-production.md §动画规则 R19"
 
   - id: "R-R-018"
     type: REQUIRED_METHOD
@@ -231,7 +231,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage7-delivery
-    source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"
+    source: "stages/stage7-delivery.md §7.1 封面生成(7 层模板)"
 
   - id: "R-R-019"
     type: FORBIDDEN_METHOD
@@ -244,7 +244,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage7-delivery
-    source: "stages/stage7-delivery.md §封面铁律 — 2026-05-31 封面偏离模板事故"
+    source: "stages/stage7-delivery.md §7.1 封面生成(配色变量)"
 
   - id: "R-R-020"
     type: FORBIDDEN_ACTION
@@ -258,7 +258,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage6-production
-    source: "shared/render-safety.md §3.5 — 2026-05-31 VibeCoding 大赏视频内容偏左事故"
+    source: "shared/render-safety.md §3.5 — 横屏内容视觉重心偏移"
 
   - id: "R-R-021"
     type: REQUIRED_METHOD

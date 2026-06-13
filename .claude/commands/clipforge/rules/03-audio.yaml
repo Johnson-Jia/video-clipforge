@@ -86,7 +86,7 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "stage4-audio.md + feedback-no-broadcast-voice.md"
+    source: "stage4-audio.md + 用户反馈: 避免播音腔"
 
   - id: "R-A-008"
     type: FORBIDDEN_ACTION
@@ -99,12 +99,12 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "事故: 2026-05-28 ai-training-impact BGM 仅 102s / 旁白 588s"
+    source: "事故: BGM 时长远短于旁白"
 
   - id: "R-A-012"
     type: REQUIRED_METHOD
     pattern: "≥3min 视频使用单首 BGM 循环"
-    positive: "≥3min 视频必须生成 bgm_playlist.json，含 ≥2 种情绪段（hook→mysterious、climax→epic、reflection→contemplative），由 bgm_pipeline.sh Step 4p 按顺序 crossfade 合并"
+    positive: "≥3min 视频必须生成 bgm_playlist.json，含 ≥2 种情绪段（hook→mysterious、climax→epic、reflection→contemplative），由 bgm_pipeline.sh Step 8 按顺序 crossfade 合并"
     guardrail: "视频 ≥3min 但无 bgm_playlist.json 或 segments 长度 < 2"
     detection:
       keywords: []

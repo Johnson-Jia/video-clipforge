@@ -9,7 +9,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage6-production"
-    source: "stage6-production.md §6.4a"
+    source: "stage6-production.md §6.6"
 
   - id: "R-S6-002"
     type: FORBIDDEN_ACTION
@@ -46,7 +46,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage6-production"
-    source: "feedback-template-as-reference.md"
+    source: "用户反馈: 组件应作参考而非机械套用"
 
   - id: "R-S6-005"
     type: FORBIDDEN_METHOD
@@ -58,7 +58,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "shared/render-safety.md §1.5"
+    source: "shared/render-safety.md §1.10"
 
   - id: "R-S6-006"
     type: FORBIDDEN_ACTION
@@ -70,7 +70,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "feedback-cleanup-overdeletion.md"
+    source: "用户反馈: cleanup 过度删除有效文件"
 
   - id: "R-S6-007"
     type: FORBIDDEN_ACTION
@@ -84,7 +84,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 2026-05-28 ai-training-impact 渲染 62% 崩溃 + service-as-software 同类事故"
+    source: "事故: window.__hf 缺失导致渲染超时崩溃"
 
   - id: "R-S6-008"
     type: FORBIDDEN_ACTION
@@ -98,7 +98,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 2026-05-28 ai-training-impact s1/s19 缺少 id 导致首尾动画丢失"
+    source: "事故: 场景包裹 div 缺少 id 导致 GSAP 选择器失效"
 
   - id: "R-S6-009"
     type: FORBIDDEN_ACTION
@@ -112,7 +112,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 2026-05-28 ai-training-impact 缺少 composition 结构导致渲染文字重叠"
+    source: "事故: 缺少 composition 结构导致渲染文字层层覆盖"
 
   - id: "R-S6-010"
     type: FORBIDDEN_ACTION
@@ -126,7 +126,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 2026-05-28 ai-training-impact output_no_bgm.mp4 纯黑屏"
+    source: "事故: output_no_bgm.mp4 纯黑屏"
 
   - id: "R-S6-011"
     type: FORBIDDEN_METHOD
@@ -140,7 +140,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 2026-05-30 github-trending 使用 CSS class 切换可见性导致黑屏"
+    source: "事故: CSS class 切换可见性导致黑屏"
 
   - id: "R-S6-012"
     type: FORBIDDEN_ACTION
@@ -154,7 +154,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 2026-05-30 github-trending output.mp4 仅 17 kbps（黑屏）"
+    source: "事故: 渲染码率异常低疑似黑屏"
 
   # R-S6-020~022: gate.py checker 内联校验规则，无独立 inject prompt
   # 编号与 gate.py 输出消息对齐，跳过 013-019 保持引用一致

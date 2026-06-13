@@ -95,7 +95,7 @@ env_check.sh
   → s6_prepare.sh（phase 校准 + creative/ 碎片骨架 + visual_context.json）
   → [LLM 填 creative/sNN.html 碎片]
   → s6_assemble.sh（碎片验证 + 结构校验 + 组装 index.html + 导演门禁）
-  → s6_render.sh（lint + render + build_no_bgm + stage6_gate）
+  → s6_render.sh（渲染前检查 + 导演门禁 + render + build_no_bgm + 完成门禁）
   → s7_delivery.sh（封面生成 + 门禁 + 拼接 + Mastering → final.mp4 / final_no_bgm.mp4）
   → [machine-scoring gate 全量 → score_report.json]
   → cleanup_project.sh（白名单清理 → .cleaned）
@@ -238,6 +238,10 @@ Layer 4  cover_check.py + validate_cover.py（stage7）
          封面 7 层结构 + PNG 文字像素
 ```
 
+> **Layer 编号是门禁分类标识，非执行顺序。** stage6 实际执行时序：Layer 3（`validate_html_structure`，组装阶段）→ Layer 1（`director_gate`，渲染前 fail-fast）→ HyperFrames 渲染 → Layer 0（`gate.py`）+ Layer 2（`frame_analysis`，渲染后非阻塞，完成门禁）。Layer 4 为 stage7 封面专属，故 stage6 = **4 层门禁（Layer 0-3）**。
+>
+> **director_gate 三重调用为设计性冗余**：assemble（组装后即时校验）、render Step 4（渲染前 fail-fast，省 render 开销）、stage6_gate（独立入口自包含）各跑一次，幂等低开销，不删除。
+
 | Stage | Layer 0（gate.py） | Layer 1-4（专用） |
 |-------|--------------------|------------------|
 | 0-3 | stage 对应 checker 子集（hook_pattern/no_forbidden_speech 等） | — |
@@ -304,7 +308,7 @@ env-check → content → design ─┬→ narration → audio ──┬→ vide
 | `requires_optional` | 软依赖，有则等无则忽略 | video 等 assets |
 | `condition` | 条件触发 | movie-clips（narration 含 video_clip） |
 
-> schema.yaml 中 `template` 字段映射到 `skills/*.yaml` 的 skill id，用于 inject.py / gate.py 的 `--skill` 参数。`generates` 文件全存在 = artifact 完成。
+> schema.yaml 的 `template` 字段指向 stage/shared 的 **markdown 文档**（如 `stages/stage4-audio` → `stages/stage4-audio.md`）。大部分 artifact 的文档名同时是 `skills/*.yaml` 的 skill id（供 inject/gate `--skill`）。**内联步骤**（machine-scoring）无 skill yaml，由 `gate.py --generate-report` 执行，不走四原子体系。`generates` 文件全存在 = artifact 完成。
 
 ---
 
@@ -320,6 +324,7 @@ workspace/
     ├── narration.txt              # narration（一行一段）
     ├── narration_segments.json    # narration（分段+emotion/visual_intent/visual_phases）
     ├── segment_durations.json     # audio（每段实际时长 + meta.bgm_volume，Stage 6 唯一时长源）
+    ├── sentence_timestamps.json / phase_timings.json   # ★ 运行时中间产物（TTS 强制对齐 + phase 校准）；非 artifact 完成判据，缺失由脚本运行时校验，不进 DAG 状态
     ├── narration.mp3 / narration.srt / bgm.wav
     ├── clips_16x9/ movie_audio.wav clip_durations.json   # movie-clips（仅电影模式）
     ├── assets/manifest.md         # assets（可选）

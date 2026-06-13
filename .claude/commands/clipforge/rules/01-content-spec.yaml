@@ -62,4 +62,4 @@ rules:
     severity: HARD
     class: EXPERIENTIAL
     scope: GLOBAL
-    source: "shared/shared-rules.md §6 + shared/render-safety.md §1.1a"
+    source: "shared/shared-rules.md §6 + shared/render-safety.md §1.2"

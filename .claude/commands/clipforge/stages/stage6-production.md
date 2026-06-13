@@ -214,7 +214,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 2. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 3. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 4. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
-5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.4a 的匹配流程生成
+5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.5 的匹配流程生成
 6. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
@@ -270,7 +270,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 
 > HTML 写完后，扫一遍 `stage6-components.md` 的 10 条反面清单。
 
-### 导演自审（Layer 3 — HTML 写完后、渲染前必须执行）
+### 导演自审（创意轨自检 — HTML 写完后、渲染前的 LLM Q1-Q5，非脚本门禁；与 director_gate[Layer 1] 区分）
 
 > 逐场景检查 HTML 是否实现了导演决策。
 
@@ -318,7 +318,7 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 - **bg 亮度底线**（gate: frame_analysis.py §4）：bg 组件底色亮度 L ≥ 12%（hsl 第三参数），装饰元素（线条/光晕/粒子）alpha ≥ 0.12。底色过暗或装饰 alpha 过低 → 渲染平均亮度 < 25/255 → frame_analysis warn/fail。暗调场景（危机/破产）通过降低装饰密度实现"暗"，底色仍需 L ≥ 12%
 - fx/content 层的组件库仍是工具箱和灵感来源，不强制
 
-## 6.4a 特效工坊（组件匹配 + 新特效创建）
+## 6.5 特效工坊（组件匹配 + 新特效创建）
 
 > **两阶段触发：**
 > 1. §6.4 step 5 负责运行组件匹配 — 如果 `component_manifest.md` 不存在，执行下方匹配流程
@@ -380,7 +380,7 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 - **content**: project_full_card (library) — params: {rank: 1}
 ```
 
-## 6.4b 视觉分镜（Visual Phasing）
+## 6.6 视觉分镜（Visual Phasing）
 
 > **当场景时长 >15 秒时必须使用。** 完整规范见 `clipforge/shared/visual-phasing`。
 
@@ -416,7 +416,7 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
    - **门禁自动校验**：`gate.py` 的 `scene_ids_match` 检查器会交叉验证 HTML 与 segments 的映射
 6. 根元素必须有 `data-start="0"`
 7. **`data-start` 和 `data-duration` 使用秒（不是毫秒）**
-8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**（完整代码模板见 `shared/render-safety.md` §2）
+8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**（完整代码模板见 `shared/render-safety.md` §1.13）
    - **HARD，gate: hyperframes_api_valid**
    - **门禁自动校验**：`gate.py` 的 `hf_api_present` 检查器会扫描 index.html 中的 `window.__hf` 声明、`duration` 字段和 `seek` 函数
 9. **GSAP 初始化模板（唯一允许的写法，R-S6-026 HARD，gate: gsap_pattern）**:
@@ -479,7 +479,7 @@ window.__timelines["main"] = tl;
 
 > **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
-10. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.phase` 的 padding 负责（见 `shared/render-safety.md` §1.3）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
+10. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.phase` 的 padding 负责（见 `shared/render-safety.md` §1.5）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
 11. **DOM 三层直系铁律**（R-S6-025 HARD，gate: no_scene_wrap）:
    `.clip` 的直接子元素必须且仅包含 `.layer-bg` + `.layer-fx` + `.layer-content`。
    禁止任何中间包裹层（`scene-wrap`、额外 `div` 容器等）。内容容器使用 `.phase`（`position:absolute; inset:0; padding:安全区; display:flex; flex-direction:column; justify-content:center; opacity:1`）。
@@ -563,7 +563,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 24. 渲染前确保 `lint` 通过
 25. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
-## 6.5 画布方向
+## 6.7 画布方向
 
 方向由 `design.md` 的 `orientation` 字段决定：
 
@@ -574,7 +574,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 读取方法：解析 `design.md` 中 `orientation:` 行的值。无此字段按 portrait 处理。
 
-方向判定：根组合 `data-width` / `data-height` — `h > w` 为竖屏，`w > h` 为横屏。字号、padding、布局按方向自动切换（详见 `director-toolkit.md` 和 `render-safety.md §1.3`）。
+方向判定：根组合 `data-width` / `data-height` — `h > w` 为竖屏，`w > h` 为横屏。字号、padding、布局按方向自动切换（详见 `director-toolkit.md` 和 `render-safety.md §1.5`）。
 
 ### 横屏视觉增强（强制性）
 
@@ -644,7 +644,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 
 ### 平台安全区域
 
-**竖屏安全区 padding：** `180px 90px 220px 90px`（完整平台安全区域表见 `render-safety.md` §1.3）
+**竖屏安全区 padding：** `180px 90px 220px 90px`（完整平台安全区域表见 `render-safety.md` §1.5）
 
 **横屏（1920×1080）：**
 - 顶部危险区：上 60px
@@ -653,7 +653,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 - 安全内容区：60px ~ 1020px（垂直），120px ~ 1800px（水平）
 - padding：`60px 120px 60px 120px`
 
-## 6.6 渲染管线（全自动）
+## 6.8 渲染管线（全自动）
 
 > `s6_render.sh` 一次性完成: 渲染前检查 → 导演门禁 → BGM 音量注入 → renderbak 隔离 → HyperFrames lint + render → renderbak 恢复 → output_no_bgm 合成 → 音频验证 → 完成门禁。
 
@@ -675,10 +675,20 @@ final_no_bgm.mp4  = cover.png + output_no_bgm.mp4（Stage 7 拼接）
 > 封面帧拼接由 Stage 7 的 `s7_delivery.sh` 统一处理，Stage 6 不负责。
 > **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
 
+## 6.9 无 BGM 版本合成（output_no_bgm.mp4）
+
+> 由 `s6_render.sh` Step 10 触发，调用 `scripts/build_no_bgm.sh` 执行合成。
+
+**合成规则：**
+- 输入：`output.mp4` 的**视频轨**（`-an`）+ `narration.mp3` 的**音频轨**（`-vn`）
+- 输出：`output_no_bgm.mp4`（仅含旁白，无 BGM）
+- **禁止**：从 `output.mp4` 提取音频轨（只有 1 条混合轨，BGM 不可分离，见 §6.8）
+- 验证：产出 `output_no_bgm.mp4`，Stage 7 前置检查依赖此文件（见 stage7-delivery.md §7.0）
+
 ---
 
 ## 约束声明
 
-**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.7）= 双版本输出失败。
+**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.9）= 双版本输出失败。
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage6-production` 获取完整约束 prompt。

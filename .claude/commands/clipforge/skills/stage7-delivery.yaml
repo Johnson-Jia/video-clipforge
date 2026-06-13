@@ -18,7 +18,7 @@ skill:
     preferences:
       - text: "封面设计基于 7 层模板，从内容推导而非套用"
         weight: "HIGH"
-        source_pattern: "P-feedback-cover-design"
+        source_pattern: "P-cover-design"
       - text: "标签组合使用 broad + niche + trending 三层结构"
         weight: "MEDIUM"
   guard:

@@ -8,7 +8,7 @@
 
 从源视频文件提取指定时间码片段，拼接并添加交叉溶解转场，提取原音构建时间轴音频。
 
-## 1. 片段提取
+## §1 片段提取
 
 从 `source_clips` 逐段提取，统一编码为项目分辨率（1920x1080 横屏 或 1080x1920 竖屏）。
 
@@ -30,7 +30,7 @@ ffmpeg -y -i "video/SOURCE_FILE.mp4" -ss START -to END \
 ffprobe -v quiet -show_entries format=duration -of csv=p=0 "clips_16x9/clip_{scene_id}_seg_{N}.mp4"
 ```
 
-## 2. 转场拼接（xfade）
+## §2 转场拼接（xfade）
 
 多个片段用 ffmpeg `xfade` + `acrossfade` 拼接，添加交叉溶解转场消除硬切。脚本自动检测片段数量（1段→复制，2段→两路xfade，3+段→链式xfade）。
 
@@ -48,7 +48,7 @@ ACTUAL=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 clips_16x9/c
 echo "Scene {scene_id}: ${ACTUAL}s"
 ```
 
-## 3. 原音提取
+## §3 原音提取
 
 从每个拼接后的片段提取音频为 PCM WAV：
 
@@ -58,7 +58,7 @@ ffmpeg -y -i clips_16x9/clip_{scene_id}_xfade.mp4 \
   clips_16x9/clip_{scene_id}_audio.wav
 ```
 
-## 4. movie_audio.wav 构建
+## §4 movie_audio.wav 构建
 
 将所有电影片段的音频定位到时间轴对应位置，合并为单轨。
 
@@ -80,7 +80,7 @@ ffmpeg -y \
 
 > **adelay 单位是毫秒。** `data-start` 是秒，需乘 1000。
 
-## 5. 时长报告
+## §5 时长报告
 
 输出 `clip_durations.json`，供 Stage 6（设置 `data-duration`）和 Stage 4（静音填充）使用：
 
@@ -95,7 +95,7 @@ ffmpeg -y \
 
 > **Stage 6 用 `actual_duration` 设置 HTML 中 `<video>` 元素的 `data-duration`。** `data-start` 由前面所有场景的 duration 累加得出。
 
-## 6. HTML 中的视频嵌入规则
+## §6 HTML 中的视频嵌入规则
 
 `<video>` 元素必须是 composition 根元素的直接子元素（HyperFrames 约束）：
 

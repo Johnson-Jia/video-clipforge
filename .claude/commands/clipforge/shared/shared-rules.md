@@ -175,7 +175,7 @@
 | > 40 秒 | ⌈duration / 14⌉ 个 phase | 按此公式计算最少 phase 数 |
 
 - **Phase** = clip 内的一次视觉内容切换（不是新 clip，不拆分音频）
-- Phase 间切换由 GSAP timeline 驱动（详见 `shared/render-safety.md` §1.1a 和 `stages/stage6-production.md` §6.4b）
+- Phase 间切换由 GSAP timeline 驱动（详见 `shared/render-safety.md` §1.2 和 `stages/stage6-production.md` §6.6）
 - Phase 切换 ≠ 硬切：使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0（完全消失，避免重叠重影），新 phase 从 0 渐显到 1
 - **相邻 phase 的 visual_type 不应重复**（视觉多样性）
 - **Phase 断点禁止均分**——详见 `shared/visual-phasing.md` §4
@@ -186,8 +186,8 @@
 
 - **禁止 `.anim-in` / CSS `opacity:0` 入场**——HyperFrames seek 不执行 CSS animation
 - **禁止 HTML 实体字符**——改用 Unicode 直接输入（`★` 而非 `&#9733;`）
-- **安全区 padding `180px 90px 220px 90px` 只设一层**（`.scene-wrap` 或 `.phase` 二选一，禁止双重——详见 `shared/render-safety.md` §1.4a）
-- **`.clip` 必须 `inset:0` 铺满全画幅**，禁止 top/right/bottom/left 偏移（会导致背景裁剪 → 黑边，详见 `shared/render-safety.md` §1.3a）
+- **安全区 padding `180px 90px 220px 90px` 只设一层**（`.scene-wrap` 或 `.phase` 二选一，禁止双重——详见 `shared/render-safety.md` §1.8）
+- **`.clip` 必须 `inset:0` 铺满全画幅**，禁止 top/right/bottom/left 偏移（会导致背景裁剪 → 黑边，详见 `shared/render-safety.md` §1.6）
 - **`.phase` 统一使用 `display:flex;flex-direction:column;justify-content:center` 垂直居中**——不需要手动加 inline style，CSS class 已包含
 - **渲染前移除非 index.html 的 HTML 文件**——避免 multiple_root_compositions 冲突
 - **每个场景必须三层**：`.layer-bg`(z:1) + `.layer-fx`(z:2) + `.layer-content`(z:3)

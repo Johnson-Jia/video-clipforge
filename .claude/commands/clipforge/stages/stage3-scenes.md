@@ -318,7 +318,7 @@ scenes:
 | `commentary` | string/null | 感性评语（仅标准模式项目场景），≤12 字，数据惊叹或场景感慨 |
 | `contrarian_angle` | string/null | 反直觉角度（仅标准模式项目场景），用于旁白钩子和发布文案 |
 | `visual_phases` | array | **视觉分镜（时长 >15s 时必填）**。每项含 `focus`(内容焦点)、`visual_type`(视觉类型)、`key_data`(画面数据/关键词列表)、`layout_hint`(可选，布局微调)。时长 ≤15s 的场景可传空数组 `[]` |
-| `visual_intent` | object/null | **导演视觉意图**。每场景 × 三层（bg/fx/content）的视觉指导，供 Stage 6 §6.4a 组件匹配使用。短场景（≤4s）可传 null |
+| `visual_intent` | object/null | **导演视觉意图**。每场景 × 三层（bg/fx/content）的视觉指导，供 Stage 6 §6.5 组件匹配使用。短场景（≤4s）可传 null |
 
 ### visual_phases 类型定义
 
@@ -347,7 +347,7 @@ scenes:
 
 ### visual_intent 编写规则
 
-为每个场景的三层分别描述导演的视觉意图，供 Stage 6 §6.4a 组件匹配使用。
+为每个场景的三层分别描述导演的视觉意图，供 Stage 6 §6.5 组件匹配使用。
 
 **结构：** 每层一个对象，不需要的层传 `null`。
 

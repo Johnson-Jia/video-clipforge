@@ -64,15 +64,15 @@ python "${SCRIPT_DIR}/bgm_validate.py" "$BGM_FILE"
 BGM_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
 echo "BGM 时长: ${BGM_DUR}s"
 
-# ── Step 2.5: BGM 响度标准化 ──
-echo "--- Step 2.5: BGM 响度标准化 ---"
+# ── Step 3: BGM 响度标准化 ──
+echo "--- Step 3: BGM 响度标准化 ---"
 ffmpeg -y -i "$BGM_FILE" -af "loudnorm=I=-18:TP=-2" -c:a pcm_s16le -ar 44100 bgm_normalized.wav 2>/dev/null
 mv "$BGM_FILE" bgm_pre_norm.wav
 mv bgm_normalized.wav "$BGM_FILE"
 echo "OK: BGM 已标准化到 -18 LUFS, TP≤-2 dB（动态保留）"
 
-# ── Step 3: 音量校准（基于标准化后的 BGM 测量） ──
-echo "--- Step 3: 音量校准 ---"
+# ── Step 4: 音量校准（基于标准化后的 BGM 测量） ──
+echo "--- Step 4: 音量校准 ---"
 BGM_MEAN=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | grep mean_volume | grep -oP '[\-\d.]+(?= dB)')
 BGM_MAX=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
 NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
@@ -83,8 +83,8 @@ echo "旁白: max=${NARR_MAX} dB"
 python "${SCRIPT_DIR}/bgm_gap_check.py" "$BGM_MEAN" "$BGM_MAX" "$NARR_MAX"
 echo "OK: 音量校准完成"
 
-# ── Step 3.5: bgm_volume 合理性门禁 ──
-echo "--- Step 3.5: bgm_volume 合理性门禁 ---"
+# ── Step 5: bgm_volume 合理性门禁 ──
+echo "--- Step 5: bgm_volume 合理性门禁 ---"
 BGM_VOL=$(python -c "import json; print(json.load(open('segment_durations.json', encoding='utf-8'))['meta']['bgm_volume'])")
 echo "bgm_volume = ${BGM_VOL}"
 if [ "$(python -c "print(1 if float('${BGM_VOL}') < 0.01 else 0)")" -eq 1 ]; then
@@ -97,7 +97,7 @@ if [ "$(python -c "print(1 if float('${BGM_VOL}') > 1.0 else 0)")" -eq 1 ]; then
 fi
 echo "OK: bgm_volume=${BGM_VOL} 在物理范围内 (0, 1.0]"
 
-# ── Step 3.6: 写入 bgm_source 到 segment_durations.json ──
+# ── Step 6: 写入 bgm_source 到 segment_durations.json ──
 BGM_BASENAME=$(basename "$BGM_FILE")
 python -c "
 import json
@@ -108,8 +108,8 @@ with open('segment_durations.json', 'w', encoding='utf-8') as f:
 "
 echo "OK: meta.bgm_source = ${BGM_BASENAME}"
 
-# ── Step 4: BGM 时长对齐（以旁白总时长为基准） ──
-echo "--- Step 4: BGM 时长对齐 ---"
+# ── Step 7: BGM 时长对齐（以旁白总时长为基准） ──
+echo "--- Step 7: BGM 时长对齐 ---"
 
 # 优先从 segment_durations.json 获取精确旁白总时长，兜底 narration.mp3
 TOTAL_DUR=$(python -c "
@@ -128,9 +128,9 @@ echo "旁白: ${TOTAL_DUR}s | BGM: ${BGM_DUR}s | 目标: ${TARGET_DUR}s"
 RATIO=$(python -c "print(round($TOTAL_DUR / $BGM_DUR, 1))" 2>/dev/null || echo "1")
 echo "旁白/BGM 比率: ${RATIO}x"
 
-# ── Step 4p: bgm_playlist.json 情绪分段模式（长视频多情绪 BGM，最高优先）──
+# ── Step 8: bgm_playlist.json 情绪分段模式（长视频多情绪 BGM，最高优先）──
 if [ -f "bgm_playlist.json" ]; then
-    echo "--- Step 4p: BGM 情绪分段拼接（bgm_playlist.json）---"
+    echo "--- Step 8: BGM 情绪分段拼接（bgm_playlist.json）---"
     PLAYLIST_VERIFY=$(python -c "
 import json, os
 try:
@@ -244,7 +244,7 @@ fi
 
 if [ "${EXTEND_MODE:-false}" = true ] || [ "$(python -c "print(1 if float('${RATIO}') > 3 else 0)")" -eq 1 ]; then
     # ── 多首拼接模式 ──
-    echo "--- Step 4a: 多首 BGM 拼接 ---"
+    echo "--- Step 9: 多首 BGM 拼接 ---"
 
     BGM_LIB="${BGM_LIB_DIR:-workspace/bgm}"
 
@@ -360,7 +360,7 @@ EOFMarker
     fi
 fi
 
-# ── 默认：concat 拼接模式 ──
+# ── Step 10: 默认 concat 拼接模式 ──
 echo "拼接对齐: ${BGM_DUR}s × N → ${TARGET_DUR}s"
 
 COPIES=$(python -c "import math; print(math.ceil($TARGET_DUR / $BGM_DUR + 0.5))")
