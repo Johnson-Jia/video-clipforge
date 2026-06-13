@@ -44,6 +44,8 @@ body{background:#000;color:#fff;overflow:hidden;width:1080px;height:1920px;}
 .layer-fx{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 .layer-content{position:relative;z-index:3;height:100%;color:#fff;font-size:48px;}
 .phase{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:180px 90px 220px 90px;}
+/* 兜底：.phase 内文本居中容器的直接块级子元素水平居中（根治 max-width 块缺 margin:0 auto 导致整块偏左；text-align 只居中行内内容不居中块盒子）*/
+.phase [style*="text-align:center"] > div,.phase [style*="text-align: center"] > div{margin-left:auto;margin-right:auto;}
 audio{display:none;}
 .fx-glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;}
 .fx-line{position:absolute;height:1px;pointer-events:none;}
@@ -243,6 +245,15 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_in
             starts[seg_idx] if seg_idx < len(starts) else 0.0,
         )
         sid = f"s{seg_idx + 1:02d}"
+        # Phase 初始化：场景开始时隐藏 phase-2+（CSS 默认 opacity:1，
+        # 若不初始化，切点前所有 phase 叠加显示）。切点 GSAP 再设回 1。
+        phases_in_scene = sorted({p.get("phase", 1) for p in sc.get("phases", [])})
+        if len(phases_in_scene) > 1:
+            extra = ", ".join(
+                f"'#{sid} .phase-{ph}'" for ph in phases_in_scene if ph > 1
+            )
+            if extra:
+                lines.append(f"tl.set([{extra}], {{opacity:0}}, {base:.2f});")
         for p in sc.get("phases", []):
             if p.get("phase", 1) > 1:
                 t = base + p["start_offset"]
