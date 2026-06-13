@@ -70,7 +70,7 @@ content:
   optional_deps: ["gh"]
   sensitive_keywords:
     finance: []
-    extreme_words: []
+    extreme_words: ["病历", "处方", "确诊", "诊疗"]
     hype_numbers: []
     ai_deepfake: []
 
@@ -612,6 +612,7 @@ true — GitHub 系列视频启用码力角色。
 | 与前次数据完全相同 | 说明命中缓存，需刷新数据源 |
 | 中文描述从 owner/repo 名推断 | 描述必须忠实翻译 raw `description` 字段，owner 名（如 refactoringhq）不代表项目功能 |
 | content_ready.txt 出现 raw_trending.json 中不存在的项目 | 杜撰项目，Stage 1 门禁会拦截 |
+| 项目属违法/盗版工具领域 | VPN 翻墙（如 MasterDnsVPN）、IPTV 盗版直播源（如 iptv-org）、破解/盗链工具涉及违法违规，零容忍剔除。无安全替代时宁可少一个项目。stage1/stage6/stage7 的 `no_forbidden_speech` 门禁会兜底拦截（翻墙/电视直播源/直播源/破解版/盗版/盗链） |
 
 ### Common Rationalizations（GitHub 特定）
 
@@ -622,4 +623,6 @@ true — GitHub 系列视频启用码力角色。
 | "跳过数据验证，直接开始" | 错误 Star 数进入视频 → 观众评论区纠正 → 伤害频道可信度 |
 | "之前的项目列表不用检查" | 不检查重复 → 连续两期视频介绍同样的项目 → 观众流失 |
 | "owner 名叫 refactoringhq，这肯定是个重构工具" | owner 名 ≠ 项目功能。tolaria 的 owner 是 refactoringhq，但项目实际是 markdown 知识库工具。只看 description 字段 |
+| "这个 VPN/IPTV 项目技术很新颖，讲技术原理不违法" | 涉及翻墙的 VPN、盗版 IPTV 直播源无论技术多新颖都属违法/盗版工具，零容忍剔除。可换 PowerToys、LMCache 等合法替代 |
+| "医疗 AI 项目讲本地化隐私保护是正面宣传" | "病历/处方/确诊/诊疗"等词触发平台医疗资质审核。openmed 类项目必须中性化（只讲"本地推理框架"，不提病历/诊断），或直接剔除 |
 | "原始描述太短/太抽象，我补充一下让它更生动" | 翻译可口语化，但核心语义不得偏离原始 description。要补充细节必须读 README 并标注来源 |

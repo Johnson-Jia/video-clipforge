@@ -37,6 +37,9 @@ skill:
         params:
           content_file: "content_ready.txt"
           raw_file: "raw_trending.json"
+      - gate: no_forbidden_speech
+        params:
+          files: ["content_ready.txt"]
     soft: []
     max_retries: 2
   trace:
