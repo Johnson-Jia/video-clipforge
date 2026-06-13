@@ -89,6 +89,7 @@ class GateType(str, Enum):
     bg_component_source = "bg_component_source"
     description_fidelity_valid = "description_fidelity_valid"
     font_consistency = "font_consistency"
+    list_alignment_valid = "list_alignment_valid"
 
 
 class Rigor(str, Enum):

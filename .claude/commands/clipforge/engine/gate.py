@@ -1709,6 +1709,130 @@ def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, st
 GATE_CHECKERS[GateType.portrait_typography_valid] = check_portrait_typography
 
 
+def _collect_top_level_divs(html: str, start: int = 0, limit: int | None = None) -> list[str]:
+    """收集 html 中深度为 1（顶层）的所有完整 div 块。
+
+    用 <div / </div> 深度栈匹配，处理任意嵌套。limit 提前终止。
+    - start 指向某个 <div 开标签 + limit=1 → 返回该 div 的完整闭合块（用于取容器）
+    - 对"剥掉外层后的 inner"调用、不限 limit → 得到其全部直接子 div
+    依赖规整 HTML（LLM 渲染产物无 <div> 碎片注释），SOFT 门禁容许极小概率误读。
+    """
+    blocks: list[str] = []
+    n = len(html)
+    i = start
+    depth = 0
+    cur_start: int | None = None
+    while i < n:
+        open_idx = html.find("<div", i)
+        close_idx = html.find("</div>", i)
+        if open_idx == -1 and close_idx == -1:
+            break
+        if open_idx != -1 and (close_idx == -1 or open_idx < close_idx):
+            if depth == 0:
+                cur_start = open_idx
+            depth += 1
+            gt = html.find(">", open_idx)
+            if gt == -1:
+                break
+            i = gt + 1
+        else:
+            depth -= 1
+            close_end = close_idx + len("</div>")
+            if depth == 0 and cur_start is not None:
+                blocks.append(html[cur_start:close_end])
+                cur_start = None
+                if limit is not None and len(blocks) >= limit:
+                    return blocks
+            i = close_end
+    return blocks
+
+
+def _strip_outer_div(block: str) -> str:
+    """剥掉 div 块最外层开/闭标签，返回内部 HTML。"""
+    m = re.match(r'<div\b[^>]*>', block)
+    if not m:
+        return block
+    inner_start = m.end()
+    end = block.rfind("</div>")
+    return block[inner_start:end] if end != -1 else block[inner_start:]
+
+
+def _row_has_width_constraint(child_block: str, equal_width_classes: list[str]) -> bool:
+    """判断子 div 是否有等宽约束（有则豁免，不算裸行）。
+
+    等宽 = 命中等宽组件类（width:100%+max-width） 或 内联 width/max-width。
+    负向回顾 (?<![\\w-]) 排除 min-width / border-width 等带前缀词。
+    """
+    open_m = re.match(r'<div\b[^>]*>', child_block)
+    if not open_m:
+        return False
+    open_tag = open_m.group(0)
+    cls_m = re.search(r'class\s*=\s*["\']([^"\']*)', open_tag)
+    if cls_m:
+        cls_str = cls_m.group(1)
+        for eq in equal_width_classes:
+            if re.search(rf'\b{re.escape(eq)}\b', cls_str):
+                return True
+    if re.search(r'(?<![\w-])(?:width|max-width)\s*:', open_tag):
+        return True
+    return False
+
+
+def check_list_alignment_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """R-S6-021: 列表对齐门禁（SOFT）— 多行裸 div 列表容器必须 align-items:flex-start。
+
+    只有"存在列表"时才校验对齐：检测 flex-direction:column + align-items:center 容器，
+    若直接子是 ≥2 个无等宽约束的裸 div 行（shrink-to-fit、宽度依赖内容），则图标/序号/emoji
+    无法落在同一垂直线 → 参差错落。等宽行项（width:100%+max-width 或等宽组件类）等宽，
+    center 与 flex-start 视觉一致，豁免；<2 个直接子 div 不算列表，不校验。
+    根因：LLM 写居中容器顺手 align-items:center，裸行宽度不一 → 标记符号无法垂直成列。
+    """
+    fp = project_dir / params.get("file", "index.html")
+    if not fp.exists():
+        return False, "index.html 缺失"
+    html = fp.read_text(encoding="utf-8", errors="ignore")
+
+    equal_width_classes = params.get("equal_width_classes", [
+        "dim-card", "caution-row", "compare-row", "stat-card", "feature-card",
+        "info-card", "data-card", "metric-row", "step-card", "tag-row",
+        "card-row", "benefit-row", "point-row",
+    ])
+
+    violations: list[str] = []
+    for sid, scene_html in _split_into_scenes(html):
+        content = _extract_layer_chunk(scene_html, "layer-content")
+        if not content.strip():
+            continue
+        for m in re.finditer(r'<div\b[^>]*>', content):
+            tag = m.group(0)
+            # 排除 .phase 自身（合法的居中锚点）
+            if re.search(r'class\s*=\s*["\'][^"\']*\bphase\b', tag):
+                continue
+            if not re.search(r'flex-direction\s*:\s*column', tag):
+                continue
+            if not re.search(r'align-items\s*:\s*center', tag):
+                continue
+            # 取容器完整块（limit=1：扫到自身闭合即止）
+            top = _collect_top_level_divs(content, m.start(), limit=1)
+            if not top:
+                continue
+            children = _collect_top_level_divs(_strip_outer_div(top[0]))
+            if len(children) < 2:
+                continue  # 不是列表，不校验对齐
+            bare_rows = [c for c in children if not _row_has_width_constraint(c, equal_width_classes)]
+            if len(bare_rows) >= 2:
+                violations.append(
+                    f"{sid}({len(bare_rows)}个裸行列表 align-items:center → 标记符号错落，建议改 flex-start)"
+                )
+
+    if violations:
+        return False, "R-S6-021: " + "; ".join(violations[:6])
+    return True, "列表对齐合格（无 center 裸行列表错落）"
+
+
+GATE_CHECKERS[GateType.list_alignment_valid] = check_list_alignment_valid
+
+
 def check_orientation_consistency(project_dir: Path, params: dict) -> tuple[bool, str]:
     """R-S6-020: design.md 方向与 HTML 画布尺寸一致性校验。"""
     design_md = project_dir / "design.md"
