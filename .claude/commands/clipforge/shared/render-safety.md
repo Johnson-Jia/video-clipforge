@@ -11,10 +11,10 @@
 - **绝不使用 `.anim-in` CSS 类**或任何在 CSS 中设置 `opacity: 0` 的入场机制
 - HyperFrames 基于 seek 驱动渲染（逐帧推进），**不触发 CSS animation/transition**，CSS 入场动画永远不会执行，导致内容永远 `opacity: 0`
 - **所有内容元素必须默认可见**（`opacity: 1`），不做任何 CSS 入场动画
-- 入场动画由 GSAP timeline 的 `.from({opacity:0})` 实现（见 §1.7），不依赖 CSS
+- 入场动画由 GSAP timeline 的 `.from({opacity:0})` 实现（见 §1.13），不依赖 CSS
 - HyperFrames clip 切换由 `data-start`/`data-duration` 控制
 
-### 1.1a 多阶段内容豁免（Phase 2+）
+### 1.2 多阶段内容豁免（Phase 2+）
 
 - **Phase 1**（每个 clip 的第一个视觉阶段）**必须 CSS opacity:1**，遵守 §1.1 规则
 - **Phase 2+** 允许通过 GSAP `.set({opacity:0})` 在 clip 起始时刻设为不可见
@@ -24,7 +24,7 @@
 - Phase 间切换使用 `.to({opacity: 0})` 淡化旧阶段（完全消失，避免重叠重影）+ `.to({opacity: 1})` 显示新阶段
 - **Phase 断点禁止均分**——详见 `shared/visual-phasing.md` §4（均分偏差可达 5-12 秒）
 
-### 1.1b 特效元素默认可见规则
+### 1.3 特效元素默认可见规则
 
 - §1.1 的规则不仅适用于 `.layer-content`，也适用于 `.layer-fx` 和 `.layer-bg` 的所有元素
 - **任何 HTML 元素的静态 CSS 状态（无 animation 属性时）必须视觉正确**
@@ -33,21 +33,21 @@
 - **禁止**的 CSS animation：从不可见到可见的过渡（如 `scaleY(0)→1`、`opacity:0→1`、`translateY(-100%)→0`）
 - "从无到有"的动画必须使用 GSAP `.from()` 实现
 
-### 1.2 禁止 HTML 实体字符
+### 1.4 禁止 HTML 实体字符
 
 - **不在画面文字中使用 HTML 实体**（如 `&#9733;`、`&#10084;`、`&amp;` 等）
 - HyperFrames 无头浏览器对实体字符的解析不可靠，可能导致整段内容不渲染
 - **改用 Unicode 字符直接输入**（如 `★`、`❤`）或纯文本替代
 
-### 1.3 安全区 padding 必须存在且只设一次
+### 1.5 安全区 padding 必须存在且只设一次
 
 - 每个场景**必须有四方向安全区 padding**，按画布方向选择：
   - 竖屏（1080×1920）：`padding: 180px 90px 220px 90px`（上 180px，右 80px，下 220px，左 80px）
   - 横屏（1920×1080）：`padding: 60px 120px 60px 120px`（上 60px，右 120px，下 60px，左 120px）
-- **padding 只设在一层**，由场景使用的模式决定（见 §1.4b 分类）
+- **padding 只设在一层**，由场景使用的模式决定（见 §1.9 分类）
 - 缺少 padding 会导致内容贴边缘或渲染塌陷；双重 padding 会导致内容偏左上、可用宽度仅 74%
 
-### 1.3a 背景铺满全画幅（铁律）
+### 1.6 背景铺满全画幅（铁律）
 
 - **`.layer-bg` 必须铺满整个画面**（竖屏 1080×1920 / 横屏 1920×1080），禁止被 `.clip` 或任何父元素裁剪
 - 实现方式：`.clip` 使用 `position:absolute; inset:0`（与 composition 同尺寸），不做空间偏移
@@ -55,21 +55,21 @@
 - 安全区内缩**只能**通过 `.scene-wrap` 或组件的 padding 实现，不能通过 `.clip` 的定位
 - **HARD，gate: clip_no_offset**
 
-### 1.4 安全边距规则
+### 1.7 安全边距规则
 
 **竖屏：** 左 90px / 右 90px 对称边距（兼容抖音/小红书/微信视频号三平台）
 **横屏：** 左 120px / 右 120px 对称边距
 
 - **禁止** `width: 100%` 的内容行没有水平 padding
 
-### 1.4a 单层 padding 原则（铁律）
+### 1.8 单层 padding 原则（铁律）
 
 - **全项目只允许一个层级设置安全区 padding**（竖屏 `180px 90px 220px 90px` / 横屏 `60px 120px 60px 120px`）
 - 禁止 `.scene-wrap` 和 `.phase`（或任何内层元素）同时设置 padding
 - **HARD，gate: double_padding**
 - **director_gate.py 会自动检测双重 padding，渲染前必须通过**
 
-### 1.4b 组件 padding 分类
+### 1.9 组件 padding 分类
 
 所有场景分为三类，padding 落在不同层级：
 
@@ -88,7 +88,7 @@
 - `.scene-wrap` 设置 `padding: 180px 90px 220px 90px`（竖屏）或 `60px 120px 60px 120px`（横屏）
 - 结构：`.scene-wrap(padding)` → `.layer-bg` + `.layer-fx` + `.layer-content` → 组件(无padding)
 
-### 1.5 渲染前移除所有非 index.html 的 composition 文件
+### 1.10 渲染前移除所有非 index.html 的 composition 文件
 
 - **HyperFrames 不允许多个 root composition**（`multiple_root_compositions` 警告）
 - 项目目录中**任何**含 `data-composition-id` 的 HTML 文件（不止 `cover.html`）都会导致渲染冲突
@@ -102,13 +102,13 @@
 - **渲染完成后恢复需要的文件：** `mv cover.html.renderbak cover.html`
 - **临时备份文件渲染后必须删除：** `rm -f index_with_bgm.html.renderbak cover.html.bak.renderbak`
 
-### 1.6 音频文件必须在项目目录内
+### 1.11 音频文件必须在项目目录内
 
 - `<audio src="bgm.wav">` 引用的文件**必须存在于 index.html 同级目录**
 - HyperFrames 渲染时通过 FileServer 提供文件，路径错误会导致 404 静音
 - **渲染前检查：** `ls -la bgm.wav narration.mp3` 确认两个音频文件都存在
 
-### 1.6a 根组合尺寸属性（黑帧防护）
+### 1.12 根组合尺寸属性（黑帧防护）
 
 - 根组合 div（`data-composition-id="main"`）**必须**包含 `data-width` 和 `data-height`（竖屏 `"1080"` × `"1920"`，横屏 `"1920"` × `"1080"`）
 - 缺少任一属性 → HyperFrames viewport 设置错误 → 输出 **100% 黑帧视频**（码率 <100kbps）
@@ -139,7 +139,7 @@
 </div>
 ```
 
-### 1.7 GSAP timeline 注册是强制要求
+### 1.13 GSAP timeline 注册是强制要求
 
 - **`window.__timelines = {};`（空对象）会导致全片空白渲染。** HyperFrames 等待 `window.__timelines["main"]` 被注册，超时后渲染空帧
 - 必须引入 GSAP CDN 并注册 timeline：
@@ -296,20 +296,20 @@
 |------|------|
 | 使用 `.anim-in` CSS 类 | HyperFrames 不执行 CSS animation，导致内容永远不可见 |
 | HTML 实体字符（`&#9733;`） | 无头浏览器解析不可靠，可能导致整段不渲染 |
-| scene-wrap 和 .phase 同时有 padding | 双重 padding 导致内容偏左上、可用宽度仅 74%（§1.4a 单层 padding 铁律） |
-| 任何层级缺少安全区 padding | 内容贴边缘或渲染塌陷（§1.3） |
+| scene-wrap 和 .phase 同时有 padding | 双重 padding 导致内容偏左上、可用宽度仅 74%（§1.8 单层 padding 铁律） |
+| 任何层级缺少安全区 padding | 内容贴边缘或渲染塌陷（§1.5） |
 | 多个含 `data-composition-id` 的 HTML 文件 | 渲染冲突，multiple_root_compositions 警告 |
 | `window.__timelines = {};` 空对象未注册 | 全片空白渲染 |
 | 音频文件不在项目目录内 | 404 静音 |
 | 场景只有两层（缺少 .layer-fx） | 特效会遮挡内容或背景穿透 |
 | 空的 layer-fx（`<div class="layer-fx"></div>`） | §2.4 违规：空层等同于缺少该层，stage6_gate.sh 会拦截 |
 | `.layer-content` 缺少 `height:100%` | Phase 内容塌陷到顶部（§2.2）：绝对定位的 phase 无法解析 inset:0 |
-| 特效元素 CSS animation 从不可见状态开始（scaleY:0 / translateY(-100%) / opacity:0） | HyperFrames 不执行 CSS animation，特效永远不可见（§1.1b） |
+| 特效元素 CSS animation 从不可见状态开始（scaleY:0 / translateY(-100%) / opacity:0） | HyperFrames 不执行 CSS animation，特效永远不可见（§1.3） |
 | fx 元素无 GSAP 动画（纯静态 div） | §2.5 违规：无动画的特效等同于装饰背景，不算特效层 |
 | fx 元素 opacity < 0.15 | H.264 编码后不可见，等同于没做（§2.4） |
 | Phase 断点使用 `gap = duration / phase_count` 均分 | 旁白与画面内容严重不同步，偏差 5-12 秒 |
-| 根组合缺少 `data-width` 或 `data-height` | HyperFrames viewport 错误 → 100% 黑帧（§1.6a） |
-| `<audio>` 缺少 `data-start="0"` | 音频不播放（§1.6a） |
+| 根组合缺少 `data-width` 或 `data-height` | HyperFrames viewport 错误 → 100% 黑帧（§1.12） |
+| `<audio>` 缺少 `data-start="0"` | 音频不播放（§1.12） |
 | 竖屏场景标题 < 64px 或正文 < 38px 或标注 < 32px | 手机端不可读，等于做了白做（§3.1，gate: director_gate.py §1b） |
 | 使用 section-tag 小徽章作为场景标题 | 视觉廉价，不符合竖屏冲击力（§3.2） |
 | 横屏场景正文 < 32px 或标注 < 24px | 手机端不可读，等于做了白做（§3.4） |

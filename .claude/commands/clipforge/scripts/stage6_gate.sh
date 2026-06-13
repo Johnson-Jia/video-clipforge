@@ -18,6 +18,8 @@ echo "=== Stage 6 完成门禁 ==="
 FAIL=0
 
 # ── 导演门禁（Layer 1：HTML 设计意图验证）──
+# 独立入口自包含：stage6_gate.sh 可被直接调用（不经过 render 管线），故必须自带 director_gate。
+# 幂等防御性冗余：assemble（组装后即时校验）、render（渲染前 fail-fast）也会各跑一次，见 clipforge.md §6。
 echo "--- 导演门禁 ---"
 python "${SCRIPT_DIR}/director_gate.py" . || {
   echo "FAIL: 导演门禁未通过"

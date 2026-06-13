@@ -21,7 +21,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage3-scenes"
-    source: "2026-05-27 数据分析：疑问/互动模式平均 1,195 播放（最低）"
+    source: "数据分析：疑问/互动模式平均 1,195 播放（最低）"
 
   - id: "R-S3-003"
     type: FORBIDDEN_ACTION
@@ -33,7 +33,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage3-scenes"
-    source: "2026-05-27 数据分析：5s 完播率 ≥44% 对应 36K 播放 vs <38% 仅 3.1K"
+    source: "数据分析：5s 完播率 ≥44% 对应 36K 播放 vs <38% 仅 3.1K"
 
   - id: "R-S3-004"
     type: FORBIDDEN_ACTION

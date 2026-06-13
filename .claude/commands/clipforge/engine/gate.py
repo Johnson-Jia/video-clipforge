@@ -2008,7 +2008,7 @@ def _extract_tags(line: str) -> list[str]:
 def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 douyin.md 四平台文案质量 + 评论区自评。
 
-    stage7-delivery.md §7.5 + cron-template.md SubAgent-4 段要求:
+    stage7-delivery.md §7.4 + cron-template.md SubAgent-4 段要求:
     1. 四平台文案必填：## 抖音、## B站、## 视频号、## 小红书
     2. 每个平台有标题 + 正文 + 标签（结构完整）
     3. 标题字数上限：抖音≤30 / B站≤80 / 视频号≤16 / 小红书≤20

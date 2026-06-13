@@ -25,7 +25,7 @@ artifacts:
       - "**/narration_segments.json"
       - "**/narration.txt"
     description: "当 design.md 已存在但 narration_segments.json 缺失时使用 — 拆解场景，编写含钩子和 CTA 的旁白文案"
-    duration_hint: "标准模式 45-55s，深度解析 50-70s，电影解读 3-5min"
+    duration_hint: "标准模式 45-55s，深度解析 45-60s，电影解读 3-5min"
     template: "stages/stage3-scenes"
     requires: [design]
 

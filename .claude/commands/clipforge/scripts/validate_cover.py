@@ -110,7 +110,7 @@ def validate_html(html_path: str) -> bool:
 
     if not all_pass:
         print(f'\nFAIL: 缺少 {len(missing)} 层: {", ".join(missing)}')
-        print('修复: 参照 stage7-delivery.md 7.1 封面 HTML 模板，补充缺失层级')
+        print('修复: 参照 stage7-delivery.md §7.1 封面 HTML 模板，补充缺失层级')
     else:
         print(f'\nPASS: 7 层结构验证通过')
 

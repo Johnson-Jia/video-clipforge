@@ -40,6 +40,8 @@ python "${SCRIPT_DIR}/s6_assemble_html.py" --project-dir .
 echo "[OK] index.html 已生成"
 
 # ── Step 4: 导演门禁（Layer 1 — HTML 设计意图验证）──
+# 组装后即时校验：碎片刚拼成 index.html，立刻验证设计意图，趁早发现问题。
+# 幂等防御性冗余：render 阶段（渲染前 fail-fast）、stage6_gate（独立入口自包含）也会各跑一次，见 clipforge.md §6。
 echo "--- Step 4/4: 导演门禁 ---"
 python "${SCRIPT_DIR}/director_gate.py" .
 echo "[OK] 导演门禁通过"

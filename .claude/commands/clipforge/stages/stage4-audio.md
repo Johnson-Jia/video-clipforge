@@ -109,7 +109,7 @@ bash .claude/commands/clipforge/scripts/bgm_pipeline.sh
 
 > `bgm_pipeline.sh` 自动执行：静音段验证清理 → 响度标准化 → 音量守恒校验 → 公式计算 volume → 峰值间距校验 → 写入 `segment_durations.json` → **BGM 时长对齐**（以旁白总时长为基准，concat 拼接 + 裁剪 + 淡入淡出）。无需手动计算或写 JSON。
 >
-> **管线顺序：** Step 1 音量守恒 → Step 2 全段验证（bgm_validate.py 检测并移除静音段）→ Step 2.5 响度标准化（loudnorm I=-18:TP=-2，统一基准，保留动态）→ Step 3 公式校准（基于标准化后的 BGM 测量）→ Step 4 时长对齐（精确匹配旁白时长，1.5s 淡入 + 2s 淡出）。
+> **管线顺序：** Step 1 音量守恒 → Step 2 全段验证（bgm_validate.py 检测并移除静音段）→ Step 3 响度标准化（loudnorm I=-18:TP=-2，统一基准，保留动态）→ Step 4 公式校准（基于标准化后的 BGM 测量）→ Step 7 时长对齐（精确匹配旁白时长，1.5s 淡入 + 2s 淡出）。
 
 ### 来源优先级（唯一权威）
 

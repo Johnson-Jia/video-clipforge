@@ -12,7 +12,7 @@
 echo "Stage 7 前置检查通过"
 ```
 
-> **如果 `output_no_bgm.mp4` 不存在，必须回退到 Stage 6 的 §6.7 补充渲染，不得跳过。**
+> **如果 `output_no_bgm.mp4` 不存在，必须回退到 Stage 6 的 §6.9 补充渲染，不得跳过。**
 
 ## 7.1 封面生成（必须执行）
 
@@ -103,7 +103,7 @@ bash .claude/commands/clipforge/scripts/s7_delivery.sh --project-dir .
 
 **如果脚本失败**：根据错误信息修复 `cover_params.json` 或 `index.html`，然后重新执行。
 
-## 7.4 视频交付
+## 7.3 视频交付
 
 ```
 视频已生成完毕（双版本）：
@@ -131,7 +131,7 @@ echo "   总月目录：$(ls -d workspace/????/??/ 2>/dev/null | wc -l)"
 echo "   如空间不足，可执行 Stage 8 自动清理（详见 clipforge/shared/cleanup-rules）"
 ```
 
-## 7.5 抖音文案生成
+## 7.4 抖音文案生成
 
 根据视频内容，生成 **3 套不同风格** 的发布文案。
 

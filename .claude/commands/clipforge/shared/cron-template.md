@@ -15,13 +15,13 @@ mkdir -p "${PROJECT_DIR}"
 > **代理：** 如果本机需要代理才能访问外网，请在执行前设置 `https_proxy` / `http_proxy` 环境变量。
 > **`export LANG=zh_CN.UTF-8` 必须设置**：Windows Git Bash 默认 locale 可能是 GBK，导致中文目录名编码错乱。
 
-## §1.5 Step 0: 自续期（必须最先执行）
+## §2 自续期（必须最先执行）
 
 > **铁律：续期在任何管线工作之前执行。** 无论后续步骤是否成功，续期保证任务不会因 7 天过期而断档。续期在末尾的旧模式已废弃——管线中断会导致续期被跳过。
 
 执行 `clipforge/shared/cron-renew` 定时任务自续期模式，传入任务关键词。
 
-## §2 Step 1: 数据采集
+## §3 数据采集
 
 从分类配置的 `data_source` 和 `data_validation` 段获取：
 - **采集命令**：具体的脚本/API 调用命令（必须可直接执行）
@@ -33,14 +33,14 @@ mkdir -p "${PROJECT_DIR}"
 2. 验证阈值和失败处理逻辑
 3. 输出文件路径确认
 
-## §3 Step 2: 内容整理
+## §4 内容整理
 
 从分类配置的 `selection_strategy` 和 `preparation_rules` 段获取：
 - **选取规则**：从原始数据中筛选多少条目、按什么排序
 - **格式转换**：原始数据 → 中文素材的转换规则
 - **额外管理**：如月度清单、跨期去重等（可选）
 
-## §4 Step 3: DAG 编排
+## §5 DAG 编排
 
 > **引擎命令基础路径**：所有 `python engine/` 和 `bash scripts/` 命令在 `.claude/commands/clipforge/` 目录下执行。
 
@@ -298,7 +298,7 @@ LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字
 
 **验证**：`ls ${PROJECT_DIR}/score_report.json` 确认评分存在，`ls ${PROJECT_DIR}/` 确认中间文件已清理，`du -sh ${PROJECT_DIR}` 确认 < 30 MB。
 
-## §5 Step 3.5: 确保播放数据提醒已注册
+## §6 确保播放数据提醒已注册
 
 > 自进化系统需要平台播放数据来校准机器评分。注册一个每日检查任务，如数据超过 3 天未更新则提醒用户。
 
@@ -347,7 +347,7 @@ prompt 内容：
 
 注册完成后，执行 `shared/cron-renew` 为此任务续期（关键词：`playback-reminder`）。
 
-## §6 输出汇报
+## §7 输出汇报
 
 完成后汇报：
 

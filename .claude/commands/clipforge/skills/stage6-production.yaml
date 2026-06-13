@@ -20,7 +20,6 @@ skill:
     preferences:
       - text: "特效、布局和视觉表达从内容自主推导，不查表套用"
         weight: "HIGH"
-        source_pattern: "P-feedback-template-reference"
   guard:
     red_flags:
       - thought: "这个效果用 CSS animation 更简单"

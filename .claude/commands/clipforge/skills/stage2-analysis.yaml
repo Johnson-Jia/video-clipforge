@@ -18,7 +18,6 @@ skill:
     preferences:
       - text: "特效和组件从内容自主推导，不查表套用"
         weight: "HIGH"
-        source_pattern: "P-feedback-template-reference"
       - text: "emotion_curve 必须与内容节奏匹配，拒绝均匀填充"
         weight: "HIGH"
   guard:
