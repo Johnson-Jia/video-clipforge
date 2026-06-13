@@ -34,6 +34,24 @@
 ✗ 情感曲线全平或全满 → 无张力
 ✗ 字体超过 3 种 → 杂乱不专业
 
+## 字体气质
+
+> **读取 `shared/director-toolkit` 第 2 层「字体气质」+ `shared/font-palette`。** 字体气质由 Q1 情感内核推导，不查分类表。
+
+字体是视觉风格的一部分，与配色一同决定。基于 Q1 选择标题字体气质，正文和数据固定：
+
+1. **标题气质 = Q1 情感内核**
+   - 震撼/骄傲/史诗 → 毛笔力量（Ma Shan Zheng）
+   - 知识/文化/深度 → 衬线庄重（Noto Serif SC 900）
+   - 紧凑/专业/利落 → 几何简洁（Inter 900）
+   - 温暖/趣味/轻松 → 圆润亲和（ZCOOL QingKe HuangYou）
+   - 理性/精准/极客 → 等宽极客（JetBrains Mono 800）
+   - 文艺/诗意/柔软 → 细楷诗意（ZCOOL XiaoWei）
+2. **正文 = 可读性优先**。中文项目用 Noto Sans SC，纯英文用 Inter
+3. **数据 = 等宽体**。JetBrains Mono
+
+选择写入 design.md 的 `fonts` 字段，含 `voice`（气质名）链接 Q1，供审查与一致性校验。
+
 ## 配乐方向
 
 基于情绪基调确定配乐搜索关键词、风格和氛围。具体来源和下载方式见 Stage 4（§4.2 配乐）。
@@ -83,7 +101,7 @@
 - 记录角色出场时机：高潮段（climax）必出，幽默段（tease）可选
 - 表情规划跟随 storyboard，不在 Stage 2 确定具体表情
 
-**交付物：** 展示「视觉风格」、「配乐方向」、「素材需求预判」、「故事板设计」和「画布方向（默认 portrait）」，确认后**写入 `design.md`** 并进入 Stage 3。
+**交付物：** 展示「视觉风格」（含字体气质）、「配乐方向」、「素材需求预判」、「故事板设计」和「画布方向（默认 portrait）」，确认后**写入 `design.md`** 并进入 Stage 3。
 
 > **design.md 归属：Stage 2 负责写入。** Stage 6 仅读取此文件，不重写。如需调整风格，回退到 Stage 2 重新生成。
 
@@ -104,6 +122,23 @@ color_direction:
   accent_cool: 霓虹青/翠绿（用于 features/more 场景）
   accent_warm: 金色/琥珀（用于 hook/CTA 场景）
   text: 白色主 + 浅灰辅
+
+## 字体（三层 + voice 链接 Q1）
+fonts:
+  title:
+    voice: "毛笔力量"          # 气质名（链接 Q1 情感内核，便于审查）
+    family: "Ma Shan Zheng"
+    weight: 400
+    rationale: "震撼的情感内核需要力量感的标题字体"
+    fallback: "'Ma Shan Zheng','PingFang SC','Microsoft YaHei',cursive"
+  body:
+    family: "Noto Sans SC"
+    weight: 400
+    fallback: "'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif"
+  data:
+    family: "JetBrains Mono"
+    weight: 700
+    fallback: "'JetBrains Mono','Consolas',monospace"
 
 ## 配乐方向
 music_mood: 科技/赛博
@@ -133,7 +168,7 @@ orientation_source: default  # default | user_explicit | category_hint
 
 > **beat_mapping 说明：** 这是场景到情感节拍的粗映射，帮助 Stage 3 和 Stage 6 理解每个场景应传递的情感。不是严格约束，Stage 3 可以调整。
 
-> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction`、`orientation` 和 `immersion_mode` 选择对应的组件和配色方案（见 `stage6-components.md` 的沉浸模式配色速查），Stage 7 封面复用同一风格方向。
+> **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction`、`orientation`、`immersion_mode` 和 `fonts` 选择对应的组件、配色和字体（字体加载参数见 `shared/font-palette`），Stage 7 封面复用同一风格方向（封面字体有独立规则，不复用 `fonts`）。
 
 > **orientation 判定逻辑（Stage 2）：**
 > 1. 若用户明确指定方向（inject 参数或 prompt 上下文中的方向关键词）→ 写入用户指定值 + `orientation_source: user_explicit`
