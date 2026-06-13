@@ -25,8 +25,8 @@ TRACES_DIR = _evolution_traces_dir()
 def _to_rel_project_dir(project_dir: str) -> str:
     """project_dir → 相对 workspace 的可移植路径（与 performance.json 的 project 字段一致）。
 
-    绝对路径转相对（D:\\...\\workspace\\2026\\06\\13\\x → 2026/06/13/x），
-    已是相对或不在 workspace 下则规范化返回（正斜杠）。保证 trace 可跨路径移植。
+    绝对路径转相对（D:\\...\\workspace\\2026\\06\\13\\x → 2026/06/13/x）；
+    已是相对的统一去掉 leading workspace/（相对 repo 根 → 相对 workspace）。
     """
     p = Path(str(project_dir))
     try:
@@ -36,10 +36,13 @@ def _to_rel_project_dir(project_dir: str) -> str:
             try:
                 return str(p.relative_to(ws)).replace("\\", "/")
             except ValueError:
-                return str(p).replace("\\", "/")
+                pass
     except Exception:
         pass
-    return str(p).replace("\\", "/")
+    rel = str(p).replace("\\", "/")
+    if rel.startswith("workspace/"):
+        rel = rel[len("workspace/"):]
+    return rel
 
 
 def _slug(project_dir: str) -> str:
