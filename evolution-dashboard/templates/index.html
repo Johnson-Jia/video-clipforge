@@ -43,6 +43,25 @@
 </div>
 <div class="topbar" id="topbar">加载中…</div>
 
+<details class="legend" style="margin:10px 20px;background:#1a1f2e;border-radius:6px;padding:8px 14px;color:#aaa;font-size:13px">
+  <summary style="cursor:pointer;color:#64ffda">📖 术语说明（点开看英文指标含义）</summary>
+  <div style="padding-top:10px;line-height:1.9">
+    <b>reach 受众广度</b>（0-1）：播放量在各平台的分位排名均值，越高越火。
+    <b>quality 留存质量</b>（0-1）：5秒完播/收藏/分享等留存综合分。<br>
+    <b>excess 超额</b>：pattern 的 reach 减大盘均值，正=跑赢大盘。
+    <b>market_avg 大盘</b>：所有视频 reach 均值（基准线）。<br>
+    <b>weight 权重</b>：HIGH/MEDIUM/LOW，高权重注入优先。
+    <b>有效权重</b>=weight×维度权重，≥3 标注「优先采用」、≤1.5「次要参考」。<br>
+    <b>status</b>：active=启用（注入）/ deprecated=已淘汰（不注入）。
+    <b>trend</b>：stable 稳定 / declining 下滑 / rising 上升。
+    <b>birth/recent</b>：pattern 出生时 vs 当前的 reach。<br>
+    <b>R² 拟合度</b>：回归解释力（0.55=解释 55% 方差）。
+    <b>coef 系数</b>：控制其他变量后的净影响，正=促进 reach。
+    <b>p 显著性</b>：&lt;0.1 探索性显著、&lt;0.05 强显著，越大越可能是噪声。<br>
+    <b>save_rate 收藏率</b>：当前最强正向信号（高收藏视频 reach 显著高）。
+  </div>
+</details>
+
 <div class="panel active" id="patterns"></div>
 <div class="panel" id="regression"></div>
 <div class="panel" id="videos"></div>
@@ -51,6 +70,16 @@
 
 <script>
 let DATA = null;
+const CN = {
+  w: {HIGH:"高", MEDIUM:"中", LOW:"低"},
+  st: {active:"启用", deprecated:"已淘汰"},
+  tr: {stable:"稳定", declining:"下滑中", rising:"上升中"},
+  hook: {direct_narrative:"直叙", number_anchor:"数字锚定", contrarian_conflict:"反直觉冲突", signal_attention:"信号注意", empty:"空钩子", question_interactive:"疑问互动"},
+  coef: k => k.replace(/C\(hook_type\)\[T\.([^\]]+)\]/, (m,h)=>'话术·'+(CN.hook[h]||h))
+              .replace('save_rate','收藏率').replace('cover_cool','封面含冷色')
+              .replace('n_segments','场景数').replace('humor_density','幽默密度'),
+  plat: {douyin:"抖音", bilibili:"B站", wechat_video:"视频号", xiaohongshu:"小红书", success:"成功判定线", calibration:"校准元数据"},
+};
 const DIMS = ["topic","hook","cover","narration"];
 const DIM_CN = {topic:"题材",hook:"话术/hook",cover:"封面",narration:"旁白"};
 const WR = {HIGH:3, MEDIUM:2, LOW:1};
@@ -107,18 +136,21 @@ function renderPatterns() {
 
 function patCard(p) {
   const eff = effective(p);
+  const w = CN.w[p.weight] || p.weight;
+  const st = CN.st[p.status] || p.status;
+  const tr = p.trend ? (CN.tr[p.trend] || p.trend) : '';
   return `<div class="pat-card">
-    <span class="badge b-${p.weight.toLowerCase()}">${p.weight}</span>
-    <span class="badge b-${p.status}">${p.status}</span>
-    ${p.seed ? '<span class="badge b-seed">seed</span>' : ''}
-    <span style="min-width:55px;color:${eff>=3?'#66bb6a':eff<=1.5?'#ef5350':'#aaa'}">eff=${eff.toFixed(1)}</span>
+    <span class="badge b-${p.weight.toLowerCase()}">${w}</span>
+    <span class="badge b-${p.status}">${st}</span>
+    ${p.seed ? '<span class="badge b-seed">人工</span>' : ''}
+    <span style="min-width:78px;color:${eff>=3?'#66bb6a':eff<=1.5?'#ef5350':'#aaa'}">有效权重 ${eff.toFixed(1)}</span>
     <strong style="min-width:170px">${p.id}</strong>
-    <span class="mono" style="flex:1">${(p.text||'').slice(0,70)}</span>
-    <span class="mono">N=${p.sample_size} birth=${p.avg_reach??'-'} excess=${p.recent_excess??'-'} ${p.trend||''}</span>
+    <span class="mono" style="flex:1">${(p.text||'').slice(0,60)}</span>
+    <span class="mono">样本${p.sample_size} | 出生${p.avg_reach??'-'} | 超额${p.recent_excess??'-'} ${tr}</span>
     <select onchange="updatePat('${p.id}', this.value, null)">
-      <option value="LOW" ${p.weight==='LOW'?'selected':''}>LOW</option>
-      <option value="MEDIUM" ${p.weight==='MEDIUM'?'selected':''}>MEDIUM</option>
-      <option value="HIGH" ${p.weight==='HIGH'?'selected':''}>HIGH</option>
+      <option value="LOW" ${p.weight==='LOW'?'selected':''}>低 LOW</option>
+      <option value="MEDIUM" ${p.weight==='MEDIUM'?'selected':''}>中 MEDIUM</option>
+      <option value="HIGH" ${p.weight==='HIGH'?'selected':''}>高 HIGH</option>
     </select>
     <button onclick="updatePat('${p.id}', null, '${p.status==='active'?'deprecated':'active'}')">${p.status==='active'?'禁用':'启用'}</button>
   </div>`;
@@ -141,12 +173,12 @@ function renderRegChart() {
   const reg = DATA.regression;
   if (!reg.available) { el.innerHTML = `<p>回归不可用：${reg.reason||''}</p>`; return; }
   const coefs = Object.entries(reg.coef).filter(([k]) => k !== "Intercept")
-    .map(([k,v]) => ({name: k.replace(/C\(hook_type\)\[T\./,'hook:').replace(/\]/,''), coef: v.coef, p: v.p}));
-  el.innerHTML = `<div class="stat">R²=${reg.r_squared}</div><div class="stat">N=${reg.n}</div>` +
-    `<div class="stat" style="background:#1a3a1a">显著正: ${JSON.stringify(reg.significant_pos)}</div>` +
-    `<div class="stat" style="background:#3a1a1a">显著负: ${JSON.stringify(reg.significant_neg)}</div>` +
+    .map(([k,v]) => ({name: CN.coef(k), coef: v.coef, p: v.p}));
+  el.innerHTML = `<div class="stat">拟合度 R²=${reg.r_squared}</div><div class="stat">样本 N=${reg.n}</div>` +
+    `<div class="stat" style="background:#1a3a1a">显著促进: ${(reg.significant_pos||[]).map(CN.coef).join(', ')||'无'}</div>` +
+    `<div class="stat" style="background:#3a1a1a">显著抑制: ${(reg.significant_neg||[]).map(CN.coef).join(', ')||'无'}</div>` +
     `<div class="chart" id="reg-chart"></div>
-     <p class="mono">提示：p<0.1 为探索性显著（绿=正效应/红=负效应/灰=不显著）。save_rate coef 大说明高收藏视频 reach 高。</p>`;
+     <p class="mono">系数>0 促进受众广度、<0 抑制；绿=显著正/红=显著负(p&lt;0.1)/灰=不显著。「收藏率」系数大=高收藏视频更火。</p>`;
   charts.reg = echarts.init(document.getElementById("reg-chart"));
   charts.reg.setOption({
     title: {text: "各协变量净效应（控制其他变量后的边际效应）", textStyle: {color: "#e0e0e0", fontSize: 14}, left: "center"},
@@ -161,9 +193,9 @@ function renderRegChart() {
 function renderVideosTable() {
   const ps = DATA.projects.slice().sort((a,b) => b.reach - a.reach);
   let html = `<div class="chart" id="reach-chart"></div><div class="chart" id="dim-chart"></div>`;
-  html += "<table><tr><th>日期</th><th>项目</th><th>reach</th><th>quality</th><th>平台数</th><th>题材</th><th>hook</th><th>封面</th></tr>";
+  html += "<table><tr><th>日期</th><th>项目</th><th>受众广度</th><th>留存质量</th><th>平台数</th><th>题材</th><th>话术类型</th><th>封面配色</th></tr>";
   for (const p of ps) {
-    html += `<tr><td>${p.date||''}</td><td>${p.name}</td><td>${p.reach}</td><td>${p.quality}</td><td>${p.n_platforms}</td><td>${p.topic}</td><td>${p.hook_type}</td><td>${p.cover}</td></tr>`;
+    html += `<tr><td>${p.date||''}</td><td>${p.name}</td><td>${p.reach}</td><td>${p.quality}</td><td>${p.n_platforms}</td><td>${p.topic}</td><td>${CN.hook[p.hook_type]||p.hook_type}</td><td>${p.cover}</td></tr>`;
   }
   document.getElementById("videos").innerHTML = html + "</table>";
 }
@@ -201,15 +233,16 @@ function renderVideoCharts() {
 
 function renderThresholds() {
   const t = DATA.thresholds;
-  let html = "<table><tr><th>平台/配置</th><th>值</th></tr>";
+  let html = "<table><tr><th>平台/配置</th><th>阈值（机器评分判定用）</th></tr>";
   for (const [k, v] of Object.entries(t)) {
-    html += `<tr><td>${k}</td><td><pre>${JSON.stringify(v, null, 2)}</pre></td></tr>`;
+    html += `<tr><td>${CN.plat[k]||k}</td><td><pre>${JSON.stringify(v, null, 2)}</pre></td></tr>`;
   }
-  document.getElementById("thresholds").innerHTML = html + "</table>";
+  document.getElementById("thresholds").innerHTML = html + `</table>
+    <p class="mono" style="margin-top:10px">字段含义：5s_completion=5秒完播率，save_rate=收藏率，share_rate=分享率，plays=播放量，bounce=跳出率，interaction=互动率，key_metric=该平台的成功关键指标。low/high=下限/上限，达到 high 即视为该平台成功案例。</p>`;
 }
 
 function renderDeltas() {
-  let html = "<table><tr><th>id</th><th>target_rule</th><th>operation</th><th>confidence</th><th>需人工审核</th><th>safe</th></tr>";
+  let html = "<table><tr><th>规则ID</th><th>目标规则</th><th>操作</th><th>置信度</th><th>需人工审核</th><th>影子校验安全</th></tr>";
   for (const d of DATA.deltas) {
     const dd = d.delta || d;
     html += `<tr><td>${dd.id||'-'}</td><td>${dd.target_rule||'-'}</td><td>${dd.operation||'-'}</td><td>${dd.confidence??'-'}</td><td>${d.requires_human_review??'-'}</td><td>${(d.shadow_validation||{}).safe??'-'}</td></tr>`;
