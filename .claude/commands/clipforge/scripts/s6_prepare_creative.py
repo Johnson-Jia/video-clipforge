@@ -21,11 +21,99 @@ def load_json(path: Path) -> dict | list:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+# design.md 无 fonts 字段时的默认字体（保持现有视频渲染行为不变）
+DEFAULT_FONTS = {
+    "title": {
+        "family": "Inter",
+        "weight": 900,
+        "fallback": "'Inter','PingFang SC','Microsoft YaHei',sans-serif",
+    },
+    "body": {
+        "family": "Noto Sans SC",
+        "weight": 400,
+        "fallback": "'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif",
+    },
+    "data": {
+        "family": "JetBrains Mono",
+        "weight": 700,
+        "fallback": "'JetBrains Mono','Consolas',monospace",
+    },
+}
+
+
+def parse_fonts_from_design(content: str) -> dict:
+    """从 design.md 的 fonts 块提取三层字体配置。
+
+    返回 {title, body, data}，每层含 family/weight/fallback。
+    design.md 无 fonts 块或某层缺失时用 DEFAULT_FONTS 补齐（优雅降级）。
+    """
+    fonts = {}
+    # 提取 fonts 块：从 "fonts:" 行到下一个 "## " 标题或文件尾
+    block_m = re.search(
+        r"^fonts:[ \t]*\n(.*?)(?=^##\s|\Z)", content, re.DOTALL | re.MULTILINE
+    )
+    block = block_m.group(1) if block_m else ""
+
+    for layer in ("title", "body", "data"):
+        parsed = _parse_font_layer(block, layer)
+        fonts[layer] = parsed if parsed else dict(DEFAULT_FONTS[layer])
+    return fonts
+
+
+def _parse_font_layer(block: str, layer: str) -> dict | None:
+    """从 fonts 块提取某一层的 family/weight/fallback。未匹配返回 None。"""
+    layer_m = re.search(
+        rf"^([ \t]*){layer}:[ \t]*\n((?:\1[ \t]+[^\n]*\n?)+)",
+        block,
+        re.MULTILINE,
+    )
+    if not layer_m:
+        return None
+    text = layer_m.group(2)
+    family_m = re.search(r"family:[ \t]*[\"']?([^\"'#\n]+)", text)
+    if not family_m:
+        return None
+    weight_m = re.search(r"weight:[ \t]*[\"']?(\d+)", text)
+    fallback_m = re.search(r"fallback:[ \t]*([^\n]+)", text)
+    fallback = fallback_m.group(1).strip() if fallback_m else None
+    if fallback and "#" in fallback:
+        fallback = fallback.split("#")[0].strip()
+    # 去掉 YAML 字符串外层成对引号（如 "'Inter',sans-serif" → 'Inter',sans-serif）
+    if (
+        fallback
+        and len(fallback) >= 2
+        and fallback[0] == fallback[-1]
+        and fallback[0] in ('"', "'")
+    ):
+        fallback = fallback[1:-1]
+    return {
+        "family": family_m.group(1).strip(),
+        "weight": int(weight_m.group(1)) if weight_m else DEFAULT_FONTS[layer]["weight"],
+        "fallback": fallback or DEFAULT_FONTS[layer]["fallback"],
+    }
+
+
+def build_font_css_vars(fonts: dict) -> str:
+    """生成字体 CSS 变量（追加到 :root 块内）。"""
+    lines = []
+    for layer in ("title", "body", "data"):
+        lines.append(f"  --font-{layer}: {fonts[layer]['fallback']};")
+    lines.append(f"  --title-weight: {fonts['title']['weight']};")
+    return "\n".join(lines) + "\n"
+
+
 def parse_css_from_design(project_dir: Path) -> str:
-    """从 design.md 提取配色方向，生成 :root CSS 变量。"""
+    """从 design.md 提取配色方向和字体，生成 :root CSS 变量。"""
     design_path = project_dir / "design.md"
     if not design_path.exists():
-        return ":root {\n  --bg-deep: #0a0a0f;\n  --accent-warm: #f0b429;\n  --accent-cool: #06b6d4;\n}"
+        return (
+            ":root {\n"
+            f"{build_font_css_vars(DEFAULT_FONTS)}"
+            "  --bg-deep: #0a0a0f;\n"
+            "  --accent-warm: #f0b429;\n"
+            "  --accent-cool: #06b6d4;\n"
+            "}"
+        )
 
     content = design_path.read_text(encoding="utf-8")
 
@@ -58,6 +146,7 @@ def parse_css_from_design(project_dir: Path) -> str:
             elif "cool" in key or "cyan" in key or "teal" in key or "green" in key:
                 palette["accent-cool"] = cm.group(2)
 
+    fonts = parse_fonts_from_design(content)
     return (
         f":root {{\n"
         f"  --bg-deep: {palette['bg']};\n"
@@ -65,7 +154,7 @@ def parse_css_from_design(project_dir: Path) -> str:
         f"  --accent-cool: {palette['accent-cool']};\n"
         f"  --text: #ffffff;\n"
         f"  --text2: rgba(255,255,255,0.6);\n"
-        f"}}"
+        f"{build_font_css_vars(fonts)}}}"
     )
 
 
@@ -174,6 +263,16 @@ def main() -> None:
     pt_map: dict[str, dict] = {}
     for ps in phase_scenes:
         pt_map[ps.get("scene", "")] = ps
+
+    # 生成 fonts.json（供 s6_assemble 拼 Google Fonts <link>，供 gate 字体一致性校验）
+    design_path = project_dir / "design.md"
+    if design_path.exists():
+        fonts = parse_fonts_from_design(design_path.read_text(encoding="utf-8"))
+    else:
+        fonts = {k: dict(v) for k, v in DEFAULT_FONTS.items()}
+    (creative_dir / "fonts.json").write_text(
+        json.dumps(fonts, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     # 生成 style.css
     css_vars = parse_css_from_design(project_dir)

@@ -554,8 +554,8 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 
 ### 字体规则
 
-21. 优先使用 HyperFrames 内置字体映射
-22. **中文渲染**：先渲染一帧验证，异常时用 `font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif`
+21. **字体由 design.md 驱动**：Stage 2 在 design.md 的 `fonts` 字段声明三层字体（title/body/data + voice 气质链接 Q1）。`s6_prepare_creative.py` 自动提取并注入 CSS 变量到 `style.css` 的 `:root`（`--font-title` / `--font-body` / `--font-data` / `--title-weight`），`s6_assemble_html.py` 自动拼接 Google Fonts `<link>` 注入 HEAD。**场景 HTML 用 `font-family: var(--font-title)` 等引用，禁止硬编码字体名**（封面有独立字体规则，不复用 `fonts`）。字体气质↔情感映射见 `shared/director-toolkit` 第 2 层「字体气质」，技术参数见 `shared/font-palette`
+22. **中文渲染验证**：CJK 字体首次加载 2-5 秒。渲染首帧前确认 `<link>` 已就位；加载失败时 fallback 链自动降级到 PingFang SC / Microsoft YaHei，不阻塞渲染
 
 ### 渲染规则
 

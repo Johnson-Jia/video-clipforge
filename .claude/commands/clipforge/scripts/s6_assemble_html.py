@@ -33,7 +33,7 @@ COMPONENTS_BG_DIR = Path(__file__).resolve().parent.parent / "components" / "bg"
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 基础 CSS（固定，LLM 不碰）— 三层架构 + FX 原语 + Phase 默认隐藏
+# 基础 CSS（固定，LLM 不碰）— 三层架构 + FX 原语（phase 可见性由 GSAP 控制，CSS 永不设 opacity:0）
 # ──────────────────────────────────────────────────────────────────────────
 BASE_CSS = """/* === ClipForge 基础层（自动生成，勿手改）=== */
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -44,8 +44,6 @@ body{background:#000;color:#fff;overflow:hidden;width:1080px;height:1920px;}
 .layer-fx{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 .layer-content{position:relative;z-index:3;height:100%;color:#fff;font-size:48px;}
 .phase{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:180px 90px 220px 90px;}
-/* phase-2+ 默认隐藏，由 GSAP 在正确时间点恢复（消灭 phase_visibility 门禁误报）*/
-.phase:not(.phase-1){opacity:0;}
 audio{display:none;}
 .fx-glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;}
 .fx-line{position:absolute;height:1px;pointer-events:none;}
@@ -291,6 +289,57 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_in
     return "\n".join(lines)
 
 
+# 字体 family 名 → Google Fonts URL 的 family 参数。
+# 字重用 ; 分隔；单字重字体不带 :wght@。新增字体需在此表登记。
+GOOGLE_FONT_MAP = {
+    # 标题展示体
+    "Ma Shan Zheng": "Ma+Shan+Zheng",
+    "Noto Serif SC": "Noto+Serif+SC:wght@500;700;900",
+    "ZCOOL XiaoWei": "ZCOOL+XiaoWei",
+    "ZCOOL QingKe HuangYou": "ZCOOL+QingKe+HuangYou",
+    "JetBrains Mono": "JetBrains+Mono:wght@400;700;800",
+    "Inter": "Inter:wght@400;700;900",
+    # 正文 / 数据
+    "Noto Sans SC": "Noto+Sans+SC:wght@300;400;500;700",
+}
+
+
+def build_google_fonts_link(creative_dir: Path) -> str:
+    """读取 creative/fonts.json，拼装合并的 Google Fonts <link> 标签。
+
+    无 fonts.json 或无可识别字体时返回空串（不注入 <link>，沿用系统字体 fallback）。
+    """
+    fonts_path = creative_dir / "fonts.json"
+    if not fonts_path.exists():
+        return ""
+    try:
+        fonts = json.loads(fonts_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return ""
+
+    families = []
+    seen = set()
+    for layer in ("title", "body", "data"):
+        family = fonts.get(layer, {}).get("family", "")
+        google = GOOGLE_FONT_MAP.get(family)
+        if google and google not in seen:
+            families.append(google)
+            seen.add(google)
+    if not families:
+        return ""
+
+    url = (
+        "https://fonts.googleapis.com/css2?family="
+        + "&family=".join(families)
+        + "&display=swap"
+    )
+    return (
+        '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+        f'<link href="{url}" rel="stylesheet">\n'
+    )
+
+
 def assemble(project_dir: Path) -> tuple[str, list[str]]:
     """拼装完整 index.html，返回 (html, missing_scenes)。"""
     creative_dir = project_dir / "creative"
@@ -324,12 +373,14 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
         else 0.15
     )
 
+    fonts_link = build_google_fonts_link(creative_dir)
+
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1080,height=1920">
-<style>
+{fonts_link}<style>
 {BASE_CSS}
 {custom_css}
 /* === bg 组件 @keyframes（自动注入，来自 components/bg/）=== */
