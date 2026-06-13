@@ -10,12 +10,47 @@
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-TRACES_DIR = Path(__file__).parent.parent / "traces"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from engine.lib.data_paths import traces_dir as _evolution_traces_dir
+
+TRACES_DIR = _evolution_traces_dir()
+
+
+def _slug(project_dir: str) -> str:
+    """项目目录 → 稳定的 trace 索引目录名（sha1 前12位）。
+
+    解决 basename 同名冲突：31 个不同日期的 github-trending 项目，
+    旧 basename 索引会全部落到 traces/github-trending/trace.json。
+    用全路径哈希分散，确定性、无 Windows 非法字符。
+    """
+    h = hashlib.sha1(str(project_dir).encode("utf-8")).hexdigest()[:12]
+    return f"p-{h}"
+
+
+def _resolve_trace_dir(project_dir: str, traces_dir: Path) -> Path:
+    """定位项目 trace 目录：优先 slug 路径（新索引），回退 basename（兼容旧 trace）。
+
+    旧 basename 路径存在时惰性迁移（shutil.copy，非删除）到 slug 路径，
+    使同一项目历史 trace 聚合。读/写操作都用此函数保证一致。
+    """
+    import shutil
+    slug_dir = traces_dir / _slug(project_dir)
+    if slug_dir.exists():
+        return slug_dir
+    old_dir = traces_dir / Path(project_dir).name
+    if (old_dir / "trace.json").exists():
+        try:
+            slug_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy(old_dir / "trace.json", slug_dir / "trace.json")
+        except Exception:
+            pass
+    return slug_dir
 
 
 def record_trace(
@@ -64,7 +99,7 @@ def record_trace(
         "performance": performance,
     }
 
-    project_traces = traces_dir / Path(project_dir).name
+    project_traces = _resolve_trace_dir(str(project_dir), traces_dir)
     project_traces.mkdir(parents=True, exist_ok=True)
     filepath = project_traces / "trace.json"
 
@@ -96,7 +131,7 @@ def backfill_performance(
 ) -> int:
     """回填播放数据到已有 trace。返回更新的 trace 数量。"""
     traces_dir = traces_dir or TRACES_DIR
-    project_traces = traces_dir / Path(project_dir).name
+    project_traces = _resolve_trace_dir(str(project_dir), traces_dir)
     filepath = project_traces / "trace.json"
     if not filepath.exists():
         return 0

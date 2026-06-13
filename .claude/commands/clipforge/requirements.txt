@@ -1,0 +1,4 @@
+# ClipForge 自进化引擎可选依赖（缺失时自动降级，不阻塞核心流程）
+# 回归归因（auto_evolve.py phase2 _regression_attribution）需要 statsmodels；
+# 未安装时回归跳过，降级为 Spearman 相关（不报错）。
+statsmodels>=0.14

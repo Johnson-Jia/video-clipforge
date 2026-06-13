@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ClipForge 自进化仪表盘</title>
+<script src="/static/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #0f1419; color: #e0e0e0; }
+  .tabs { display: flex; background: #1a1f2e; padding: 0 20px; border-bottom: 1px solid #2a3040; position: sticky; top: 0; z-index: 10; }
+  .tab { padding: 14px 20px; cursor: pointer; border-bottom: 2px solid transparent; color: #aaa; }
+  .tab.active { border-bottom-color: #64ffda; color: #64ffda; }
+  .panel { display: none; padding: 20px; }
+  .panel.active { display: block; }
+  .topbar { padding: 10px 20px; background: #141a26; border-bottom: 1px solid #2a3040; font-size: 13px; color: #888; }
+  .dim-group { background: #1a1f2e; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .dim-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
+  .dim-header h3 { margin: 0; min-width: 100px; color: #64ffda; }
+  .pat-card { background: #232938; border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+  .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .b-high { background: #2e7d32; color: #fff; } .b-medium { background: #455a64; color: #fff; } .b-low { background: #6d4c41; color: #fff; }
+  .b-active { background: #1565c0; color: #fff; } .b-deprecated { background: #c62828; color: #fff; }
+  .b-seed { background: #6a1b9a; color: #fff; }
+  select, button, input[type=range] { cursor: pointer; }
+  select, button { background: #2a3040; color: #e0e0e0; border: 1px solid #3a4050; padding: 4px 8px; border-radius: 4px; }
+  button:hover { background: #3a4050; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 10px; border-bottom: 1px solid #2a3040; text-align: left; }
+  th { color: #64ffda; position: sticky; top: 50px; background: #0f1419; }
+  .chart { width: 100%; height: 380px; margin-bottom: 20px; background: #1a1f2e; border-radius: 8px; padding: 10px; }
+  .mono { color: #888; font-size: 12px; }
+  .stat { display: inline-block; background: #1a2e1a; padding: 6px 14px; border-radius: 6px; margin-right: 10px; }
+  pre { background: #141a26; padding: 10px; border-radius: 6px; color: #aaa; margin: 0; }
+</style>
+</head>
+<body>
+<div class="tabs">
+  <div class="tab active" data-panel="patterns">Pattern 权重</div>
+  <div class="tab" data-panel="regression">回归归因</div>
+  <div class="tab" data-panel="videos">视频数据</div>
+  <div class="tab" data-panel="thresholds">阈值</div>
+  <div class="tab" data-panel="deltas">Delta</div>
+</div>
+<div class="topbar" id="topbar">加载中…</div>
+
+<div class="panel active" id="patterns"></div>
+<div class="panel" id="regression"></div>
+<div class="panel" id="videos"></div>
+<div class="panel" id="thresholds"></div>
+<div class="panel" id="deltas"></div>
+
+<script>
+let DATA = null;
+const DIMS = ["topic","hook","cover","narration"];
+const DIM_CN = {topic:"题材",hook:"话术/hook",cover:"封面",narration:"旁白"};
+const WR = {HIGH:3, MEDIUM:2, LOW:1};
+const charts = {};
+
+async function load() {
+  const r = await fetch("/api/overview");
+  DATA = await r.json();
+  document.getElementById("topbar").innerHTML =
+    `<span class="stat">大盘 reach: <b>${DATA.market_avg}</b></span>` +
+    `<span class="stat">pattern: <b>${DATA.patterns.length}</b></span>` +
+    `<span class="stat">视频: <b>${DATA.projects.length}</b></span>` +
+    `<span class="stat">delta: <b>${DATA.deltas.length}</b></span>`;
+  renderPatterns();
+  renderThresholds();
+  renderDeltas();
+  renderVideosTable();
+  // 图表 lazy：当前 active panel 渲染
+  const active = document.querySelector(".tab.active").dataset.panel;
+  if (active === "regression") renderRegChart();
+  if (active === "videos") renderVideoCharts();
+}
+
+function effective(p) {
+  const dw = (p.dim && DATA.dimensions[p.dim]) || 1.0;
+  return (WR[p.weight] || 2) * dw;
+}
+
+function renderPatterns() {
+  let html = "";
+  for (const dim of DIMS) {
+    const pats = DATA.patterns.filter(p => p.dim === dim);
+    html += `<div class="dim-group"><div class="dim-header">
+      <h3>${DIM_CN[dim]}</h3>
+      <span class="mono">维度权重</span>
+      <input type="range" min="0" max="2" step="0.1" value="${DATA.dimensions[dim]}"
+             oninput="document.getElementById('dw-${dim}').textContent=this.value"
+             onchange="updateDim('${dim}', this.value)">
+      <span id="dw-${dim}" style="min-width:30px;color:#64ffda;font-weight:bold">${DATA.dimensions[dim]}</span>
+      <span class="mono">（effective = pattern权重×维度权重；≥3 优先，≤1.5 次要）</span>
+    </div>`;
+    if (!pats.length) html += `<p class="mono">无 ${DIM_CN[dim]} pattern（数据不足未提炼）</p>`;
+    for (const p of pats) html += patCard(p);
+    html += "</div>";
+  }
+  const seeds = DATA.patterns.filter(p => !p.dim);
+  if (seeds.length) {
+    html += `<div class="dim-group"><div class="dim-header"><h3>人工 seed</h3><span class="mono">（无维度，effective=权重×1.0）</span></div>`;
+    for (const p of seeds) html += patCard(p);
+    html += "</div>";
+  }
+  document.getElementById("patterns").innerHTML = html;
+}
+
+function patCard(p) {
+  const eff = effective(p);
+  return `<div class="pat-card">
+    <span class="badge b-${p.weight.toLowerCase()}">${p.weight}</span>
+    <span class="badge b-${p.status}">${p.status}</span>
+    ${p.seed ? '<span class="badge b-seed">seed</span>' : ''}
+    <span style="min-width:55px;color:${eff>=3?'#66bb6a':eff<=1.5?'#ef5350':'#aaa'}">eff=${eff.toFixed(1)}</span>
+    <strong style="min-width:170px">${p.id}</strong>
+    <span class="mono" style="flex:1">${(p.text||'').slice(0,70)}</span>
+    <span class="mono">N=${p.sample_size} birth=${p.avg_reach??'-'} excess=${p.recent_excess??'-'} ${p.trend||''}</span>
+    <select onchange="updatePat('${p.id}', this.value, null)">
+      <option value="LOW" ${p.weight==='LOW'?'selected':''}>LOW</option>
+      <option value="MEDIUM" ${p.weight==='MEDIUM'?'selected':''}>MEDIUM</option>
+      <option value="HIGH" ${p.weight==='HIGH'?'selected':''}>HIGH</option>
+    </select>
+    <button onclick="updatePat('${p.id}', null, '${p.status==='active'?'deprecated':'active'}')">${p.status==='active'?'禁用':'启用'}</button>
+  </div>`;
+}
+
+async function updateDim(dim, w) {
+  const r = await fetch("/api/dimension", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({dim, weight:parseFloat(w)})});
+  const d = await r.json();
+  DATA.dimensions = d.dimensions;
+  renderPatterns();
+}
+async function updatePat(id, weight, status) {
+  const body = {id}; if (weight) body.weight = weight; if (status) body.status = status;
+  await fetch("/api/pattern", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  await load();
+}
+
+function renderRegChart() {
+  const el = document.getElementById("regression");
+  const reg = DATA.regression;
+  if (!reg.available) { el.innerHTML = `<p>回归不可用：${reg.reason||''}</p>`; return; }
+  const coefs = Object.entries(reg.coef).filter(([k]) => k !== "Intercept")
+    .map(([k,v]) => ({name: k.replace(/C\(hook_type\)\[T\./,'hook:').replace(/\]/,''), coef: v.coef, p: v.p}));
+  el.innerHTML = `<div class="stat">R²=${reg.r_squared}</div><div class="stat">N=${reg.n}</div>` +
+    `<div class="stat" style="background:#1a3a1a">显著正: ${JSON.stringify(reg.significant_pos)}</div>` +
+    `<div class="stat" style="background:#3a1a1a">显著负: ${JSON.stringify(reg.significant_neg)}</div>` +
+    `<div class="chart" id="reg-chart"></div>
+     <p class="mono">提示：p<0.1 为探索性显著（绿=正效应/红=负效应/灰=不显著）。save_rate coef 大说明高收藏视频 reach 高。</p>`;
+  charts.reg = echarts.init(document.getElementById("reg-chart"));
+  charts.reg.setOption({
+    title: {text: "各协变量净效应（控制其他变量后的边际效应）", textStyle: {color: "#e0e0e0", fontSize: 14}, left: "center"},
+    tooltip: {trigger: "axis", formatter: p => `${p[0].name}<br/>coef=${p[0].value}`},
+    grid: {left: "35%", right: "10%"},
+    xAxis: {type: "value", axisLine: {lineStyle: {color: "#666"}}, axisLabel: {color: "#aaa"}, splitLine: {lineStyle: {color: "#2a3040"}}},
+    yAxis: {type: "category", data: coefs.map(c => c.name), axisLine: {lineStyle: {color: "#666"}}, axisLabel: {color: "#e0e0e0"}},
+    series: [{type: "bar", data: coefs.map(c => ({value: c.coef, itemStyle: {color: c.p < 0.1 ? (c.coef > 0 ? "#66bb6a" : "#ef5350") : "#555"}}))}]
+  });
+}
+
+function renderVideosTable() {
+  const ps = DATA.projects.slice().sort((a,b) => b.reach - a.reach);
+  let html = `<div class="chart" id="reach-chart"></div><div class="chart" id="dim-chart"></div>`;
+  html += "<table><tr><th>日期</th><th>项目</th><th>reach</th><th>quality</th><th>平台数</th><th>题材</th><th>hook</th><th>封面</th></tr>";
+  for (const p of ps) {
+    html += `<tr><td>${p.date||''}</td><td>${p.name}</td><td>${p.reach}</td><td>${p.quality}</td><td>${p.n_platforms}</td><td>${p.topic}</td><td>${p.hook_type}</td><td>${p.cover}</td></tr>`;
+  }
+  document.getElementById("videos").innerHTML = html + "</table>";
+}
+
+function renderVideoCharts() {
+  const ps = DATA.projects.slice().sort((a,b) => a.reach - b.reach);
+  // reach 分布
+  charts.reach = echarts.init(document.getElementById("reach-chart"));
+  charts.reach.setOption({
+    title: {text: "视频受众广度分布（reach composite，按升序）", textStyle: {color: "#e0e0e0", fontSize: 14}, left: "center"},
+    tooltip: {trigger: "axis"},
+    grid: {left: "8%", right: "5%", bottom: "15%"},
+    xAxis: {type: "category", data: ps.map(p => (p.date||'').slice(5) + ' ' + p.name), axisLabel: {color: "#aaa", rotate: 45, fontSize: 10}},
+    yAxis: {type: "value", axisLabel: {color: "#aaa"}, splitLine: {lineStyle: {color: "#2a3040"}}},
+    series: [{type: "bar", data: ps.map(p => p.reach), itemStyle: {color: "#64ffda"}}]
+  });
+  // 维度广度对比
+  const dims = [["题材", DATA.topic_analysis], ["hook", DATA.hook_analysis], ["封面", DATA.cover_analysis]];
+  const labels = [], series = [];
+  for (const [_, g] of dims) for (const k of Object.keys(g)) if (!labels.includes(k)) labels.push(k);
+  for (const [name, g] of dims) {
+    series.push({name, type: "bar", data: labels.map(l => (g[l] || {avg_reach: 0}).avg_reach)});
+  }
+  charts.dim = echarts.init(document.getElementById("dim-chart"));
+  charts.dim.setOption({
+    title: {text: "维度内各类别的受众广度对比", textStyle: {color: "#e0e0e0", fontSize: 14}, left: "center"},
+    tooltip: {trigger: "axis"},
+    legend: {textStyle: {color: "#aaa"}, top: 25},
+    grid: {left: "8%", right: "5%", bottom: "20%"},
+    xAxis: {type: "category", data: labels, axisLabel: {color: "#aaa", rotate: 30}},
+    yAxis: {type: "value", axisLabel: {color: "#aaa"}, splitLine: {lineStyle: {color: "#2a3040"}}},
+    series: series
+  });
+}
+
+function renderThresholds() {
+  const t = DATA.thresholds;
+  let html = "<table><tr><th>平台/配置</th><th>值</th></tr>";
+  for (const [k, v] of Object.entries(t)) {
+    html += `<tr><td>${k}</td><td><pre>${JSON.stringify(v, null, 2)}</pre></td></tr>`;
+  }
+  document.getElementById("thresholds").innerHTML = html + "</table>";
+}
+
+function renderDeltas() {
+  let html = "<table><tr><th>id</th><th>target_rule</th><th>operation</th><th>confidence</th><th>需人工审核</th><th>safe</th></tr>";
+  for (const d of DATA.deltas) {
+    const dd = d.delta || d;
+    html += `<tr><td>${dd.id||'-'}</td><td>${dd.target_rule||'-'}</td><td>${dd.operation||'-'}</td><td>${dd.confidence??'-'}</td><td>${d.requires_human_review??'-'}</td><td>${(d.shadow_validation||{}).safe??'-'}</td></tr>`;
+  }
+  document.getElementById("deltas").innerHTML = html + "</table>";
+}
+
+// 标签切换 + lazy 图表
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  const panel = t.dataset.panel;
+  document.getElementById(panel).classList.add("active");
+  setTimeout(() => {
+    if (panel === "regression") { renderRegChart(); charts.reg && charts.reg.resize(); }
+    if (panel === "videos") { renderVideoCharts(); charts.reach && charts.reach.resize(); charts.dim && charts.dim.resize(); }
+  }, 50);
+});
+
+window.addEventListener("resize", () => Object.values(charts).forEach(c => c && c.resize()));
+load();
+</script>
+</body>
+</html>

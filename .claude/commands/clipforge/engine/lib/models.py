@@ -115,6 +115,7 @@ class Platform(str, Enum):
     WECHAT_VIDEO = "wechat_video"
     XIAOHONGSHU = "xiaohongshu"
     BILIBILI = "bilibili"
+    TOUTIAO = "toutiao"
 
 
 @dataclass

@@ -33,6 +33,7 @@ from engine.lib.rule_parser import load_all_rules, RULES_DIR
 from engine.lib.models import Rule, Platform
 from engine.lib.delta import create_delta, save_delta, shadow_validate
 from engine.lib.thresholds import get_douyin
+from engine.lib.data_paths import traces_dir as _evolution_traces_dir
 
 
 def _evidence_confidence(violation: dict, trace: dict | None = None) -> float:
@@ -166,7 +167,7 @@ def weak_attribution(
             )
             # shadow_validate before saving
             rules = load_all_rules(rules_dir)
-            traces_dir = Path(rules_dir).parent / "traces"
+            traces_dir = _evolution_traces_dir()
             traces = []
             if traces_dir.exists():
                 for f in traces_dir.rglob("trace.json"):
@@ -433,7 +434,7 @@ def performance_attribution(
         )
         # shadow_validate before saving
         rules = load_all_rules(rules_dir)
-        traces_dir = Path(rules_dir).parent / "traces"
+        traces_dir = _evolution_traces_dir()
         traces = []
         if traces_dir.exists():
             for f in traces_dir.rglob("trace.json"):

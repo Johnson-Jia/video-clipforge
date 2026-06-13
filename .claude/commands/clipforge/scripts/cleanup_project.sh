@@ -28,6 +28,8 @@ fi
 
 # 在 cd 前保存脚本绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# repo 根（scripts→clipforge→commands→.claude→repo，4 层）— 定位 workspace/bgm 素材库（不依赖 cwd 层级）
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 cd "$PROJECT_DIR"
 
@@ -222,14 +224,14 @@ if [ -f bgm.wav ]; then
 
   # 方法1：通过 segment_durations.json 的 meta.bgm_source 匹配
   BGM_SOURCE=$(python -c "import json; d=json.load(open('segment_durations.json')); print(d.get('meta',{}).get('bgm_source',''))" 2>/dev/null || echo "")
-  if [ -n "$BGM_SOURCE" ] && [ -f "../../workspace/bgm/${BGM_SOURCE}" ]; then
+  if [ -n "$BGM_SOURCE" ] && [ -f "$REPO_ROOT/workspace/bgm/${BGM_SOURCE}" ]; then
     BGM_FOUND_IN_LIB=true
   fi
 
   # 方法2：按时长匹配素材库中的文件
   if [ "$BGM_FOUND_IN_LIB" = false ]; then
     BGM_DURATION=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 bgm.wav 2>/dev/null | cut -d. -f1)
-    for f in ../../workspace/bgm/*.mp3 ../../workspace/bgm/*.wav; do
+    for f in "$REPO_ROOT"/workspace/bgm/*.mp3 "$REPO_ROOT"/workspace/bgm/*.wav; do
       if [ -f "$f" ]; then
         LIB_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null | cut -d. -f1)
         if [ "$BGM_DURATION" = "$LIB_DUR" ]; then

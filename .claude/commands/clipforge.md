@@ -110,9 +110,12 @@ env_check.sh
 用户调用 /clipforge
   → 解析方向关键词（横屏/竖屏）→ 记录 user_orientation
   → 读 schema.yaml，扫描 generates 检测已完成 artifact
+  → ⛔ 探索-利用决策（项目目录确定后首次）：python engine/exploration.py --project-dir <dir> --date <YYYY-MM-DD> --category <cat>
+    → 生成 exploration_directive.yaml（ε=0.15：85% exploit 注入最强 pattern / 15% explore 采集冷门维度，种子化确定性，全 DAG 各 stage 共用）
   → 拓扑排序，逐个执行 ready artifact：
-     1. ⛔ 约束注入铁律：python engine/inject.py --skill <stage-id> [--category <cat>]
+     1. ⛔ 约束注入铁律：python engine/inject.py --skill <stage-id> [--category <cat>] --project-dir <dir>
         输出（Intent+正向规则+经验模式+Red Flags+Delta）拼入 prompt 最前面。跳过 = 自进化失效
+        → inject 读 exploration_directive.yaml：explore 模式 force 注入冷门 pattern + 加"本次制作策略"引导；exploit 引导优先最强经验。同时写 injected_patterns.json（采纳追溯）
      2. 模板渲染：python engine/render_stage.py --stage stages/<file> --category <cat>
      3. 读渲染后的 stage 内容；有分类则读 categories/{id}.md 指南
      4. 执行 stage（创意轨由 LLM，确定轨跑脚本）
@@ -131,8 +134,8 @@ env_check.sh
 ### 4.3 自动化模式（cron 编排）
 
 ```
-Controller 读 schema.yaml → 按 DAG 推导 SubAgent 批次 → 逐批调度：
-  ⛔ 引擎注入铁律（同交互模式）
+Controller 读 schema.yaml → 按 DAG 推导 SubAgent 批次 → 项目启动跑 exploration.py 生成 directive → 逐批调度：
+  ⛔ 引擎注入铁律（同交互模式，inject 加 --project-dir 读 directive + 写 injected_patterns.json）
   → 加载 stage 技能文件
   → SubAgent 完成 → 扫描 generates 验证 → gate.py 门禁
   → HARD 失败：自动修复重试（最多 2 次）→ trace 记录 → 通过则下一批

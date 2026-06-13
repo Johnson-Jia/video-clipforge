@@ -15,8 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.delta import load_deltas, DELTAS_DIR
 from engine.lib.rule_parser import load_all_rules, RULES_DIR
+from engine.lib.data_paths import disputes_file
 
-DISPUTES_FILE = Path(__file__).parent.parent / "deltas" / "disputes.json"
+DISPUTES_FILE = disputes_file()
 CIRCUIT_BREAKER_WINDOW_DAYS = 30
 CIRCUIT_BREAKER_THRESHOLD = 0.30
 

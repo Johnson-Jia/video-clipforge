@@ -317,6 +317,156 @@ def parse_xiaohongshu_xlsx(filepath: Path) -> list[dict]:
     return records
 
 
+def _read_xlsx_raw(filepath: Path) -> list[list[str]]:
+    """直接通过 zip/XML 读取 xlsx，绕过 openpyxl 样式表解析。
+
+    头条后台导出的 xlsx 样式表损坏（openpyxl 加载报
+    `Fill() takes no arguments`），此函数绕过样式层只取单元格值。
+    返回二维字符串列表（行内缺失单元格填 ""）。
+    """
+    import zipfile
+    from xml.etree import ElementTree as ET
+    NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    rows_out: list[list[str]] = []
+    with zipfile.ZipFile(str(filepath)) as z:
+        shared: list[str] = []
+        try:
+            sst = ET.fromstring(z.read("xl/sharedStrings.xml"))
+            for si in sst.findall("{%s}si" % NS):
+                shared.append("".join((t.text or "") for t in si.iter("{%s}t" % NS)))
+        except KeyError:
+            pass
+        sheet = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
+        for row in sheet.findall(".//{%s}row" % NS):
+            cells: dict[int, str] = {}
+            max_idx = -1
+            for c in row.findall("{%s}c" % NS):
+                ref = c.get("r", "")
+                col_letters = "".join(ch for ch in ref if ch.isalpha())
+                idx = 0
+                for ch in col_letters:
+                    idx = idx * 26 + (ord(ch.upper()) - ord("A") + 1)
+                idx -= 1
+                if idx < 0:
+                    continue
+                v = c.find("{%s}v" % NS)
+                val = v.text if v is not None else ""
+                ctype = c.get("t", "")
+                if ctype == "s" and val.isdigit():
+                    n = int(val)
+                    val = shared[n] if n < len(shared) else ""
+                elif ctype == "inlineStr":
+                    is_elem = c.find("{%s}is" % NS)
+                    if is_elem is not None:
+                        val = "".join((t.text or "") for t in is_elem.iter("{%s}t" % NS))
+                cells[idx] = val
+                if idx > max_idx:
+                    max_idx = idx
+            if max_idx < 0:
+                rows_out.append([])
+            else:
+                rows_out.append([cells.get(i, "") for i in range(max_idx + 1)])
+    return rows_out
+
+
+def parse_toutiao_date(s) -> str | None:
+    """头条发布时间 → YYYY-MM-DD。兼容 '2026-06-10 12:34' / '2026年06月10日' / '2026/6/10'。"""
+    if not s:
+        return None
+    s = str(s).strip()
+    m = re.match(r"(\d{4})\D(\d{1,2})\D(\d{1,2})", s)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    return None
+
+
+def _parse_toutiao_percent(s) -> float | None:
+    """头条完成率解析。'16.55' 表示 16.55%（裸百分数），'-1.00' 为无数据占位。
+
+    头条同一表格内点击率是 0~1 比例小数（'0.46'=46%，走 parse_percent），
+    但完成率是裸百分数（'16.55'=16.96%）——两种格式并存，需分别处理。
+    验证：行6 展现11668×播放4755→40.7%，CTR=0.41（比例小数✓）；
+    完成率列9=23.37（裸百分数，需/100→0.2337）。
+    """
+    if s is None:
+        return None
+    s = str(s).strip()
+    if s in ("", "-"):
+        return None
+    try:
+        v = float(s)
+    except (ValueError, TypeError):
+        return None
+    if v < 0:  # -1.00 是头条"无数据"占位
+        return None
+    return round(v / 100, 6)
+
+
+def _parse_toutiao_seconds(s) -> float | None:
+    """头条平均播放时长解析。'-1' 为无数据占位，否则秒数。"""
+    if s is None:
+        return None
+    s = str(s).strip()
+    if s in ("", "-"):
+        return None
+    try:
+        v = float(s)
+    except (ValueError, TypeError):
+        return None
+    if v < 0:
+        return None
+    return v
+
+
+def parse_toutiao_xlsx(filepath: Path) -> list[dict]:
+    """解析头条小视频导出 xlsx（样式表损坏，走 zip/XML 原始读取）。
+
+    16 列：标题(0) / 发布时间(1) / ID(2) / 链接(3) / 展现量(4) / 粉丝展现量(5) /
+    播放量(6) / 粉丝播放量(7) / 点击率(8) / 平均播放完成率(9) / 平均播放时长(10) /
+    点赞量(11) / 评论量(12) / 转发量(13) / 分享量(14) / 收藏量(15)
+
+    展现量(impressions) 是头条特有指标——平台推送曝光量，区别于播放量。
+    """
+    rows = _read_xlsx_raw(filepath)
+    if len(rows) < 2:
+        return []
+
+    records = []
+    for row in rows[1:]:
+        if not row or not row[0]:
+            continue
+        title = str(row[0]).strip()
+        plays = safe_int(row[6]) if len(row) > 6 else 0
+        impressions = safe_int(row[4]) if len(row) > 4 else 0
+        likes = safe_int(row[11]) if len(row) > 11 else 0
+        comments = safe_int(row[12]) if len(row) > 12 else 0
+        forwards = safe_int(row[13]) if len(row) > 13 else 0
+        shares_col = safe_int(row[14]) if len(row) > 14 else 0
+        saves = safe_int(row[15]) if len(row) > 15 else 0
+
+        record = {
+            "platform": "toutiao",
+            "title": title,
+            "published_at": parse_toutiao_date(row[1]) if len(row) > 1 else None,
+            "impressions": impressions,
+            "plays": plays,
+            "click_rate": parse_percent(row[8]) if len(row) > 8 else None,
+            "completion_rate": _parse_toutiao_percent(row[9]) if len(row) > 9 else None,
+            "avg_watch_duration": _parse_toutiao_seconds(row[10]) if len(row) > 10 else None,
+            "likes": likes,
+            "comments": comments,
+            "forwards": forwards,
+            "shares": shares_col + forwards,  # 转发+分享合计，对齐既有 share_rate 语义
+            "saves": saves,
+        }
+        if plays > 0:
+            record["share_rate"] = round(record["shares"] / plays, 6)
+            record["like_rate"] = round(likes / plays, 6)
+            record["save_rate"] = round(saves / plays, 6)
+        records.append(record)
+    return records
+
+
 # ── 数据文件扫描 ───────────────────────────────────────────────────────────────
 
 def scan_data_dir(data_root: Path, date_filter: str | None = None) -> list[dict]:
@@ -343,10 +493,13 @@ def scan_data_dir(data_root: Path, date_filter: str | None = None) -> list[dict]
                 r["_data_date"] = date_str
             all_records.extend(recs)
 
-        # B站
-        bilibili_file = dd / "哔哩哔哩近期稿件对比.csv"
-        if bilibili_file.exists():
-            recs = parse_bilibili_csv(bilibili_file)
+        # B站（导出按每页10条分多个文件：b站近期稿件对比1.csv ~ N.csv，
+        # 命名/大小写不一，旧版用「哔哩哔哩」前缀，glob 兼容）
+        for bl_file in sorted(dd.glob("*.csv")):
+            fn = bl_file.name
+            if ("稿件对比" not in fn) or ("哔哩哔哩" not in fn and "b站" not in fn.lower()):
+                continue
+            recs = parse_bilibili_csv(bl_file)
             for r in recs:
                 r["_data_date"] = date_str
             all_records.extend(recs)
@@ -368,6 +521,14 @@ def scan_data_dir(data_root: Path, date_filter: str | None = None) -> list[dict]
             for r in recs:
                 r["_data_date"] = date_str
             all_records.extend(recs)
+
+        # 头条（前缀匹配，兼容 "头条小视频*.xlsx" / "头条-小视频*.xlsx"）
+        for tt_file in sorted(dd.glob("头条*.xlsx")):
+            recs = parse_toutiao_xlsx(tt_file)
+            for r in recs:
+                r["_data_date"] = date_str
+            all_records.extend(recs)
+            break  # 每个日期目录只取一个头条导出文件
 
     return all_records
 
@@ -711,7 +872,8 @@ def backfill_matches(
             snapshot_fields = {"plays", "likes", "comments", "shares", "saves",
                                "completion_5s_rate", "completion_rate", "cover_ctr",
                                "share_rate", "like_rate", "save_rate",
-                               "followers_gained", "avg_watch_duration"}
+                               "followers_gained", "avg_watch_duration",
+                               "impressions", "click_rate", "forwards"}
             snap = {"platform": platform, "source_date": rec.get("_data_date", "")}
             for f in snapshot_fields:
                 if f in perf:
@@ -878,6 +1040,7 @@ def print_table_report(matches: list[dict], backfill_results: list[dict] | None)
     platform_names = {
         "douyin": "抖音", "bilibili": "B站",
         "wechat_video": "视频号", "xiaohongshu": "小红书",
+        "toutiao": "头条",
     }
 
     for platform, group in by_platform.items():
@@ -918,6 +1081,14 @@ def print_table_report(matches: list[dict], backfill_results: list[dict] | None)
                     likes = rec.get("likes", 0)
                     if likes > 0:
                         metrics.append(f"收藏/赞={saves/likes:.1f}")
+                elif platform == "toutiao":
+                    metrics.append(f"展现={rec.get('impressions', 0)}")
+                    ctr = rec.get("click_rate")
+                    if ctr is not None:
+                        metrics.append(f"点击率={ctr:.1%}")
+                    comp = rec.get("completion_rate")
+                    if comp is not None:
+                        metrics.append(f"完播={comp:.1%}")
 
                 metrics.insert(0, f"播放={plays}")
                 print(f"    {' '.join(metrics)}")

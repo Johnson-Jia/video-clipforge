@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from .rule_parser import parse_rule, load_rules_from_file
 from .models import Rule, Severity, RuleClass
+from .data_paths import deltas_dir
 
-DELTAS_DIR = Path(__file__).parent.parent.parent / "deltas"
+DELTAS_DIR = deltas_dir()
 
 
 def create_delta(

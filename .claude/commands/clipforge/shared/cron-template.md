@@ -10,6 +10,10 @@ TODAY=$(date +%Y-%m-%d)
 DATE_DIR="$(date +%Y)/$(date +%m)/$(date +%d)"
 PROJECT_DIR="workspace/${DATE_DIR}/<project-name>"
 mkdir -p "${PROJECT_DIR}"
+
+# 探索-利用决策（种子化确定性，全 DAG 各 SubAgent 读同一 directive）
+# 决定本次视频走 explore（采集冷门维度数据）还是 exploit（用最强经验组合）
+cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../../../${PROJECT_DIR}" --date "${TODAY}" --category <CATEGORY>
 ```
 
 > **代理：** 如果本机需要代理才能访问外网，请在执行前设置 `https_proxy` / `http_proxy` 环境变量。
@@ -70,7 +74,7 @@ mkdir -p "${PROJECT_DIR}"
 
 1. 运行约束注入（在 `.claude/commands/clipforge/` 目录下）：
    ```bash
-   cd .claude/commands/clipforge && python engine/inject.py --skill <stage-id> --category <category>
+   cd .claude/commands/clipforge && python engine/inject.py --skill <stage-id> --category <category> --project-dir "../../../${PROJECT_DIR}"
    ```
 
 2. 将 inject 输出作为 **约束段** 附加到 SubAgent prompt 的最前面（在 stage 内容之前）：
@@ -113,7 +117,7 @@ mkdir -p "${PROJECT_DIR}"
 
 加载：`skills/stage0-env.yaml` + `skills/stage1-content.yaml` + `skills/stage2-analysis.yaml` + `skills/stage3-scenes.yaml`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -138,7 +142,7 @@ mkdir -p "${PROJECT_DIR}"
 
 加载：`skills/stage4-audio.yaml`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage4-audio --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage4-audio --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -155,7 +159,7 @@ mkdir -p "${PROJECT_DIR}"
 
 加载：`skills/stage6-production.yaml`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage6-production --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage6-production --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -202,7 +206,7 @@ HARD 门禁失败时：修复问题，重新渲染，再次运行门禁。最多
 
 加载：`skills/stage7-delivery.yaml` + `shared/machine-scoring.md` + `shared/cleanup-rules.md`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage7-delivery --category <CATEGORY>`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage7-delivery --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
