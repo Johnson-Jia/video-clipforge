@@ -22,34 +22,56 @@ from engine.lib.data_paths import traces_dir as _evolution_traces_dir
 TRACES_DIR = _evolution_traces_dir()
 
 
-def _slug(project_dir: str) -> str:
-    """项目目录 → 稳定的 trace 索引目录名（sha1 前12位）。
+def _to_rel_project_dir(project_dir: str) -> str:
+    """project_dir → 相对 workspace 的可移植路径（与 performance.json 的 project 字段一致）。
 
-    解决 basename 同名冲突：31 个不同日期的 github-trending 项目，
-    旧 basename 索引会全部落到 traces/github-trending/trace.json。
-    用全路径哈希分散，确定性、无 Windows 非法字符。
+    绝对路径转相对（D:\\...\\workspace\\2026\\06\\13\\x → 2026/06/13/x），
+    已是相对或不在 workspace 下则规范化返回（正斜杠）。保证 trace 可跨路径移植。
     """
-    h = hashlib.sha1(str(project_dir).encode("utf-8")).hexdigest()[:12]
+    p = Path(str(project_dir))
+    try:
+        from engine.lib.data_paths import PROJECT_ROOT
+        ws = PROJECT_ROOT / "workspace"
+        if p.is_absolute():
+            try:
+                return str(p.relative_to(ws)).replace("\\", "/")
+            except ValueError:
+                return str(p).replace("\\", "/")
+    except Exception:
+        pass
+    return str(p).replace("\\", "/")
+
+
+def _slug(project_dir: str) -> str:
+    """项目目录 → 稳定 slug（基于相对路径哈希，可移植，不依赖机器绝对路径）。
+
+    解决 basename 同名冲突 + 绝对路径不可移植：用相对 workspace 的路径哈希分散。
+    """
+    h = hashlib.sha1(_to_rel_project_dir(project_dir).encode("utf-8")).hexdigest()[:12]
     return f"p-{h}"
 
 
 def _resolve_trace_dir(project_dir: str, traces_dir: Path) -> Path:
-    """定位项目 trace 目录：优先 slug 路径（新索引），回退 basename（兼容旧 trace）。
+    """定位项目 trace 目录：相对 slug 优先，回退旧绝对 slug / basename（兼容历史 trace），惰性迁移。
 
-    旧 basename 路径存在时惰性迁移（shutil.copy，非删除）到 slug 路径，
-    使同一项目历史 trace 聚合。读/写操作都用此函数保证一致。
+    三级回退保证旧 trace（相对化前的绝对路径 slug，或更早的 basename 索引）仍可读，
+    并惰性 copy 到相对 slug 聚合。读/写都用此函数保证一致。
     """
     import shutil
-    slug_dir = traces_dir / _slug(project_dir)
-    if slug_dir.exists():
+    slug_dir = traces_dir / _slug(project_dir)              # 基于 _to_rel（新）
+    if (slug_dir / "trace.json").exists():
         return slug_dir
-    old_dir = traces_dir / Path(project_dir).name
-    if (old_dir / "trace.json").exists():
-        try:
-            slug_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(old_dir / "trace.json", slug_dir / "trace.json")
-        except Exception:
-            pass
+    # 回退1：旧绝对路径 slug（相对化前的批2 slug）
+    old_abs_slug = traces_dir / ("p-" + hashlib.sha1(str(project_dir).encode("utf-8")).hexdigest()[:12])
+    # 回退2：basename（批2 前）
+    for old in (old_abs_slug, traces_dir / Path(str(project_dir)).name):
+        if (old / "trace.json").exists():
+            try:
+                slug_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy(old / "trace.json", slug_dir / "trace.json")
+            except Exception:
+                pass
+            break
     return slug_dir
 
 
@@ -84,7 +106,7 @@ def record_trace(
         "id": trace_id,
         "skill_id": skill_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "project_dir": str(project_dir),
+        "project_dir": _to_rel_project_dir(str(project_dir)),
         "context": context or {},
         "execution": {
             "steps": exec_data.get("steps", []),
