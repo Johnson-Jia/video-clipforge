@@ -82,7 +82,8 @@ RETAIN_FILES=(
 
 # 受保护目录（目录名匹配，连同内部所有动态文件一并保护，防 future 回归误删）
 # creative/ 含动态数量的 sNN.html 碎片 + style.css，无法逐个列入文件白名单，故用目录级保护
-PROTECTED_DIRS=("creative")
+# assets/ 含项目素材（截图、图片等原始证据），用户要求永久保留，防止渲染后误删
+PROTECTED_DIRS=("creative" "assets")
 
 # 构建白名单查找表（O(1) 查找）
 declare -A RETAIN_MAP
@@ -202,7 +203,7 @@ done
 echo ""
 echo "--- 删除临时目录 ---"
 
-for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" "assets" ".diag_frames"; do
+for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" ".diag_frames"; do
   for match in $d; do
     if [ -d "$match" ]; then
       safe_rm_rf "$match/"
