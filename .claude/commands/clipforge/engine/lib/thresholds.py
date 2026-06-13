@@ -4,12 +4,16 @@ import yaml
 from pathlib import Path
 from datetime import datetime, timezone
 
-THRESHOLDS_FILE = Path(__file__).parent / "thresholds.yaml"
+from .data_paths import thresholds_file
+
+THRESHOLDS_FILE = thresholds_file()
 
 
 def load() -> dict:
+    if not THRESHOLDS_FILE.exists():
+        return {}
     with open(THRESHOLDS_FILE, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 
 def save(data: dict) -> None:

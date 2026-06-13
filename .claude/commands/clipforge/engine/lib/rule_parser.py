@@ -10,9 +10,11 @@ from .models import (
     SpiritLetterEntry, SpiritMode,
 )
 
+from .data_paths import hit_counts_file
+
 RULES_DIR = Path(__file__).parent.parent.parent / "rules"
 SKILLS_DIR = Path(__file__).parent.parent.parent / "skills"
-HIT_COUNTS_FILE = Path(__file__).parent.parent.parent / "hit_counts.json"
+HIT_COUNTS_FILE = hit_counts_file()
 
 
 def _resolve_scope(raw_scope: str) -> tuple[Scope, str | None]:

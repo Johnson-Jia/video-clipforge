@@ -18,9 +18,6 @@ from engine.lib.positive_rewrite import rewrite_rule
 from engine.lib.delta import load_deltas, apply_delta_to_rules
 
 
-PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
-
-
 def merge_rules(rules: list[Rule]) -> list[Rule]:
     """按 ID 去重，SAFETY 规则不可覆盖，EXPERIENTIAL 后声明的优先。"""
     seen: dict[str, Rule] = {}
@@ -33,17 +30,21 @@ def merge_rules(rules: list[Rule]) -> list[Rule]:
     return list(seen.values())
 
 
-def load_patterns(category: str | None = None, patterns_dir: Path | None = None) -> list[str]:
+def load_patterns_meta(category: str | None = None, skill_name: str | None = None,
+                       patterns_dir: Path | None = None, force_ids: set[str] | None = None) -> list[dict]:
+    """返回注入 pattern 的元数据列表，供 generate_injection 落盘 injected_patterns.json（采纳追溯基建）。
+
+    过滤逻辑与 load_patterns 完全一致（老化/category/skill_scope/status），但返回
+    [{id, kind, weight, skill_scope, text}]：kind=pref|fewshot，便于追溯本次注入了哪些 pattern。
+    """
     from datetime import datetime, timedelta
 
     MAX_AGE_DAYS = 90
-    patterns_dir = patterns_dir or PATTERNS_DIR
-    if not patterns_dir.exists():
-        return []
-    patterns: list[str] = []
-    for fp in sorted(patterns_dir.glob("*.yaml")):
+    from engine.lib.data_paths import all_pattern_files
+    files = all_pattern_files() if patterns_dir is None else sorted(patterns_dir.glob("*.yaml"))
+    metas: list[dict] = []
+    for fp in files:
         import yaml
-        # 老化过滤：超过 90 天的 pattern 跳过
         mtime = datetime.fromtimestamp(fp.stat().st_mtime)
         if (datetime.now() - mtime).days > MAX_AGE_DAYS:
             continue
@@ -53,11 +54,51 @@ def load_patterns(category: str | None = None, patterns_dir: Path | None = None)
             continue
         if category and data.get("category") != category and data.get("category") is not None:
             continue
+        pid = data.get("id") or fp.stem
+        _parts = pid.split("-", 2)
+        _dim = _parts[1] if (len(_parts) >= 3 and _parts[0] == "P"
+                             and _parts[1] in ("topic", "hook", "cover", "narration")) else None
+        scope_raw = data.get("skill_scope")
+        # skill_scope 过滤；force_ids（exploration explore 模式）绕过 skill_scope，但不绕过 deprecated/老化
+        if skill_name and scope_raw and pid not in (force_ids or set()):
+            scopes = [s.strip() for s in str(scope_raw).split(",") if s.strip()]
+            if skill_name not in scopes:
+                continue
+        if (data.get("status") or (data.get("evidence") or {}).get("status")) == "deprecated":
+            continue
         if "as_preference" in data:
-            patterns.append(data["as_preference"].get("text", ""))
+            pref = data["as_preference"]
+            metas.append({"id": pid, "kind": "pref", "weight": pref.get("weight", "MEDIUM"),
+                          "skill_scope": scope_raw or "", "dim": _dim, "text": pref.get("text", "")})
         if "as_fewshot" in data:
-            patterns.append(data["as_fewshot"].get("example_output", "")[:200])
-    return [p for p in patterns if p]
+            metas.append({"id": pid, "kind": "fewshot", "weight": "", "skill_scope": scope_raw or "",
+                          "dim": _dim, "text": data["as_fewshot"].get("example_output", "")[:200]})
+    return [m for m in metas if m.get("text")]
+
+
+def load_patterns(category: str | None = None, skill_name: str | None = None,
+                  patterns_dir: Path | None = None) -> list[str]:
+    """注入 pattern 文本列表（向后兼容：返回纯文本，丢弃元数据）。"""
+    return [m["text"] for m in load_patterns_meta(category, skill_name, patterns_dir)]
+
+
+def _load_dimension_weights() -> dict:
+    """读 dimension_weights.yaml（topic/hook/cover/narration 维度权重）。缺文件返回全 1.0。
+
+    供 generate_injection 计算 effective_rank = pattern_weight_rank × dim_weight，
+    让维度权重 + pattern weight 真正影响注入排序/标注（而非仅追溯记录）。
+    """
+    from engine.lib.data_paths import dimension_weights_file
+    fp = dimension_weights_file()
+    default = {"topic": 1.0, "hook": 1.0, "cover": 1.0, "narration": 1.0}
+    if not fp.exists():
+        return default
+    try:
+        import yaml
+        d = yaml.safe_load(fp.read_text("utf-8")) or {}
+        return {k: float(d.get(k, 1.0)) for k in default}
+    except Exception:
+        return default
 
 
 def generate_injection(
@@ -66,9 +107,24 @@ def generate_injection(
     rules_dir: Path | None = None,
     skills_dir: Path | None = None,
     patterns_dir: Path | None = None,
+    project_dir: Path | None = None,
 ) -> str:
     rules_dir = rules_dir or RULES_DIR
     skills_dir = skills_dir or SKILLS_DIR
+
+    # 读 exploration directive（探索-利用策略 + explore force 注入依据）
+    directive = None
+    if project_dir is not None:
+        try:
+            import yaml as _yaml
+            df = Path(project_dir) / "exploration_directive.yaml"
+            if df.exists():
+                directive = _yaml.safe_load(df.read_text("utf-8")) or {}
+        except Exception:
+            directive = None
+    force_ids: set[str] = set()
+    if directive and directive.get("mode") == "explore":
+        force_ids = {p.get("id") for p in (directive.get("target_patterns") or []) if p.get("id")}
 
     skill = load_skill(skill_name, skills_dir)
     rules = load_rules_by_scope(skill_name if skill else None, category, rules_dir)
@@ -178,12 +234,33 @@ def generate_injection(
         lines.append("")
 
     # 经验模式（STANDARD 和 STRICT 注入）
+    pattern_metas: list[dict] = []
     if rigor in (Rigor.STANDARD, Rigor.STRICT):
-        patterns = load_patterns(category, patterns_dir)
-        if patterns:
+        pattern_metas = load_patterns_meta(category, skill_name=skill_name,
+                                           patterns_dir=patterns_dir, force_ids=force_ids)
+        # 探索-利用策略引导（软引导，LLM 自由发挥区）
+        if directive:
+            dmode = directive.get("mode", "exploit")
+            dtargs = [p.get("id", "") for p in (directive.get("target_patterns") or [])]
+            if dmode == "explore":
+                lines.append("## 本次制作策略：探索（主动采集冷门维度数据）")
+                lines.append(f"本次刻意探索低数据维度：{', '.join(dtargs)}。选题/钩子/封面优先尝试这些维度，")
+                lines.append("即使历史上非最优——目的是为自进化采集真实表现数据，拓宽经验池。\n")
+            else:
+                lines.append("## 本次制作策略：利用（采用当前最强经验组合）")
+                lines.append(f"优先采用高权重经验：{', '.join(dtargs)}。\n")
+        if pattern_metas:
+            # 按维度权重 × pattern weight 的 effective_rank 排序 + 优先级标注（让 weight 真正生效）
+            _dim_w = _load_dimension_weights()
+            _WR = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+            def _eff(m):
+                dw = _dim_w.get(m.get("dim"), 1.0) if m.get("dim") else 1.0
+                return _WR.get(m.get("weight", "MEDIUM"), 2) * dw
             lines.append("## 成功经验（来自历史高分案例，供参考）")
-            for p in patterns:
-                lines.append(f"- {p}")
+            for m in sorted(pattern_metas, key=_eff, reverse=True):
+                eff = _eff(m)
+                prefix = "[优先采用] " if eff >= 3 else ("[次要参考] " if eff <= 1.5 else "")
+                lines.append(f"- {prefix}{m['text']}")
             lines.append("")
 
     # Guard Red Flags（仅 STRICT 注入）
@@ -218,6 +295,28 @@ def generate_injection(
     if _applied_deltas:
         lines.append(f"<!-- INJECT_META: applied_deltas={_applied_deltas} -->")
 
+    # 采纳追溯基建：落盘本次注入的 pattern 元数据。
+    # 语义=注入候选集（确定性），非 LLM 采纳确认——采纳判定交给回归对比"注入组 vs 未注入组"表现。
+    if project_dir is not None:
+        try:
+            from datetime import datetime as _dt2, timezone as _tz2
+            proj = Path(project_dir)
+            proj.mkdir(parents=True, exist_ok=True)
+            meta_payload = {
+                "source": "realtime",  # 实时注入（区别于 backfill 推导的历史视频）
+                "skill": skill_name, "category": category,
+                "generated_at": _dt2.now(_tz2.utc).isoformat(),
+                "injected_patterns": [
+                    {"id": m["id"], "kind": m["kind"], "weight": m.get("weight", ""),
+                     "skill_scope": m.get("skill_scope", "")} for m in pattern_metas
+                ],
+                "applied_deltas": _applied_deltas,
+            }
+            (proj / "injected_patterns.json").write_text(
+                json.dumps(meta_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
     return "\n".join(lines)
 
 
@@ -228,6 +327,7 @@ def main():
     parser.add_argument("--rules-dir", default=None)
     parser.add_argument("--skills-dir", default=None)
     parser.add_argument("--patterns-dir", default=None)
+    parser.add_argument("--project-dir", default=None, help="项目目录：写入 injected_patterns.json（采纳追溯）")
     parser.add_argument("--format", choices=["text", "json"], default="text")
     args = parser.parse_args()
 
@@ -236,6 +336,7 @@ def main():
         Path(args.rules_dir) if args.rules_dir else None,
         Path(args.skills_dir) if args.skills_dir else None,
         Path(args.patterns_dir) if args.patterns_dir else None,
+        Path(args.project_dir) if args.project_dir else None,
     )
     if args.format == "json":
         print(json.dumps({"injection": injection}, ensure_ascii=False, indent=2))

@@ -21,7 +21,6 @@ from engine.lib.models import Severity, Platform
 from engine.lib.thresholds import get_platform_success as _get_platform_thresholds
 
 
-PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
 DEFAULT_THRESHOLD = 0.85
 
 
@@ -75,6 +74,10 @@ def gate_validate_pattern(
     evidence = pattern.get("evidence", {})
     issues: list[str] = []
 
+    def _has_cjk(s: str) -> bool:
+        """片段是否含中文 — 英文 4 字碎片（tion/hook/ctio）无 P7 价值且误判率高，应跳过。"""
+        return any("一" <= ch <= "鿿" for ch in s)
+
     if evidence.get("sample_size", 0) < 3:
         issues.append("sample_size < 3")
     if evidence.get("confidence", 0) < min_confidence:
@@ -110,14 +113,16 @@ def gate_validate_pattern(
                     cleaned = cleaned[len(neg):]
                     break
             if len(cleaned) <= 3:
-                # 短 pattern 直接做包含检查
-                if cleaned and cleaned in pref_text_lower:
+                # 短 pattern 直接做包含检查（仅中文短词有意义，英文 3 字碎片误判率高）
+                if cleaned and _has_cjk(cleaned) and cleaned in pref_text_lower:
                     issues.append(f"P7 否决: 偏好包含硬门禁内容 '{cleaned}'（规则 {r.id}）")
                     matched = True
             else:
-                # 逐 4 字滑动窗口检查
+                # 逐 4 字滑动窗口检查，仅检查含中文的片段
                 for i in range(len(cleaned) - 3):
                     fragment = cleaned[i:i+4]
+                    if not _has_cjk(fragment):
+                        continue
                     if fragment in pref_text_lower:
                         issues.append(f"P7 否决: 偏好包含硬门禁内容 '{fragment}'（规则 {r.id}）")
                         matched = True
@@ -231,9 +236,12 @@ def extract_patterns(high_score_traces: list[dict], min_samples: int = 3) -> lis
 
 
 def save_pattern(pattern: dict, patterns_dir: Path | None = None) -> Path:
-    patterns_dir = patterns_dir or PATTERNS_DIR
-    patterns_dir.mkdir(parents=True, exist_ok=True)
-    filepath = patterns_dir / f"{pattern['id']}.yaml"
+    if patterns_dir:
+        filepath = patterns_dir / f"{pattern['id']}.yaml"
+    else:
+        from engine.lib.data_paths import pattern_file
+        filepath = pattern_file(pattern["id"])
+    filepath.parent.mkdir(parents=True, exist_ok=True)
 
     import yaml
     with open(filepath, "w", encoding="utf-8") as f:

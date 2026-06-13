@@ -3867,7 +3867,7 @@ def _activate_closed_loop(report: dict, project_dir: Path) -> None:
     phases = report.get("phases", {})
 
     try:
-        from engine.trace import record_trace, TRACES_DIR
+        from engine.trace import record_trace, TRACES_DIR, _resolve_trace_dir
         from engine.attribution import strong_attribution, weak_attribution
         from engine.lib.rule_parser import load_all_rules, load_skill
         all_rules = load_all_rules()
@@ -3876,7 +3876,7 @@ def _activate_closed_loop(report: dict, project_dir: Path) -> None:
         return
 
     # ── 幂等性：移除今天的旧 trace（覆盖模式，允许修复后重新评分）──
-    project_traces_dir = TRACES_DIR / project_dir.name
+    project_traces_dir = _resolve_trace_dir(str(project_dir), TRACES_DIR)
     trace_file = project_traces_dir / "trace.json"
     today_prefix = datetime.now(timezone.utc).strftime("%Y%m%d")
     if trace_file.exists():
@@ -3941,7 +3941,7 @@ def _activate_closed_loop(report: dict, project_dir: Path) -> None:
             # False positive detection: 同阶段历史 trace 中违规但本次通过 → 误杀
             from engine.dispute_tracker import increment_false_positive
             try:
-                project_traces_file = TRACES_DIR / Path(project_dir).name / "trace.json"
+                project_traces_file = _resolve_trace_dir(str(project_dir), TRACES_DIR) / "trace.json"
                 if project_traces_file.exists():
                     prev_traces = json.loads(project_traces_file.read_text(encoding="utf-8"))
                     if isinstance(prev_traces, list):
