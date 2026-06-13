@@ -168,6 +168,9 @@ skill:
       - gate: no_search_cta
         params:
           files: ["index.html", "narration.txt"]
+      - gate: no_forbidden_speech
+        params:
+          files: ["index.html"]
       - gate: gradient_text_no_dark_shadow
         params:
           file: "index.html"
@@ -197,6 +200,9 @@ skill:
         params:
           file: "phase_timings.json"
           max_auto_ratio: 0.5
+      - gate: font_consistency
+        params:
+          file: "index.html"
     max_retries: 2
   trace:
     capture: true

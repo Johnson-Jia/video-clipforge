@@ -1,6 +1,7 @@
 """门禁引擎 — HARD + SOFT 校验。"""
 from __future__ import annotations
 import argparse
+import html
 import json
 import re
 import subprocess
@@ -120,12 +121,16 @@ def _load_sensitive_keywords(project_dir: Path) -> list[str]:
 def check_no_forbidden_speech(project_dir: Path, params: dict,
                               guardrails: list | None = None) -> tuple[bool, str]:
     base_forbidden = [
+        # 营销/绝对化用语（R-G-001）
         "必装", "必备", "神器", "赶紧去", "马上去", "立即下载",
         "全网最好", "第一", "最强", "你一定要", "千万别错过",
         "免费领", "福利", "白嫖", "点赞关注", "一键三连",
         "一定", "绝对", "必然",
         "远超预期", "别人没做的事", "史无前例", "前所未有",
         "吊打", "碾压", "完爆", "秒杀",
+        # 违法工具/盗版/盗播（平台合规红线，2026-06-13 抖音违规事故：MasterDnsVPN/iptv-org）
+        # 注意：不含"VPN"（合法技术词，避免误伤技术讨论）
+        "翻墙", "电视直播源", "直播源", "破解版", "盗版", "盗链",
     ]
     cat_keywords = _load_sensitive_keywords(project_dir)
     forbidden = list(set(base_forbidden + cat_keywords))
@@ -991,7 +996,10 @@ def check_description_fidelity(project_dir: Path, params: dict) -> tuple[bool, s
                 raw_map[str(name).strip()] = p
 
     content_text = content_fp.read_text(encoding="utf-8", errors="ignore")
-    content_lower = content_text.lower()
+    # HTML 实体规范化（&amp; → &）：github_trending.py 从 HTML 抓取的 description 含未解码实体，
+    # 与 content_ready.txt 中自然写法的 & 语义等价却判失败。统一 unescape 消除编码差异误判。
+    content_norm = html.unescape(content_text)
+    content_lower = content_norm.lower()
     lines = content_text.splitlines()
 
     # ── 检查 1：描述锚点存在（子串匹配，零跨语言歧义）──
@@ -1005,8 +1013,8 @@ def check_description_fidelity(project_dir: Path, params: dict) -> tuple[bool, s
         if not raw_desc:
             continue  # 原始描述为空，无锚点可比对
         anchor_checked += 1
-        # 子串匹配（大小写不敏感）。原始英文 description 必须原样出现在文件中。
-        if raw_desc.lower() not in content_lower:
+        # 子串匹配（大小写不敏感，HTML 实体已规范化）。原始英文 description 必须原样出现在文件中。
+        if html.unescape(raw_desc).lower() not in content_lower:
             missing_anchors.append(repo)
 
     # ── 检查 2：项目存在性（显式条目行中的 repo 必须在 raw_map）──
@@ -2248,6 +2256,72 @@ def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, s
 
 
 GATE_CHECKERS[GateType.cover_layers_present] = check_cover_layers_present
+
+
+def check_font_consistency(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """检查 design.md 声明的字体是否在 index.html 中正确加载（SOFT）。
+
+    读取 creative/fonts.json（s6_prepare_creative.py 生成），提取 title/body/data 三层
+    family，检查 index.html 的 Google Fonts <link> href 是否包含对应 family 参数
+    （family 名空格 → +）。缺失即视为断链：渲染时降级为系统 fallback 字体，
+    视觉偏离 design.md 的字体气质设计。
+
+    SOFT 级别（警告，不阻塞）：仅在 family 已声明但未被任何方式加载时警告。
+    系统字体（PingFang/Microsoft YaHei 等）无需 Google Fonts 加载，跳过。
+    """
+    fonts_path = project_dir / "creative" / "fonts.json"
+    index_path = project_dir / params.get("file", "index.html")
+
+    if not fonts_path.exists():
+        return True, "无 creative/fonts.json（旧项目或未跑 prepare），跳过字体一致性检查"
+    if not index_path.exists():
+        return True, "无 index.html，跳过字体一致性检查"
+
+    try:
+        fonts = json.loads(fonts_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return True, "creative/fonts.json 解析失败，跳过字体一致性检查"
+
+    content = index_path.read_text(encoding="utf-8")
+
+    # 合并所有 Google Fonts <link> href（单 <link> 多 family 或多 <link> 均覆盖）
+    hrefs = " ".join(
+        re.findall(r'<link[^>]+href="([^"]*fonts\.googleapis\.com[^"]*)"', content)
+    )
+
+    # 系统字体无需 Google Fonts 加载（fallback 链兜底，不报警告）
+    SYSTEM_FONTS = {
+        "PingFang SC", "Microsoft YaHei", "sans-serif", "monospace",
+        "serif", "SimHei", "SimSun", "Heiti SC",
+    }
+
+    missing: list[str] = []
+    for layer in ("title", "body", "data"):
+        fam = fonts.get(layer, {}).get("family", "")
+        if not fam or fam in SYSTEM_FONTS:
+            continue
+        google_form = fam.replace(" ", "+")
+        # Google Fonts URL 形式：family=Ma+Shan+Zheng 或 family=Noto+Sans+SC:wght@...
+        # 用 "family=" 前缀锚定，避免子串误匹配（如 "Mono" 命中 "JetBrains Mono"）
+        loaded = f"family={google_form}" in hrefs
+        if not loaded:
+            # 再查内联 font-family 声明（非 Google Fonts 的自定义加载方式）
+            loaded = bool(
+                re.search(rf'font-family\s*:\s*["\']?{re.escape(fam)}', content)
+            )
+        if not loaded:
+            missing.append(f"{layer}={fam}")
+
+    if missing:
+        return False, (
+            f"SOFT: index.html 未加载 design.md 声明的字体 [{', '.join(missing)}]。"
+            f"渲染时降级为系统 fallback，视觉偏离字体气质设计。"
+            f"检查 s6_assemble_html.py 的 GOOGLE_FONT_MAP 是否包含该字体"
+        )
+    return True, "字体一致性 OK：design.md 声明的字体均已通过 Google Fonts 加载"
+
+
+GATE_CHECKERS[GateType.font_consistency] = check_font_consistency
 
 
 def check_final_duration_close_to_output(project_dir: Path, params: dict) -> tuple[bool, str]:
