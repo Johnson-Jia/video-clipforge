@@ -2,11 +2,11 @@
 @ComponentMeta
 name: hex_grid
 layer: bg
-tags: [hexagon, grid, honeycomb, emerald, tech, pattern, pulse, glass]
-emotion_range: [confidence, precision, tech]
+tags: [hexagon, grid, honeycomb, emerald, tech, pattern, pulse, glass, scan-wave, node, holo, hud]
+emotion_range: [confidence, precision, tech, futuristic]
 visual_density: high
 complexity: css-only
-description: SVG 六边形蜂窝网格纹理 + 翡翠绿中心辉光 + 副辉光 + 网格脉冲呼吸 + 毛玻璃折射 + 棱镜色散
+description: SVG 六边形蜂窝网格 + 翡翠中心辉光 + 蜂巢扫描波（conic 旋转）+ 高亮节点闪烁 + 四角数据角标 + 中心全息菱形 + 毛玻璃折射 + 棱镜色散
 parameters:
   grid_scale: { default: 1.4, range: [1.0, 2.0], description: "网格缩放倍率" }
   glow_color: { default: "hsla(150,80%,50%,0.22)", description: "中心辉光颜色" }
@@ -15,14 +15,12 @@ parameters:
 -->
 <!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
 <!--
-@keyframes hexPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.85; }
-}
-@keyframes glassShimmer {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.20; }
-}
+@keyframes hexPulse { 0%,100%{opacity:0.5} 50%{opacity:0.85} }
+@keyframes glassShimmer { 0%,100%{opacity:0.15} 50%{opacity:0.20} }
+@keyframes hexScanRotate { 0%{transform:translate(-50%,-50%) rotate(0deg)} 100%{transform:translate(-50%,-50%) rotate(360deg)} }
+@keyframes hexNodePulse { 0%,100%{opacity:0.3;transform:scale(0.9)} 50%{opacity:1;transform:scale(1.15)} }
+@keyframes holoHexSpin { 0%{transform:translate(-50%,-50%) rotate(0deg)} 100%{transform:translate(-50%,-50%) rotate(60deg)} }
+@keyframes cornerBlink { 0%,100%{opacity:0.35} 50%{opacity:0.85} }
 -->
 <!-- HTML (嵌入 .layer-bg) -->
 <!-- bg-component: hex_grid -->
@@ -38,6 +36,10 @@ parameters:
   </defs>
   <rect width="100%" height="100%" fill="url(#hexPat)"/>
 </svg>
+<!-- 蜂巢扫描波（conic 旋转扫描，签名元素 + scan/beams 类型） -->
+<div style="position:absolute;top:42%;left:50%;width:900px;height:900px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,hsla(150,80%,55%,0.10) 30deg,transparent 70deg,transparent 360deg);
+  filter:blur(40px);animation:hexScanRotate 14s linear infinite"></div>
 <!-- 网格脉冲叠加 -->
 <div style="position:absolute;inset:0;background:rgba(0,0,0,0);animation:hexPulse 7s ease-in-out infinite"></div>
 <!-- 中心翡翠辉光 -->
@@ -48,6 +50,41 @@ parameters:
 <div style="position:absolute;top:60%;left:55%;width:300px;height:300px;border-radius:50%;
   background:radial-gradient(circle,hsla(140,60%,45%,0.10),transparent 70%);
   filter:blur(80px)"></div>
+<!-- 高亮节点 1（dots 类型，蜂巢节点闪烁） -->
+<div style="position:absolute;top:28%;left:42%;width:14px;height:14px;border-radius:50%;
+  background:hsla(150,90%,60%,0.9);box-shadow:0 0 16px hsla(150,80%,55%,0.8),0 0 32px hsla(150,70%,50%,0.4);
+  animation:hexNodePulse 4s ease-in-out infinite"></div>
+<!-- 高亮节点 2 -->
+<div style="position:absolute;top:55%;left:68%;width:10px;height:10px;border-radius:50%;
+  background:hsla(160,85%,58%,0.85);box-shadow:0 0 14px hsla(160,75%,52%,0.7);
+  animation:hexNodePulse 5s ease-in-out infinite 1s"></div>
+<!-- 高亮节点 3 -->
+<div style="position:absolute;top:70%;left:30%;width:12px;height:12px;border-radius:50%;
+  background:hsla(145,80%,55%,0.8);box-shadow:0 0 14px hsla(145,70%,50%,0.6);
+  animation:hexNodePulse 6s ease-in-out infinite 2s"></div>
+<!-- 高亮节点 4 -->
+<div style="position:absolute;top:40%;left:78%;width:9px;height:9px;border-radius:50%;
+  background:hsla(155,85%,60%,0.85);box-shadow:0 0 12px hsla(155,75%,52%,0.7);
+  animation:hexNodePulse 4.5s ease-in-out infinite 0.5s"></div>
+<!-- 中心全息菱形（clip-path 装饰前景，旋转） -->
+<div style="position:absolute;top:42%;left:50%;width:180px;height:180px;
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  background:linear-gradient(135deg,hsla(150,70%,50%,0.12),transparent,hsla(170,60%,45%,0.10));
+  border:1.5px solid hsla(150,70%,55%,0.25);
+  animation:holoHexSpin 20s linear infinite"></div>
+<!-- 四角数据角标（clip-path L 形，HUD 监控感） -->
+<div style="position:absolute;top:120px;left:90px;width:40px;height:40px;
+  border-top:2px solid hsla(150,70%,55%,0.4);border-left:2px solid hsla(150,70%,55%,0.4);
+  animation:cornerBlink 5s ease-in-out infinite"></div>
+<div style="position:absolute;top:120px;right:90px;width:40px;height:40px;
+  border-top:2px solid hsla(150,70%,55%,0.4);border-right:2px solid hsla(150,70%,55%,0.4);
+  animation:cornerBlink 5s ease-in-out infinite 1.5s"></div>
+<div style="position:absolute;bottom:160px;left:90px;width:40px;height:40px;
+  border-bottom:2px solid hsla(150,70%,55%,0.4);border-left:2px solid hsla(150,70%,55%,0.4);
+  animation:cornerBlink 5s ease-in-out infinite 3s"></div>
+<div style="position:absolute;bottom:160px;right:90px;width:40px;height:40px;
+  border-bottom:2px solid hsla(150,70%,55%,0.4);border-right:2px solid hsla(150,70%,55%,0.4);
+  animation:cornerBlink 5s ease-in-out infinite 4s"></div>
 <!-- 玻璃折射层 -->
 <div style="position:absolute;inset:0;
   background:linear-gradient(120deg,rgba(255,255,255,0.015) 0%,transparent 30%,transparent 70%,rgba(255,255,255,0.02) 100%);
