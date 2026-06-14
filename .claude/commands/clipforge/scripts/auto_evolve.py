@@ -1092,11 +1092,11 @@ class AutoEvolve:
         # Phase 4
         self.phase4_deltas(insights)
 
-        # Phase 6（播放量预测训练钩子——不遗忘，数据达标自动升级启发式→训练模型）
-        self.phase6_train_hook()
-
         # Phase 5
         self.phase5_calibrate(insights)
+
+        # Phase 6（播放量预测训练钩子——不遗忘，数据达标自动升级启发式→训练模型）
+        self.phase6_train_hook()
 
         # 汇总
         self._log("\n" + "=" * 60)
