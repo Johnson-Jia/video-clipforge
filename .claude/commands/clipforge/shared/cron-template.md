@@ -52,7 +52,7 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 
 | 批次 | Artifact | SubAgent 加载 |
 |------|----------|--------------|
-| SubAgent-1 | env-check → content → design → narration | stage0-env + stage1-content + stage2-analysis + stage3-scenes |
+| SubAgent-1 | env-check → topic-plan → content → design → narration | stage0-env + stage0.5-topic-plan + stage1-content + stage2-analysis + stage3-scenes |
 | SubAgent-2 | audio | stage4-audio |
 | SubAgent-3 | video | stage6-production |
 | SubAgent-4 | delivery → machine-scoring → cleanup | stage7-delivery + shared/machine-scoring.md + shared/cleanup-rules.md |

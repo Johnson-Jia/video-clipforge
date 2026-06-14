@@ -60,7 +60,7 @@ skill:
       - gate: douyin_platforms_complete
         params:
           file: "douyin.md"
-          platforms: ["抖音", "视频号", "小红书"]
+          platforms: ["抖音", "B站", "视频号", "小红书"]
       - gate: no_forbidden_speech
         params:
           files: ["narration.txt", "douyin.md"]

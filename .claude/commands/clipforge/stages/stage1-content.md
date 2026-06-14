@@ -2,6 +2,8 @@
 
 当已有原始内容输入（对话/文件/URL）且未产出整理后的内容摘要时触发。获取和整理内容来源。
 
+> **前置：消费 `topic_plan.json`**（由 stage0.5-topic-plan 产出）。按 `topic_plan.angle`（选题方向）/ `novelty_strategy`（差异化策略）/ `avoid_recent`（避开项目）获取内容，不偏离选题规划。若 `topic_plan.json` 不存在（非 GitHub 分类的纯交互模式，或选题规划未触发），按通用流程获取内容。
+
 **来源可能是：**
 - 对话中直接描述
 - 指定目录下的文件（md/txt/html/json）

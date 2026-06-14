@@ -1,0 +1,43 @@
+skill:
+  meta:
+    id: "skill.clipforge.stage0.5-topic-plan"
+    version: "1.0.0"
+    type: EXECUTIVE
+    tags: ["topic", "planning", "anti-homogenization"]
+    rigor: STANDARD
+  intent:
+    objective: "本期选题方向确定，题材轮换与新鲜度约束已规划"
+    criteria:
+      - "topic_plan.json 存在且含 topic_type/angle/novelty_strategy/target_freshness"
+      - "已对照近 N 期历史评估新鲜度（hook/项目/叙事模板相似度）"
+  boundary:
+    rules:
+      - ref: "R-G-*"
+    preferences:
+      - text: "选题主动差异化：对照近 N 期 hook/项目/叙事模板，换题材角度或数字锚点，避免同质化疲劳（6 月满分期播放崩盘的根因）"
+        weight: "HIGH"
+      - text: "连续 3 期同题材 → 强制轮换；优先从 patterns/seed/topic-*.yaml 题材库选冷门题材"
+        weight: "MEDIUM"
+  guard:
+    red_flags:
+      - thought: "选题靠临场判断就行，不用专门规划"
+        reality: "无规划的选题会陷入同质化，必须对照历史主动差异化"
+        trigger: "试图跳过选题规划或新鲜度评估"
+      - thought: "连续多期同题材没关系，反正都是 GitHub"
+        reality: "连续 3 期同题材触发观众疲劳，必须轮换题材或叙事模板"
+        trigger: "连续同题材超过轮换阈值"
+    spirit_vs_letter:
+      - rule_ref: "R-G-*"
+        mode: LETTER
+        intent: "选题规划是反同质化一等公民，新鲜度约束引导差异化而非限制创意"
+  gate:
+    hard:
+      - gate: file_exists
+        params:
+          files: ["topic_plan.json"]
+    soft: []
+    max_retries: 2
+  trace:
+    capture: true
+    level: FULL
+    sensitive_fields: []

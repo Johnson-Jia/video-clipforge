@@ -146,7 +146,7 @@ Controller 读 schema.yaml → 按 DAG 推导 SubAgent 批次 → 项目启动�
 
 | 批次 | Artifact | 说明 |
 |------|----------|------|
-| SubAgent-1 | env-check → content → design → narration | 上游顺序执行 |
+| SubAgent-1 | env-check → topic-plan → content → design → narration | 上游顺序执行（topic-plan 为防同质化一等公民，必跑）|
 | SubAgent-1b | movie-clips（条件：narration 含 video_clip） | 插入 narration 后、audio 前 |
 | SubAgent-2 | audio + assets（并行） | audio 依赖 narration（movie-clips 触发则等），assets 依赖 design |
 | SubAgent-3 | video（s6_prepare→assemble→render） | 等 audio 完成（assets optional 不阻塞） |
@@ -295,7 +295,7 @@ Layer 4  cover_check.py + validate_cover.py（stage7）
 ### 依赖图
 
 ```
-env-check → content → design ─┬→ narration → audio ──┬→ video → delivery → machine-scoring → cleanup
+env-check → topic-plan → content → design ─┬→ narration → audio ──┬→ video → delivery → machine-scoring → cleanup
                                │                assets ┘                        ↓
                                └→ assets                                feedback（optional）
                                     narration → movie-clips（条件）
