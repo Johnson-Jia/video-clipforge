@@ -14,11 +14,11 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
 
 - `.claude/commands/clipforge.md` — 主控制器：DAG 语义、模式选择、错误恢复
 - `.claude/commands/clipforge/schema.yaml` — Artifact DAG 定义（唯一真相源）
-- `.claude/commands/clipforge/stages/` — 阶段执行指南（stage0 ~ stage8）
+- `.claude/commands/clipforge/stages/` — 阶段执行指南（stage0 ~ stage8，含 stage0.5 选题规划）
 - `.claude/commands/clipforge/shared/` — 共享技能（渲染安全、清理规则、定时续期等）
 - `.claude/commands/clipforge/categories/` — 分类配置（按分类覆盖数据、风格、音频、交付等规则）
-- `.claude/commands/clipforge/engine/` — 自进化引擎（门禁/归因/Trace/探索-利用/相对衰减/回归归因，路径经 `lib/data_paths.py` 统一收口）
-- `.claude/commands/clipforge/patterns/seed/` — 人工经验模式（静态定义，入库；运行产生的 auto 模式在 `workspace/evolution/patterns/`）
+- `.claude/commands/clipforge/engine/` — 自进化引擎（门禁/归因/Trace/探索-利用/相对衰减/回归归因；`freshness.py` 新鲜度计算、`predict.py` 播放量预测，路径经 `lib/data_paths.py` 统一收口）
+- `.claude/commands/clipforge/patterns/seed/` — 人工经验模式（静态定义，入库：工艺 pattern + 选题题材库 `topic-*`；运行产生的 auto 模式在 `workspace/evolution/patterns/`）
 - `.claude/commands/github-*.md` — 定时编排文件（全自动 SubAgent 调度）
 - `.claude/commands/clipforge/scripts/` — 工具脚本（趋势抓取、BGM、自进化、数据迁移）
 - `.claude/commands/clipforge/components/` — 视觉组件库（HTML+CSS+JS 模板）
@@ -33,6 +33,7 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
 4. **管线确定化，创意最大化。** 固定操作、流水线步骤、文件校验、状态判断必须用代码/脚本实现，不允许 LLM 判断确定性逻辑。创意和创造性的环节不限制，充分发挥 LLM 能力。具体边界：
    - **必须代码化**：artifact 完成检测、YAML/JSON schema 校验、文件存在性检查、TTS/BGM 处理、HTML 结构验证、渲染调用、封面模板填充、视频合成、清理、环境检测
    - **LLM 自由发挥**：内容分析摘要、视觉风格推导、旁白文案撰写、HTML 创意内容（CSS 特效/动画设计）、封面文案和配色、平台文案撰写、组件视觉设计
+5. **反同质化，多维对齐真实播放量。** score 不只是合规度——`overall_score = 合规·w1 + 新鲜度·w2 + 播放潜力·w3`。满分不再是目标：与近期内容高度相似的视频会被新鲜度拉低分。`stage0.5-topic-plan` 在选题阶段规划题材轮换与新鲜度约束，`freshness.py`/`predict.py` 在评分层量化"像历史的程度"和"播放潜力"。真实播放量经 `/evolve-daily` 回流校准（见命令段）。
 
 ## 技能文件写作规则
 
@@ -97,6 +98,7 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
 | `/clipforge` | 交互式视频制作（手动模式） |
 | `/clipforge-category-setup` | 引导创建分类配置 + 定时任务（手动触发） |
 | `/clipforge-feedback` | 分析播放数据，校准机器评分（手动触发） |
+| `/evolve-daily` | 每日自进化闭环（auto_evolve 全六阶段：采集→分析→pattern/Delta→播放预测训练钩子，全自动 + 自续期） |
 
 > 定时任务由 `/clipforge-category-setup` 生成，属于个人配置（gitignore），不入库。`shared/cron-template.md` 提供通用编排骨架。
 
