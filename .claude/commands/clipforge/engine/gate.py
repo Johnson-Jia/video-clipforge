@@ -3765,25 +3765,35 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
     except Exception as e:
         print(f"[score] freshness 计算失败: {e}", file=sys.stderr)
 
-    # 多维加权总分：overall = w1·合规 + w2·新鲜度
-    # （P0 默认权重，后续接 thresholds/仪表盘；满分不再是目标——同质化视频会被新鲜度拉低）
-    W_COMPLIANCE = 0.7
+    # 播放量潜力预测（P2：启发式低权，待 auto_evolve 训练验证后调高）
+    predicted = None
+    try:
+        from engine.predict import predict_plays_score
+        predicted = predict_plays_score(project_dir)
+    except Exception as e:
+        print(f"[score] predicted_plays 计算失败: {e}", file=sys.stderr)
+
+    # 多维加权总分：overall = w1·合规 + w2·新鲜度 + w3·播放潜力
+    # w3 低权因 predicted 为启发式（未训练），auto_evolve 验证后调高
+    W_COMPLIANCE = 0.6
     W_FRESHNESS = 0.3
+    W_PREDICTED = 0.1
+    overall = W_COMPLIANCE * compliance
     if freshness and "freshness_score" in freshness:
-        overall = round(
-            W_COMPLIANCE * compliance + W_FRESHNESS * freshness["freshness_score"], 3
-        )
-    else:
-        overall = round(compliance, 3)
+        overall += W_FRESHNESS * freshness["freshness_score"]
+    if predicted and "predicted_plays_score" in predicted:
+        overall += W_PREDICTED * predicted["predicted_plays_score"]
+    overall = round(overall, 3)
 
     score_report = {
         "project": str(project_dir),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "phases": phases,
         "overall_soft_score": round(compliance, 3),    # 向后兼容：纯合规度
-        "overall_score": overall,                       # 多维加权总分（P0+）
+        "overall_score": overall,                       # 多维加权总分（P0+P2）
         "freshness": freshness,                         # 新鲜度分项（P0+）
-        "scoring_weights": {"compliance": W_COMPLIANCE, "freshness": W_FRESHNESS},
+        "predicted_plays": predicted,                   # 播放量潜力预测分项（P2+）
+        "scoring_weights": {"compliance": W_COMPLIANCE, "freshness": W_FRESHNESS, "predicted": W_PREDICTED},
         "hard_passed_all": all(p.get("hard_passed", False) for p in phases.values()),
         "total_stages": len(phases),
         "stages_passed": sum(1 for p in phases.values() if p.get("hard_passed")),
@@ -4010,12 +4020,14 @@ def _generate_report(args) -> None:
         _activate_closed_loop(report, project_dir)
 
         fr = report.get("freshness") or {}
+        pr = report.get("predicted_plays") or {}
         output = {
             "generated": True,
             "project": str(project_dir),
             "overall_soft_score": report["overall_soft_score"],
             "overall_score": report.get("overall_score"),
             "freshness_score": fr.get("freshness_score"),
+            "predicted_plays_score": pr.get("predicted_plays_score"),
             "freshness_detail": {k: fr.get(k) for k in ("hook_sim", "project_jaccard", "template_sim", "most_similar_dim")},
             "hard_passed_all": report["hard_passed_all"],
             "stages_passed": f"{report['stages_passed']}/{report['total_stages']}",
