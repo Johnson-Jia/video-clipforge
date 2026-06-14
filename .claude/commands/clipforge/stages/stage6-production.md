@@ -2,7 +2,7 @@
 
 当 `segment_durations.json` + 音频文件已存在且 `output.mp4` 不存在时触发。基于组件库装配 HTML 组合并渲染为视频。
 
-## 6.1 项目初始化
+## §6.1 项目初始化
 
 ```bash
 # 创建日期目录（如不存在）+ 项目目录（纯英文路径）
@@ -12,7 +12,7 @@ npx hyperframes init "workspace/<YYYY>/<MM>/<DD>/<project-name>" --example blank
 
 项目目录结构为 `workspace/<YYYY>/<MM>/<DD>/<项目名>/`，日期格式为纯数字（如 `workspace/2026/05/18/github-trending/`）。详见 `clipforge.md` 的「项目目录结构」段。
 
-## 6.2 读取 design.md + storyboard
+## §6.2 读取 design.md + storyboard
 
 Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只读取，不重写。**
 
@@ -57,7 +57,7 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 3. 每个场景的**具体内容** → 读内容想画面（格言引导 + 反面清单兜底） → 背景层 + 特效层 + 内容层的视觉方案
 4. `character_presence` + 每段 `character_expression` → CharOverlay 组件选择
 
-## 6.3 音频嵌入
+## §6.3 音频嵌入
 
 > **前置依赖：Stage 4 的 `segment_durations.json` 和音频文件必须已产出。**
 
@@ -106,11 +106,11 @@ HyperFrames 原生支持 `<audio>` 元素：自动发现、多轨混音、AAC �
 
 HyperFrames 的 `resolveMediaDuration()` 还会用 ffprobe 自动检测 `<audio>` 时长，`mediaDurationFloor` 确保视频时间线不短于音频。
 
-## 6.4 编写 HTML 组合（创意碎片化 + 组装确定化）
+## §6.4 编写 HTML 组合（创意碎片化 + 组装确定化）
 
 > **代码引擎生成 `creative/` 碎片骨架（每场景一个 `sNN.html`，含三层 div + phase 占位），LLM 逐场景填充视觉创意。组装脚本负责所有确定性结构：clip 包裹、data-start/duration、GSAP 时间线、phase opacity、audio 嵌入、DOCTYPE。**
 
-### §6.4-0 碎片骨架生成 + 视觉上下文（代码引擎自动执行）
+## §6.5 碎片骨架生成 + 视觉上下文（代码引擎自动执行）
 
 > `s6_prepare.sh` 一次性完成: phase 校准 → creative/ 碎片骨架生成 → 碎片验证 → 视觉上下文生成。
 
@@ -126,7 +126,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 
 > **LLM 永远不碰以下内容（组装脚本 `s6_assemble_html.py` 负责）：** clip 包裹、`data-start`/`data-duration`、GSAP timeline、phase opacity 切换、`<audio>` 嵌入、DOCTYPE/HEAD 结构。碎片中**只写三层 div 的内容**。
 
-### §6.4-1 视觉节奏上下文（代码引擎自动执行）
+## §6.6 视觉节奏上下文（代码引擎自动执行）
 
 > `s6_prepare.sh` 已自动生成 `visual_context.json`，创作前**必须读取**。
 
@@ -160,7 +160,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 - `prev_scene_summary.bg_element_types` → 保留一种元素类型（连贯感），替换其余（新鲜感）
 - `rhythm_guidance` → 直接的创作引导文字
 
-### §6.4-2 创意填充（LLM 自由创作）
+## §6.7 创意填充（LLM 自由创作）
 
 > 碎片保证结构性正确，LLM 只需逐场景填充视觉内容。创作前读取 `visual_context.json`。
 
@@ -214,7 +214,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 2. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 3. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 4. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
-5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.5 的匹配流程生成
+5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.9 的匹配流程生成
 6. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
@@ -293,7 +293,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 
 **发现偏差立即修复。自审不通过的禁止渲染。**
 
-### §6.4-3 组装与验证（代码引擎自动执行）
+## §6.8 组装与验证（代码引擎自动执行）
 
 LLM 填充完所有 `creative/sNN.html` 碎片后，`s6_assemble.sh` 一次性完成: 碎片完整性验证 → 碎片组装 index.html → 导演门禁：
 
@@ -318,10 +318,10 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 - **bg 亮度底线**（gate: frame_analysis.py §4）：bg 组件底色亮度 L ≥ 12%（hsl 第三参数），装饰元素（线条/光晕/粒子）alpha ≥ 0.12。底色过暗或装饰 alpha 过低 → 渲染平均亮度 < 25/255 → frame_analysis warn/fail。暗调场景（危机/破产）通过降低装饰密度实现"暗"，底色仍需 L ≥ 12%
 - fx/content 层的组件库仍是工具箱和灵感来源，不强制
 
-## 6.5 特效工坊（组件匹配 + 新特效创建）
+## §6.9 特效工坊（组件匹配 + 新特效创建）
 
 > **两阶段触发：**
-> 1. §6.4 step 5 负责运行组件匹配 — 如果 `component_manifest.md` 不存在，执行下方匹配流程
+> 1. §6.7 负责运行组件匹配 — 如果 `component_manifest.md` 不存在，执行下方匹配流程
 > 2. 本节负责处理 `new` 条目 — 如果已生成的 manifest 含 `new` 标记，启动工坊创建新特效；否则跳过
 
 ### 匹配流程
@@ -333,7 +333,7 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 5. **回退规则（按层）：**
    - **bg 层**：bg 组件本质是渐变+光晕，通过调色即可覆盖绝大多数场景。粗筛为空时，按 `color_hint` 色温方向选最近的 bg 组件（暖色→light_field，冷色→gradient_mesh），**不标记 `new`**
    - **fx 层**：粗筛为空时先考虑 fx:null（不使用特效），仅当场景明确需要动态装饰且无候选时才标记 `new`
-   - **content 层**：粗筛为空时，回退到 §6.4 "场景→组件参考" 表的经验映射
+   - **content 层**：粗筛为空时，回退到 §6.7 "场景→组件参考" 表的经验映射
 6. **处理 null 场景** — `visual_intent` 为 null 的短场景（≤4s），manifest 中写 `auto`，表示 AI 自主推导，不指定组件
 7. **输出 component_manifest.md** — 每个场景 × 每层 = 使用组件 + 来源(library/new/auto) + 参数变体
 
@@ -380,7 +380,7 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 - **content**: project_full_card (library) — params: {rank: 1}
 ```
 
-## 6.6 视觉分镜（Visual Phasing）
+## §6.10 视觉分镜（Visual Phasing）
 
 > **当场景时长 >15 秒时必须使用。** 完整规范见 `clipforge/shared/visual-phasing`。
 
@@ -563,7 +563,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 24. 渲染前确保 `lint` 通过
 25. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
-## 6.7 画布方向
+## §6.11 画布方向
 
 方向由 `design.md` 的 `orientation` 字段决定：
 
@@ -653,7 +653,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 - 安全内容区：60px ~ 1020px（垂直），120px ~ 1800px（水平）
 - padding：`60px 120px 60px 120px`
 
-## 6.8 渲染管线（全自动）
+## §6.12 渲染管线（全自动）
 
 > `s6_render.sh` 一次性完成: 渲染前检查 → 导演门禁 → BGM 音量注入 → renderbak 隔离 → HyperFrames lint + render → renderbak 恢复 → output_no_bgm 合成 → 音频验证 → 完成门禁。
 
@@ -675,20 +675,20 @@ final_no_bgm.mp4  = cover.png + output_no_bgm.mp4（Stage 7 拼接）
 > 封面帧拼接由 Stage 7 的 `s7_delivery.sh` 统一处理，Stage 6 不负责。
 > **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
 
-## 6.9 无 BGM 版本合成（output_no_bgm.mp4）
+## §6.13 无 BGM 版本合成（output_no_bgm.mp4）
 
 > 由 `s6_render.sh` Step 10 触发，调用 `scripts/build_no_bgm.sh` 执行合成。
 
 **合成规则：**
 - 输入：`output.mp4` 的**视频轨**（`-an`）+ `narration.mp3` 的**音频轨**（`-vn`）
 - 输出：`output_no_bgm.mp4`（仅含旁白，无 BGM）
-- **禁止**：从 `output.mp4` 提取音频轨（只有 1 条混合轨，BGM 不可分离，见 §6.8）
-- 验证：产出 `output_no_bgm.mp4`，Stage 7 前置检查依赖此文件（见 stage7-delivery.md §7.0）
+- **禁止**：从 `output.mp4` 提取音频轨（只有 1 条混合轨，BGM 不可分离，见 §6.12）
+- 验证：产出 `output_no_bgm.mp4`，Stage 7 前置检查依赖此文件（见 stage7-delivery.md §7.1）
 
 ---
 
 ## 约束声明
 
-**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.9）= 双版本输出失败。
+**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.13）= 双版本输出失败。
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage6-production` 获取完整约束 prompt。

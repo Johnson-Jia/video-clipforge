@@ -1779,7 +1779,7 @@ def _row_has_width_constraint(child_block: str, equal_width_classes: list[str]) 
 
 
 def check_list_alignment_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
-    """R-S6-021: 列表对齐门禁（SOFT）— 多行裸 div 列表容器必须 align-items:flex-start。
+    """列表对齐门禁（SOFT）— 多行裸 div 列表容器必须 align-items:flex-start。
 
     只有"存在列表"时才校验对齐：检测 flex-direction:column + align-items:center 容器，
     若直接子是 ≥2 个无等宽约束的裸 div 行（shrink-to-fit、宽度依赖内容），则图标/序号/emoji
@@ -1826,7 +1826,7 @@ def check_list_alignment_valid(project_dir: Path, params: dict) -> tuple[bool, s
                 )
 
     if violations:
-        return False, "R-S6-021: " + "; ".join(violations[:6])
+        return False, "列表对齐: " + "; ".join(violations[:6])
     return True, "列表对齐合格（无 center 裸行列表错落）"
 
 
@@ -2281,7 +2281,7 @@ def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, s
     external_scripts = re.findall(r'<script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', content)
     if external_scripts:
         return False, (
-            f"R-S7-003: 封面禁止引用外部脚本（动画库会导致白屏截图），"
+            f"封面禁止引用外部脚本（动画库会导致白屏截图），"
             f"发现: {', '.join(external_scripts[:3])}"
         )
     script_blocks = re.findall(r'<script[^>]*>(.*?)</script>', content, re.DOTALL)
@@ -2295,7 +2295,7 @@ def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, s
         hf_compat = re.sub(r'[\s;{}]+', '', hf_compat)
         if hf_compat:
             return False, (
-                f"R-S7-003: 封面禁止 JavaScript 动画代码（fromTo opacity:0 等会导致白屏），"
+                f"封面禁止 JavaScript 动画代码（fromTo opacity:0 等会导致白屏），"
                 f"发现非法内容: {hf_compat[:60]}"
             )
 
@@ -2371,7 +2371,7 @@ def check_cover_layers_present(project_dir: Path, params: dict) -> tuple[bool, s
 
     if structure_errors:
         return False, (
-            f"R-S7-004: 封面结构性违规 ({len(structure_errors)} 项): "
+            f"封面结构性违规 ({len(structure_errors)} 项): "
             f"{'; '.join(structure_errors)}。"
             f"建议使用 scripts/generate_cover.py 生成封面"
         )

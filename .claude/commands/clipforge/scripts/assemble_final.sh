@@ -17,12 +17,12 @@ cd "$PROJECT_DIR"
 
 echo "[assemble_final] 封面嵌入视频第一帧..."
 
-# ── 门禁 ──
+# ── Step 1: 门禁 ──
 [ -s cover.png ] || { echo "FAIL: cover.png 缺失"; exit 1; }
 [ -s output.mp4 ] || { echo "FAIL: output.mp4 缺失"; exit 1; }
 [ -s narration.mp3 ] || { echo "FAIL: narration.mp3 缺失"; exit 1; }
 
-# ── 从 output.mp4 读取编码参数 + 分辨率 ──
+# ── Step 2: 从 output.mp4 读取编码参数 + 分辨率 ──
 FPS=$(ffprobe -v quiet -show_entries stream=r_frame_rate -select_streams v -of csv=p=0 output.mp4 | head -1)
 FPS_NUM=$(echo "$FPS" | cut -d/ -f1)
 PROFILE=$(ffprobe -v quiet -show_entries stream=profile -select_streams v -of csv=p=0 output.mp4 | head -1)
@@ -32,7 +32,7 @@ VIDEO_W=$(ffprobe -v quiet -show_entries stream=width -select_streams v -of csv=
 VIDEO_H=$(ffprobe -v quiet -show_entries stream=height -select_streams v -of csv=p=0 output.mp4 | head -1)
 echo "[assemble_final] 源视频: ${SOURCE_DUR}s, ${FPS}fps, profile=${PROFILE}, ${VIDEO_W}x${VIDEO_H}, 封面帧长: ${FRAME_DUR}s"
 
-# ── 生成 output_no_bgm.mp4（从 output.mp4 视频 + narration.mp3 音频）──
+# ── Step 3: 生成 output_no_bgm.mp4（从 output.mp4 视频 + narration.mp3 音频）──
 # 这是唯一正确的生成方式：禁止从 output.mp4 提取音频轨
 echo "[assemble_final] 生成 output_no_bgm.mp4（output.mp4 视频 + narration.mp3 音频）..."
 ffmpeg -y -i output.mp4 -i narration.mp3 \
@@ -41,28 +41,28 @@ ffmpeg -y -i output.mp4 -i narration.mp3 \
   output_no_bgm.mp4 2>/dev/null
 echo "[assemble_final] output_no_bgm.mp4 已生成"
 
-# ── 封面片段制备（1 帧，TS 格式，匹配源视频参数）──
+# ── Step 4: 封面片段制备（1 帧，TS 格式，匹配源视频参数）──
 ffmpeg -y -loop 1 -t $FRAME_DUR -framerate $FPS -i cover.png \
   -c:v libx264 -profile:v $PROFILE -pix_fmt yuv420p \
   -vf "scale=${VIDEO_W}:${VIDEO_H}" \
   -frames:v 1 \
   -f mpegts cover.ts 2>/dev/null
 
-# ── 版本一：含 BGM ──
+# ── Step 5: 版本一：含 BGM ──
 echo "[assemble_final] 生成 final.mp4（含BGM）..."
 ffmpeg -y -i output.mp4 -c copy -f mpegts main.ts 2>/dev/null
 ffmpeg -y -f mpegts -i "concat:cover.ts|main.ts" \
   -c copy -movflags +faststart final.mp4 2>/dev/null
 rm -f main.ts
 
-# ── 版本二：无 BGM ──
+# ── Step 6: 版本二：无 BGM ──
 echo "[assemble_final] 生成 final_no_bgm.mp4（仅旁白）..."
 ffmpeg -y -i output_no_bgm.mp4 -c copy -f mpegts nobgm.ts 2>/dev/null
 ffmpeg -y -f mpegts -i "concat:cover.ts|nobgm.ts" \
   -c copy -movflags +faststart final_no_bgm.mp4 2>/dev/null
 rm -f nobgm.ts cover.ts
 
-# ── Mastering: 平台响度标准化 ──
+# ── Step 7: Mastering: 平台响度标准化 ──
 # 混音阶段管平衡（旁白 vs BGM），mastering 阶段管响度（匹配平台标准）。
 # 目标 I=-14 LUFS（短视频平台标准），TP=-1 dB（防爆音）。
 # 视频流 copy 不重编码，只重编码音频。
@@ -76,7 +76,7 @@ for FINAL_FILE in final.mp4 final_no_bgm.mp4; do
 done
 echo "[assemble_final] Mastering 完成"
 
-# ── 输出验证 ──
+# ── Step 8: 输出验证 ──
 FINAL_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 final.mp4)
 FINAL_AUDIO=$(ffprobe -v quiet -select_streams a -show_entries stream=codec_type -of csv=p=0 final.mp4 | wc -l)
 NOBGM_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 final_no_bgm.mp4)
@@ -86,7 +86,7 @@ echo "[assemble_final] 完成:"
 echo "  final.mp4: $(du -h final.mp4 | cut -f1), ${FINAL_DUR}s, 音频轨道: ${FINAL_AUDIO}"
 echo "  final_no_bgm.mp4: $(du -h final_no_bgm.mp4 | cut -f1), ${NOBGM_DUR}s, 音频轨道: ${NOBGM_AUDIO}"
 
-# ── 硬性断言：时长不膨胀 + 音频不丢失 ──
+# ── Step 9: 硬性断言：时长不膨胀 + 音频不丢失 ──
 # final.mp4 时长不应超过 output.mp4 + 0.1 秒（1帧封面 ≈ 0.033s + TS对齐开销 ≤ 0.06s）
 if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.1)}"; then
   echo "FAIL: final.mp4 时长 ($FINAL_DUR) 远超源视频 ($SOURCE_DUR)，封面膨胀导致 A/V 脱节风险"
@@ -103,7 +103,7 @@ fi
 
 echo "[assemble_final] 验证通过"
 
-# ── 写标记文件（gate 据此判断 final.mp4 是否由本脚本生成）──
+# ── Step 10: 写标记文件（gate 据此判断 final.mp4 是否由本脚本生成）──
 cat > .assemble_marker.json <<EOFMarker
 {
   "script": "assemble_final.sh",

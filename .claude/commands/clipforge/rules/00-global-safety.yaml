@@ -97,7 +97,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/shared-rules.md §4.2"
+    source: "shared/shared-rules.md §4.2 + engine/gate.py check_no_real_person_name"
 
   - id: "R-G-009"
     type: FORBIDDEN_SPEECH
@@ -110,7 +110,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/shared-rules.md §4.2"
+    source: "shared/shared-rules.md §4.2 + engine/gate.py check_no_school_name"
 
   - id: "R-G-010"
     type: FORBIDDEN_SPEECH
@@ -124,7 +124,7 @@ rules:
     severity: HARD
     class: SAFETY
     scope: GLOBAL
-    source: "shared/shared-rules.md §4.2"
+    source: "shared/shared-rules.md §4.2 + engine/gate.py check_no_competitor_attack"
 
   - id: "R-G-011"
     type: FORBIDDEN_SPEECH
@@ -150,3 +150,29 @@ rules:
     scope: SKILL
     skill: stage7-delivery
     source: "shared/shared-rules.md §4.2"
+
+  - id: "R-G-013"
+    type: FORBIDDEN_ACTION
+    pattern: "narration/douyin.md/HTML 引导观众'去XX搜索''搜XX'等搜索话术"
+    positive: "只列项目名和 owner/repo 路径（如 apple/container），不写'去 GitHub 搜索''搜名字就能'"
+    guardrail: "'去GitHub搜'、'GitHub搜索:'、'搜项目名'、'感兴趣...搜'等表述触发平台'导流'判定限流"
+    detection:
+      keywords: ["去GitHub搜", "GitHub搜索", "GitHub 搜索", "搜项目名", "搜名字", "感兴趣", "去搜", "就能"]
+      regex: "去\\s*GitHub\\s*搜|GitHub\\s*搜索\\s*[:：]|搜\\s*[\"\"\"]?\\w+[\"\"\"]?\\s*就\\s*能|感兴趣.*搜|去\\s*搜\\s*\\w"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "engine/gate.py check_no_search_cTA"
+
+  - id: "R-G-014"
+    type: FORBIDDEN_ACTION
+    pattern: "douyin.md 四平台文案中包含 URL/链接"
+    positive: "douyin.md 全文零链接，项目只以 owner/repo 文本路径形式出现在评论区自评段"
+    guardrail: "douyin.md 出现 https://... 形式 URL，平台判定导流并限流"
+    detection:
+      keywords: ["https://", "http://"]
+      regex: "https?://\\S+"
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "engine/gate.py check_douyin_platforms_complete"

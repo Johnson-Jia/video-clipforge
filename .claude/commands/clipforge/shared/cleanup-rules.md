@@ -9,7 +9,7 @@
 > **⛔ 清理只允许通过以下两种方式执行，禁止任何其他方式：**
 >
 > 1. **运行清理脚本**（首选）：`bash .claude/commands/clipforge/scripts/cleanup_project.sh "$PROJECT_DIR"`
-> 2. **本文件下方的逐条删除步骤**：先执行 §清理前检查点，再按 §必删文件 逐条删除
+> 2. **本文件下方的逐条删除步骤**：先执行 §3，再按 §6 逐条删除
 >
 > **严禁手动 `rm -f` 批量删除文件。** 手动 `rm -f` 会误删保留清单中的文件（cover.html、index.html、design.md、narration_segments.json 等），导致微调视频需要重跑整个阶段。
 
@@ -30,7 +30,7 @@
      python .claude/commands/clipforge/engine/gate.py --generate-report --project-dir "$PROJECT_DIR"
    如果不存在，立即生成后再继续。
 1. 列出当前目录所有文件: ls -la ${PROJECT_DIR}/
-2. 逐个对照下方 §视频项目保留清单，确认每个文件的去留
+2. 逐个对照下方 §5，确认每个文件的去留
 3. 将要删除的文件名单记录下来（只在必删文件列表中的）
 4. 删除前再次确认：要删除的文件不在保留清单中
 5. 按记录的名单逐条删除（不用通配符）

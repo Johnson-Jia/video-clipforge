@@ -23,7 +23,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage7-delivery"
-    source: "用户反馈: 封面需严格遵循 7 层模板"
+    source: "用户反馈: 封面需严格遵循 7 层模板 + engine/gate.py check_cover_layers_present"
 
   - id: "R-S7-003"
     type: FORBIDDEN_ACTION

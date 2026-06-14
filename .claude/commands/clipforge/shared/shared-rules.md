@@ -175,7 +175,7 @@
 | > 40 秒 | ⌈duration / 14⌉ 个 phase | 按此公式计算最少 phase 数 |
 
 - **Phase** = clip 内的一次视觉内容切换（不是新 clip，不拆分音频）
-- Phase 间切换由 GSAP timeline 驱动（详见 `shared/render-safety.md` §1.2 和 `stages/stage6-production.md` §6.6）
+- Phase 间切换由 GSAP timeline 驱动（详见 `shared/render-safety.md` §1.2 和 `stages/stage6-production.md` §6.10）
 - Phase 切换 ≠ 硬切：使用 opacity 渐变过渡（0.3-0.4s），上一个 phase 淡化到 0（完全消失，避免重叠重影），新 phase 从 0 渐显到 1
 - **相邻 phase 的 visual_type 不应重复**（视觉多样性）
 - **Phase 断点禁止均分**——详见 `shared/visual-phasing.md` §4

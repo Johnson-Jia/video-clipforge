@@ -194,6 +194,9 @@ skill:
         params:
           segments_file: "segment_durations.json"
           narration_file: "narration_segments.json"
+      - gate: no_global_text_shadow
+        params:
+          file: "index.html"
     soft:
       - gate: phase_anchor_coverage
         params:

@@ -45,7 +45,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage4-audio"
-    source: "stage4-audio.md §4.1 Step 4 + 2026-06-01 事故（3 项目全部跳过 loudnorm）"
+    source: "stage4-audio.md §4.1 + engine/gate.py check_narration_sample_rate"
 
   - id: "R-S4-005"
     type: REQUIRED_METHOD
@@ -57,4 +57,4 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage4-audio"
-    source: "stage4-audio.md §4.2 BGM 音量守恒铁律 + 2026-06-01 事故（3 项目全部硬编码 0.35）"
+    source: "stage4-audio.md §4.2 BGM 音量守恒铁律 + engine/gate.py check_bgm_volume_provenance"

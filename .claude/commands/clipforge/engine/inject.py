@@ -8,6 +8,7 @@
 from __future__ import annotations
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +29,17 @@ def merge_rules(rules: list[Rule]) -> list[Rule]:
                 continue
         seen[r.id] = r
     return list(seen.values())
+
+
+def _gate_anchor(rule: Rule) -> str:
+    """从 source 字段提取 gate checker 名（如 check_portrait_typography）。
+
+    rules 的 source 若标注 'engine/gate.py check_xxx'，则该规则有机器 gate 拦截。
+    返回 checker 名；无则返回空串（规则靠自觉，无机器拦截）。
+    这让 LLM 推理时能区分「违反即被机器拦截」与「靠自觉的硬约束」。
+    """
+    m = re.search(r'\bcheck_\w+', rule.source or '')
+    return m.group() if m else ''
 
 
 def load_patterns_meta(category: str | None = None, skill_name: str | None = None,
@@ -215,7 +227,10 @@ def generate_injection(
     lines.append("## 行为准则（必须遵守）")
     for r in hard_rules:
         rw = rewrite_rule(r)
-        lines.append(f"- **[HARD]** {rw['positive']}")
+        gate = _gate_anchor(r)
+        anchor = f" · 机器拦截: {gate}" if gate else ""
+        guard = f"（自检: {rw['guardrail']}）" if rw.get('guardrail') else ""
+        lines.append(f"- **[HARD{anchor}]** {rw['positive']} {guard}")
     lines.append("")
 
     # SOFT 规则（STANDARD 和 STRICT 注入）
@@ -223,7 +238,10 @@ def generate_injection(
         lines.append("## 参考偏好（建议遵守）")
         for r in soft_rules:
             rw = rewrite_rule(r)
-            lines.append(f"- [SOFT] {rw['positive']}")
+            gate = _gate_anchor(r)
+            anchor = f" · 机器检查: {gate}" if gate else ""
+            guard = f"（自检: {rw['guardrail']}）" if rw.get('guardrail') else ""
+            lines.append(f"- [SOFT{anchor}] {rw['positive']} {guard}")
         lines.append("")
 
     # Skill 声明的偏好（STANDARD 和 STRICT 注入）

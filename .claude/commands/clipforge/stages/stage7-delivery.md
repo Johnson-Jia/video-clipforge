@@ -2,7 +2,7 @@
 
 当 `output.mp4` 已存在且 `final.mp4` 不存在时触发。生成封面、嵌入视频首帧、输出抖音文案。
 
-## 7.0 前置检查（进入 Stage 7 前必须通过）
+## §7.1 前置检查（进入 Stage 7 前必须通过）
 
 ```bash
 # 检查 Stage 6 产出物完整性
@@ -12,9 +12,9 @@
 echo "Stage 7 前置检查通过"
 ```
 
-> **如果 `output_no_bgm.mp4` 不存在，必须回退到 Stage 6 的 §6.9 补充渲染，不得跳过。**
+> **如果 `output_no_bgm.mp4` 不存在，必须回退到 Stage 6 的 §6.13 补充渲染，不得跳过。**
 
-## 7.1 封面生成（必须执行）
+## §7.2 封面生成（必须执行）
 
 视频发布前，**必须生成一张封面图**。封面是用户刷到视频时的第一印象，决定了是否点击观看。
 
@@ -31,7 +31,7 @@ echo "Stage 7 前置检查通过"
 
 1. 从 `design.md` 读取配色方向，从 `narration_segments.json` / 内容摘要读取数据
 2. 创建 `cover_params.json`（schema 见 `shared/cron-template.md` SubAgent-4 段）
-3. 运行 `s7_delivery.sh`（§7.2）— 脚本自动调用 `generate_cover.py --render` 生成 `cover.html` + `cover.png`
+3. 运行 `s7_delivery.sh`（§7.3）— 脚本自动调用 `generate_cover.py --render` 生成 `cover.html` + `cover.png`
 
 **LLM 创意域（自由发挥）：**
 - 色彩方案：3 个核心色值（accent_warm / accent_cool / bg_dark），脚本自动派生 12 色调色板
@@ -68,7 +68,7 @@ echo "Stage 7 前置检查通过"
 
 ### 渲染命令
 
-> `s7_delivery.sh`（§7.2）已自动调用 `generate_cover.py --render`，无需手动执行。
+> `s7_delivery.sh`（§7.3）已自动调用 `generate_cover.py --render`，无需手动执行。
 > 以下为 `s7_delivery.sh` 失败时的降级方案。
 
 **手动渲染降级（脚本 --render 失败时）：**
@@ -91,7 +91,7 @@ rm -rf /tmp/cover-render
 ffmpeg -y -i output.mp4 -vf "scale=1080:1920:flags=lanczos" -vframes 1 cover.png
 ```
 
-## 7.2 交付管线（全自动）
+## §7.3 交付管线（全自动）
 
 > LLM 完成 `cover_params.json` 后，`s7_delivery.sh` 一次性完成: 封面生成+渲染 → 封面门禁 → 封面拼接+Mastering → 磁盘报告。
 >
@@ -103,7 +103,7 @@ bash .claude/commands/clipforge/scripts/s7_delivery.sh --project-dir .
 
 **如果脚本失败**：根据错误信息修复 `cover_params.json` 或 `index.html`，然后重新执行。
 
-## 7.3 视频交付
+## §7.4 视频交付
 
 ```
 视频已生成完毕（双版本）：
@@ -131,7 +131,7 @@ echo "   总月目录：$(ls -d workspace/????/??/ 2>/dev/null | wc -l)"
 echo "   如空间不足，可执行 Stage 8 自动清理（详见 clipforge/shared/cleanup-rules）"
 ```
 
-## 7.4 抖音文案生成
+## §7.5 抖音文案生成
 
 根据视频内容，生成 **3 套不同风格** 的发布文案。
 

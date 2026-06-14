@@ -100,7 +100,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §2.4"
+    source: "shared/render-safety.md §2.4 + engine/gate.py check_fx_layer_not_empty"
 
   - id: "R-R-009"
     type: FORBIDDEN_ACTION
@@ -113,7 +113,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "用户反馈: bg 层视觉质量差(bg 组件单薄)"
+    source: "用户反馈: bg 层视觉质量差(bg 组件单薄) + engine/gate.py check_bg_visual_diversity"
 
   - id: "R-R-010"
     type: FORBIDDEN_ACTION
@@ -126,7 +126,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "用户反馈: 相邻场景视觉同质化"
+    source: "用户反馈: 相邻场景视觉同质化 + engine/gate.py check_adjacent_bg_diversity"
 
   - id: "R-R-011"
     type: FORBIDDEN_METHOD
@@ -165,7 +165,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §2.5 — fx 层无 GSAP 动画"
+    source: "shared/render-safety.md §2.5 — fx 层无 GSAP 动画 + engine/gate.py check_fx_animation_present"
 
   - id: "R-R-014"
     type: FORBIDDEN_ACTION
@@ -191,7 +191,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §3.1 — 竖屏文字手机端不可读"
+    source: "shared/render-safety.md §3.1 — 竖屏文字手机端不可读 + engine/gate.py check_portrait_typography"
 
   - id: "R-R-016"
     type: FORBIDDEN_METHOD
@@ -204,7 +204,7 @@ rules:
     severity: HARD
     class: QUALITY
     scope: GLOBAL
-    source: "shared/render-safety.md §3.2 — 用户反馈小标签视觉廉价"
+    source: "shared/render-safety.md §3.2 — 用户反馈小标签视觉廉价 + engine/gate.py check_portrait_typography"
 
   - id: "R-R-017"
     type: REQUIRED_METHOD
@@ -217,7 +217,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage6-production
-    source: "stages/stage6-production.md §动画规则 R19"
+    source: "stages/stage6-production.md §6.10 动画规则"
 
   - id: "R-R-018"
     type: REQUIRED_METHOD
@@ -231,7 +231,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage7-delivery
-    source: "stages/stage7-delivery.md §7.1 封面生成(7 层模板)"
+    source: "stages/stage7-delivery.md §7.2 封面生成(7 层模板)"
 
   - id: "R-R-019"
     type: FORBIDDEN_METHOD
@@ -244,7 +244,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage7-delivery
-    source: "stages/stage7-delivery.md §7.1 封面生成(配色变量)"
+    source: "stages/stage7-delivery.md §7.2 封面生成(配色变量)"
 
   - id: "R-R-020"
     type: FORBIDDEN_ACTION
@@ -272,4 +272,4 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage6-production
-    source: "shared/render-safety.md §2.3 — bg 组件库强制使用"
+    source: "shared/render-safety.md §2.3 — bg 组件库强制使用 + engine/gate.py check_bg_component_source"

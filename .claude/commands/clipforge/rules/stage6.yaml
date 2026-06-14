@@ -9,7 +9,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage6-production"
-    source: "stage6-production.md §6.6"
+    source: "stage6-production.md §6.10"
 
   - id: "R-S6-002"
     type: FORBIDDEN_ACTION
@@ -140,7 +140,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: CSS class 切换可见性导致黑屏"
+    source: "事故: CSS class 切换可见性导致黑屏 + engine/gate.py check_html_no_css_visibility"
 
   - id: "R-S6-012"
     type: FORBIDDEN_ACTION
@@ -154,7 +154,7 @@ rules:
     class: SAFETY
     scope: SKILL
     skill: "stage6-production"
-    source: "事故: 渲染码率异常低疑似黑屏"
+    source: "事故: 渲染码率异常低疑似黑屏 + engine/gate.py check_video_bitrate_valid"
 
   # R-S6-020~022: gate.py checker 内联校验规则，无独立 inject prompt
   # 编号与 gate.py 输出消息对齐，跳过 013-019 保持引用一致
@@ -200,3 +200,47 @@ rules:
     scope: SKILL
     skill: "stage6-production"
     source: "engine/gate.py check_phase_visibility_present"
+
+  - id: "R-S6-023"
+    type: FORBIDDEN_METHOD
+    pattern: "渐变文字（background-clip:text / -webkit-text-fill-color:transparent）搭配黑色 text-shadow rgba(0,0,0,...)"
+    positive: "渐变文字使用同色系发光 text-shadow（如渐变主色 rgba），黑色阴影只用于不透明纯色文字"
+    guardrail: "黑色 text-shadow 叠加在透明填充的渐变文字上产生黑色光晕，压低文字亮度；DOM 元素同时携带渐变类+黑色阴影类同样违规"
+    detection:
+      keywords: ["background-clip: text", "-webkit-text-fill-color: transparent", "text-shadow", "rgba(0,0,0"]
+      regex: "background-clip\\s*:\\s*text|text-shadow\\s*:[^;]*rgba\\(\\s*0\\s*,\\s*0\\s*,\\s*0"
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "engine/gate.py check_gradient_text_no_dark_shadow"
+
+  - id: "R-S6-025"
+    type: FORBIDDEN_ACTION
+    pattern: ".clip 与 .layer-bg/.layer-fx/.layer-content 之间插入中间包裹层（如 .scene-wrap）"
+    positive: ".clip 必须直系包含 .layer-bg / .layer-fx / .layer-content 三层，中间不夹任何 div"
+    guardrail: ".clip > .scene-wrap > .layer-* 三层直系铁律违反，HyperFrames seek 时内容不可见"
+    detection:
+      keywords: ["scene-wrap", "class=\"clip\"", "layer-bg", "layer-fx", "layer-content"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "渲染安全: .clip 三层直系（checker 待评估启用，历史项目多有 scene-wrap 但渲染成功）"
+
+  - id: "R-S6-027"
+    type: FORBIDDEN_METHOD
+    pattern: "全局通配选择器（* 或 .xxx *）设置 text-shadow / opacity / filter"
+    positive: "text-shadow / opacity / filter 写在具体元素或具体类选择器上，禁止用通配 * 批量套用"
+    guardrail: ".safe-pad * { text-shadow:... } 类全局通配会连带影响渐变文字导致整体偏暗"
+    detection:
+      keywords: ["* {", "*{", "text-shadow", "opacity:", "filter:"]
+      regex: "(?:\\*|\\.?\\w+\\s\\*)\\s*\\{[^}]*(text-shadow\\s*:|opacity\\s*:|filter\\s*:)"
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: SKILL
+    skill: "stage6-production"
+    source: "engine/gate.py check_no_global_text_shadow"
