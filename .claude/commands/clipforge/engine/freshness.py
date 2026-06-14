@@ -45,6 +45,8 @@ def _find_recent_projects(current_dir: Path, n: int = 10) -> list[Path]:
                 continue
         except Exception:
             continue
+        if "test" in proj.parts:  # 排除 workspace/test/ 验证目录，不污染历史扫描
+            continue
         projects.append(proj)
     projects.sort(key=lambda p: str(p), reverse=True)
     return projects[:n]
