@@ -16,6 +16,7 @@
   "project": "workspace/<YYYY>/<MM>/<DD>/<项目名>",
   "timestamp": "<ISO 8601>",
   "phases": {
+    "stage0.5-topic-plan": {"hard_passed": true, "soft_score": 1.0},
     "stage1-content": {"hard_passed": true, "soft_score": 1.0},
     "stage3-scenes": {"hard_passed": true, "soft_score": 1.0},
     "stage4-audio": {"hard_passed": true, "soft_score": 1.0},
@@ -23,9 +24,13 @@
     "stage7-delivery": {"hard_passed": true, "soft_score": 1.0}
   },
   "overall_soft_score": 1.0,
+  "overall_score": 0.85,
+  "freshness": {"freshness_score": 0.7, "hook_sim": 0.3, "project_jaccard": 0.2, "template_sim": 0.4},
+  "predicted_plays": {"predicted_plays_score": 0.6, "model_version": "heuristic-v1"},
+  "scoring_weights": {"compliance": 0.6, "freshness": 0.3, "predicted": 0.1},
   "hard_passed_all": true,
-  "total_stages": 5,
-  "stages_passed": 5
+  "total_stages": 6,
+  "stages_passed": 6
 }
 ```
 

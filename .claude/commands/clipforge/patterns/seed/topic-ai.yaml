@@ -1,0 +1,17 @@
+id: "topic-ai"
+seed: true
+category: "github"
+source_traces: []
+skill_scope: "stage0.5-topic-plan,stage1-content"
+
+description: "AI-Agent 类选题：Agent 技能/框架/安全/应用（当前主流但易同质疲劳——6 月崩盘主因，需主动差异化）"
+
+evidence:
+  sample_size: 14
+  avg_soft_score: 0.90
+  confidence: 0.78
+
+as_preference:
+  text: "AI-Agent 选题：6 月崩盘主因是同质化（连续 AI Agent 盘点，score 满分但播放崩 99.7%）。本期若选 AI-Agent，必须强差异化——换子方向（Agent 安全/记忆/编排/技能，而非泛 Agent 盘点）、换叙事（单项目深度专题对比多项目盘点）、换 hook 角度（避免'杀入/猛项目'疲劳词）。每周 ≤2，连续 2 期后强制与工具/安全/硬件/容器等题材轮换"
+  weight: HIGH
+  source_pattern: "topic-ai"

@@ -247,7 +247,7 @@ Layer 4  cover_check.py + validate_cover.py（stage7）
 
 | Stage | Layer 0（gate.py） | Layer 1-4（专用） |
 |-------|--------------------|------------------|
-| 0-3 | stage 对应 checker 子集（hook_pattern/no_forbidden_speech 等） | — |
+| 0-3（含 stage0.5 选题规划）| stage 对应 checker 子集（hook_pattern/no_forbidden_speech/file_exists topic_plan 等） | — |
 | 4 | bgm_* / narration_* / loudnorm / bgm_volume_provenance | — |
 | 6 | 32 HARD（STRICT）| director + frame_analysis + validate_html_structure |
 | 7 | cover_layers / douyin_platforms / final_duration | cover_check |

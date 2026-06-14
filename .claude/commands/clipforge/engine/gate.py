@@ -3729,7 +3729,7 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
 
     返回值含 _gate_details（完整 violations 详情），仅供内部闭环使用，不写入 JSON。
     """
-    stages = ["stage1-content", "stage3-scenes", "stage4-audio", "stage6-production", "stage7-delivery"]
+    stages = ["stage0.5-topic-plan", "stage1-content", "stage3-scenes", "stage4-audio", "stage6-production", "stage7-delivery"]
     phases = {}
     gate_details = {}  # 保留完整 GateReport 信息，供 trace + attribution 使用
     for stage_id in stages:

@@ -28,17 +28,21 @@
 
 **轮换铁律**：连续 3 期同题材 → 第 4 期强制换题材（除非有强反直觉爆点）。
 
-## §4 新鲜度约束（HARD，gate 校验）
+## §4 新鲜度约束（SOFT 全链，不 HARD 阻断）
 
-与近 5 期历史比对（freshness.compute_freshness），至少满足：
+**架构事实**：freshness 的 hook_sim / template_sim 依赖 `narration_segments.json`（stage3 产出），project_jaccard 依赖 content_ready（stage1 产出）。这些文件在 stage0.5 时**均不存在**——所以 freshness 不做 HARD 阻断 gate（无输入时不阻断，有输入时靠 score 加权反映，不强制 gate 拦截）。
 
-| 维度 | 阈值 | 超阈值处理 |
-|------|------|-----------|
-| hook_sim | < 0.6 | 换钩子句式 / 数字锚点 |
-| project_jaccard | < 0.5 | 引入 ≥2 个近 5 期未出现项目 |
-| template_sim | < 0.7 | 换叙事模板（盘点→对比弧→揭秘弧） |
+**freshness 反同质化通过两层 SOFT 实现**：
+1. **事前引导**（inject）：stage0.5/stage1/stage3 执行前，inject 注入近期 hook/项目摘要 + 题材轮换 pattern，LLM 主动避让重复（`engine/inject.py` recent_context）
+2. **事后扣分**（score）：machine-scoring 阶段 `overall_score = 合规·w1 + 新鲜度·w2 + 播放潜力·w3`，与近期高度相似的视频被新鲜度拉低分（`engine/gate.py` generate_score_report）
 
-> 三项任一超阈值 → 调整选题角度，不得直接进入 content。
+| 维度 | 阈值（引导参考） | 作用方式 |
+|------|------|---------|
+| project_jaccard | < 0.5 | inject 预警 + score 扣分 |
+| hook_sim | < 0.6 | inject 预警 + score 扣分 |
+| template_sim | < 0.7 | inject 预警 + score 扣分 |
+
+> 不做 HARD gate 的原因：同质化是「质量趋势」而非「硬性错误」——HARD 阻断会误杀有潜力的边界内容。SOFT（引导 + 扣分）让 LLM 知道重复 + 评分反映，但不强制阻断创作。
 
 ## §5 产出 topic_plan.json
 

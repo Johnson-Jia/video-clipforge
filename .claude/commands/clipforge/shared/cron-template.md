@@ -113,11 +113,13 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 >
 > **⚠ Gate 是防线不是装饰。跳过 gate = 已有规则全部失效。**
 
-### SubAgent-1: content → design → narration
+### SubAgent-1: topic-plan → content → design → narration
 
-加载：`skills/stage0-env.yaml` + `skills/stage1-content.yaml` + `skills/stage2-analysis.yaml` + `skills/stage3-scenes.yaml`
+加载：`skills/stage0-env.yaml` + `skills/stage0.5-topic-plan.yaml` + `skills/stage1-content.yaml` + `skills/stage2-analysis.yaml` + `skills/stage3-scenes.yaml`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：依次运行（输出拼接为约束段附加到 SubAgent prompt 最前面）：
+1. `cd .claude/commands/clipforge && python engine/inject.py --skill stage0.5-topic-plan --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`（选题规划：题材轮换 + 新鲜度约束 + 近期重复预警）
+2. `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`（场景拆解约束）
 
 传入参数：
 
@@ -134,7 +136,9 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 
 **方向判定**：默认 `portrait`。仅当分类配置有 `orientation_hint: landscape` 时使用横屏。写入 `orientation` + `orientation_source` 到 design.md。
 
-**门禁校验**：完成后运行 `cd <clipforge-dir> && python engine/gate.py --skill stage3-scenes --project-dir <PROJECT_DIR>`
+**门禁校验**：完成后依次运行：
+1. `cd <clipforge-dir> && python engine/gate.py --skill stage0.5-topic-plan --project-dir <PROJECT_DIR>`（校验 topic_plan.json 产出）
+2. `cd <clipforge-dir> && python engine/gate.py --skill stage3-scenes --project-dir <PROJECT_DIR>`
 
 **验证**：`ls -la ${PROJECT_DIR}/design.md ${PROJECT_DIR}/narration_segments.json ${PROJECT_DIR}/narration.txt`
 
