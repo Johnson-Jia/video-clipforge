@@ -1,0 +1,73 @@
+<!--
+@ComponentMeta
+name: pure_light
+layer: bg
+tags: [minimal, pure, clean, light, bright, white, apple, product, simple, geometric, contour]
+emotion_range: [minimal, pure, clean, clarity, focus, premium]
+visual_density: low
+complexity: css-only
+description: 浅色/白底极简（突破深色传统）+ 极淡网格 + 单色产品辉光 + 简洁几何装饰 + 轻微暗角 + 玻璃折射。适合产品发布/极简介绍/Apple 风
+parameters:
+  base_tint: { default: "#f5f6f8", description: "底色（浅灰白）" }
+  accent_hue: { default: "210", description: "辉光色相" }
+  grid_opacity: { default: 0.04, range: [0.02, 0.08] }
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes productGlow {
+  0%, 100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
+  50% { opacity: 0.75; transform: translate(-50%,-50%) scale(1.08); }
+}
+@keyframes geoFloat {
+  0%, 100% { transform: translate(0,0) rotate(0deg); }
+  50% { transform: translate(10px,-8px) rotate(8deg); }
+}
+@keyframes gridBreath {
+  0%, 100% { opacity: 0.035; }
+  50% { opacity: 0.06; }
+}
+@keyframes glassShimmer {
+  0%, 100% { opacity: 0.10; }
+  50% { opacity: 0.14; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: pure_light -->
+<!-- 浅灰白底（突破深色传统） -->
+<div style="position:absolute;inset:0;background:linear-gradient(160deg,#fafbfc 0%,#f0f2f5 50%,#e8ebf0 100%)"></div>
+<!-- 极淡网格（低 opacity，呼吸） -->
+<div style="position:absolute;inset:0;
+  background-image:linear-gradient(rgba(60,80,120,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(60,80,120,0.04) 1px,transparent 1px);
+  background-size:100px 100px;animation:gridBreath 8s ease-in-out infinite"></div>
+<!-- 产品辉光（单色柔和，焦点） -->
+<div style="position:absolute;top:45%;left:50%;width:700px;height:700px;border-radius:50%;
+  background:radial-gradient(circle,hsla(210,80%,60%,0.10),hsla(210,60%,55%,0.04),transparent 65%);
+  filter:blur(70px);animation:productGlow 9s ease-in-out infinite"></div>
+<!-- 副辉光（冷色辅助） -->
+<div style="position:absolute;top:70%;left:75%;width:350px;height:350px;border-radius:50%;
+  background:radial-gradient(circle,hsla(260,50%,65%,0.06),transparent 70%);
+  filter:blur(60px)"></div>
+<!-- 简洁几何装饰 1（圆环，clip-path/border） -->
+<div style="position:absolute;top:30%;left:70%;width:120px;height:120px;border-radius:50%;
+  border:1.5px solid hsla(210,60%,55%,0.18);animation:geoFloat 12s ease-in-out infinite"></div>
+<!-- 简洁几何装饰 2（线条） -->
+<div style="position:absolute;top:60%;left:18%;width:160px;height:2px;
+  background:linear-gradient(90deg,transparent,hsla(210,70%,55%,0.25),transparent);
+  animation:geoFloat 14s ease-in-out infinite 2s"></div>
+<!-- 简洁几何装饰 3（小圆点） -->
+<div style="position:absolute;top:25%;left:25%;width:10px;height:10px;border-radius:50%;
+  background:hsla(210,80%,60%,0.4);box-shadow:0 0 12px hsla(210,70%,55%,0.3);
+  animation:geoFloat 10s ease-in-out infinite 4s"></div>
+<!-- 简洁几何装饰 4（菱形，clip-path） -->
+<div style="position:absolute;top:65%;left:60%;width:60px;height:60px;
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  background:hsla(260,40%,60%,0.08);border:1px solid hsla(260,40%,60%,0.2);
+  animation:geoFloat 13s ease-in-out infinite 1s"></div>
+<!-- 轻微暗角（浅色版，柔和聚焦） -->
+<div style="position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 45%,transparent 50%,rgba(180,190,210,0.12) 100%)"></div>
+<!-- 玻璃折射高光（浅色版） -->
+<div style="position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.25) 0%,transparent 35%,transparent 65%,rgba(255,255,255,0.15) 100%);
+  animation:glassShimmer 9s ease-in-out infinite"></div>

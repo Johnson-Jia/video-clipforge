@@ -63,6 +63,10 @@ parameters:
 <div style="position:absolute;inset:0;
   background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 40%,rgba(255,255,255,0.03) 60%,transparent 100%);
   animation:glassShimmer 8s ease-in-out infinite"></div>
+<!-- 波纹干涉（签名：色带交叠的同心圆干涉纹，区别于 light_field 光球/vignette 暗角） -->
+<div style="position:absolute;top:45%;left:50%;width:700px;height:700px;border-radius:50%;opacity:0.06;
+  background:repeating-radial-gradient(circle,transparent 0px,transparent 16px,hsla(220,60%,55%,0.10) 16px,hsla(220,60%,55%,0.10) 17px);
+  filter:blur(1.5px);transform:translate(-50%,-50%);animation:waveSway 22s ease-in-out infinite"></div>
 <!-- 棱镜色散：细微的彩虹光带 -->
 <div style="position:absolute;top:30%;left:-10%;width:120%;height:200px;opacity:0.15;
   background:linear-gradient(90deg,transparent,rgba(255,100,100,0.5),rgba(100,255,100,0.5),rgba(100,100,255,0.5),transparent);
