@@ -1027,6 +1027,49 @@ class AutoEvolve:
         self.thresholds_changed = changed
         return changed
 
+    def phase6_train_hook(self) -> None:
+        """Phase 6: 播放量预测训练钩子（不遗忘——每次跑都 check，≥100 样本自动训练升级）。
+
+        扫 performance.json（拿 proj_dir + 多平台播放），提取 features（freshness/hook/项目数）
+        × log_plans → predict.train_if_ready。样本不足返回待训练状态，达标自动训练+持久化。
+        """
+        self._log("\nPhase 6: 播放量预测训练钩子")
+        import math
+        from engine.freshness import compute_freshness, _hook_text, _project_set
+        from engine.predict import train_if_ready, CONTRARIAN_WORDS, NUMBER_RE
+        samples = []
+        for pf in sorted(WORKSPACE.rglob("performance.json")):
+            proj = pf.parent
+            try:
+                data = json.loads(pf.read_text("utf-8"))
+            except Exception:
+                continue
+            plats = data.get("platforms", {})
+            if not isinstance(plats, dict):
+                continue
+            plays = 0
+            for pdata in plats.values():
+                if isinstance(pdata, dict):
+                    plays = max(plays, pdata.get("plays", 0) or pdata.get("impressions", 0) or 0)
+            if plays <= 0:
+                continue
+            try:
+                fr = compute_freshness(proj, 10)
+                hook = _hook_text(proj)
+                contra = any(w in hook for w in CONTRARIAN_WORDS)
+                num = bool(NUMBER_RE.search(hook))
+                pcount = len(_project_set(proj))
+                samples.append({
+                    "freshness": fr.get("freshness_score", 0.5),
+                    "hook_contrarian": int(contra), "hook_number": int(num),
+                    "project_count": pcount, "log_plays": math.log10(plays),
+                })
+            except Exception:
+                continue
+        result = train_if_ready(samples)
+        tag = result.get("version") or result.get("note", "")
+        self._log(f"  join 样本={len(samples)} → trained={result.get('trained')} {tag}")
+
     # ── 主入口 ────────────────────────────────────────────────────────────────
 
     def run(self):
@@ -1048,6 +1091,9 @@ class AutoEvolve:
 
         # Phase 4
         self.phase4_deltas(insights)
+
+        # Phase 6（播放量预测训练钩子——不遗忘，数据达标自动升级启发式→训练模型）
+        self.phase6_train_hook()
 
         # Phase 5
         self.phase5_calibrate(insights)
