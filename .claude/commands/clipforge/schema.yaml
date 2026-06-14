@@ -8,11 +8,17 @@ artifacts:
     description: "当 workspace/.env-checked 缺失时使用 — 校验 Node.js、FFmpeg、edge-tts、yt-dlp 和 HyperFrames 是否就绪"
     template: "stages/stage0-env"
 
+  topic-plan:
+    generates: "**/topic_plan.json"
+    description: "选题规划：题材轮换 + 新鲜度约束 + 项目类型多样性，在内容获取前确定本期选题方向（防同质化的一等公民环节）"
+    template: "stages/stage0.5-topic-plan"
+    requires: [env-check]
+
   content:
     generates: "**/content.md"
-    description: "当环境已就绪但 content.md 不存在时使用 — 从 URL、GitHub 或用户输入获取并准备原始内容摘要"
+    description: "当选题已规划但 content.md 不存在时使用 — 按选题方向从 URL、GitHub 或用户输入获取并准备原始内容摘要"
     template: "stages/stage1-content"
-    requires: [env-check]
+    requires: [env-check, topic-plan]
 
   design:
     generates: "**/design.md"

@@ -1,0 +1,17 @@
+id: "topic-tool"
+seed: true
+category: "github"
+source_traces: []
+skill_scope: "stage0.5-topic-plan,stage1-content"
+
+description: "工具/效率类选题：实用工具、效率神器、生产力提升项目（AI-Agent 之外的另一大主流，平衡题材）"
+
+evidence:
+  sample_size: 6
+  avg_soft_score: 0.92
+  confidence: 0.78
+
+as_preference:
+  text: "工具/效率选题：聚焦'省时间/省力气/替代手工'的实用项目（OCR/终端/编辑器/自动化）。hook 用'还在手动X？'反问或'X个工具让Y自动化'数字锚定。与 AI-Agent 差异化：强调'具体能做什么'而非'多智能'。避免与近 5 期工具项目重复展开"
+  weight: HIGH
+  source_pattern: "topic-tool"

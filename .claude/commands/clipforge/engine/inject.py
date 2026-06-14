@@ -335,6 +335,34 @@ def generate_injection(
         except Exception:
             pass
 
+    # 新鲜度预警（防同质化，P0-3）—— 引导 LLM 主动避开近期重复
+    if project_dir is not None:
+        try:
+            from engine.freshness import recent_context
+            ctx = recent_context(project_dir)
+            fr = ctx.get("freshness") or {}
+            if fr.get("compared_with", 0) > 0:
+                sec = ["## 新鲜度预警（防同质化 — 主动差异化）"]
+                sec.append(
+                    f"- 与近 {fr['compared_with']} 期相似度：hook {fr.get('hook_sim',0):.0%}"
+                    f" / 项目集 {fr.get('project_jaccard',0):.0%}"
+                    f" / 叙事模板 {fr.get('template_sim',0):.0%}"
+                    f"（主导：{fr.get('most_similar_dim','none')}）"
+                )
+                rh = ctx.get("recent_hooks") or []
+                if rh:
+                    sec.append("- 近期已用 hook（避开相似句式/数字锚点）：")
+                    for h in rh[:5]:
+                        sec.append(f"  · {h}")
+                tp = ctx.get("top_projects") or []
+                if tp:
+                    sec.append(f"- 近期高频项目（避免重复展开，可一带而过）：{', '.join(tp[:6])}")
+                sec.append("- 本次选题/钩子请主动差异化：换题材角度、换数字锚点、换叙事结构")
+                lines.append("\n".join(sec))
+                lines.append("")
+        except Exception:
+            pass
+
     return "\n".join(lines)
 
 

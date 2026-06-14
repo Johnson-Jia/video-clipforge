@@ -1,0 +1,17 @@
+id: "topic-container"
+seed: true
+category: "github"
+source_traces: []
+skill_scope: "stage0.5-topic-plan,stage1-content"
+
+description: "容器/基建类选题：容器、虚拟机、基础设施项目（Apple/微软下场做基建是反直觉点）"
+
+evidence:
+  sample_size: 3
+  avg_soft_score: 0.93
+  confidence: 0.72
+
+as_preference:
+  text: "容器/基建选题：聚焦'大厂下场做基建'或'轻量化基建工具'。hook 用反直觉（'X 居然亲自做了Y'、'轻量替代笨重的Z'）或对比（'比传统方案省N倍'）。与 AI-Agent 差异化：强调'基础设施/工程'而非'智能'。低频"
+  weight: MEDIUM
+  source_pattern: "topic-container"

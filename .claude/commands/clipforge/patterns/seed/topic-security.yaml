@@ -1,0 +1,17 @@
+id: "topic-security"
+seed: true
+category: "github"
+source_traces: []
+skill_scope: "stage0.5-topic-plan,stage1-content"
+
+description: "安全/隐私类选题：漏洞扫描、安全审计、隐私保护项目（Agent 安全如 SkillSpector 是新热点）"
+
+evidence:
+  sample_size: 3
+  avg_soft_score: 0.90
+  confidence: 0.7
+
+as_preference:
+  text: "安全/隐私选题：聚焦'防X/扫漏洞/保护Y'的安全工具。hook 用反直觉（'X 也有安全漏洞？'）或危机感（'你的X可能正在被Y'）。与 AI-Agent 差异化：强调'风险/防御'而非'能力'。低频高质，每周≤1，避免疲劳"
+  weight: MEDIUM
+  source_pattern: "topic-security"

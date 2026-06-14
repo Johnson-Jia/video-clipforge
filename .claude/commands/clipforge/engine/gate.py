@@ -3752,13 +3752,38 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
         except Exception:
             phases[stage_id] = {"hard_passed": False, "soft_score": 0.0, "error": "gate check failed"}
 
+    # 合规度（原 overall）：各 stage soft_score 均值
+    compliance = (
+        sum(p["soft_score"] for p in phases.values()) / len(phases) if phases else 0
+    )
+
+    # 新鲜度（P0：与近 N 期历史的相似度取反，阻止同质化顶峰）
+    freshness = None
+    try:
+        from engine.freshness import compute_freshness
+        freshness = compute_freshness(project_dir)
+    except Exception as e:
+        print(f"[score] freshness 计算失败: {e}", file=sys.stderr)
+
+    # 多维加权总分：overall = w1·合规 + w2·新鲜度
+    # （P0 默认权重，后续接 thresholds/仪表盘；满分不再是目标——同质化视频会被新鲜度拉低）
+    W_COMPLIANCE = 0.7
+    W_FRESHNESS = 0.3
+    if freshness and "freshness_score" in freshness:
+        overall = round(
+            W_COMPLIANCE * compliance + W_FRESHNESS * freshness["freshness_score"], 3
+        )
+    else:
+        overall = round(compliance, 3)
+
     score_report = {
         "project": str(project_dir),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "phases": phases,
-        "overall_soft_score": (
-            sum(p["soft_score"] for p in phases.values()) / len(phases) if phases else 0
-        ),
+        "overall_soft_score": round(compliance, 3),    # 向后兼容：纯合规度
+        "overall_score": overall,                       # 多维加权总分（P0+）
+        "freshness": freshness,                         # 新鲜度分项（P0+）
+        "scoring_weights": {"compliance": W_COMPLIANCE, "freshness": W_FRESHNESS},
         "hard_passed_all": all(p.get("hard_passed", False) for p in phases.values()),
         "total_stages": len(phases),
         "stages_passed": sum(1 for p in phases.values() if p.get("hard_passed")),
@@ -3984,10 +4009,14 @@ def _generate_report(args) -> None:
         # 激活 trace + attribution 闭环（副作用层，不阻塞主流程）
         _activate_closed_loop(report, project_dir)
 
+        fr = report.get("freshness") or {}
         output = {
             "generated": True,
             "project": str(project_dir),
             "overall_soft_score": report["overall_soft_score"],
+            "overall_score": report.get("overall_score"),
+            "freshness_score": fr.get("freshness_score"),
+            "freshness_detail": {k: fr.get(k) for k in ("hook_sim", "project_jaccard", "template_sim", "most_similar_dim")},
             "hard_passed_all": report["hard_passed_all"],
             "stages_passed": f"{report['stages_passed']}/{report['total_stages']}",
         }

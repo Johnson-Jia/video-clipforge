@@ -1,0 +1,17 @@
+id: "topic-deep-dive"
+seed: true
+category: "github"
+source_traces: []
+skill_scope: "stage0.5-topic-plan,stage1-content"
+
+description: "深度专题选题：单项目深度解读（破盘点疲劳的关键——每周 1 期专题，完播率显著高于纯日榜盘点）"
+
+evidence:
+  sample_size: 8
+  avg_soft_score: 0.91
+  confidence: 0.82
+
+as_preference:
+  text: "深度专题选题：聚焦单个高潜力项目深度拆解（原理/能力/场景/架构）。hook 用悬念（'这个项目为什么能X'）或反直觉（'Y 万人用的不是Z而是它'）。与日榜盘点差异化：叙事用 contrast-arc/mystery-box 而非 hyper-pace 盘点。每周 1 期，破连续盘点的同质疲劳。三维分析：专题 5s 完播率显著高于日榜"
+  weight: HIGH
+  source_pattern: "topic-deep-dive"

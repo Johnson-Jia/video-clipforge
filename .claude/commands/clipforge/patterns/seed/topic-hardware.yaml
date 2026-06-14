@@ -1,0 +1,17 @@
+id: "topic-hardware"
+seed: true
+category: "github"
+source_traces: []
+skill_scope: "stage0.5-topic-plan,stage1-content"
+
+description: "硬件/端侧类选题：端侧 AI、离线运行、嵌入式、IoT 项目（离线/本地替代云端是反直觉点）"
+
+evidence:
+  sample_size: 2
+  avg_soft_score: 0.88
+  confidence: 0.65
+
+as_preference:
+  text: "硬件/端侧选题：聚焦'本地/离线/低功耗/边缘'的硬件友好项目。hook 用反直觉（'拔掉网线还能X'、'不联网也能Y'）或平民化（'家用设备做专业级Z'）。与 AI-Agent 差异化：强调'硬件/本地'而非'云端智能'。低频"
+  weight: MEDIUM
+  source_pattern: "topic-hardware"
