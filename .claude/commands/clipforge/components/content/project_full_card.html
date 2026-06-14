@@ -21,6 +21,9 @@ parameters:
   <!-- 第1层：类别标签 -->
   <div class="pfc-category">WiFi 黑科技</div>
 
+  <!-- 第3层：项目名（独占一行全宽，防止 owner/repo 长名在 flex 中间列换行） -->
+  <div class="pfc-name">RuView</div>
+
   <!-- 核心信息区 -->
   <div class="pfc-main">
     <!-- 第2层：排名数字（左侧） -->
@@ -28,8 +31,6 @@ parameters:
 
     <!-- 中间信息列 -->
     <div class="pfc-info">
-      <!-- 第3层：项目名 -->
-      <div class="pfc-name">RuView</div>
       <!-- 第4层：一句话描述 -->
       <div class="pfc-desc">WiFi 信号空间感知 · 无需摄像头</div>
       <!-- 第5层：语言标签 -->
@@ -78,7 +79,7 @@ parameters:
 .pfc-category {
   font-size: 40px; font-weight: 600;
   color: var(--accent-cool);
-  margin-bottom: 60px;
+  margin-bottom: 28px;
 }
 .pfc-main {
   display: flex; align-items: center; gap: 40px;
@@ -94,8 +95,11 @@ parameters:
   flex: 1; display: flex; flex-direction: column; gap: 12px;
 }
 .pfc-name {
-  font-size: 56px; font-weight: 800; color: #fff;
+  font-size: 60px; font-weight: 800; color: #fff;
   font-family: 'JetBrains Mono', monospace;
+  width: 100%; text-align: center;
+  white-space: nowrap; overflow: hidden;
+  margin-bottom: 40px;
 }
 .pfc-desc {
   font-size: 32px; color: var(--text-secondary); line-height: 1.4;

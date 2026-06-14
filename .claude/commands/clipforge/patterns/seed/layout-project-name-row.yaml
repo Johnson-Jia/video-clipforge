@@ -1,0 +1,17 @@
+id: "P-layout-project-name-row"
+seed: true
+category: null
+source_traces: []
+skill_scope: "stage6-production"
+
+description: "ProjectFullCard 项目名（尤其 owner/repo 长名）独占一行全宽居中，不放在 flex 三栏的中间信息列，防止等宽体长名触发 word-break 换行"
+
+evidence:
+  sample_size: 1
+  avg_soft_score: 0.97
+  confidence: 0.9
+
+as_preference:
+  text: "ProjectFullCard 项目名（.pfc-name）独占一行：放在 .pfc-category 之后、.pfc-main 之前，width:100% text-align:center white-space:nowrap。排名/描述/星标放下方 .pfc-main flex 行。原因：owner/repo 长名（如 NVIDIA/SkillSpector）在等宽体 58-64px 下宽达 665px，而 flex 中间列 .pfc-info 被排名(150px)+星标(~200px)挤占只剩 ~480px，长名超出触发 word-break 从字符间断行"
+  weight: HIGH
+  source_pattern: "P-layout-project-name-row"
