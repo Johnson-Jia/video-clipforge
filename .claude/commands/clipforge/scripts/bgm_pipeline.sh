@@ -77,10 +77,19 @@ BGM_MEAN=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | gre
 BGM_MAX=$(ffmpeg -i "$BGM_FILE" -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
 NARR_MAX=$(ffmpeg -i narration.mp3 -af "volumedetect" -f null /dev/null 2>&1 | grep max_volume | grep -oP '[\-\d.]+(?= dB)')
 
-echo "BGM: mean=${BGM_MEAN} dB, max=${BGM_MAX} dB"
+# LRA（响度动态范围，loudnorm one-pass 测量，主分档指标）
+# 窄动态氛围音（LRA≤2）持续铺底抢旁白 → bgm_gap_check.py flat 档 mean_gap=11 额外压低
+BGM_LRA=$(ffmpeg -i "$BGM_FILE" -af "loudnorm=I=-18:TP=-2:print_format=json" -f null /dev/null 2>&1 | grep -oP '"input_lra"\s*:\s*"\K[\-\d.]+' || echo "")
+
+echo "BGM: mean=${BGM_MEAN} dB, max=${BGM_MAX} dB, LRA=${BGM_LRA:-N/A}"
 echo "旁白: max=${NARR_MAX} dB"
 
-python "${SCRIPT_DIR}/bgm_gap_check.py" "$BGM_MEAN" "$BGM_MAX" "$NARR_MAX"
+if [ -n "$BGM_LRA" ]; then
+    python "${SCRIPT_DIR}/bgm_gap_check.py" "$BGM_MEAN" "$BGM_MAX" "$NARR_MAX" "$BGM_LRA"
+else
+    echo "WARNING: LRA 测量失败，回退 peak_spread 分档（兼容兜底）"
+    python "${SCRIPT_DIR}/bgm_gap_check.py" "$BGM_MEAN" "$BGM_MAX" "$NARR_MAX"
+fi
 echo "OK: 音量校准完成"
 
 # ── Step 5: bgm_volume 合理性门禁 ──

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-BGM 音量校准：均值公式 + 动态分档峰值约束
+BGM 音量校准：均值公式 + LRA 动态分档峰值约束
 
-用法: python scripts/bgm_gap_check.py <BGM_MEAN_dB> <BGM_MAX_dB> <NARR_MAX_dB>
+用法: python scripts/bgm_gap_check.py <BGM_MEAN_dB> <BGM_MAX_dB> <NARR_MAX_dB> [LRA]
 
 输入:
   BGM_MEAN: bgm.wav 的 mean_volume (dB)
   BGM_MAX:  bgm.wav 的 max_volume (dB)
   NARR_MAX: narration.mp3 的 max_volume (dB)
+  LRA:      bgm.wav 的响度动态范围（ffmpeg loudnorm Input LRA，可选）
+            传入时用 LRA 分档；未传时回退到 peak_spread（兼容旧调用）
 
 输出:
   打印计算过程和 FINAL_VOL
@@ -16,13 +18,14 @@ BGM 音量校准：均值公式 + 动态分档峰值约束
 算法:
   1. 均值层：volume = 10^((narr_mean - mean_gap - bgm_mean) / 20)
      旁白均值固定（loudnorm I=-16 后 ≈ -17 dB），BGM 均值实测，
-     mean_gap 按档位取值（平稳 BGM 压更低，避免持续铺底抢旁白）。
-  2. 双层按 BGM 动态范围（peak_spread）分档，mean_gap / peak_gap 同档取值：
-     - flat (≤12 dB):       氛围/lo-fi/钢琴，mean_gap=10, peak_gap=8  dB
-     - balanced (12-14 dB): 轻流行/民谣，    mean_gap=9,  peak_gap=11 dB
-     - beat-heavy (14-16):  电子/合成波，    mean_gap=9,  peak_gap=15 dB
-     - dynamic (>16 dB):    交响/电影，      mean_gap=9,  peak_gap=14 dB
+     mean_gap 按档位取值（窄动态氛围音压更低，避免持续铺底抢旁白）。
+  2. 双层按 BGM 动态范围（LRA）分档，mean_gap / peak_gap 同档取值：
+     - flat (LRA ≤ 2):      氛围/lo-fi/钢琴，mean_gap=11, peak_gap=8  dB（窄动态额外压低）
+     - balanced (2-4):      轻流行/民谣，    mean_gap=9,  peak_gap=11 dB
+     - beat-heavy (4-6):    电子/合成波，    mean_gap=9,  peak_gap=15 dB
+     - dynamic (>6):        交响/电影，      mean_gap=9,  peak_gap=14 dB
      取 min(均值层, 峰值层) 作为最终 volume。
+     LRA 未传时回退 spread 分档（flat≤12/balanced 12-14/beat 14-16/dynamic>16），仅作兼容兜底。
 
 前提: narration.mp3 已经过 loudnorm I=-16 标准化（均值约 -17 dB，峰值约 -1.5 dB）。
 """
@@ -38,12 +41,21 @@ NARR_MEAN_REF = -17.0  # loudnorm I=-16 标准化后的稳定均值
 # ── 均值层基准（fallback：tier 未指定 mean_gap 时用） ──
 MEAN_GAP_TARGET = 9.0  # BGM 有效均值比旁白均值低 9 dB（自然融合，不抢不弱）
 
-# ── 动态分档：均值层 + 峰值层双层参数 ──
-# peak_spread = bgm_max - bgm_mean（经 loudnorm 标准化后测量）
-# spread 小 = 平稳柔和（氛围/钢琴）→ 持续等响铺底，mean_gap 加大压更低
-# spread 大 = 重音猛烈（电子/交响）→ 有动态弱段让位，mean_gap 维持基准
-PEAK_TIERS = [
-    {"name": "flat",        "max_spread": 12,  "peak_gap": 8,  "mean_gap": 10, "desc": "氛围/lo-fi/钢琴"},
+# ── LRA 动态分档（主路径）：均值层 + 峰值层双层参数 ──
+# LRA（loudnorm Input LRA）= 响度动态范围，反映整体动态宽窄。
+# LRA 小 = 窄动态氛围音（持续等响铺底）→ mean_gap 加大压更低，根治压旁白。
+# LRA 大 = 重音猛烈（有动态弱段让位）→ mean_gap 维持基准。
+LRA_TIERS = [
+    {"name": "flat",        "max": 2,   "peak_gap": 8,  "mean_gap": 11, "desc": "氛围/lo-fi/钢琴（窄动态，额外压低）"},
+    {"name": "balanced",    "max": 4,   "peak_gap": 11, "mean_gap": 9,  "desc": "轻流行/民谣"},
+    {"name": "beat-heavy",  "max": 6,   "peak_gap": 15, "mean_gap": 9,  "desc": "电子/合成波"},
+    {"name": "dynamic",     "max": 999, "peak_gap": 14, "mean_gap": 9,  "desc": "交响/电影"},
+]
+
+# ── 兼容兜底：peak_spread 分档（LRA 未传时用，flat 与 LRA 档 mean_gap 一致=11） ──
+# 保留只为旧调用者；正确路径是 bgm_pipeline.sh 传 LRA。兜底 flat 也 mean_gap=11（氛围音压低一致，避免兜底路径压旁白）。
+SPREAD_TIERS = [
+    {"name": "flat",        "max_spread": 12,  "peak_gap": 8,  "mean_gap": 11, "desc": "氛围/lo-fi/钢琴（兼容兜底，与 LRA 一致）"},
     {"name": "balanced",    "max_spread": 14,  "peak_gap": 11, "mean_gap": 9,  "desc": "轻流行/民谣"},
     {"name": "beat-heavy",  "max_spread": 16,  "peak_gap": 15, "mean_gap": 9,  "desc": "电子/合成波"},
     {"name": "dynamic",     "max_spread": 999, "peak_gap": 14, "mean_gap": 9,  "desc": "交响/电影"},
@@ -61,23 +73,35 @@ def db(val):
     return 20 * math.log10(val)
 
 
-def classify_tier(peak_spread):
-    """根据 peak_spread 匹配分档"""
-    for tier in PEAK_TIERS:
+def classify_tier(lra=None, peak_spread=None):
+    """根据 LRA（优先）或 peak_spread（兜底）匹配分档。
+
+    返回 (tier_dict, basis)：
+      basis='lra'    → 用 LRA_TIERS 分档（含 mean_gap=11 的 flat 档）
+      basis='spread' → 用 SPREAD_TIERS 分档（兼容旧调用，未升级 mean_gap）
+    """
+    if lra is not None:
+        for tier in LRA_TIERS:
+            if lra <= tier["max"]:
+                return tier, 'lra'
+        return LRA_TIERS[-1], 'lra'
+    # 兜底：peak_spread
+    for tier in SPREAD_TIERS:
         if peak_spread <= tier["max_spread"]:
-            return tier
-    return PEAK_TIERS[-1]
+            return tier, 'spread'
+    return SPREAD_TIERS[-1], 'spread'
 
 
-def calc_volume(bgm_mean, bgm_max, narr_mean, narr_max):
+def calc_volume(bgm_mean, bgm_max, narr_mean, narr_max, lra=None):
     """
     两层计算 + 动态分档：
-    1. 均值层：算出目标 volume（固定 9dB 间距）
+    1. 均值层：算出目标 volume（按档位 mean_gap）
     2. 峰值层：根据 BGM 动态分档，用对应 peak_gap 计算 volume 上限
+    lra 优先；未传则用 peak_spread（兼容）。
     返回 (final_vol, reason, tier_info)
     """
     peak_spread = bgm_max - bgm_mean
-    tier = classify_tier(peak_spread)
+    tier, basis = classify_tier(lra=lra, peak_spread=peak_spread)
     peak_gap_target = tier["peak_gap"]
     mean_gap_target = tier.get("mean_gap", MEAN_GAP_TARGET)  # 均值间距按档位取值
 
@@ -94,7 +118,7 @@ def calc_volume(bgm_mean, bgm_max, narr_mean, narr_max):
     # 取更严格约束
     if vol_peak < vol_mean:
         vol = vol_peak
-        reason = f"峰值限制（{tier['name']}档, spread={peak_spread:.1f}dB, 目标{peak_gap_target}dB）"
+        reason = f"峰值限制（{tier['name']}档, basis={basis}, 目标{peak_gap_target}dB）"
     else:
         vol = vol_mean
         reason = "均值公式"
@@ -105,22 +129,31 @@ def calc_volume(bgm_mean, bgm_max, narr_mean, narr_max):
         actual_gap = narr_mean - eff_mean
         reason = f"均值公式（触碰上限，实际间距 {actual_gap:.1f} dB > 目标 {mean_gap_target:.1f} dB，BGM 偏弱）"
 
-    tier_info = {"name": tier["name"], "spread": round(peak_spread, 1), "peak_gap": peak_gap_target, "mean_gap": mean_gap_target}
+    tier_info = {
+        "name": tier["name"],
+        "basis": basis,
+        "lra": round(lra, 2) if lra is not None else None,
+        "spread": round(peak_spread, 1),
+        "peak_gap": peak_gap_target,
+        "mean_gap": mean_gap_target,
+    }
     return vol, reason, tier_info
 
 
 def main():
     if len(sys.argv) < 4:
-        print("用法: python scripts/bgm_gap_check.py <BGM_MEAN_dB> <BGM_MAX_dB> <NARR_MAX_dB>")
+        print("用法: python scripts/bgm_gap_check.py <BGM_MEAN_dB> <BGM_MAX_dB> <NARR_MAX_dB> [LRA]")
         sys.exit(1)
 
     bgm_mean = float(sys.argv[1])
     bgm_max = float(sys.argv[2])
     narr_max = float(sys.argv[3])
+    # 第4个参数：LRA（可选）。传入时主路径用 LRA 分档；否则回退 spread 兼容。
+    lra = float(sys.argv[4]) if len(sys.argv) >= 5 else None
     narr_mean = NARR_MEAN_REF
 
     # 计算
-    final_vol, reason, tier_info = calc_volume(bgm_mean, bgm_max, narr_mean, narr_max)
+    final_vol, reason, tier_info = calc_volume(bgm_mean, bgm_max, narr_mean, narr_max, lra=lra)
 
     # 输出分析
     final_atten = db(final_vol)
@@ -129,7 +162,10 @@ def main():
 
     print(f'BGM 原始: mean={bgm_mean:.1f} dB, max={bgm_max:.1f} dB')
     print(f'旁白基准: mean={narr_mean:.1f} dB, max={narr_max:.1f} dB')
-    print(f'动态分档: {tier_info["name"]}（spread={tier_info["spread"]}dB, mean_gap={tier_info["mean_gap"]}dB, peak_gap={tier_info["peak_gap"]}dB）')
+    if tier_info["basis"] == 'lra':
+        print(f'动态分档: {tier_info["name"]}（basis=LRA, LRA={tier_info["lra"]}, mean_gap={tier_info["mean_gap"]}dB, peak_gap={tier_info["peak_gap"]}dB）')
+    else:
+        print(f'动态分档: {tier_info["name"]}（basis=spread(兜底), spread={tier_info["spread"]}dB, mean_gap={tier_info["mean_gap"]}dB, peak_gap={tier_info["peak_gap"]}dB）')
     print(f'计算方式: {reason}')
     print(f'--- 最终结果 ---')
     print(f'FINAL_VOL={final_vol}')
@@ -150,6 +186,9 @@ def main():
         meta['bgm_narr_max_db'] = round(narr_max, 1)
         meta['bgm_gap_target'] = tier_info["mean_gap"]
         meta['bgm_peak_tier'] = tier_info["name"]
+        meta['bgm_tier_basis'] = tier_info["basis"]
+        if tier_info["lra"] is not None:
+            meta['bgm_lra'] = tier_info["lra"]
         meta['bgm_peak_spread'] = tier_info["spread"]
         meta['bgm_mean_gap'] = tier_info["mean_gap"]
         meta['bgm_peak_gap'] = tier_info["peak_gap"]

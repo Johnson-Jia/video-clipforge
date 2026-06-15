@@ -209,6 +209,22 @@ def main():
     else:
         fail("无 text-shadow — 深色背景上文字浮不起来")
 
+    # text-shadow blur 半径检查（过大发光糊文字，2026-06-15 模糊事故根治）
+    # 支持多 shadow（逗号分隔）：text-shadow: 0 0 10px #fff, 0 0 20px #fff
+    shadow_decls = re.findall(r'text-shadow:\s*([^;}>]+)', html)
+    shadow_blurs = []
+    for _decl in shadow_decls:
+        for _shadow in _decl.split(','):
+            _nums = re.findall(r'([\d.]+)px', _shadow)
+            if _nums:
+                shadow_blurs.append(float(_nums[-1]))  # 最后一个 px 值（blur；无 blur 时是 v offset，小值不触发 >16）
+    if shadow_blurs:
+        big_blurs = sorted({b for b in shadow_blurs if b > 16})
+        if big_blurs:
+            warn(f"text-shadow blur 过大（>16px）: {big_blurs}px — 过大发光让小字边缘重影发虚（24px+ 糊掉 38px 小字），建议普通文字 ≤12px、大字 ≤16px")
+        else:
+            ok(f"text-shadow blur 合理（最大 {max(shadow_blurs):.0f}px）")
+
     # ── 4. 相邻场景背景差异 ──
     print("\n── 4. 场景视觉反差 ──")
     # 提取场景类名
