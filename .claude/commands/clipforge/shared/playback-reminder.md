@@ -84,7 +84,7 @@ fi
 
 1. CronList 查找 prompt 包含 `playback-reminder` 的任务
 2. 如已存在 → 跳过
-3. 如不存在 → CronCreate(recurring=true, durable=true, cron="30 10 * * *")
+3. 如不存在 → CronCreate(recurring=true, durable=true, cron="55 13 * * *")
 4. prompt 内容为此文件的检查步骤（内联，非引用）
 
 ## §3 自续期

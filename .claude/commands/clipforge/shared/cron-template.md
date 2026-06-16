@@ -318,7 +318,7 @@ LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字
 - 如不存在 → CronCreate 注册每日 recurring 任务
 
 CronCreate 参数：
-- `cron`: `"30 10 * * *"`（每日上午 10:30）
+- `cron`: `"55 13 * * *"`（每日下午 13:55）
 - `recurring`: `true`
 - `durable`: `true`
 - `prompt`：内联以下检查逻辑（自包含 prompt，不引用外部文件）
