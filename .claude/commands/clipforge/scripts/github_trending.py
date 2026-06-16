@@ -106,7 +106,7 @@ def enrich_with_gh_api(projects: list[dict]) -> list[dict]:
             env["MSYS_NO_PATHCONV"] = "1"
             result = subprocess.run(
                 ["gh", "api", f"repos/{p['owner']}/{p['repo']}", "--jq",
-                 "{stars: .stargazers_count, forks: .forks_count, pushed: .pushed_at, language: .language, topics: .topics}"],
+                 "{stars: .stargazers_count, forks: .forks_count, pushed: .pushed_at, language: .language, topics: .topics, avatar: .owner.avatar_url}"],
                 capture_output=True, text=True, timeout=15, env=env,
             )
             if result.returncode != 0:
@@ -118,6 +118,7 @@ def enrich_with_gh_api(projects: list[dict]) -> list[dict]:
             p["forks_total"] = api["forks"]
             p["pushed_at"] = api["pushed"]
             p["topics"] = api.get("topics", [])
+            p["avatar_url"] = api.get("avatar")  # owner 头像（组织=品牌logo/个人=头像），fetch_avatars.py 下载
 
             # Activity check
             pushed = datetime.fromisoformat(api["pushed"].replace("Z", "+00:00"))

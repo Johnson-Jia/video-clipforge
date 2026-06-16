@@ -83,7 +83,7 @@
 | 4 | TimeLineFlow | 时间线叙事（节点依次出现） | timeline, history | `components/content/timeline_flow.html` |
 | 5 | DataViz | 数据可视化柱状图卡片 | data, stats | `components/content/data_viz.html` |
 | 6 | TextReveal | 文字揭示动画（悬念展示） | reveal, surprise | `components/content/text_reveal.html` |
-| 7 | ProjectFullCard | 标准模式单项目全屏 8 层卡片 | project-card, listing | `components/content/project_full_card.html` |
+| 7 | ProjectFullCard | 标准模式单项目全屏 9 层卡片（含 owner avatar） | project-card, listing | `components/content/project_full_card.html` |
 | 8 | VerdictBox | 核心结论框（border-left 高亮 + 标签） | conclusion, summary, thesis | `components/content/verdict_box.html` |
 | 9 | NumGrid | 2×2 数据矩阵（大数字网格） | data, stats, metrics | `components/content/num_grid.html` |
 | 10 | MarketBars | 市场对比条（水平进度条，data-width 驱动） | market, growth, comparison | `components/content/market_bars.html` |
@@ -99,6 +99,28 @@
 | 20 | SpotlightCard | 聚光灯卡片（径向聚焦 + 光束射线） | feature, key-point, highlight | `components/content/spotlight_card.html` |
 | 21 | KineticText | 动态排版（逐字弹入，冲击力极强） | impact, statement, cta | `components/content/kinetic_text.html` |
 | 22 | Breakthrough | 破屏而出（裂纹扩展 + 内容冲出） | reveal, breakthrough, climax | `components/content/breakthrough.html` |
+
+## content 层规范（布局铺满 + 文字特效）
+
+### 布局铺满铁律
+竖屏 1080×1920，安全区可用 900×1520。content 组件**禁单列 `align-items:center; justify-content:center`**（垂直利用率仅 33%，元素挤画面正中）。按组件类型选布局：
+- **full-page 型**（项目卡片/hook/结论等独占一屏）：`justify-content:space-between` 三带（顶/中/底）填满 1520px，参照 `project_full_card.html` 基准
+- **分栏型**（对比/并列）：左右 50/50 或 grid 分割，内层 `space-between`/`flex-start`
+- **内嵌型**（数据/列表）：column 顶对齐列表式，元素纵向铺开
+- 组件**移除自带 padding**，让 BASE_CSS `.phase`（180/90/220/90）统一提供，避免双重 padding（render-safety.md）
+
+### 文字特效配方（标题/数字必选 1 个）
+content 层标题/数字/品牌字必须叠加文字特效。配方库见 `shared/text-effects.md`，含 4 核心（呼吸/渐变文字/跑马灯/3D）+ 5 扩展（故障/霓虹/打字机/流光/描边），每条含 HyperFrames 安全约束 + CSS/GSAP 模板。场景→特效速查：
+
+| 场景 | 推荐特效 |
+|------|---------|
+| hook | 渐变文字 + 呼吸光晕 |
+| 数据 | 渐变数字 + 呼吸强调 |
+| 对比 | 描边 + 3D 翻转 |
+| 结论 | 渐变标题 + 流光 |
+| CTA | 渐变 + 呼吸 + 描边 |
+
+完整表见 `shared/text-effects.md` §4。**同一视频特效组合要多样**（避免所有标题同一渐变角度）。
 
 ---
 

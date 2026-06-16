@@ -47,7 +47,7 @@ parameters: {}
     linear-gradient(215deg, transparent 48%, rgba(255,255,255,0.06) 49%, rgba(255,255,255,0.06) 51%, transparent 52%),
     linear-gradient(305deg, transparent 48%, rgba(255,255,255,0.04) 49%, rgba(255,255,255,0.04) 51%, transparent 52%),
     linear-gradient(335deg, transparent 48%, rgba(255,255,255,0.05) 49%, rgba(255,255,255,0.05) 51%, transparent 52%);
-  clip-path: circle(0% at 50% 50%);
+  clip-path: circle(100% at 50% 50%);
   z-index: 1; pointer-events: none;
 }
 /* 中心光爆 */
@@ -58,7 +58,6 @@ parameters: {}
   filter: blur(40px);
   top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 0; pointer-events: none;
-  opacity: 0;
 }
 /* 碎片光点 */
 .bt-frag {
@@ -113,7 +112,7 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-tl.to('.bt-crack', {clipPath:'circle(100% at 50% 50%)', duration:0.6, ease:'power2.inOut'}, startTime)
+tl.from('.bt-crack', {clipPath:'circle(0% at 50% 50%)', duration:0.6, ease:'power2.inOut'}, startTime)
   .from('.bt-burst', {opacity:0, scale:0, duration:0.5, ease:'power3.out'}, startTime + 0.3)
   .from('.bt-content', {opacity:0, scale:1.5, duration:0.5, ease:'back.out(1.3)'}, startTime + 0.4)
   .from('.bt-frag', {opacity:0, scale:0, x:0, y:0, duration:0.4, ease:'power3.out', stagger:0.06}, startTime + 0.5);

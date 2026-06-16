@@ -4,33 +4,35 @@ name: num_grid
 layer: content
 tags: [data, stats, metrics, grid, matrix, kpi]
 emotion_range: [curiosity, confidence]
-visual_density: compact
+visual_density: rich
 complexity: css-only
-description: 数据矩阵（2x2 大数字网格），展示核心指标或关键数据点，突出量级差异
+description: 数据矩阵（2x2 大数字网格），渐变数字+卡片呼吸光晕，纵向铺开填满高度，展示核心指标突出量级差异
 parameters:
   columns: { default: 2, range: [2, 3] }
 /ComponentMeta
 -->
 <!-- HTML -->
 <div class="numgrid-wrap">
-  <div class="numgrid-title">核心数据</div>
-  <div class="numgrid-subtitle">
-    4 个关键指标一览<br>突出 <strong>量级差异</strong> 的数据展示
+  <div class="numgrid-head">
+    <div class="numgrid-title">核心数据</div>
+    <div class="numgrid-subtitle">
+      4 个关键指标一览 · 突出 <strong>量级差异</strong>
+    </div>
   </div>
   <div class="num-grid">
-    <div class="num-item">
+    <div class="num-item" style="animation-delay:0s">
       <div class="num-val cyan">700万</div>
       <div class="num-desc">Meta Ray-Ban 年销量</div>
     </div>
-    <div class="num-item">
+    <div class="num-item" style="animation-delay:0.5s">
       <div class="num-val amber">3.2亿</div>
       <div class="num-desc">中国 60+ 岁人口</div>
     </div>
-    <div class="num-item">
+    <div class="num-item" style="animation-delay:1s">
       <div class="num-val green">7,390万</div>
       <div class="num-desc">腕戴设备出货量</div>
     </div>
-    <div class="num-item">
+    <div class="num-item" style="animation-delay:1.5s">
       <div class="num-val purple">30%</div>
       <div class="num-desc">养老机器人 CAGR</div>
     </div>
@@ -41,60 +43,76 @@ parameters:
 <style>
 .numgrid-wrap {
   display: flex; flex-direction: column;
-  align-items: center; width: 100%;
+  justify-content: space-between;   /* ★ 标题顶 / 网格底，纵向铺满 */
+  width: 100%; height: 100%;
+  gap: 36px;
 }
+.numgrid-head { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .numgrid-title {
-  font-size: 40px; font-weight: 900; margin-bottom: 16px;
-  background: linear-gradient(135deg, #06B6D4, #3B82F6);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-size: 48px; font-weight: 900;
+  /* 渐变文字特效（双写 + color:transparent 兜底）*/
+  background-image: linear-gradient(135deg, #06B6D4, #3B82F6);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  letter-spacing: 0.05em;
 }
 .numgrid-subtitle {
   font-size: 36px; color: var(--text-secondary, #9CA3AF);
-  text-align: center; line-height: 1.6; margin-bottom: 48px;
+  text-align: center; line-height: 1.5;
 }
 .numgrid-subtitle strong { color: #F59E0B; font-weight: 700; }
 .num-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
-  width: 100%;
+  width: 100%; flex: 1;                /* 网格撑满剩余高度 */
 }
 .num-item {
   background: rgba(17,24,39,0.6);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 20px; padding: 36px 28px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; padding: 40px 28px;
   text-align: center;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px;
+  /* 卡片呼吸光晕（循环态，0%帧 boxShadow 可见，HyperFrames 安全）*/
+  animation: numItemGlow 3s ease-in-out infinite;
 }
-.num-val { font-size: 64px; font-weight: 900; line-height: 1; }
-.num-val.cyan { color: #06B6D4; }
-.num-val.blue { color: #3B82F6; }
-.num-val.amber { color: #F59E0B; }
-.num-val.green { color: #10B981; }
-.num-val.purple { color: #8B5CF6; }
-.num-val.rose { color: #F43F5E; }
-.num-desc { font-size: 36px; color: var(--text-secondary, #9CA3AF); margin-top: 12px; }
+@keyframes numItemGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(6,182,212,0); }
+  50%      { box-shadow: 0 0 50px rgba(6,182,212,0.18), 0 0 90px rgba(240,180,41,0.08); }
+}
+/* 数字渐变文字（每色一组渐变，双写 clip:text）*/
+.num-val {
+  font-size: 84px; font-weight: 900; line-height: 1;
+  font-family: var(--font-data, 'JetBrains Mono', monospace);
+  letter-spacing: -0.02em;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.num-val.cyan  { background-image: linear-gradient(135deg, #67e8f9, #06B6D4, #0891b2); }
+.num-val.blue  { background-image: linear-gradient(135deg, #93c5fd, #3B82F6, #1d4ed8); }
+.num-val.amber { background-image: linear-gradient(135deg, #fde68a, #F59E0B, #d97706); }
+.num-val.green { background-image: linear-gradient(135deg, #86efac, #10B981, #047857); }
+.num-val.purple{ background-image: linear-gradient(135deg, #d8b4fe, #8B5CF6, #6d28d9); }
+.num-val.rose  { background-image: linear-gradient(135deg, #fda4af, #F43F5E, #be123c); }
+.num-desc { font-size: 36px; color: var(--text-secondary, #9CA3AF); }
 </style>
 
 <!-- JS (GSAP) -->
 <script>
-// Step 1: Title scales in with dramatic punch
+// 标题区入场
 tl.from('.numgrid-title', {opacity:0, scale:0.3, y:-50, duration:0.5, ease:'back.out(2)'}, startTime)
-  // Step 2: Subtitle fades in
   .from('.numgrid-subtitle', {opacity:0, y:20, duration:0.3, ease:'power4.out'}, startTime + 0.2)
-  // Step 3: Grid items flip in with stagger from center
+  // 网格卡片 flip 入场（stagger from center）
   .from('.num-item', {
     opacity:0, scale:0.4, rotation:(i) => i % 2 === 0 ? 8 : -8,
     duration:0.5, ease:'back.out(1.8)',
     stagger:{each:0.08, from:'center'}
   }, startTime + 0.35)
-  // Step 4: Big numbers spin-pop in with elastic
+  // 渐变数字 spin-pop
   .from('.num-val', {
     scale:0, opacity:0, rotation:(i) => i % 2 === 0 ? 10 : -10,
     duration:0.5, ease:'elastic.out(1, 0.5)',
     stagger:{each:0.06, from:'center'}
   }, startTime + 0.65)
-  // Step 5: Descriptions slide up
-  .from('.num-desc', {opacity:0, y:10, duration:0.25, stagger:{each:0.06, from:'center'}, ease:'power3.out'}, startTime + 0.9)
-  // Step 6: Glow pulse on grid items
-  .fromTo('.num-item',
-    {boxShadow:'0 0 0px transparent'},
-    {boxShadow:'0 0 40px rgba(6,182,212,0.15), 0 0 80px rgba(240,180,41,0.1)', duration:0.4, ease:'power2.out', stagger:0.08}, startTime + 1.1);
+  // 描述滑入
+  .from('.num-desc', {opacity:0, y:10, duration:0.25, stagger:{each:0.06, from:'center'}, ease:'power3.out'}, startTime + 0.9);
+// 注：卡片呼吸光晕用 CSS animation（循环态 stagger delay），无需 GSAP
 </script>

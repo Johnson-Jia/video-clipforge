@@ -194,6 +194,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 - `design.md` — 视觉风格方向、storyboard、配色方案
 - `narration_segments.json` — 每段的旁白内容、情感标记、visual_phases
 - `stage6-components.md` — 组件库参考（bg 层必须从中选用，fx/content 可自由创作）
+- `shared/text-effects.md` — 文字特效配方库（content 层呼吸/渐变/跑马灯/3D 等，标题/数字必选特效）
 
 如果 Stage 5 已制备素材，将 `assets/manifest.md` 中列出的文件路径作为 prompt 上下文传入 HyperFrames，让其在 HTML 中嵌入：
 
@@ -250,10 +251,18 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 | 影响分析 | Spectrum | 层级分布：色带渐变 + 垂直条形图 |
 | 时间线/路径 | TimeLineFlow | 叙事推进：轨道感、节点连线 |
 | 突出/揭示 | TextReveal | 悬念展示：渐进揭示、聚光灯效果 |
-| 标准模式项目介绍 | ProjectFullCard | 单项目全屏 8 层信息 |
+| 标准模式项目介绍 | ProjectFullCard | 单项目全屏 9 层信息（含 owner avatar） |
 | CTA | TextReveal | 收束聚焦：温暖引导、行动号召 |
 
-> **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（`components/content/project_full_card.html`），一个项目占满一屏，包含 8 层信息。数据来自 `narration_segments.json` 的 `selling_points`、`commentary` 字段和 content 数据。
+> **标准模式项目介绍场景：** 使用 ProjectFullCard 组件（`components/content/project_full_card.html`），一个项目占满一屏，9 层信息（排名/类别/项目名/avatar/描述/涨星进度条/topics/卖点/评语）。
+>
+> **数据源**：`narration_segments.json` 的 `selling_points`、`commentary` 字段 + content_ready.txt（`用途:` 行 → 填 `pfc-use` 顶部利益标签；`avatar:` 行 → 填中部 avatar）+ `raw_trending.json` 的 `avatar_path`/`stars_today`/`topics`。
+>
+> **⛔ 纵向分带铁律**：ProjectFullCard 必须 `justify-content: space-between` 三带（顶/中/底）填满 1920 安全区，**禁单列 `align-items:center; justify-content:center`**（旧布局垂直利用率仅 33%，元素挤中间）。owner avatar 圆形头像作中部带视觉锚点。
+>
+> **⛔ 项目名完整铁律**：项目名（owner/repo）**禁 `white-space:nowrap + overflow:hidden + text-overflow:ellipsis`**，必须完整显示——独占整行 `width:100%` + `word-break:break-word`（长名换行不省略）。短视频手机端省略号不可读（SkillSpect... 截断事故）。**此规则适用所有 content 层文字，不限于 ProjectFullCard**。
+>
+> **avatar 引用**：`<img src="assets/avatars/{owner}.png">`（fetch_avatars.py 在数据采集后下载）。**Stage6 创作碎片时**读 content_ready.txt 每个项目的 `avatar:` 行（或 raw_trending.json 的 `avatar_path`）：值为路径则填 `<img src="...">`，值为 `null`（下载失败）则**省略整个 `.pfc-avatar-wrap`**（含 ring + img，不可只删 img 留空 ring），中部带 flex 自适应不塌。涨星进度条 `.pfc-bar-fill` 宽度按 `stars_today` 相对当日最大值设百分比。
 
 ### 角色和幽默组件插入
 

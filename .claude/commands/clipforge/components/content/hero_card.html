@@ -4,9 +4,9 @@ name: hero_card
 layer: content
 tags: [hook, intro, hero, opening, stunning]
 emotion_range: [shock, excitement, curiosity]
-visual_density: generous
+visual_density: rich
 complexity: css-only
-description: 项目首屏震撼展示，大标题+光晕+网格背景，用于 hook 场景或深度解析开场
+description: 项目首屏震撼展示，纵向三带（徽章/标题/统计）填满 1920，渐变标题+呼吸光晕+底部数据条，用于 hook 场景或深度解析开场
 parameters:
   title_size: { default: 120, range: [80, 140] }
   glow_warm_color: { default: "var(--accent-warm)" }
@@ -18,9 +18,27 @@ parameters:
   <div class="hero-glow hero-glow-warm"></div>
   <div class="hero-glow hero-glow-cool"></div>
   <div class="hero-grid"></div>
-  <div class="hero-badge">{M}月{D}日 GitHub 榜单</div>
-  <div class="hero-title">AI 项目<span class="accent">直接霸榜</span></div>
-  <div class="hero-sub">8 个热门 · 6 个 AI 相关</div>
+
+  <!-- 顶部带：日期徽章 + 引导语 -->
+  <div class="hero-top">
+    <div class="hero-badge">{M}月{D}日 GitHub 榜单</div>
+    <div class="hero-tagline">今日热点速览</div>
+  </div>
+
+  <!-- 中部带：主标题（渐变文字 .accent） -->
+  <div class="hero-mid">
+    <div class="hero-title">AI 项目<span class="accent">直接霸榜</span></div>
+  </div>
+
+  <!-- 底部带：三项统计 + 装饰条（撑满横向） -->
+  <div class="hero-bot">
+    <div class="hero-stats">
+      <div class="hero-stat"><span class="hero-stat-num">8</span><span class="hero-stat-label">热门项目</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">6</span><span class="hero-stat-label">AI 相关</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">+3941</span><span class="hero-stat-label">最高涨星</span></div>
+    </div>
+    <div class="hero-bar"></div>
+  </div>
 </div>
 
 <!-- CSS -->
@@ -28,65 +46,98 @@ parameters:
 .hero-card {
   position: relative; width: 100%; height: 100%;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 180px 80px 220px 80px;
+  justify-content: space-between;   /* ★ 三带填满 1520px，禁 center */
+  padding: 180px 90px 220px 90px;
 }
 .hero-glow {
   position: absolute; border-radius: 50%; filter: blur(140px);
-  pointer-events: none;
+  pointer-events: none; z-index: 0;
 }
 .hero-glow-warm {
   width: 600px; height: 600px; opacity: 0.25;
   background: var(--accent-warm);
-  top: 200px; left: -100px;
+  top: 180px; left: -100px;
+  animation: heroBreathWarm 3s ease-in-out infinite;   /* 呼吸特效（循环态，0%帧 opacity:0.25 可见）*/
 }
 .hero-glow-cool {
   width: 500px; height: 500px; opacity: 0.2;
   background: var(--accent-cool);
-  bottom: 300px; right: -80px;
+  bottom: 280px; right: -80px;
+  animation: heroBreathCool 3.5s ease-in-out infinite;
+}
+@keyframes heroBreathWarm {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%      { opacity: 0.38; transform: scale(1.1); }
+}
+@keyframes heroBreathCool {
+  0%, 100% { opacity: 0.16; transform: scale(1); }
+  50%      { opacity: 0.3; transform: scale(1.12); }
 }
 .hero-grid {
-  position: absolute; width: 100%; height: 100%;
+  position: absolute; inset: 0; z-index: 0;
   background-image:
     linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
   background-size: 40px 40px; pointer-events: none;
 }
+
+/* ── 顶部带 ── */
+.hero-top { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 18px; }
 .hero-badge {
   font-size: 40px; font-weight: 600;
   color: var(--accent-warm);
   background: rgba(240,180,41,0.15);
-  padding: 8px 24px; border-radius: 20px;
-  margin-bottom: 40px;
+  padding: 10px 28px; border-radius: 20px;
+  width: fit-content;
 }
+.hero-tagline { font-size: 36px; font-weight: 500; color: rgba(255,255,255,0.55); letter-spacing: 0.1em; }
+
+/* ── 中部带：主标题（渐变文字）── */
+.hero-mid { position: relative; z-index: 2; width: 100%; }
 .hero-title {
-  font-size: 120px; font-weight: 900; color: #fff;
-  letter-spacing: -2px; line-height: 1.15;
-  text-shadow: 0 0 60px rgba(240,180,41,0.5);
+  font-size: 130px; font-weight: 900; color: #fff;
+  letter-spacing: -2px; line-height: 1.1;
+  text-shadow: 0 0 60px rgba(240,180,41,0.4);
   text-align: center;
 }
-.hero-title .accent { color: var(--accent-warm); }
-.hero-sub {
-  font-size: 48px; font-weight: 600;
-  color: var(--accent-cool); margin-top: 48px;
+.hero-title .accent {
+  /* 渐变文字特效（background-image 独立属性，禁 background 简写；同色系端点禁白色）*/
+  background-image: linear-gradient(135deg, #ffe082 0%, #f9a825 50%, #ff6b35 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  display: inline-block;
+}
+
+/* ── 底部带：统计 + 装饰条 ── */
+.hero-bot { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 32px; width: 100%; }
+.hero-stats { display: flex; justify-content: space-between; gap: 24px; width: 100%; }
+.hero-stat { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.hero-stat-num {
+  font-size: 72px; font-weight: 900; color: var(--accent-warm);
+  font-family: var(--font-data, 'JetBrains Mono', monospace);
+  letter-spacing: -0.02em; line-height: 1;
+  text-shadow: 0 0 40px rgba(240,180,41,0.3);
+}
+.hero-stat-label { font-size: 32px; font-weight: 500; color: rgba(255,255,255,0.6); }
+.hero-bar {
+  width: 100%; height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-warm), var(--accent-cool));
+  opacity: 0.7;
 }
 </style>
 
 <!-- JS (GSAP) -->
 <script>
-// Step 1: Background glows bloom in
-tl.from('.hero-glow', {opacity:0, scale:0.5, duration:0.7, stagger:0.1, ease:'power2.out'}, startTime)
-  // Step 2: Grid draws in
-  .from('.hero-grid', {opacity:0, duration:0.4, ease:'power2.out'}, startTime + 0.1)
-  // Step 3: Badge drops in with rotation
-  .from('.hero-badge', {opacity:0, y:30, scale:0.5, rotation:-10, duration:0.4, ease:'back.out(2)'}, startTime + 0.15)
-  // Step 4: Title scales from zero with power4
-  .from('.hero-title', {opacity:0, scale:0.6, duration:0.5, ease:'power4.out', transformOrigin:'center center'}, startTime + 0.3)
-  // Step 5: Accent span overshoot
-  .from('.hero-title .accent', {scale:1.4, opacity:0, duration:0.35, ease:'back.out(1.5)'}, startTime + 0.6)
-  // Step 6: Subtitle scales up
-  .from('.hero-sub', {opacity:0, scale:0.8, y:30, duration:0.35, ease:'back.out(1.5)'}, startTime + 0.7)
-  // Step 7: Glow blobs pulse
-  .to('.hero-glow-warm', {scale:1.15, duration:0.4, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 0.8)
-  .to('.hero-glow-cool', {scale:1.2, duration:0.4, ease:'sine.inOut', yoyo:true, repeat:1}, startTime + 0.9);
+// 顶部带：徽章 + 引导语
+tl.from('.hero-badge', {opacity:0, y:30, scale:0.5, rotation:-10, duration:0.4, ease:'back.out(2)'}, startTime)
+  .from('.hero-tagline', {opacity:0, x:-20, duration:0.35, ease:'power3.out'}, startTime + 0.2)
+  // 中部带：主标题 + 渐变 accent
+  .from('.hero-title', {opacity:0, scale:0.6, duration:0.5, ease:'power4.out', transformOrigin:'center center'}, startTime + 0.35)
+  .from('.hero-title .accent', {scale:1.4, opacity:0, duration:0.35, ease:'back.out(1.5)'}, startTime + 0.65)
+  // 底部带：统计 stagger + 装饰条
+  .from('.hero-stat', {opacity:0, y:30, duration:0.35, stagger:0.1, ease:'back.out(1.4)'}, startTime + 0.8)
+  .from('.hero-bar', {scaleX:0, opacity:0, duration:0.5, ease:'power3.out'}, startTime + 1.1);
+// 注：光晕呼吸用 CSS animation（循环态），无需 GSAP
 </script>

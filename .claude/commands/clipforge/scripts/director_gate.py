@@ -225,6 +225,15 @@ def main():
         else:
             ok(f"text-shadow blur 合理（最大 {max(shadow_blurs):.0f}px）")
 
+    # ── 3.5 文字完整性（禁 ellipsis 截断）──
+    # 短视频手机端文字必须完整可读，text-overflow:ellipsis 截断（如项目名 SkillSpect...）不可读。
+    # 通用扫 CSS 属性，不依赖 class 名——LLM 自创任何结构只要用了 ellipsis 都拦。
+    ellipsis_count = len(re.findall(r'text-overflow:\s*ellipsis', html, re.IGNORECASE))
+    if ellipsis_count > 0:
+        fail(f"发现 {ellipsis_count} 处 text-overflow:ellipsis（短视频文字必须完整显示，禁省略号截断——手机端不可读。改 width:100% + word-break:break-word 让长名换行完整显示）")
+    else:
+        ok("无 text-overflow:ellipsis（content 层文字完整显示）")
+
     # ── 4. 相邻场景背景差异 ──
     print("\n── 4. 场景视觉反差 ──")
     # 提取场景类名

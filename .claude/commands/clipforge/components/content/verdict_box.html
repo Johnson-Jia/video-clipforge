@@ -4,20 +4,27 @@ name: verdict_box
 layer: content
 tags: [conclusion, summary, thesis, verdict, key-point]
 emotion_range: [certainty, conviction]
-visual_density: standard
+visual_density: rich
 complexity: css-only
-description: 核心结论框，左侧边框高亮 + 标签分类，适合展示核心论点或关键结论
+description: 核心结论框，纵向三带（图标标题/结论框/分类标签）填满高度，渐变标题+呼吸图标+左边框高亮，适合展示核心论点或关键结论
 parameters: {}
 /ComponentMeta
 -->
 <!-- HTML -->
 <div class="verdict-box-wrap">
-  <div class="verdict-icon">💡</div>
-  <div class="verdict-heading">核心结论</div>
+  <!-- 顶部带：图标 + 标题 -->
+  <div class="verdict-top">
+    <div class="verdict-icon">💡</div>
+    <div class="verdict-heading">核心结论</div>
+  </div>
+
+  <!-- 中部带：结论框（主内容） -->
   <div class="verdict-box">
     AI 硬件的核心价值在于将 AI 能力从"手机屏幕"释放到"<span class="hl">随身场景</span>"。<br>
     <strong>大厂因 DAU 指标不友好而忽视，为创业公司留下 2-3 年先发窗口。</strong>
   </div>
+
+  <!-- 底部带：分类标签（撑满横向） -->
   <div class="verdict-tags">
     <div class="vtag vtag-cyan">📊 核心数据</div>
     <div class="vtag vtag-amber">⚠️ 关键发现</div>
@@ -29,33 +36,49 @@ parameters: {}
 <style>
 .verdict-box-wrap {
   display: flex; flex-direction: column;
-  align-items: center; width: 100%;
+  justify-content: space-between;   /* ★ 三带填满高度，禁 align-items:center 挤中间 */
+  align-items: stretch;              /* 子元素横向撑满 */
+  width: 100%; height: 100%;
+  gap: 40px;
 }
-.verdict-icon { font-size: 80px; margin-bottom: 32px; }
+.verdict-top { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.verdict-icon {
+  font-size: 96px;
+  animation: verdictBreath 2.4s ease-in-out infinite;   /* 呼吸特效（循环态，0%帧 scale(1) 可见）*/
+}
+@keyframes verdictBreath {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
 .verdict-heading {
-  font-size: 40px; font-weight: 900; margin-bottom: 40px;
-  background: linear-gradient(135deg, var(--accent-cool, #06B6D4), var(--accent-blue, #3B82F6));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-size: 48px; font-weight: 900;
+  /* 渐变文字特效（双写 -webkit + 标准，color:transparent 兜底；禁 background 简写）*/
+  background-image: linear-gradient(135deg, var(--accent-cool, #06B6D4), var(--accent-blue, #3B82F6));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  letter-spacing: 0.05em;
 }
 .verdict-box {
   width: 100%;
   background: rgba(6,182,212,0.05);
   border: 1px solid rgba(6,182,212,0.12);
-  border-left: 6px solid var(--accent-cool, #06B6D4);
+  border-left: 8px solid var(--accent-cool, #06B6D4);
   border-radius: 0 20px 20px 0;
-  padding: 36px 44px;
-  font-size: 38px; line-height: 1.8;
+  padding: 44px 48px;
+  font-size: 40px; line-height: 1.7;
   color: var(--text-secondary, #9CA3AF);
-  margin-bottom: 36px;
+  box-shadow: -8px 0 40px rgba(6,182,212,0.08);   /* 左边框光晕 */
 }
 .verdict-box strong { color: var(--text-primary, #F9FAFB); }
 .verdict-box .hl { color: var(--accent-warm, #F59E0B); font-weight: 700; }
 .verdict-tags {
-  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
 }
 .vtag {
   font-size: 34px; font-weight: 600;
-  padding: 10px 22px; border-radius: 10px;
+  padding: 12px 26px; border-radius: 12px;
 }
 .vtag-cyan { background: rgba(6,182,212,0.1); color: #06B6D4; border: 1px solid rgba(6,182,212,0.15); }
 .vtag-amber { background: rgba(245,158,11,0.1); color: #F59E0B; border: 1px solid rgba(245,158,11,0.15); }
@@ -67,12 +90,12 @@ parameters: {}
 
 <!-- JS (GSAP) -->
 <script>
-// Step 1: Icon spins in with elastic bounce
+// 顶部带：图标弹入 + 标题
 tl.from('.verdict-icon', {opacity:0, scale:0, rotation:-20, duration:0.5, ease:'elastic.out(1, 0.5)'}, startTime)
-  // Step 2: Heading drops in with scale
   .from('.verdict-heading', {opacity:0, y:-25, scale:0.9, duration:0.35, ease:'power4.out'}, startTime + 0.2)
-  // Step 3: Box wipe-reveals from left
+  // 中部带：结论框从左 wipe 揭示
   .from('.verdict-box', {opacity:0, x:-50, clipPath:'inset(0 100% 0 0)', duration:0.5, ease:'power4.out'}, startTime + 0.35)
-  // Step 4: Tags stagger in with subtle rotation
+  // 底部带：标签 stagger
   .from('.vtag', {opacity:0, y:15, rotation:-3, duration:0.3, ease:'back.out(1.5)', stagger:0.08}, startTime + 0.65);
+// 注：图标呼吸用 CSS animation（循环态），无需 GSAP
 </script>

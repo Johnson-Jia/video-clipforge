@@ -149,12 +149,7 @@ parameters:
   50% { opacity: 0; }
 }
 
-/* ── 闪屏 ── */
-.term-flash { animation: term-flash-in 0.15s ease-out; }
-@keyframes term-flash-in {
-  0% { filter: brightness(1.8); }
-  100% { filter: brightness(1); }
-}
+/* ── 闪屏（已移除：CSS animation 入场在 HyperFrames seek 不执行；如需闪屏用 GSAP .set+.to filter:brightness）── */
 </style>
 
 <!-- JS (Terminal Engine) -->

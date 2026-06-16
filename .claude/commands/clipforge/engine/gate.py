@@ -2065,7 +2065,11 @@ def check_bgm_volume_table_valid(project_dir: Path, params: dict) -> tuple[bool,
 
     # 优先使用存储的 narr_max（精确还原计算），兜底 params 或默认值
     narr_max = meta.get("bgm_narr_max_db") or params.get("narr_max", -1.5)
-    expected, reason, _ = calc_volume(bgm_mean, bgm_max, NARR_MEAN_REF, narr_max)
+    # 还原 bgm_gap_check.py 使用的分档基准：优先 LRA（pipeline 主路径写入 bgm_lra），
+    # 否则回退 spread（兼容兜底）。不传 lra 时 calc_volume 会用 spread 分档，
+    # 导致 LRA-balanced (peak_gap=11) 与 spread-beat-heavy (peak_gap=15) 偏差。
+    lra = meta.get("bgm_lra")
+    expected, reason, _ = calc_volume(bgm_mean, bgm_max, NARR_MEAN_REF, narr_max, lra=lra)
 
     # 允许 ±0.02 容差（round 精度）
     tolerance = params.get("tolerance", 0.02)
