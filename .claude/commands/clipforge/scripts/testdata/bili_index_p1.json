@@ -1,0 +1,44 @@
+{
+  "code": 0,
+  "data": {
+    "pager": { "pn": 1, "ps": 20, "total": 72 },
+    "list": [
+      {
+        "aid": 116757964528461,
+        "bvid": "BV11Rju65EAs",
+        "title": "6月16日GitHub榜单 AI agent占了4个 NVIDIA亲自下场 +1079星最猛",
+        "ctime": 1781585240,
+        "pubtime": 1781585240,
+        "duration": 57,
+        "stat": null,
+        "real_stat": { "play": 291, "fans": "", "reply": 2, "full_play_ratio": "", "vt": 0, "likes": 13 },
+        "videos": null,
+        "is_only_self": false
+      },
+      {
+        "aid": 116752813987732,
+        "bvid": "BV1sCJg6pEKA",
+        "title": "6月15日GitHub Trending：SkillSpector今日+962·AI审AI反直觉居首",
+        "ctime": 1781506721,
+        "pubtime": 1781506721,
+        "duration": 73,
+        "stat": { "play": 511, "fans": 4, "reply": 3, "full_play_ratio": 4420, "vt": 0, "likes": 14 },
+        "real_stat": { "play": 916, "fans": "4", "reply": 3, "full_play_ratio": "4420", "vt": 0, "likes": 21 },
+        "videos": null,
+        "is_only_self": false
+      },
+      {
+        "aid": 116751723402642,
+        "bvid": "BV19cJu6wEvN",
+        "title": "【第24周周榜】13项目4组分档，6个AI技能集体上榜，markitdown 15.3万星封王",
+        "ctime": 1781490079,
+        "pubtime": 1781490079,
+        "duration": 76,
+        "stat": { "play": 1086, "fans": 10, "reply": 1, "full_play_ratio": 4613, "vt": 0, "likes": 38 },
+        "real_stat": { "play": 1194, "fans": "10", "reply": 1, "full_play_ratio": "4613", "vt": 0, "likes": 42 },
+        "videos": null,
+        "is_only_self": false
+      }
+    ]
+  }
+}

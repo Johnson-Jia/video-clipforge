@@ -1,0 +1,82 @@
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "aid": 116757964528461,
+        "bvid": "BV11Rju65EAs",
+        "title": "6月16日GitHub榜单 AI agent占了4个 NVIDIA亲自下场 +1079星最猛",
+        "pubtime": 1781585240,
+        "duration": 57,
+        "stat": {
+          "not_ready_field": ["crash_fan_rate", "interact_fan_simi_rate_med", "interact_viewer_rate", "full_play_ratio", "active_fans_rate", "crash_viewer_simi_rate_med", "interact_viewer_simi_rate_med", "play_trans_fan_rate_med", "play_viewer_rate", "crash_viewer_rate", "avg_play_time", "interact_rate", "play_trans_fan_rate", "interact_rate_med", "interact_fan_rate", "play_fan_rate", "crash_fan_simi_rate_med", "total_new_attention_cnt", "avg_play_time_int", "play_fan_rate_med", "active_fans_med", "play_viewer_rate_med", "crash_rate", "crash_rate_med", "unfollow"],
+          "play": 291, "vt": 0, "full_play_ratio": 0, "play_viewer_rate": 0, "play_viewer_rate_med": 0,
+          "play_fan_rate": 0, "play_fan_rate_med": 0, "active_fans_rate": 0, "active_fans_med": 0,
+          "tm_rate": 846, "tm_rate_med": 139, "tm_fan_simi_rate_med": 119, "tm_viewer_simi_rate_med": 125,
+          "tm_fan_rate": 399, "tm_viewer_rate": 1350, "tm_pass_rate": 9783, "tm_fan_pass_rate": 7900, "tm_viewer_pass_rate": 9953,
+          "crash_rate": 0, "crash_rate_med": 0, "crash_fan_simi_rate_med": 0, "crash_viewer_simi_rate_med": 0,
+          "crash_fan_rate": 0, "crash_viewer_rate": 0, "interact_rate": 0, "interact_rate_med": 0,
+          "interact_fan_simi_rate_med": 0, "interact_viewer_simi_rate_med": 0, "interact_fan_rate": 0, "interact_viewer_rate": 0,
+          "avg_play_time": 0, "avg_play_time_int": 0, "total_new_attention_cnt": 0,
+          "play_trans_fan_rate": 0, "play_trans_fan_rate_med": 0,
+          "like": 13, "comment": 2, "dm": 0, "fav": 10, "coin": 0, "share": 2, "unfollow": 0,
+          "tm_star": 49, "tm_viewer_star": 50, "tm_fan_star": 40,
+          "crash_p50": 2457, "crash_viewer_p50": 2425, "crash_fan_p50": 3191,
+          "interact_p50": 590, "interact_viewer_p50": 475, "interact_fan_p50": 1603, "play_trans_fan_p50": 19
+        },
+        "is_only_self": false,
+        "hour_stat": { "not_ready_field": ["interact_rate"], "play": 291, "vt": 0, "like": 13, "comment": 2, "dm": 0, "fav": 10, "coin": 0, "share": 2, "tm_pass_rate": 9783, "interact_rate": 0, "tm_star": 49 }
+      },
+      {
+        "aid": 116752813987732,
+        "bvid": "BV1sCJg6pEKA",
+        "title": "6月15日GitHub Trending：SkillSpector今日+962·AI审AI反直觉居首",
+        "pubtime": 1781506721,
+        "duration": 73,
+        "stat": {
+          "not_ready_field": [],
+          "play": 916, "vt": 0, "full_play_ratio": 4420, "play_viewer_rate": 4649, "play_viewer_rate_med": 8455,
+          "play_fan_rate": 307, "play_fan_rate_med": 29, "active_fans_rate": 307, "active_fans_med": 29,
+          "tm_rate": 335, "tm_rate_med": 139, "tm_fan_simi_rate_med": 119, "tm_viewer_simi_rate_med": 125,
+          "tm_fan_rate": 444, "tm_viewer_rate": 304, "tm_pass_rate": 7927, "tm_fan_pass_rate": 8210, "tm_viewer_pass_rate": 7739,
+          "crash_rate": 3566, "crash_rate_med": 2911, "crash_fan_simi_rate_med": 2781, "crash_viewer_simi_rate_med": 2569,
+          "crash_fan_rate": 4444, "crash_viewer_rate": 2427, "interact_rate": 0, "interact_rate_med": 277,
+          "interact_fan_simi_rate_med": 0, "interact_viewer_simi_rate_med": 177, "interact_fan_rate": 802, "interact_viewer_rate": 886,
+          "avg_play_time": 0, "avg_play_time_int": 0, "total_new_attention_cnt": 4,
+          "play_trans_fan_rate": 168, "play_trans_fan_rate_med": 0,
+          "like": 21, "comment": 3, "dm": 0, "fav": 44, "coin": 2, "share": 5, "unfollow": 0,
+          "tm_star": 40, "tm_viewer_star": 39, "tm_fan_star": 42,
+          "crash_p50": 2457, "crash_viewer_p50": 2425, "crash_fan_p50": 3191,
+          "interact_p50": 590, "interact_viewer_p50": 475, "interact_fan_p50": 1603, "play_trans_fan_p50": 19
+        },
+        "is_only_self": false,
+        "hour_stat": { "not_ready_field": [], "play": 916, "vt": 0, "like": 21, "comment": 3, "dm": 0, "fav": 44, "coin": 2, "share": 5, "tm_pass_rate": 7927, "interact_rate": 0, "tm_star": 40 }
+      },
+      {
+        "aid": 116751723402642,
+        "bvid": "BV19cJu6wEvN",
+        "title": "【第24周周榜】13项目4组分档，6个AI技能集体上榜，markitdown 15.3万星封王",
+        "pubtime": 1781490079,
+        "duration": 76,
+        "stat": {
+          "not_ready_field": [],
+          "play": 1194, "vt": 0, "full_play_ratio": 4613, "play_viewer_rate": 6225, "play_viewer_rate_med": 8455,
+          "play_fan_rate": 453, "play_fan_rate_med": 29, "active_fans_rate": 453, "active_fans_med": 29,
+          "tm_rate": 490, "tm_rate_med": 139, "tm_fan_simi_rate_med": 119, "tm_viewer_simi_rate_med": 125,
+          "tm_fan_rate": 628, "tm_viewer_rate": 461, "tm_pass_rate": 8979, "tm_fan_pass_rate": 9030, "tm_viewer_pass_rate": 8887,
+          "crash_rate": 2269, "crash_rate_med": 2911, "crash_fan_simi_rate_med": 2781, "crash_viewer_simi_rate_med": 2569,
+          "crash_fan_rate": 3406, "crash_viewer_rate": 1531, "interact_rate": 0, "interact_rate_med": 277,
+          "interact_fan_simi_rate_med": 0, "interact_viewer_simi_rate_med": 177, "interact_fan_rate": 1146, "interact_viewer_rate": 1198,
+          "avg_play_time": 0, "avg_play_time_int": 0, "total_new_attention_cnt": 10,
+          "play_trans_fan_rate": 147, "play_trans_fan_rate_med": 0,
+          "like": 42, "comment": 1, "dm": 0, "fav": 85, "coin": 6, "share": 9, "unfollow": 0,
+          "tm_star": 45, "tm_viewer_star": 45, "tm_fan_star": 46,
+          "crash_p50": 2457, "crash_viewer_p50": 2425, "crash_fan_p50": 3191,
+          "interact_p50": 590, "interact_viewer_p50": 475, "interact_fan_p50": 1603, "play_trans_fan_p50": 19
+        },
+        "is_only_self": false,
+        "hour_stat": { "not_ready_field": [], "play": 1194, "vt": 0, "like": 42, "comment": 1, "dm": 0, "fav": 85, "coin": 6, "share": 9, "tm_pass_rate": 8979, "interact_rate": 0, "tm_star": 45 }
+      }
+    ]
+  }
+}
