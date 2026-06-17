@@ -48,4 +48,7 @@ __pycache__/
 # 引擎运行时命中率持久化
 .claude/commands/clipforge/hit_counts.json
 
+# 本地大字体文件（SourceHanSerifSC，Adobe/Google 官方可下载；方案A 有 exists() 降级保护）
+.claude/commands/clipforge/assets/fonts/
+
 .local

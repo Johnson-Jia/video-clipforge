@@ -340,10 +340,12 @@ GOOGLE_FONT_MAP = {
 }
 
 
-def build_google_fonts_link(creative_dir: Path) -> str:
-    """读取 creative/fonts.json，拼装合并的 Google Fonts <link> 标签。
+def build_font_faces(creative_dir: Path, script_dir: Path) -> str:
+    """生成 @font-face（本地/缓存字体），替代 Google Fonts <link>。
 
-    无 fonts.json 或无可识别字体时返回空串（不注入 <link>，沿用系统字体 fallback）。
+    HyperFrames 0.6.109+ 把 google_fonts_import 升级为 lint error，且不解析 CSS var()。
+    本地 @font-face + 具体 font-family（var 由 assemble 后处理替换为具体名）让 lint 通过。
+    字体来源：SourceHanSerifSC（=Noto Serif SC，assets/fonts/）+ HyperFrames 缓存。
     """
     fonts_path = creative_dir / "fonts.json"
     if not fonts_path.exists():
@@ -353,27 +355,26 @@ def build_google_fonts_link(creative_dir: Path) -> str:
     except (json.JSONDecodeError, OSError):
         return ""
 
-    families = []
+    import os
+    cache = Path(os.path.expanduser("~/.cache/hyperframes/fonts"))
+    assets = script_dir.parent / "assets" / "fonts"
+    SRC_MAP = {
+        "Noto Serif SC": [(assets / "SourceHanSerifSC-Heavy.woff2", 900), (assets / "SourceHanSerifSC-Regular.woff2", 400)],
+        "Noto Sans SC": [(cache / "noto-sans-sc" / "400-normal.woff2", 400), (cache / "noto-sans-sc" / "700-normal.woff2", 700)],
+        "JetBrains Mono": [(cache / "jetbrains-mono" / "700-normal.woff2", 700), (cache / "jetbrains-mono" / "400-normal.woff2", 400)],
+        "Inter": [(cache / "inter" / "900-normal.woff2", 900), (cache / "inter" / "400-normal.woff2", 400)],
+    }
+    parts = []
     seen = set()
     for layer in ("title", "body", "data"):
         family = fonts.get(layer, {}).get("family", "")
-        google = GOOGLE_FONT_MAP.get(family)
-        if google and google not in seen:
-            families.append(google)
-            seen.add(google)
-    if not families:
-        return ""
-
-    url = (
-        "https://fonts.googleapis.com/css2?family="
-        + "&family=".join(families)
-        + "&display=swap"
-    )
-    return (
-        '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
-        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-        f'<link href="{url}" rel="stylesheet">\n'
-    )
+        if family in SRC_MAP and family not in seen:
+            for src_path, weight in SRC_MAP[family]:
+                if src_path.exists():
+                    abs_path = str(src_path).replace("\\", "/")
+                    parts.append(f"@font-face {{ font-family: '{family}'; font-weight: {weight}; src: url('file:///{abs_path}') format('woff2'); }}")
+            seen.add(family)
+    return "\n".join(parts) + "\n"
 
 
 def assemble(project_dir: Path) -> tuple[str, list[str]]:
@@ -409,7 +410,7 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
         else 0.15
     )
 
-    fonts_link = build_google_fonts_link(creative_dir)
+    fonts_link = build_font_faces(creative_dir, Path(__file__).resolve().parent)
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -437,6 +438,18 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
 </script>
 </body>
 </html>"""
+
+    # var(--font-x) → 具体字体名（HyperFrames 0.6.109+ lint 不解析 CSS var()）
+    fonts_path = creative_dir / "fonts.json"
+    if fonts_path.exists():
+        try:
+            _fonts = json.loads(fonts_path.read_text(encoding="utf-8"))
+            for layer in ("title", "body", "data"):
+                family = _fonts.get(layer, {}).get("family", "")
+                if family:
+                    html = html.replace(f"var(--font-{layer})", f"'{family}'")
+        except (json.JSONDecodeError, OSError):
+            pass
 
     return html, missing
 

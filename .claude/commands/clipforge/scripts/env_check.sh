@@ -46,6 +46,15 @@ else
   [ $? -eq 0 ] && echo "✅ HyperFrames skills 安装成功" || echo "❌ 自动安装失败，请手动执行: npx skills add heygen-com/hyperframes"
 fi
 
+# ── HyperFrames CLI 版本检查 + 刷新缓存（@latest 强制拉最新，确保后续 npx hyperframes 用最新版）──
+echo "--- HyperFrames CLI 版本 ---"
+HF_VER=$(npx hyperframes@latest --version 2>/dev/null | head -1)
+if [ -n "$HF_VER" ]; then
+  echo "✅ HyperFrames CLI: ${HF_VER}（已刷新至最新）"
+else
+  echo "⚠ HyperFrames CLI 版本检查失败（网络？），沿用缓存版本"
+fi
+
 # ── 可选依赖 ──
 python -c "from transformers import MusicgenForConditionalGeneration; print('✅ MusicGen (可选)')" 2>/dev/null || echo "⚠ MusicGen not installed (可选，仅 AI 二创配乐)"
 
