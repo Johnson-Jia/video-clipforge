@@ -11,6 +11,7 @@
 # - 不在白名单也不在必删列表中的文件：不动（保守策略）
 
 set -e
+export PYTHONIOENCODING=utf-8  # 防 Windows GBK 致 python 中文输出失败（stage7 gate 违规详情含中文）
 DRY_RUN=false
 PROJECT_DIR=""
 
@@ -40,6 +41,30 @@ if [ ! -f "score_report.json" ]; then
   if [ ! -f "score_report.json" ]; then
     echo "警告：score_report.json 生成失败，继续清理（评分数据将无法事后补评）"
   fi
+fi
+
+# ── 前置检查：douyin.md 合规（stage7-delivery gate）──
+# 防止交付时跳过 stage7-delivery gate 导致 douyin 违规漏网
+# （标题字数/数字锚定/标签数/收藏引导/URL/搜索引导）。cleanup 是管线最后一环，
+# 此时 douyin.md 必已写完，强制 gate = 让"douyin 违规 = 无法收尾"。
+if [ -f "douyin.md" ]; then
+  S7_GATE_JSON="$(pwd)/.s7_gate.json"
+  python "$SCRIPT_DIR/../engine/gate.py" --skill stage7-delivery --project-dir "$(pwd)" > "$S7_GATE_JSON" 2>/dev/null || true
+  S7_HARD=$(python -c "import json,sys;print(json.load(open(sys.argv[1],encoding='utf-8'))['hard_passed'])" "$S7_GATE_JSON" 2>/dev/null)
+  if [ "$S7_HARD" != "True" ]; then
+    echo "FAIL: stage7-delivery 门禁未通过，douyin.md 存在违规："
+    python -c "import json,sys;[print('  -',v['details'][:200]) for v in json.load(open(sys.argv[1],encoding='utf-8')).get('hard_violations',[])]" "$S7_GATE_JSON" 2>/dev/null
+    rm -f "$S7_GATE_JSON"
+    if [ "$DRY_RUN" = true ]; then
+      echo "（DRY-RUN 仅警告；实际清理前须修复 douyin.md 并重跑）"
+    else
+      echo "修复 douyin.md 后重跑 cleanup。"
+      exit 1
+    fi
+  else
+    echo "[OK] stage7-delivery douyin 合规通过"
+  fi
+  rm -f "$S7_GATE_JSON"
 fi
 
 if [ "$DRY_RUN" = true ]; then

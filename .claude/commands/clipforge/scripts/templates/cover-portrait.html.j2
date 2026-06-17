@@ -44,6 +44,15 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
   filter: blur(200px); bottom: -200px; right: -400px; pointer-events: none;
 }
 
+/* 安全区：3:4 安全覆盖区（2160×2880 垂直居中），上下各留 480px 给背景+光晕。
+   抖音按中央 3:4 裁取竖封面缩略图，内容必须落在此区内避免被裁（validate_cover --overflow-check 门禁）。 */
+.safe-zone {
+  position: relative; z-index: 5;
+  width: 2160px; height: 2880px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
 /* 第1层：中文日期 */
 .date { position: relative; font-size: 80px; font-weight: 800;
   color: var(--accent-warm); letter-spacing: 8px; margin-bottom: 40px; }
@@ -96,6 +105,8 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
   <div class="glow-warm"></div>
   <div class="glow-cool"></div>
 
+  <div class="safe-zone">
+
   <!-- 第1层：中文日期 -->
   <div class="date">{{ date }}</div>
 
@@ -129,6 +140,7 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
       <div class="label">{{ card.label }}</div>
     </div>
     {% endfor %}
+  </div>
   </div>
 </div>
 </div>

@@ -2247,10 +2247,13 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
     if not has_comment_section:
         issues.append("缺少评论区自评（需 ## 评论区自评 段落）")
     else:
-        # 4a. 检查项目介绍格式（owner/repo 路径）
-        has_path_format = bool(re.search(r'[\w\-\.]+/[\w\-\.]+', content))
-        if not has_path_format:
-            issues.append("评论区缺少 owner/repo 路径（如 'apple/container'）")
+        # 4a. 检查项目介绍格式（owner/repo 路径）—— 仅 github 项目盘点视频
+        # 非 github 视频（商业分析/intro 等，无 raw_trending.json）评论区是数据来源
+        # 说明，没有 github 项目，owner/repo 检查会误判，故仅 github 视频检查
+        if (project_dir / "raw_trending.json").exists():
+            has_path_format = bool(re.search(r'[\w\-\.]+/[\w\-\.]+', content))
+            if not has_path_format:
+                issues.append("评论区缺少 owner/repo 路径（如 'apple/container'）")
 
     if issues:
         return False, f"R-S7-006: {'; '.join(issues)}"

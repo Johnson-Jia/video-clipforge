@@ -108,6 +108,15 @@ def validate_html(html_path: str) -> bool:
         if not re.search(pattern, content):
             print(f'  WARNING: {check_name} 缺失（建议添加）')
 
+    # ── 门禁 S：安全区 .safe-zone 必备（封面安全区改造，2026-06-17）──
+    # 内容必须落在 3:4/4:3 安全区内避免抖音裁切；缺失 = 未用安全区模板
+    if not re.search(r'class="[^"]*\bsafe-zone\b', content):
+        print(f'  Layer S: 安全区 .safe-zone MISSING')
+        print(f'    封面必须用 .safe-zone 包裹 7 层（竖屏 3:4 / 横屏 4:3 安全区）')
+        all_pass = False
+    else:
+        print(f'  Layer S: 安全区 .safe-zone OK')
+
     if not all_pass:
         print(f'\nFAIL: 缺少 {len(missing)} 层: {", ".join(missing)}')
         print('修复: 参照 stage7-delivery.md §7.1 封面 HTML 模板，补充缺失层级')
@@ -123,16 +132,17 @@ def validate_html(html_path: str) -> bool:
 
 # 封面关键区域定义：(区域名, y_start%, y_end%, 预期主色RGB范围)
 # 基于封面 7 层布局从上到下的位置比例
-# 竖屏 (2160×3840 或 1080×1920)
+# 竖屏 (2160×3840 或 1080×1920) — 内容在 3:4 安全区内（输出 1080×1440，y 0.125-0.875）
+# 7 层在 .safe-zone（垂直居中）内分布，y 比例按安全区映射到全画布坐标
 COVER_REGIONS_PORTRAIT = [
-    # Layer 1: 日期区域 (约 25-32%) — 应有橙色文字
-    ('日期区域',    0.25, 0.32, (200, 100, 0), 80),
-    # Layer 2-3: 标签+徽章区域 (约 33-47%) — 应有蓝色文字
-    ('标签徽章区域', 0.33, 0.47, (0, 150, 200), 80),
-    # Layer 4: 主标题区域 (约 42-56%) — 应有白色/橙色大字
-    ('主标题区域',   0.42, 0.56, None, 150),
-    # Layer 6-7: 数据+卡片区域 (约 60-72%) — 应有绿色/橙色数字
-    ('数据卡片区域', 0.60, 0.72, None, 100),
+    # Layer 1: 日期区域（安全区上部）
+    ('日期区域',    0.20, 0.28, (200, 100, 0), 80),
+    # Layer 2-3: 标签+徽章区域
+    ('标签徽章区域', 0.30, 0.42, (0, 150, 200), 80),
+    # Layer 4: 主标题区域（安全区中部）
+    ('主标题区域',   0.44, 0.58, None, 150),
+    # Layer 6-7: 数据+卡片区域（安全区下部）
+    ('数据卡片区域', 0.70, 0.84, None, 100),
 ]
 
 # 横屏 (3840×2160 或 1920×1080) — 内容在 3:4 安全区内垂直堆叠
@@ -250,13 +260,82 @@ def validate_render(png_path: str) -> bool:
 
 
 # ═══════════════════════════════════════════════════
+# 模式 3: 安全区溢出检测（内容不得超出 3:4/4:3 安全区）
+# ═══════════════════════════════════════════════════
+
+def validate_overflow(png_path: str) -> bool:
+    """检测安全区外留白带是否有亮色文字像素。
+
+    安全区：竖屏 3:4（y 0.125-0.875），横屏 4:3（x 0.125-0.875）。
+    留白带 = 安全区外（上下/左右各 12.5%），只应有背景+光晕，不应有文字。
+    光晕（低 opacity + blur）RGB <140 不触发；文字（白/accent 实色）RGB >140 触发。
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        print('WARNING: Pillow 未安装，跳过溢出检测')
+        return True
+
+    if not os.path.exists(png_path):
+        print(f'FAIL: {png_path} 不存在')
+        return False
+
+    img = Image.open(png_path).convert('RGB')
+    w, h = img.size
+    is_landscape = w > h
+    print(f'  PNG: {w}x{h} ({"横屏 4:3" if is_landscape else "竖屏 3:4"})')
+
+    safe_margin = 0.125
+    THRESHOLD_RGB = 140   # 文字>140；低 opacity 光晕<140
+    OVERFLOW_LIMIT = 0.003  # 留白带亮色像素占比上限 0.3%
+
+    pixels = img.load()
+    overflow = 0
+    total = 0
+    step = 3
+    margin = int((h if not is_landscape else w) * safe_margin)
+
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            in_margin = (not is_landscape and (y < margin or y > h - margin)) or \
+                        (is_landscape and (x < margin or x > w - margin))
+            if not in_margin:
+                continue
+            r, g, b = pixels[x, y]
+            total += 1
+            if r > THRESHOLD_RGB or g > THRESHOLD_RGB or b > THRESHOLD_RGB:
+                overflow += 1
+
+    if total == 0:
+        print('  WARNING: 未采样到留白带像素')
+        return True
+
+    ratio = overflow / total
+    if ratio > OVERFLOW_LIMIT:
+        print(f'  FAIL: 安全区外留白带亮色像素占比 {ratio:.2%} > {OVERFLOW_LIMIT:.1%}')
+        print(f'    内容超出 {("4:3" if is_landscape else "3:4")} 安全区，会被抖音裁切')
+        print(f'    修复：把文字收进 .safe-zone，上下/左右留白只放背景+光晕')
+        print(f'\nFAIL: 安全区溢出检测未通过')
+        return False
+    print(f'  OK: 留白带亮色像素占比 {ratio:.2%} ≤ {OVERFLOW_LIMIT:.1%}（无文字溢出）')
+    print(f'\nPASS: 安全区溢出检测通过')
+    return True
+
+
+# ═══════════════════════════════════════════════════
 # 入口
 # ═══════════════════════════════════════════════════
 
 if __name__ == '__main__':
     args = sys.argv[1:]
 
-    if '--check-render' in args:
+    if '--overflow-check' in args:
+        # 模式3: 安全区溢出检测
+        idx = args.index('--overflow-check')
+        png_file = args[idx + 1] if idx + 1 < len(args) else 'cover.png'
+        ok = validate_overflow(png_file)
+        sys.exit(0 if ok else 1)
+    elif '--check-render' in args:
         # 模式2: PNG 渲染内容验证
         idx = args.index('--check-render')
         png_file = args[idx + 1] if idx + 1 < len(args) else 'cover.png'

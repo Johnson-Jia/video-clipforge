@@ -163,6 +163,33 @@ gh api repos/{owner}/{repo}/contributors --paginate --jq '.[].id' | wc -l
 - **分段数 ≤ 6** — 7 段以上全播率明显下降，标准模式控制在 5-6 段
 - **聚焦开源/编程** — 银发经济、教育政策等非技术话题播放量和完播率均低于基线，避免选题漂移
 
+### audience_filter — 受众可用性筛选（2026-06-17 反馈落地）
+
+> **门槛：普通人可用的 A 档约占一半（5 选 2-3 个、6 选 3-4 个）**。Trending 榜大量是开发者基础设施（网络库/向量库/SDK），对非程序员无直接价值，纯库扎堆时泛受众完播与转化低；但开发者项目本身也是 GitHub 盘点的看点，故按约一半配比，而非一刀切多数。
+
+**终端可用性分档**（选取时对每个候选项目逐项判定）：
+
+| 档 | 判定信号 | 选取权重 |
+|----|---------|---------|
+| **A 普通可用** | GUI / 桌面 app / 浏览器即开 / Docker 一键 / 手机端 | 优先入选 |
+| **B 半可用** | CLI 工具门槛中等 / 需一定配置 | 按需补入 |
+| **C 开发者库** | 无界面、需写代码集成 / 纯 SDK·crate·npm 包 / 平台中间件 | 降权，≤1/3 占比 |
+
+**约束**：
+- A 档**约占一半**：5 选 2-3 个、6 选 3-4 个 —— 兼顾泛受众与开发者受众，避免纯库喧宾夺主
+- C 档**≤ 一半**（5 选 ≤3、6 选 ≤3）不扎堆；C 档扎堆时用 A/B 档替换，而非硬凑
+- C 档项目旁白/文案须措辞「给做 XX 的开发者」，不伪装成普通人能用
+
+**判定方法**（与 `authenticity_verification` 同期执行，读 README + 仓库结构）：
+- README 含 `install/download/desktop/app`，或仓库有 GUI 目录 / Electron / Tauri / 移动端 / 浏览器入口 → **A**
+- 仅 `README + lib/ + examples/ + package/crate/npm 发布`、无任何用户界面 → **C**
+- 有 `Dockerfile / docker-compose` 但无 GUI → **A**（部署门槛够低，算普通人可上手）
+- 云原生控制平面 / SDK / 协议栈 / 中间件 → **C**
+
+**标注落地**：`content_ready.txt` 每个项目附 `受众: A普通可用 / B半可用 / C开发者向`；hook 文案突出 A 档项目的「你能直接用」利益，C 档项目用「给开发者」定调。
+
+**分档参考案例**：Universal-Debloater(A·GUI)、teslamate(A·Docker)、VoxCPM(A·有 demo)、puppeteer(A·有 API 可脚本化) vs iroh(C·Rust 网络库)、zvec(C·向量库)、meshery(C·云原生平台)。
+
 ### deep_research — 单项目深度调研
 
 当视频只聚焦一个项目时，基础数据（Star/Fork/Language）不足以支撑 45-60 秒的深度内容。需要额外调研以下维度：
@@ -494,6 +521,14 @@ true — GitHub 系列视频固定使用 YunjianNeural +25%，不需要查通用
 ### cover_scene_label
 
 "GitHub 榜单速览"
+
+### cover_content_strategy — 封面内容策略（2026-06-17 安全区改造配套）
+
+> 封面缩略图只有主标题 + 卡片数字可读（80px 以下层不可读），故：
+
+- **强钩子必须进主标题**（`cover_params.title`，缩略图唯一清晰层）。禁把钩子埋进 `data_subtitle`（副标题缩略图不可读）。
+- **卡片 `label` 用途利益标签**（如「AI帮审代码」「免root清预装」），禁纯英文项目名（缩略图黑话）。
+- **内容落 3:4 安全区**：模板 `.safe-zone` 已包裹 7 层，`validate_cover --overflow-check` 强制安全区外无文字（避免被抖音裁切）。
 
 ### zhihu_article — 知乎文章模式
 

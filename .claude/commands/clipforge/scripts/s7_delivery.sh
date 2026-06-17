@@ -11,6 +11,7 @@
 # 输出: cover.html + cover.png + final.mp4 + final_no_bgm.mp4 + 磁盘报告
 
 set -euo pipefail
+export PYTHONIOENCODING=utf-8  # 防 Windows GBK 致 python 中文输出失败（stage7 gate 违规详情含中文）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/_cd_project.sh" && cd_project "$@"
@@ -62,8 +63,9 @@ fi
 echo "[OK] cover.html + cover.png 已生成"
 
 # ── Step 2: 封面完整性门禁 ──
-echo "--- Step 2/4: 封面完整性门禁 ---"
+echo "--- Step 2/5: 封面完整性门禁（7层 + safe-zone + 溢出） ---"
 python "${SCRIPT_DIR}/cover_check.py" cover.html
+python "${SCRIPT_DIR}/validate_cover.py" --overflow-check cover.png
 echo "[OK] 封面门禁通过"
 
 # ══════════════════════════════════════════════════
@@ -80,9 +82,28 @@ echo "[OK] final.mp4 + final_no_bgm.mp4 已生成"
 # ══════════════════════════════════════════════════
 
 # ── Step 4: 磁盘占用报告 ──
-echo "--- Step 4/4: 磁盘报告 ---"
+echo "--- Step 4/5: 磁盘报告 ---"
 bash "${SCRIPT_DIR}/disk_usage.sh" --project-dir .
+
+# ── Step 5: Stage 7 douyin 合规门禁 ──
+# 若 LLM 已先写好 douyin.md（推荐流程），在此即时校验；未写则由 cleanup_project.sh 兜底拦截
+echo "--- Step 5/5: Stage 7 douyin 合规门禁 ---"
+if [ -f "douyin.md" ]; then
+  S7_JSON="$PROJECT_ABS/.s7_gate.json"
+  python "${SCRIPT_DIR}/../engine/gate.py" --skill stage7-delivery --project-dir "$PROJECT_ABS" > "$S7_JSON" 2>/dev/null || true
+  S7_HARD=$(python -c "import json,sys;print(json.load(open(sys.argv[1],encoding='utf-8'))['hard_passed'])" "$S7_JSON" 2>/dev/null)
+  if [ "$S7_HARD" != "True" ]; then
+    echo "FAIL: stage7-delivery 门禁未通过，douyin.md 违规："
+    python -c "import json,sys;[print('  -',v['details'][:200]) for v in json.load(open(sys.argv[1],encoding='utf-8')).get('hard_violations',[])]" "$S7_JSON" 2>/dev/null
+    rm -f "$S7_JSON"
+    echo "修复 douyin.md 后重跑 s7_delivery（cleanup 也会再次拦截）。"
+    exit 1
+  fi
+  rm -f "$S7_JSON"
+  echo "[OK] stage7-delivery douyin 合规通过"
+else
+  echo "[提示] douyin.md 尚未撰写 → stage7 douyin 门禁将在 cleanup 前强制（见 cleanup_project.sh）"
+fi
 
 echo "=== Stage 7 交付管线完成 ==="
 echo "产出: cover.html / cover.png / final.mp4 / final_no_bgm.mp4"
-echo "下一步: LLM 撰写平台文案（douyin.md 等）"

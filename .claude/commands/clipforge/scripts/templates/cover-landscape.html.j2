@@ -43,10 +43,10 @@ body { background: #050510; overflow: hidden; font-family: 'Inter', 'PingFang SC
   filter: blur(200px); bottom: -200px; right: -400px; pointer-events: none;
 }
 
-/* 3:4 安全区（1620x2160 水平居中） */
+/* 4:3 安全区（2880x2160 水平居中）—— 修正：原 1620 是 3:4 竖向比例，横屏应为 4:3 横向 */
 .safe-zone {
   position: relative; z-index: 5;
-  width: 1620px; height: 100%;
+  width: 2880px; height: 100%;
   margin: 0 auto;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;

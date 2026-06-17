@@ -104,6 +104,14 @@ def check_cover(html_path):
             passed += 1
             print(f"  OK:   {label}")
 
+    # 安全区 .safe-zone 必备（2026-06-17 安全区改造，抖音按 3:4/4:3 裁取缩略图）
+    has_safe_zone = bool(re.search(r'class="[^"]*\bsafe-zone\b', html))
+    if has_safe_zone:
+        print(f"  OK:   安全区 .safe-zone（3:4/4:3 内容保护区）")
+    else:
+        print(f"  FAIL: 安全区 .safe-zone 缺失 — 7 层必须包在 .safe-zone 内")
+        missing.append("安全区 .safe-zone")
+
     # Also check for dual glow
     has_warm_glow = 'glow-warm' in html
     has_cool_glow = 'glow-cool' in html

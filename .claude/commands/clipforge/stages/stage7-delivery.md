@@ -64,7 +64,10 @@ echo "Stage 7 前置检查通过"
 **背景：** 深色渐变 + `.glow-warm`（左上）+ `.glow-cool`（右下），`blur(200px)`
 **字体：** `Inter` + `JetBrains Mono`（Google Fonts）
 **画布：** 竖屏 2160×3840 → 输出 1080×1920；横屏 3840×2160 → 输出 1920×1080
-**横屏安全区：** `.safe-zone`（1620px 居中），7 层垂直堆叠
+**安全区（3:4 / 4:3，2026-06-17 改造）：** 封面是 9:16/16:9 视频首帧，但抖音按中央 **3:4（竖）/ 4:3（横）** 裁取信息流缩略图，故**视觉内容必须落在 `.safe-zone` 内**：
+- 竖屏 `.safe-zone` 2160×2880（输出 1080×1440），上下各留 480px（仅背景+光晕）
+- 横屏 `.safe-zone` 2880×2160（输出 1440×1080），左右各留 480px
+- **门禁**：`validate_cover.py --overflow-check` 扫描安全区外留白带，有亮色文字像素 = HARD 失败（内容会被抖音裁切）。光晕（低 opacity+blur）RGB<140 不误判。
 
 ### 渲染命令
 
@@ -93,15 +96,17 @@ ffmpeg -y -i output.mp4 -vf "scale=1080:1920:flags=lanczos" -vframes 1 cover.png
 
 ## §7.3 交付管线（全自动）
 
-> LLM 完成 `cover_params.json` 后，`s7_delivery.sh` 一次性完成: 封面生成+渲染 → 封面门禁 → 封面拼接+Mastering → 磁盘报告。
+> **前置：LLM 先完成 `cover_params.json` + `douyin.md`**（封面参数 + 四平台文案），再跑 `s7_delivery.sh`。管线一次性完成: 封面生成+渲染 → 封面门禁 → 封面拼接+Mastering → 磁盘报告 → **stage7 douyin 合规门禁**（标题字数/数字锚定/标签数/收藏引导/URL/搜索引导）。
 >
-> **禁止绕过脚本自行拼接。** 脚本内含硬性断言（封面 7 层完整性、时长偏差 < 0.2s、音频轨道存在）。
+> **douyin 违规 = s7_delivery 失败**（exit 1）；即使交付时跳过，`cleanup_project.sh` 前置也再次强制 stage7 gate（douyin 不合规 = 无法 cleanup = 项目未完成）。两层强制，杜绝漏网。
+>
+> **禁止绕过脚本自行拼接。** 脚本内含硬性断言（封面 7 层完整性、时长偏差 < 0.2s、音频轨道存在、douyin 合规）。
 
 ```bash
 bash .claude/commands/clipforge/scripts/s7_delivery.sh --project-dir .
 ```
 
-**如果脚本失败**：根据错误信息修复 `cover_params.json` 或 `index.html`，然后重新执行。
+**如果脚本失败**：根据错误信息修复 `cover_params.json` / `douyin.md` / `index.html`，然后重新执行。
 
 ## §7.4 视频交付
 
