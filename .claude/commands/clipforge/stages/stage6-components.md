@@ -53,7 +53,24 @@
 
 ### 特效层 (fx/)
 
-> 嵌入 `.layer-fx`，提供动态视觉装饰。一个场景选 0-2 个 fx 组件。
+> 嵌入 `.layer-fx`，提供动态视觉装饰。
+
+**fx 原语库（BASE_CSS 自动注入，优先用，2026-06-17）**：10 个 CSS animation 循环态原语（HyperFrames 安全），LLM 在 `.layer-fx` 内用 `<div class="fx-xxx">` 直接引用，**无需写 CSS**。颜色默认半透明白，可 inline 覆盖（`style="background:var(--accent-warm)"`）。R-R-008 要求 **≥3 元素 且 ≥2 种不同 fx class**（防同类凑数）。
+
+| 原语 | 视觉 | 情绪 |
+|------|------|------|
+| `fx-aura` | 光晕呼吸 | ambient/focus |
+| `fx-ring` | 光环扩散 | focus |
+| `fx-particle` | 微粒漂浮 | calm/mystery |
+| `fx-scan` | 扫描线 | tech/analysis |
+| `fx-beam` | 对角光带扫过 | climax/震撼 |
+| `fx-stream` | 垂直数据流 | tech/data/AI |
+| `fx-bolt` | 电流闪烁 | shock/dramatic |
+| `fx-grid` | 网格脉冲 | tech/cyber |
+| `fx-orbit` | 轨道粒子 | energy/dynamic |
+| `fx-pulse-ring` | 脉冲环扩散 | focus/alert |
+
+> 下方 fx 组件库（13 个）为重型特效参考，但依赖 GSAP `.from`（HyperFrames seek 不执行入场），**默认用上方原语**；组件库需手动复制且效果不稳定。
 
 | # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
 |---|--------|-----------|-------------|---------|
