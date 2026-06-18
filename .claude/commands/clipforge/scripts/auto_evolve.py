@@ -28,9 +28,9 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="repla
 # 路径解析
 # auto_evolve.py 位于 .claude/commands/clipforge/scripts/
 CLIPFORGE_ROOT = Path(__file__).parent.parent          # .claude/commands/clipforge/
-PROJECT_ROOT = CLIPFORGE_ROOT.parent.parent.parent      # video-clipforge/
-WORKSPACE = PROJECT_ROOT / "workspace"
 sys.path.insert(0, str(CLIPFORGE_ROOT))
+from engine.lib.data_paths import WORKSPACE_ROOT as PROJECT_ROOT  # 四级回退(env>git>config>cwd)
+WORKSPACE = PROJECT_ROOT / "workspace"
 
 # 为 attribution._classify_hook_type 提供分类上下文（hook_anchors 读 CLIPFORGE_CATEGORY）
 # auto_evolve 批量分析的数据均为 github 分类，设默认值不覆盖已显式设置的值

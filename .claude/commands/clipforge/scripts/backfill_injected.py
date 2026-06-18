@@ -19,10 +19,10 @@ from datetime import datetime, timezone
 
 CLIPFORGE_ROOT = Path(__file__).parent.parent          # .claude/commands/clipforge
 SCRIPTS_DIR = Path(__file__).parent                    # scripts/
-PROJECT_ROOT = CLIPFORGE_ROOT.parent.parent.parent     # video-clipforge/
-WORKSPACE = PROJECT_ROOT / "workspace"
 sys.path.insert(0, str(SCRIPTS_DIR))   # import auto_evolve
 sys.path.insert(0, str(CLIPFORGE_ROOT))  # engine.*
+from engine.lib.data_paths import WORKSPACE_ROOT as PROJECT_ROOT  # 四级回退(env>git>config>cwd)
+WORKSPACE = PROJECT_ROOT / "workspace"
 
 import auto_evolve  # noqa: E402（触发其顶部 sys.path/engine import/CLIPFORGE_CATEGORY）
 from auto_evolve import _classify_topic, _read_narration, _read_cover_attrs  # noqa: E402

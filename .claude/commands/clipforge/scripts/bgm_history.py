@@ -18,8 +18,10 @@ import sys
 from datetime import datetime, timedelta
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CLIPFORGE_DIR = os.path.join(SCRIPT_DIR, "..")
-LOG_PATH = os.path.normpath(os.path.join(CLIPFORGE_DIR, "..", "..", "..", "workspace", "bgm", "usage_log.json"))
+CLIPFORGE_DIR = os.path.join(SCRIPT_DIR, "..")  # clipforge
+sys.path.insert(0, os.path.abspath(CLIPFORGE_DIR))
+from engine.lib.data_paths import WORKSPACE_ROOT  # 四级回退(env>git>config>cwd)
+LOG_PATH = os.path.normpath(os.path.join(str(WORKSPACE_ROOT), "workspace", "bgm", "usage_log.json"))
 
 
 def _normalize(p):

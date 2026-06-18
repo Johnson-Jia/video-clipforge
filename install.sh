@@ -43,6 +43,8 @@ fi
 if [ "$MODE" = "--global" ]; then
   TARGET_DIR="$HOME/.claude/commands"
   echo "🌍 安装模式: 全局 ($TARGET_DIR)"
+  echo "   注：工作目录（视频输出）由 git rev-parse 自动定位当前项目，cd 即切换"
+  echo "   非 git 目录用 /clipforge-switch-workspace <路径> 设默认"
 elif [ "$MODE" = "--copy-only" ]; then
   TARGET_DIR=".claude/commands"
   echo "📋 安装模式: 仅复制文件，跳过依赖安装"

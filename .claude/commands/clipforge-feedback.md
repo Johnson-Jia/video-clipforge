@@ -1,9 +1,18 @@
 # /clipforge-feedback — 自进化（全自动）
 
-将各平台导出的播放数据放入 `workspace/sources/视频数据/YYYY-MM-DD/`，然后运行：
+将各平台导出的播放数据放入 `workspace/sources/视频数据/YYYY-MM-DD/`。**B站 数据自动补全**——执行时检测今日目录若无 B站 文件，自动调 `fetch_bilibili.py` 导出（其他平台仍需手动浏览器导出）：
 
 ```bash
-cd .claude/commands/clipforge
+TODAY=$(date +%Y-%m-%d)
+ROOT=$(git rev-parse --show-toplevel)
+source "$HOME/.claude/commands/clipforge/shared/clipforge-env.sh" 2>/dev/null || source "${ROOT}/.claude/commands/clipforge/shared/clipforge-env.sh"  # 设 CF_DIR + cd 技能目录（用户级/项目级自适应）
+BILI="${ROOT}/workspace/sources/视频数据/${TODAY}/哔哩哔哩近期稿件对比.csv"
+if [ ! -f "$BILI" ]; then
+  echo "今日 B站 数据缺失，自动导出..."
+  python scripts/fetch_bilibili.py || echo "⚠ B站 抓取失败（cookie 可能过期 -101）：从浏览器 DevTools 复制整段 Cookie 覆盖 ${ROOT}/workspace/sources/视频数据/.bili-cookie 后重跑"
+fi
+# 刷新采集（fetch_bilibili 刚写入的新文件须 --scan 刷新，否则 auto_evolve 缓存漏采）
+python scripts/collect_performance.py --scan
 python scripts/auto_evolve.py
 ```
 

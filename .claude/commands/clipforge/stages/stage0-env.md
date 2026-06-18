@@ -13,6 +13,23 @@ if [ -f "workspace/.env-checked" ]; then
 fi
 ```
 
+## 工作目录检测（技能 install 用户级时）
+
+技能可 install 到用户级 `~/.claude/`，工作目录（视频输出/evolution）由 data_paths 四级回退定位（`CLIPFORGE_WORKSPACE` env > git rev-parse > `~/.claude/clipforge-config.json` > cwd）：
+
+```bash
+WS="${CLIPFORGE_WORKSPACE:-$(git rev-parse --show-toplevel 2>/dev/null)}"
+[ -z "$WS" ] && [ -f "$HOME/.claude/clipforge-config.json" ] && WS=$(python -c "import json;print(json.load(open('$HOME/.claude/clipforge-config.json'))['workspace_default'])" 2>/dev/null)
+[ -z "$WS" ] && WS="$(pwd)"
+echo "工作目录: $WS"
+if [ -z "$CLIPFORGE_WORKSPACE" ] && [ -z "$(git rev-parse --show-toplevel 2>/dev/null)" ] && [ ! -f "$HOME/.claude/clipforge-config.json" ]; then
+  echo "⚠ 非 git 目录且无配置默认。建议运行 /clipforge-switch-workspace <项目路径> 设默认，否则视频输出落 cwd。"
+fi
+```
+
+- **git 项目内**：工作目录 = 当前项目根（cd 即切换），无需配置。
+- **非 git + 无配置**：提示跑 `/clipforge-switch-workspace`。
+
 ## 依赖清单
 
 | 依赖 | 最低版本 | 用途 | 必须 | 缺失处理 |

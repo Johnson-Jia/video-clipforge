@@ -181,7 +181,7 @@ LLM 在生成时必须遵循：
 
 2. 运行验证：
 ```bash
-cd .claude/commands/clipforge
+source "$HOME/.claude/commands/clipforge/shared/clipforge-env.sh" 2>/dev/null || source "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/commands/clipforge/shared/clipforge-env.sh"
 python engine/render_stage.py --stage stages/stage4-audio.md --category {id}
 ```
 检查输出无"未替换变量"警告（`leftover_variables` 为空列表）。

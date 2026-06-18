@@ -80,12 +80,18 @@ The DAG is defined in [`schema.yaml`](.claude/commands/clipforge/schema.yaml) â€
 git clone https://github.com/Johnson-Jia/video-clipforge.git
 cd video-clipforge
 
-# 2. Start Claude Code (skills auto-load)
+# 2. Install (pick one)
+bash install.sh              # project-level: .claude/commands/ (default)
+# bash install.sh --global   # user-level: ~/.claude/commands/ (shared across projects)
+
+# 3. Start Claude Code (skills auto-load)
 claude
 
-# 3. Generate a video
+# 4. Generate a video
 /clipforge Make a video about this topic: ...
 ```
+
+> Skills can be installed at project-level or user-level (equivalent). The workspace (video output) lands in the current git project root â€” `cd` to another project to switch.
 
 First run auto-detects and installs dependencies (HyperFrames).
 

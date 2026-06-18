@@ -120,11 +120,15 @@ Linus 写了 Linux，没有收费，世界因此多了无数可能。无数开�
 ```bash
 git clone https://github.com/Johnson-Jia/video-clipforge.git
 cd video-clipforge
-claude          # 启动 Claude Code，技能自动加载
+bash install.sh          # 项目级安装（默认，装到 .claude/commands/）
+# bash install.sh --global   # 或用户级（跨项目共享，装到 ~/.claude/commands/）
+claude                   # 启动 Claude Code，技能自动加载
 /clipforge 制作一个关于 XXX 的视频
 ```
 
 **前置依赖：** Node.js >= 22、FFmpeg、edge-tts、yt-dlp。详见 [安装指南](docs/快速开始.md)。
+
+> 技能可装到项目级或用户级，两种方式功能等价。工作目录（视频输出）落当前 git 项目根，cd 到不同项目即切换。
 
 ## 使用方式
 

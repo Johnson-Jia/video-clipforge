@@ -70,7 +70,7 @@ fi
 平台导出操作：
 - 抖音：创作者中心 → 数据中心 → 作品数据 → 导出 Excel
 - 小红书：专业号中心 → 数据中心 → 笔记数据 → 导出
-- 哔哩哔哩：已自动化 —— `cd .claude/commands/clipforge/scripts && python fetch_bilibili.py`（cookie 存 `workspace/sources/视频数据/.bili-cookie`；报 `-101` 过期时从浏览器 DevTools 复制整段 Cookie 覆盖该文件）。无需手动导出。
+- 哔哩哔哩：**自动** —— `/clipforge-feedback` 执行时检测今日目录若无 B站 文件，自动调 `fetch_bilibili.py` 导出（cookie 存 `workspace/sources/视频数据/.bili-cookie`；报 `-101` 过期时从浏览器 DevTools 复制整段 Cookie 覆盖该文件）。
 - 微信视频号：视频号助手 → 数据中心 → 视频数据 → 导出
 
 导出后放到：workspace/sources/视频数据/{今天日期}/（B站脚本自动写入此目录，无需手动放）

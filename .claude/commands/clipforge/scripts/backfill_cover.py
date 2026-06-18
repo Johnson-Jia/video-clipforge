@@ -15,7 +15,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 CLIPFORGE_ROOT = Path(__file__).parent.parent
-PROJECT_ROOT = CLIPFORGE_ROOT.parent.parent.parent
+sys.path.insert(0, str(CLIPFORGE_ROOT))
+from engine.lib.data_paths import WORKSPACE_ROOT as PROJECT_ROOT  # 四级回退(env>git>config>cwd)
 WORKSPACE = PROJECT_ROOT / "workspace"
 
 

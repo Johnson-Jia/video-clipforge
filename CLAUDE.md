@@ -117,6 +117,7 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
 | `/clipforge-category-setup` | 引导创建分类配置 + 定时任务（手动触发） |
 | `/clipforge-feedback` | 分析播放数据，校准机器评分（手动触发） |
 | `/evolve-daily` | 每日自进化闭环（auto_evolve 全六阶段：采集→分析→pattern/Delta→播放预测训练钩子，全自动 + 自续期） |
+| `/clipforge-switch-workspace` | 切换工作目录（写 `~/.claude/clipforge-config.json`，用户级 install 时设非 git 兜底默认；日常 cd 到不同 git 项目即自动切换） |
 
 > 定时任务由 `/clipforge-category-setup` 生成，属于个人配置（gitignore），不入库。`shared/cron-template.md` 提供通用编排骨架。
 
@@ -128,3 +129,4 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
 - 视频渲染依赖 [HyperFrames](https://github.com/heygen-com/hyperframes)（通过 `npx skills add` 安装）。
 - 与通用编码技能冲突时，以 `clipforge.md` 和本文件为准。
 - `workspace/` 是输出目录（已 gitignore），项目产出物存放于此。`workspace/evolution/` 存自进化运行数据（经验模式/轨迹/规则演化/阈值）——技能目录只留静态定义，运行数据隔离。
+- **技能可 install 到用户级**（`install.sh --global` → `~/.claude/commands/clipforge`）或项目级（默认 `.claude/commands/clipforge`），两种方式功能等价。工作目录（视频输出/evolution/播放数据落哪里）与技能目录解耦，由 `engine/lib/data_paths.py` 四级回退定位：`CLIPFORGE_WORKSPACE` 环境变量 > `git rev-parse` 项目根 > `~/.claude/clipforge-config.json` 配置默认 > cwd。日常 cd 到不同 git 项目即自动切换工作目录；非 git 目录用 `/clipforge-switch-workspace` 设默认。命令文档通过 `shared/clipforge-env.sh` 定位技能目录（用户级 `~/.claude` 优先，项目级 `.claude` 兜底）。

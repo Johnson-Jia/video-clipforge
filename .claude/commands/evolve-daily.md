@@ -23,7 +23,7 @@ TODAY=$(date +%Y-%m-%d)
 ## Step 1: 运行自进化引擎
 
 ```bash
-cd .claude/commands/clipforge
+source "$HOME/.claude/commands/clipforge/shared/clipforge-env.sh" 2>/dev/null || source "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/commands/clipforge/shared/clipforge-env.sh"
 python scripts/auto_evolve.py
 ```
 

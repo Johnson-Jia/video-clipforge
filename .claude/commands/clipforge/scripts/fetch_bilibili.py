@@ -28,9 +28,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TESTDATA = SCRIPT_DIR / "testdata"
-# scripts -> clipforge -> commands -> .claude -> project_root
-WORKSPACE_ROOT = SCRIPT_DIR.parents[3]
-DATA_DIR = WORKSPACE_ROOT / "workspace" / "sources" / "视频数据"
+sys.path.insert(0, str(SCRIPT_DIR.parent))  # clipforge（engine.lib.data_paths）
+from engine.lib.data_paths import VIDEO_DATA_DIR as DATA_DIR  # 四级回退(env>git>config>cwd)
 COOKIE_FILE = DATA_DIR / ".bili-cookie"
 
 REFERER = "https://member.bilibili.com/york/data-center-web/dataCenter/video?tmid=&bvid=&tab="

@@ -21,8 +21,9 @@ import shutil
 from pathlib import Path
 
 CLIPFORGE_ROOT = Path(__file__).resolve().parent.parent          # .claude/commands/clipforge
-PROJECT_ROOT = CLIPFORGE_ROOT.parent.parent.parent               # video-clipforge
-EVOLUTION = PROJECT_ROOT / "workspace" / "evolution"
+import sys; sys.path.insert(0, str(CLIPFORGE_ROOT))
+from engine.lib.data_paths import WORKSPACE_ROOT as PROJECT_ROOT, EVOLUTION_ROOT  # 四级回退(env>git>config>cwd)
+EVOLUTION = EVOLUTION_ROOT
 MARKER = EVOLUTION / ".migrated"
 
 

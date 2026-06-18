@@ -74,7 +74,7 @@ audio{display:none;}
 .fx-bolt{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.4),transparent 60%);animation:fxBolt 5s steps(1) infinite;}
 .fx-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:50px 50px;animation:fxGridPulse 8s ease-in-out infinite;}
 .fx-orbit{position:absolute;top:50%;left:50%;width:12px;height:12px;margin:-6px;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 0 10px rgba(255,255,255,.5);animation:fxOrbit 6s linear infinite;}
-.fx-pulse-ring{position:absolute;top:50%;left:50%;width:200px;height:200px;margin:-100px;border-radius:50%;border:2px solid rgba(255,255,255,.5);animation:fxPulseRing 3s ease-out infinite;}
+.fx-pulse-ring{position:absolute;top:calc(50% - 100px);left:calc(50% - 100px);width:200px;height:200px;margin:0;border-radius:50%;border:2px solid rgba(255,255,255,.5);animation:fxPulseRing 3s ease-out infinite;}
 /* === LLM 自定义组件层（来自 creative/style.css）=== */
 """
 
@@ -417,7 +417,8 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1080,height=1920">
-{fonts_link}<style>
+<style>
+{fonts_link}
 {BASE_CSS}
 {custom_css}
 /* === bg 组件 @keyframes（自动注入，来自 components/bg/）=== */

@@ -27,7 +27,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CLIPFORGE_DIR = SCRIPT_DIR.parent
-PROJECT_ROOT = CLIPFORGE_DIR.parent.parent.parent  # .claude/commands/clipforge/scripts -> project root
+sys.path.insert(0, str(CLIPFORGE_DIR))
+from engine.lib.data_paths import WORKSPACE_ROOT as PROJECT_ROOT  # 四级回退(env>git>config>cwd)
 WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
 
 
