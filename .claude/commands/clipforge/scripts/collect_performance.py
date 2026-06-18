@@ -580,6 +580,8 @@ def build_project_index(workspace_root: Path) -> list[dict]:
         project_dir = dm.parent
         rel = project_dir.relative_to(workspace_root)
         parts = rel.parts
+        if "test" in parts:
+            continue  # test 目录隔离，不进 collect 数据
         if len(parts) < 3:
             continue
         date_path = f"{parts[0]}/{parts[1]}/{parts[2]}"
@@ -619,6 +621,8 @@ def build_project_index(workspace_root: Path) -> list[dict]:
             continue
         rel = project_dir.relative_to(workspace_root)
         parts = rel.parts
+        if "test" in parts:
+            continue  # test 目录隔离，不进 collect 数据
         if len(parts) < 3:
             continue
         date_path = f"{parts[0]}/{parts[1]}/{parts[2]}"

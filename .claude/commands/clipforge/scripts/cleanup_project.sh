@@ -31,8 +31,12 @@ fi
 
 # 在 cd 前保存脚本绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# repo 根（scripts→clipforge→commands→.claude→repo，4 层）— 定位 workspace/bgm 素材库（不依赖 cwd 层级）
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+# workspace 父目录（定位 workspace/bgm 素材库）— 通过 data_paths 统一定位，
+# 兼容用户级（~/.claude）与项目级（.claude）安装；python 不可用时回退脚本位置推算
+# 注：win32 python 不认 git-bash 的 /d/ 路径，用 pwd -W 取 D:/ 格式
+SCRIPT_DIR_W="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -W 2>/dev/null || pwd)"
+REPO_ROOT="$(python -c "import sys; sys.path.insert(0,'$SCRIPT_DIR_W/../engine/lib'); from data_paths import WORKSPACE_ROOT; print(WORKSPACE_ROOT)" 2>/dev/null)" \
+  || REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 cd "$PROJECT_DIR"
 

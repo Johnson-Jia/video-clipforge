@@ -202,6 +202,8 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 - **图表 SVG**：用 `<img src="assets/chart.svg">` 嵌入，或 inline SVG 以便 GSAP 控制动画
 - **图标 SVG**：用 `<img src="assets/icons/xxx.svg">` 或 CSS mask 方式嵌入
 - **AI 生成图**：同背景图用法，适合定制化场景
+- **技术架构图（深度解析模式）**：用 `<img src="assets/arch.svg">` 嵌入 Stage 5 制作的专业 SVG 架构图，配合旁白讲解。**取代 HTML/CSS 即兴架构图**（即兴画不够精美、不符合技术人画图方式）。架构场景的 layer-content 只放 `<img>` + 标题，不手画分层框
+  - **前置确认**：嵌入前确认 `assets/arch.svg` 存在；若 stage5 被跳过导致缺失，回退用 HTML/CSS 即兴架构图（保证渲染不崩），并在交付标注「架构图降级（未用 SVG 素材）」
 
 > 读取 `assets/manifest.md`，将素材文件名和用途写入 HyperFrames prompt。
 

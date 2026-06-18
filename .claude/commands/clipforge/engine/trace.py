@@ -90,6 +90,9 @@ def record_trace(
     category: str | None = None,
     rigor: str | None = None,
 ) -> Path:
+    # test 目录隔离：test 项目的 trace 不进 evolution（与 freshness.py:48 对齐，避免污染归因/回归样本）
+    if "test" in Path(str(project_dir)).parts:
+        return Path()
     traces_dir = traces_dir or TRACES_DIR
     traces_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

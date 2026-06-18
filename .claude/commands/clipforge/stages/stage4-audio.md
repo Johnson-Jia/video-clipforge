@@ -77,7 +77,11 @@ python -m edge_tts -f narration.txt -v <VOICE> --rate=<RATE> --write-media narra
    ```
    输出的文件名列表为已使用，选曲时必须排除。从剩余素材中选取风格匹配的 BGM。
 3. 从来源优先级获取 BGM 文件，保存为 `bgm.wav` 到项目目录
-4. 截取精华片段（跳过前奏，取有节奏的段落）
+4. 截取精华片段（跳过前奏，取有节奏的段落），并**记源 BGM 名到 `segment_durations.json` 的 `meta.bgm_source`**（供自进化 BGM 风格分析；必须在 bgm_pipeline 前记，pipeline 不会覆盖已有源名）：
+   ```bash
+   python -c "import json; d=json.load(open('segment_durations.json',encoding='utf-8')); d.setdefault('meta',{})['bgm_source']='<源BGM文件名，如 neon-electric-3.mp3>'; json.dump(d, open('segment_durations.json','w',encoding='utf-8'), ensure_ascii=False, indent=2)"
+   ```
+   > ⛔ 记**源 BGM 文件名**（如 `neon-electric-3.mp3`），不是处理后的 `bgm.wav`——后者无法被 `_classify_bgm_style` 分类（退化 other），BGM 风格→播放回归失效。
 5. **记录使用**（bgm_pipeline.sh 执行成功后）：
    ```bash
    cd .claude/commands/clipforge && python scripts/bgm_history.py --record --bgm "<选中的BGM文件名>" --project "<项目名>"

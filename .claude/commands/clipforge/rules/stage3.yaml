@@ -37,9 +37,9 @@ rules:
 
   - id: "R-S3-004"
     type: FORBIDDEN_ACTION
-    pattern: "场景数量不在合理范围（3-8 个）"
-    positive: "标准视频 4-7 个场景，深度解析 5-10 个场景"
-    guardrail: "narration_segments.json 的 segments 数量 < 3 或 > 10"
+    pattern: "场景数量不在合理范围（标准 3-8 个，深度解析 8-15 个）"
+    positive: "标准视频 4-7 个场景，深度解析 8-15 个场景"
+    guardrail: "narration_segments.json 的 segments 数量：标准模式 <3 或 >8，深度解析模式 <5 或 >15（深度解析支持≤3min 长视频）"
     detection: {keywords: [], semantic_check: true}
     severity: SOFT
     class: EXPERIENTIAL
@@ -62,7 +62,7 @@ rules:
   - id: "R-S3-006"
     type: FORBIDDEN_ACTION
     pattern: "总旁白字数超出目标范围"
-    positive: "标准模式 250-380 字，深度解析 300-450 字"
+    positive: "标准模式 250-380 字，深度解析 300-950 字（≤3min）"
     guardrail: "narration_segments.json 总字数不在目标范围内"
     detection: {keywords: [], semantic_check: true}
     severity: SOFT

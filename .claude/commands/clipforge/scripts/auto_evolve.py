@@ -60,7 +60,11 @@ def _load_safe_traces() -> list[dict]:
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
             items = data if isinstance(data, list) else [data]
-            traces.extend(items)
+            for item in items:
+                # test 目录隔离：test trace 不进回归样本（与 freshness.py 对齐）
+                if "test" in (item.get("project_dir") or "").split("/"):
+                    continue
+                traces.append(item)
         except Exception:
             pass
     return [t for t in traces
@@ -252,6 +256,31 @@ def _read_score_freshness(proj_dir: Path) -> float | None:
         return None
 
 
+def _read_bgm_source(proj_dir: Path) -> str | None:
+    """读项目 segment_durations.json 的 meta.bgm_source（BGM 文件名）。"""
+    try:
+        meta = (json.loads((proj_dir / "segment_durations.json").read_text("utf-8"))).get("meta") or {}
+        return meta.get("bgm_source")
+    except Exception:
+        return None
+
+
+def _classify_bgm_style(bgm_source: str | None) -> str:
+    """BGM 文件名→风格（回归归因用，量化'BGM 风格→播放'是否显著）。"""
+    if not bgm_source:
+        return "unknown"
+    name = str(bgm_source).lower()
+    for key, style in (
+        ("bold-energetic", "energetic"), ("neon-electric", "electronic"),
+        ("cinematic", "cinematic"), ("epic-trailer", "epic"),
+        ("motivational", "motivational"), ("clean-corporate", "corporate"),
+        ("chill-lofi", "lofi"),
+    ):
+        if key in name:
+            return style
+    return "other"
+
+
 def _write_freshness_feedback(analysis: dict) -> None:
     """写 freshness 学习层反馈（供 exploration.decide 读，调 explore/exploit）。B 闭环。"""
     try:
@@ -349,6 +378,8 @@ class AutoEvolve:
         raw_projects: list[dict] = []
         for pf in sorted(WORKSPACE.rglob("performance.json")):
             proj = pf.parent
+            if "test" in proj.parts:
+                continue  # test 目录隔离，不进回归/训练样本
             try:
                 data = json.loads(pf.read_text("utf-8"))
             except Exception:
@@ -372,6 +403,8 @@ class AutoEvolve:
                 "snapshots": data.get("snapshots", []),
                 "injected": _read_injected(proj),
                 "freshness": _read_score_freshness(proj),
+                "bgm_source": (_bgm := _read_bgm_source(proj)),
+                "bgm_style": _classify_bgm_style(_bgm),
             })
 
         # ── 各平台 plays 池（分位数排名，消除平台量级差异）──
@@ -656,12 +689,13 @@ class AutoEvolve:
             "humor_density": (p.get("narration_attrs") or {}).get("humor_density", 0),
             "save_rate": p["save_rate"],
             "cover_cool": 1 if "cool" in ((p.get("cover_attrs") or {}).get("title_styles") or "") else 0,
+            "bgm_style": p.get("bgm_style") or "unknown",
         } for p in sub])
         try:
             # topic 单一无方差不纳入协变量；cover_cool = 封面标题含 cool 色段（子维度分析强信号）
             model = smf.ols(
                 "reach ~ C(hook_type) + n_segments + humor_density + save_rate + cover_cool "
-                "+ C(hook_type):save_rate", data=df
+                "+ C(hook_type):save_rate + C(bgm_style)", data=df
             ).fit()
         except Exception as e:
             self._log(f"  回归归因: 拟合失败 {e}")
@@ -1106,6 +1140,8 @@ class AutoEvolve:
         samples = []
         for pf in sorted(WORKSPACE.rglob("performance.json")):
             proj = pf.parent
+            if "test" in proj.parts:
+                continue  # test 目录隔离，不进回归/训练样本
             try:
                 data = json.loads(pf.read_text("utf-8"))
             except Exception:

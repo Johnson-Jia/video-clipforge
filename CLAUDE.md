@@ -34,6 +34,7 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
    - **必须代码化**：artifact 完成检测、YAML/JSON schema 校验、文件存在性检查、TTS/BGM 处理、HTML 结构验证、渲染调用、封面模板填充、视频合成、清理、环境检测
    - **LLM 自由发挥**：内容分析摘要、视觉风格推导、旁白文案撰写、HTML 创意内容（CSS 特效/动画设计）、封面文案和配色、平台文案撰写、组件视觉设计
 5. **反同质化，多维对齐真实播放量。** score 不只是合规度——`overall_score = 合规·w1 + 新鲜度·w2 + 播放潜力·w3`。满分不再是目标：与近期内容高度相似的视频会被新鲜度拉低分。`stage0.5-topic-plan` 在选题阶段规划题材轮换与新鲜度约束，`freshness.py`/`predict.py` 在评分层量化"像历史的程度"和"播放潜力"。真实播放量经 `/evolve-daily` 回流校准（见命令段）。
+6. **workspace 是独立 git 仓库，禁止擅动其 git。** workspace（视频/evolution/播放数据所在）与项目根是两个独立 git 仓库。**禁止进入 workspace 执行 git 写操作或删除**（`cd workspace && git ...`、`git -C workspace ...`、`rm -rf workspace/.git` 等）——除非用户明确要求操作其他目录；误操作会破坏 workspace 版本历史。管线对 workspace 内文件/数据的正常读写（视频/evolution 产出）不受此限。
 
 ## 架构演进验证规范
 
@@ -129,4 +130,4 @@ ClipForge 是 AI 驱动的通用短视频制作系统。通过 DAG 编排管线�
 - 视频渲染依赖 [HyperFrames](https://github.com/heygen-com/hyperframes)（通过 `npx skills add` 安装）。
 - 与通用编码技能冲突时，以 `clipforge.md` 和本文件为准。
 - `workspace/` 是输出目录（已 gitignore），项目产出物存放于此。`workspace/evolution/` 存自进化运行数据（经验模式/轨迹/规则演化/阈值）——技能目录只留静态定义，运行数据隔离。
-- **技能可 install 到用户级**（`install.sh --global` → `~/.claude/commands/clipforge`）或项目级（默认 `.claude/commands/clipforge`），两种方式功能等价。工作目录（视频输出/evolution/播放数据落哪里）与技能目录解耦，由 `engine/lib/data_paths.py` 四级回退定位：`CLIPFORGE_WORKSPACE` 环境变量 > `git rev-parse` 项目根 > `~/.claude/clipforge-config.json` 配置默认 > cwd。日常 cd 到不同 git 项目即自动切换工作目录；非 git 目录用 `/clipforge-switch-workspace` 设默认。命令文档通过 `shared/clipforge-env.sh` 定位技能目录（用户级 `~/.claude` 优先，项目级 `.claude` 兜底）。
+- **技能可 install 到用户级**（`install.sh --global` → `~/.claude/commands/clipforge`）或项目级（默认 `.claude/commands/clipforge`），两种方式功能等价。工作目录（视频输出/evolution/播放数据落哪里）与技能目录解耦，由 `engine/lib/data_paths.py` 四级回退定位：`CLIPFORGE_WORKSPACE` 环境变量 > `~/.claude/clipforge-config.json` 配置默认（用户显式指定，`/clipforge-switch-workspace`）> `git rev-parse` 项目根 > cwd。**config 优先于 git**——用户显式指定的工作目录优先于自动推断的当前项目；未设置时才用当前项目根下创建 workspace。命令文档通过 `shared/clipforge-env.sh` 定位技能目录（用户级 `~/.claude` 优先，项目级 `.claude` 兜底）。

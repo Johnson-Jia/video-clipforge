@@ -32,22 +32,34 @@ def _git_toplevel() -> str | None:
 
 
 def resolve_workspace_root() -> Path:
-    """四级回退定位工作目录（workspace 落这里）。"""
-    # 1. 环境变量（临时覆盖）
+    """定位工作目录根（workspace 落在 <根>/workspace）。
+
+    回退顺序：env > config(用户显式) > git(当前项目) > cwd。
+    config 优先于 git——用户用 clipforge-switch-workspace 显式指定的工作目录根，
+    优先于自动推断的当前项目根。git 仅在用户未设置时作为默认（当前项目下创建 workspace）。
+    各分支均防御 basename=="workspace"（误传 workspace 本身时向上找父，避免 workspace/workspace 嵌套）。
+    """
+    # 1. 环境变量（临时覆盖，最高优先）
     env = os.environ.get("CLIPFORGE_WORKSPACE")
     if env and Path(env).exists():
-        return Path(env).resolve()
-    # 2. git rev-parse（项目内自动）
-    root = _git_toplevel()
-    if root:
-        return Path(root)
-    # 3. 用户配置默认（非 git 兜底）
+        p = Path(env).resolve()
+        return p.parent if p.name == "workspace" else p
+    # 2. 用户配置（clipforge-switch-workspace 显式设置，优先于 git）
     cfg = get_config()
     ws = cfg.get("workspace_default")
     if ws and Path(ws).exists():
-        return Path(ws).resolve()
-    # 4. cwd
-    return Path.cwd().resolve()
+        p = Path(ws).resolve()
+        return p.parent if p.name == "workspace" else p
+    # 3. git 项目根（用户未设置时的默认：当前项目下创建 workspace）
+    root = _git_toplevel()
+    if root:
+        root = Path(root)
+        if root.name == "workspace":
+            root = root.parent
+        return root
+    # 4. cwd（兜底）
+    cwd = Path.cwd().resolve()
+    return cwd.parent if cwd.name == "workspace" else cwd
 
 
 def get_config() -> dict:

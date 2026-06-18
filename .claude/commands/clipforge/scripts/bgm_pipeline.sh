@@ -17,6 +17,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR_W="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -W 2>/dev/null || echo "$SCRIPT_DIR")"
 source "${SCRIPT_DIR}/_cd_project.sh" && cd_project "$@"
 
 # 解析剩余参数（cd_project 已消费 --project-dir）
@@ -111,11 +112,17 @@ BGM_BASENAME=$(basename "$BGM_FILE")
 python -c "
 import json
 d = json.load(open('segment_durations.json', encoding='utf-8'))
-d['meta']['bgm_source'] = '${BGM_BASENAME}'
-with open('segment_durations.json', 'w', encoding='utf-8') as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
+# 只在 bgm_source 缺失时记，保留选曲阶段记的源 BGM 名（如 neon-electric-3.mp3）；
+# 避免覆盖成处理后的 'bgm.wav'（导致 _classify_bgm_style 无法分类→退化 other）
+existing = d.get('meta', {}).get('bgm_source', '')
+if not existing:
+    d['meta']['bgm_source'] = '${BGM_BASENAME}'
+    with open('segment_durations.json', 'w', encoding='utf-8') as f:
+        json.dump(d, f, ensure_ascii=False, indent=2)
+    print('OK: meta.bgm_source = ${BGM_BASENAME}（缺失，已补）')
+else:
+    print('OK: meta.bgm_source 保留选曲记录 = ' + str(existing))
 "
-echo "OK: meta.bgm_source = ${BGM_BASENAME}"
 
 # ── Step 7: BGM 时长对齐（以旁白总时长为基准） ──
 echo "--- Step 7: BGM 时长对齐 ---"
@@ -255,7 +262,8 @@ if [ "${EXTEND_MODE:-false}" = true ] || [ "$(python -c "print(1 if float('${RAT
     # ── 多首拼接模式 ──
     echo "--- Step 9: 多首 BGM 拼接 ---"
 
-    BGM_LIB="${BGM_LIB_DIR:-workspace/bgm}"
+    BGM_LIB="${BGM_LIB_DIR:-$(python -c "import sys; sys.path.insert(0,'${SCRIPT_DIR_W:-$SCRIPT_DIR}/../engine/lib'); from data_paths import WORKSPACE_ROOT; print(WORKSPACE_ROOT/'workspace'/'bgm')" 2>/dev/null)}"
+    BGM_LIB="${BGM_LIB:-workspace/bgm}"  # data_paths 失败回退相对路径（向后兼容）
 
     STYLE_TAG=$(python -c "
 import json, re

@@ -1,8 +1,8 @@
 # /clipforge-switch-workspace — 切换 ClipForge 工作目录
 
-切换 ClipForge 的工作目录（视频输出 / evolution / 播放数据落哪里）。写入 `~/.claude/clipforge-config.json` 的 `workspace_default`，作为「非 git 目录」时的兜底默认。
+切换 ClipForge 的工作目录（视频输出 / evolution / 播放数据落哪里）。写入 `~/.claude/clipforge-config.json` 的 `workspace_default`，**优先级高于 git**——设置后在任何目录（含 git 项目内）跑命令都用此工作目录。
 
-> **日常无需此命令**：在 git 项目内跑 `/clipforge` 等命令时，工作目录自动用当前项目根（data_paths 四级回退第 2 级 git rev-parse）。本命令仅用于设「非 git 兜底默认」或显式指定。
+> **三种工作目录形态**：①技能装用户级 + 显式指定工作目录；②技能装项目级 + 显式指定（本命令）；③技能装项目级 + 不设置，默认用当前项目根下的 workspace。data_paths 回退顺序：`env > config(本命令) > git(当前项目) > cwd`，config 优先于 git。
 
 ## 用法
 
@@ -23,7 +23,7 @@ if not target:
 resolved = set_workspace_default(target)
 print(f'✅ 工作目录默认已切换为: {resolved}')
 print(f'   写入: {USER_CONFIG}')
-print(f'   说明: git 项目内跑命令仍用该项目（git 优先）；非 git 目录用此默认')
+print(f'   说明: config 优先于 git，所有场景（含 git 项目内）生效；未设置时才用当前项目下 workspace')
 " "\$@"
 ```
 
@@ -34,4 +34,4 @@ print(f'   说明: git 项目内跑命令仍用该项目（git 优先）；非 g
 
 ## 验证
 
-切换后，下次在**非 git 目录**跑 `/clipforge-feedback` 时，工作目录用新默认；在 git 项目内跑则仍用该项目（git 优先）。
+切换后，下次在任何目录（含 git 项目内）跑 `/clipforge` 等命令时，工作目录都用新默认（config 优先于 git）。清空 config 才回退到当前项目下 workspace。
