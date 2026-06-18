@@ -243,6 +243,33 @@ def _read_injected(proj_dir: Path) -> list[str]:
         return []
 
 
+def _read_score_freshness(proj_dir: Path) -> float | None:
+    """读项目 score_report.json 的 freshness_score（项3 学习层数据源）。"""
+    try:
+        sr = json.loads((proj_dir / "score_report.json").read_text("utf-8"))
+        return (sr.get("freshness") or {}).get("freshness_score")
+    except Exception:
+        return None
+
+
+def _write_freshness_feedback(analysis: dict) -> None:
+    """写 freshness 学习层反馈（供 exploration.decide 读，调 explore/exploit）。B 闭环。"""
+    try:
+        import yaml
+        from engine.lib.data_paths import auto_patterns_dir
+        fp = auto_patterns_dir().parent / "freshness_feedback.yaml"
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "recommendation": analysis.get("recommendation"),
+            "fresh_but_low_ratio": analysis.get("fresh_but_low_ratio"),
+            "similar_but_high_ratio": analysis.get("similar_but_high_ratio"),
+            "sample_size": analysis.get("sample_size"),
+        }
+        fp.write_text(yaml.dump(payload, allow_unicode=True, default_flow_style=False), encoding="utf-8")
+    except Exception as e:
+        print(f"[auto_evolve] freshness_feedback 写入失败: {e}", file=sys.stderr)
+
+
 def _make_delta(operation, source, confidence, target_rule_id=None,
                 new_rule_raw=None, modified_fields=None, reason=None,
                 rules=None, traces=None, observation_days=3) -> dict:
@@ -344,6 +371,7 @@ class AutoEvolve:
                 "narration_attrs": narr["attrs"],
                 "snapshots": data.get("snapshots", []),
                 "injected": _read_injected(proj),
+                "freshness": _read_score_freshness(proj),
             })
 
         # ── 各平台 plays 池（分位数排名，消除平台量级差异）──
@@ -396,6 +424,44 @@ class AutoEvolve:
         self.market_avg = round(statistics.mean(p["reach_composite"] for p in valid), 4) if valid else 0.0
 
         insights: dict = {"valid_count": len(valid), "market_avg_reach": self.market_avg}
+
+        # ── 项3: freshness_signal 学习层（机制就位，数据驱动；<min_samples 空转）──
+        # freshness 高=explore(冷门维度)，低=exploit。reach_composite 为受众广度(0-1)。
+        # 高freshness+低reach=explore方向错 → analyze 建议收敛 explore 目标维度。
+        # 注：只迭代 valid（n_platforms>0，即发布且有播放数据）项目——freshness 需配对
+        # 播放数据才有学习意义，未发布项目的 freshness 不纳入（样本量 = 发布项目子集）。
+        # outcome 用 reach_composite（跨项目百分位）近似，非 calibrate 的 causes（单项目绝对
+        # 阈值）——两层诊断口径有意不同：本层跨项目消除平台量级差异，calibrate 单项目精确。两者
+        # 自洽，不互相依赖（本层产 recommendation 喂 exploration，calibrate 产 signal 喂 collect）。
+        try:
+            from engine.freshness import analyze_freshness_signals
+            fr_signals: list[dict] = []
+            for p in valid:
+                fs = p.get("freshness")
+                reach = p.get("reach_composite", 0)
+                if fs is None:
+                    continue
+                if fs >= 0.7 and reach < 0.3:
+                    sig = "FRESH_BUT_LOW_PLAYS"
+                elif fs < 0.3 and reach >= 0.5:
+                    sig = "SIMILAR_BUT_HIGH_PLAYS"
+                else:
+                    sig = "ALIGNED"
+                fr_signals.append({"calibration": {"freshness_signal": {"signal": sig}}})
+            fr_analysis = analyze_freshness_signals(fr_signals)
+            insights["freshness_analysis"] = fr_analysis
+            if fr_analysis.get("recommendation"):
+                self._log(f"  ⚠ freshness 学习层建议: {fr_analysis['recommendation']}"
+                          f"（fresh_but_low={fr_analysis.get('fresh_but_low_ratio')},"
+                          f" similar_but_high={fr_analysis.get('similar_but_high_ratio')},"
+                          f" N={fr_analysis.get('sample_size')}）"
+                          f" → 已写 freshness_feedback，exploration 将收窄 explore")
+                _write_freshness_feedback(fr_analysis)  # B 闭环：写反馈供 exploration.decide 读
+            else:
+                self._log(f"  freshness 学习层: {fr_analysis.get('note') or '无校准建议'}"
+                          f"（N={fr_analysis.get('sample_size')}）")
+        except Exception as e:
+            self._log(f"  freshness 学习层跳过: {e}")
 
         # ── 维度1: 题材分析（reach_composite 受众广度信号）──
         topic_groups = defaultdict(list)

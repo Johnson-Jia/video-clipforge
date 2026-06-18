@@ -281,13 +281,15 @@ def generate_injection(
                 lines.append(f"- {prefix}{m['text']}")
             lines.append("")
 
-    # Guard Red Flags（仅 STRICT 注入）
-    if rigor == Rigor.STRICT and skill and skill.guard_red_flags:
+    # Guard Red Flags（ALL 注入——认知守卫对所有调度 LLM 普遍生效，无死声明）
+    # 注：全量注入是密度代价（如 stage6 17 条守卫占 inject prompt ~21%），但每条 red_flags
+    # 都有独占认知价值（gate 事后拦截无法替代的"事前反合理化"），收益 > token 成本，非冗余。
+    if skill and skill.guard_red_flags:
         lines.append("## 行为守卫（当以下念头出现时，立即 STOP）")
-        lines.append("| 当你产生这个念头 | 现实是 |")
-        lines.append("|---|---|")
+        lines.append("| 当你产生这个念头 | 现实是 | 触发场景 |")
+        lines.append("|---|---|---|")
         for rf in skill.guard_red_flags:
-            lines.append(f"| {rf.get('thought', '')} | {rf.get('reality', '')} |")
+            lines.append(f"| {rf.get('thought', '')} | {rf.get('reality', '')} | {rf.get('trigger', '')} |")
         lines.append("任何 Red Flag 触发 → 暂停当前行为，回到约束检查。\n")
 
     # spirit_vs_letter LETTER 声明（STANDARD+ 注入，协议域核心约束）
@@ -367,6 +369,13 @@ def generate_injection(
 
 
 def main():
+    # 防 Windows GBK：inject 输出含中文（red_flags/规则正向重述），强制 UTF-8 供 cron SubAgent 正确读取
+    # 放 main 内（非模块顶层）——避免 import inject 时副作用改调用方 stdout
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
     parser = argparse.ArgumentParser(description="ClipForge 注入生成器")
     parser.add_argument("--skill", required=True)
     parser.add_argument("--category", default=None)

@@ -1,6 +1,7 @@
 """规则文件解析器 — 加载 YAML 规则文件和 Skill 声明。"""
 from __future__ import annotations
 import json
+import sys
 import yaml
 from pathlib import Path
 from .models import (
@@ -59,7 +60,16 @@ def load_rules_from_file(filepath: Path) -> list[Rule]:
         data = yaml.safe_load(f)
     if not data or "rules" not in data:
         return []
-    return [parse_rule(r) for r in data["rules"]]
+    # 过滤 parse_rule 解析失败返回 None 的规则（防 None 入库致 strong_attribution 等消费方 NoneType）
+    parsed: list[Rule] = []
+    for r in data["rules"]:
+        rule = parse_rule(r)
+        if rule is None:
+            rid = r.get("id", "?") if isinstance(r, dict) else str(r)
+            print(f"[rule_parser] 跳过解析失败的规则 ({filepath.name}): {rid}", file=sys.stderr)
+            continue
+        parsed.append(rule)
+    return parsed
 
 
 def load_all_rules(rules_dir: Path | None = None) -> list[Rule]:

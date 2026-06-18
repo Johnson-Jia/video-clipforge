@@ -168,6 +168,41 @@ def compute_freshness(project_dir, history_n: int = 10) -> dict:
     }
 
 
+def analyze_freshness_signals(feedback_results: list[dict], min_samples: int = 5) -> dict:
+    """聚合 feedback_results 的 freshness_signal，产出 exploration 校准建议。
+
+    freshness 高 = explore（冷门维度），低 = exploit（最强经验）。若 FRESH_BUT_LOW_PLAYS
+    频发，说明 explore 方向错（冷门选题不吸引）→ 建议收敛 explore 目标维度。
+    数据不足（<min_samples）时空转，避免冷启动误判。
+
+    Args:
+        feedback_results: collect_performance 产出，每条含 calibration.freshness_signal.signal
+        min_samples: 最小样本数，低于此返回 None recommendation
+    """
+    signals = []
+    for fr in feedback_results:
+        fsig = ((fr.get("calibration") or {}).get("freshness_signal") or {})
+        sig = fsig.get("signal")
+        if sig:
+            signals.append(sig)
+    if len(signals) < min_samples:
+        return {"sample_size": len(signals), "recommendation": None, "note": "数据不足，空转"}
+
+    fresh_low = sum(1 for s in signals if s == "FRESH_BUT_LOW_PLAYS") / len(signals)
+    similar_high = sum(1 for s in signals if s == "SIMILAR_BUT_HIGH_PLAYS") / len(signals)
+    recommendation = None
+    if fresh_low >= 0.4:
+        recommendation = "NARROW_EXPLORE"
+    elif similar_high >= 0.4:
+        recommendation = "REVIEW_FRESHNESS_WEIGHT"
+    return {
+        "sample_size": len(signals),
+        "fresh_but_low_ratio": round(fresh_low, 2),
+        "similar_but_high_ratio": round(similar_high, 2),
+        "recommendation": recommendation,
+    }
+
+
 def recent_context(project_dir, n: int = 5) -> dict:
     """近 n 期历史摘要（供 inject 注入，引导 LLM 避开同质化）。
 

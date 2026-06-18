@@ -77,6 +77,9 @@ def apply_delta_to_rules(rules: list[Rule], delta: dict) -> list[Rule]:
     elif op == "MODIFIED" and target and "modified_fields" in d:
         for i, r in enumerate(result):
             if r.id == target:
+                # P6 保护：SAFETY 规则不可被 MODIFIED 改写（与 REMOVED/DEPRECATED 保护对齐）
+                if r.rule_class == RuleClass.SAFETY:
+                    continue
                 for field, new_val in d["modified_fields"].items():
                     if hasattr(r, field):
                         setattr(r, field, new_val)

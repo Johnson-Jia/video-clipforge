@@ -88,6 +88,8 @@ def strong_attribution(violation: dict, rules: list[Rule]) -> dict:
     violation_pattern = violation.get("details", violation.get("rule_pattern", ""))
 
     for rule in rules:
+        if rule is None:
+            continue
         if violation.get("rule_id", "").endswith(rule.id):
             return {
                 "layer": "STRONG",
@@ -98,6 +100,8 @@ def strong_attribution(violation: dict, rules: list[Rule]) -> dict:
                 "confidence": 1.0,
             }
 
+        if rule.detection is None:
+            continue  # ID 未匹配且 detection 缺失：keyword 归因分支无法执行，跳过（ID 已查过，等价原始 ID 优先）
         guardrail = rewrite_rule(rule)["guardrail"]
         if guardrail and any(kw in violation_pattern for kw in rule.detection.keywords):
             return {
@@ -612,6 +616,21 @@ def calibrate_machine_scoring(
             "detail": f"机器低估（{prediction}→{outcome}），{target} 可能过严",
         }
 
+    # 方案甲：freshness 维度独立诊断（不影响 verdict/Delta，零回归）
+    # freshness 进评分(gate.py overall_score)却原本不进校准——此信号补上反馈通路
+    fs = (score_report.get("freshness") or {}).get("freshness_score")
+    if fs is None:
+        freshness_signal = {"freshness_score": None, "signal": "NO_DATA", "note": "score_report 无 freshness 数据"}
+    elif fs >= 0.7 and outcome == "LOW":
+        freshness_signal = {"freshness_score": fs, "signal": "FRESH_BUT_LOW_PLAYS",
+            "note": "高新鲜度但实际表现低——新鲜度策略未转化为播放，校准选题/钩子吸引力"}
+    elif fs < 0.3 and outcome == "HIGH":
+        freshness_signal = {"freshness_score": fs, "signal": "SIMILAR_BUT_HIGH_PLAYS",
+            "note": "低新鲜度（高度同质化）但表现高——新鲜度权重可复核"}
+    else:
+        freshness_signal = {"freshness_score": fs, "signal": "ALIGNED",
+            "note": "freshness 与表现方向一致"}
+
     return {
         "machine_prediction": prediction,
         "actual_outcome": outcome,
@@ -620,6 +639,7 @@ def calibrate_machine_scoring(
         "action": action,
         "delta_path": delta_path,
         "requires_human_review": verdict != "CONSISTENT",
+        "freshness_signal": freshness_signal,
     }
 
 

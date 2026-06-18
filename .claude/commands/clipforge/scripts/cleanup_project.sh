@@ -18,6 +18,8 @@ PROJECT_DIR=""
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
+    --project-dir) ;;                          # 标志形式：值由下一参数提供（走 * 分支）
+    --project-dir=*) PROJECT_DIR="${arg#--project-dir=}" ;;  # 等号形式
     *) [ -z "$PROJECT_DIR" ] && PROJECT_DIR="$arg" ;;
   esac
 done

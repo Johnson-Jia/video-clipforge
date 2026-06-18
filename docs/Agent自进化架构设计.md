@@ -639,7 +639,7 @@ preferences:
 | 维度 | LITE | STANDARD | STRICT |
 |------|------|----------|--------|
 | **适用场景** | 低风险、高频、简单任务 | 通用场景（默认） | 高风险、合规敏感、新 Skill 上线 |
-| **约束注入** | 仅 HARD 规则注入 | 全量注入（正向重述 + 经验模式） | 全量注入 + Guard 守卫完整加载 |
+| **约束注入** | HARD 规则 + Guard red_flags | 全量注入（正向重述 + 经验模式 + Guard red_flags） | 全量注入 + Guard 守卫完整加载（含 spirit_vs_letter SPIRIT） |
 | **门禁评估** | 仅 HARD Gate | HARD + SOFT Gate | HARD + SOFT + 人工复核（首次 N 条） |
 | **轨迹采集** | SUMMARY | FULL（可降级为 SUMMARY） | FULL（不可降级） |
 | **归因** | 仅强归因（自动） | 双层归因（强 + 弱） | 双层归因 + 归因审计 |

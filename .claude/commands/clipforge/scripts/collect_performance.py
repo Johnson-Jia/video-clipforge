@@ -994,6 +994,7 @@ def run_feedback_loop(
                     "outcome": cal.get("actual_outcome"),
                     "diagnosis": cal.get("diagnosis"),
                     "delta_path": cal.get("delta_path"),
+                    "freshness_signal": cal.get("freshness_signal"),
                 }
             except Exception as e:
                 cal_summary = {"error": str(e)}

@@ -48,7 +48,7 @@ def _seed(project_dir: str, date_str: str) -> int:
 
 
 def decide(project_dir: str, date_str: str, category: str = "github",
-           patterns_dir: Path | None = None) -> dict:
+           patterns_dir: Path | None = None, freshness_feedback: dict | None = None) -> dict:
     """决定本次视频 explore/exploit + 选中的 target_patterns（只处理 seed:false 的 auto pattern）。
 
     explore：选 sample_size 最低的 active pattern（主动采集冷门维度数据）
@@ -78,7 +78,11 @@ def decide(project_dir: str, date_str: str, category: str = "github",
         })
     seed = _seed(project_dir, date_str)
     rng = random.Random(seed)
-    is_explore = rng.random() < EPSILON
+    # freshness 学习层反馈：NARROW_EXPLORE（近期高freshness低播放）→ 收窄冷门探索 ε
+    effective_epsilon = EPSILON
+    if freshness_feedback and freshness_feedback.get("recommendation") == "NARROW_EXPLORE":
+        effective_epsilon = EPSILON * 0.5
+    is_explore = rng.random() < effective_epsilon
     if is_explore:
         chosen = sorted(candidates, key=lambda p: p["sample_size"])[:TOP_N]
         mode = "explore"
@@ -96,17 +100,30 @@ def decide(project_dir: str, date_str: str, category: str = "github",
     return {
         "mode": mode,
         "seed": seed,
-        "epsilon": EPSILON,
+        "epsilon": effective_epsilon,
         "norm_path": _norm_path(project_dir),
         "date": date_str,
         "target_patterns": target_patterns,
     }
 
 
+def _read_freshness_feedback() -> dict | None:
+    """读 auto_evolve 产的 freshness 学习层反馈（workspace/evolution/freshness_feedback.yaml）。"""
+    try:
+        import yaml
+        fp = PATTERNS_DIR.parent / "freshness_feedback.yaml"
+        if fp.exists():
+            return yaml.safe_load(fp.read_text("utf-8"))
+    except Exception:
+        pass
+    return None
+
+
 def write_directive(project_dir: str, date_str: str, category: str = "github") -> Path:
     """生成 exploration_directive.yaml 写入项目目录。"""
     import yaml
-    result = decide(project_dir, date_str, category)
+    result = decide(project_dir, date_str, category,
+                    freshness_feedback=_read_freshness_feedback())
     proj = Path(project_dir)
     proj.mkdir(parents=True, exist_ok=True)
     fp = proj / "exploration_directive.yaml"

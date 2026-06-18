@@ -3857,8 +3857,8 @@ def _run_single_skill(args) -> None:
             gate_report=gate_dict,
             rigor=skill.rigor_level.value,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[gate] trace 记录失败（不影响门禁）: {e}", file=sys.stderr)
 
     # ── Auto attribution: HARD 失败时自动强归因（反馈层）──
     attribution_results = []
@@ -3874,8 +3874,8 @@ def _run_single_skill(args) -> None:
                 )
                 if attr.get("matched_rule"):
                     attribution_results.append(attr)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[gate] 自动归因失败（不影响门禁，HARD 判定已生效）: {e}", file=sys.stderr)
 
     output = {
         "hard_passed": report.hard_passed,
