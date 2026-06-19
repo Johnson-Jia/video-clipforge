@@ -96,6 +96,8 @@ _CUSTOM_PHRASES = {
     '长线': [['cháng'], ['xiàn']],
     '长河': [['cháng'], ['hé']],
     '长途': [['cháng'], ['tú']],
+    # ── 长(cháng) 时间 — 防 edge-tts 读成 zhǎng(长大)；长任务由 _LONG_AS_CHANG_RE 替换为"常任务" ──
+    '长时间': [['cháng'], ['shí'], ['jiān']],
 }
 
 # ── 多音字替换映射 ──
@@ -216,7 +218,7 @@ _NUMERIC_ROW_RE = re.compile(r'(\d+)\s*(多?)行')
 _CN_NUM_CHARS = '一二三四五六七八九十百千万亿两零'
 _CN_NUMERIC_ROW_RE = re.compile(f'([{_CN_NUM_CHARS}]+)行')
 # 长→常：仅限已知 edge-tts 会把长读成 zhǎng 的上下文
-_LONG_AS_CHANG_RE = re.compile(r'长(视频|篇|文|尾|期|线|河|途)')
+_LONG_AS_CHANG_RE = re.compile(r'长(视频|篇|文|尾|期|线|河|途|任务)')
 # 周期长→周期常（长作后缀，edge-tts 读成 zhǎng）
 _PERIOD_LONG_AS_CHANG_RE = re.compile(r'(周期)长')
 
