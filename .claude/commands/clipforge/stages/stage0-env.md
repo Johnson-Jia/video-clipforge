@@ -13,22 +13,26 @@ if [ -f "workspace/.env-checked" ]; then
 fi
 ```
 
-## 工作目录检测（技能 install 用户级时）
+## 工作目录检测
 
-技能可 install 到用户级 `~/.claude/`，工作目录（视频输出/evolution）由 data_paths 四级回退定位（`CLIPFORGE_WORKSPACE` env > git rev-parse > `~/.claude/clipforge-config.json` > cwd）：
+技能可 install 到用户级 `~/.claude/`，工作目录（视频输出/evolution）由 data_paths 四级回退定位（`CLIPFORGE_WORKSPACE` env > `~/.claude/clipforge-config.json` workspace_default > `git rev-parse` 当前项目 > cwd）。**config 优先于 git**——用户用 /clipforge-switch-workspace 显式指定的优先于自动推断。
+
+走 data_paths 统一定位（与 env_check/bgm/cleanup 等脚本同源，避免各脚本顺序不一致）：
 
 ```bash
-WS="${CLIPFORGE_WORKSPACE:-$(git rev-parse --show-toplevel 2>/dev/null)}"
-[ -z "$WS" ] && [ -f "$HOME/.claude/clipforge-config.json" ] && WS=$(python -c "import json;print(json.load(open('$HOME/.claude/clipforge-config.json'))['workspace_default'])" 2>/dev/null)
-[ -z "$WS" ] && WS="$(pwd)"
-echo "工作目录: $WS"
-if [ -z "$CLIPFORGE_WORKSPACE" ] && [ -z "$(git rev-parse --show-toplevel 2>/dev/null)" ] && [ ! -f "$HOME/.claude/clipforge-config.json" ]; then
-  echo "⚠ 非 git 目录且无配置默认。建议运行 /clipforge-switch-workspace <项目路径> 设默认，否则视频输出落 cwd。"
+source "$HOME/.claude/commands/clipforge/shared/clipforge-env.sh" 2>/dev/null || source "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/commands/clipforge/shared/clipforge-env.sh"
+WS_ROOT="$(python -c "from engine.lib.data_paths import resolve_workspace_root; print(resolve_workspace_root())" 2>/dev/null)"
+echo "工作目录: $WS_ROOT/workspace"
+# 引导：未显式配置时告知可切换（git 项目内/非 git 都提示选项）
+WS_CFG="$(python -c "from engine.lib.data_paths import get_config; print(get_config().get('workspace_default',''))" 2>/dev/null)"
+if [ -z "$CLIPFORGE_WORKSPACE" ] && [ -z "$WS_CFG" ]; then
+  echo "💡 当前工作目录: $WS_ROOT/workspace（未显式配置，按 env>config>git>cwd 回退到 $WS_ROOT）"
+  echo "   如需改到别处，运行 /clipforge-switch-workspace <绝对路径>"
 fi
 ```
 
-- **git 项目内**：工作目录 = 当前项目根（cd 即切换），无需配置。
-- **非 git + 无配置**：提示跑 `/clipforge-switch-workspace`。
+- **git 项目内**：工作目录 = 当前项目根（cd 即切换）；仍可用 /clipforge-switch-workspace 改到别处。
+- **非 git + 无配置**：落 cwd，建议跑 `/clipforge-switch-workspace` 显式指定。
 
 ## 依赖清单
 

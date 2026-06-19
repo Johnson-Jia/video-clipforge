@@ -2,8 +2,8 @@
 
 路径定位（四级回退，支持技能 install 到用户级 ~/.claude/）：
   1. CLIPFORGE_WORKSPACE 环境变量（临时覆盖，测试/CI）
-  2. git rev-parse --show-toplevel（项目内自动，cd 即切换工作目录）
-  3. ~/.claude/clipforge-config.json 的 workspace_default（非 git 兜底）
+  2. ~/.claude/clipforge-config.json 的 workspace_default（用户显式指定，优先于 git）
+  3. git rev-parse --show-toplevel（项目内自动，cd 即切换工作目录）
   4. cwd
 
 技能目录 CLIPFORGE_ROOT 由 __file__ 自定位（用户级/项目级自适应），与工作目录解耦。

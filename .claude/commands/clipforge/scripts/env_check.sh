@@ -6,18 +6,23 @@
 
 set -e
 
-# ── 定位仓库根（不依赖调用方 cwd）──
-# 脚本路径: <repo-root>/.claude/commands/clipforge/scripts/env_check.sh
-# 历史 bug：脚本用相对路径（.agents/skills/、workspace/）检查与安装，
-# 若调用时 cwd 非仓库根，npx skills add 会在错误目录创建 HyperFrames
-# （表现为 HyperFrames 装到 clipforge/ 子目录下）。此处强制 cd 到仓库根。
+# ── 定位技能目录 + 工作目录（走 data_paths，与 bgm/cleanup 等 20+ 脚本同源）──
+# 技能目录 = scripts/..（含 schema.yaml/engine）；工作目录 = data_paths 四级回退
+# （CLIPFORGE_WORKSPACE > config workspace_default > git rev-parse > cwd）
+# 历史 bug：曾用 SCRIPT_DIR/../../../.. 推 REPO_ROOT，用户级 install（脚本在 ~/.claude）
+# 时推成 ~（home），导致 workspace/HyperFrames 落错位置。改走 data_paths 统一定位。
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-if [ ! -f "$REPO_ROOT/.claude/commands/clipforge/schema.yaml" ]; then
-  echo "FATAL: 无法定位仓库根（$REPO_ROOT 无 .claude/commands/clipforge/schema.yaml）"
+CF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"  # clipforge 技能目录
+if [ ! -f "$CF_DIR/schema.yaml" ]; then
+  echo "FATAL: 无法定位技能目录（$CF_DIR 无 schema.yaml）"
   exit 1
 fi
-cd "$REPO_ROOT"
+WORKSPACE_ROOT="$(cd "$CF_DIR" && PYTHONUTF8=1 python -c "from engine.lib.data_paths import resolve_workspace_root; print(resolve_workspace_root())" 2>/dev/null)"
+if [ -z "$WORKSPACE_ROOT" ]; then
+  WORKSPACE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+fi
+cd "$WORKSPACE_ROOT"
+echo "工作目录: $WORKSPACE_ROOT"
 
 MARKER="workspace/.env-checked"
 

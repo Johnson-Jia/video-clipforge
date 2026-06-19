@@ -43,8 +43,29 @@ fi
 if [ "$MODE" = "--global" ]; then
   TARGET_DIR="$HOME/.claude/commands"
   echo "🌍 安装模式: 全局 ($TARGET_DIR)"
-  echo "   注：工作目录（视频输出）由 git rev-parse 自动定位当前项目，cd 即切换"
-  echo "   非 git 目录用 /clipforge-switch-workspace <路径> 设默认"
+  echo "   全局安装不绑定项目，需要指定工作目录（视频/evolution/播放数据落处）"
+  # 引导设置工作目录默认（tty 交互；curl|bash 非 tty 时只提示）
+  WS_INPUT=""
+  if [ -t 0 ]; then
+    read -p "   请输入工作目录绝对路径（回车跳过）: " WS_INPUT
+  fi
+  if [ -n "$WS_INPUT" ]; then
+    WS_RESOLVED="$(cd "$WS_INPUT" 2>/dev/null && pwd || echo "$WS_INPUT")"
+    mkdir -p "$HOME/.claude"
+    python - "$WS_RESOLVED" <<'PYEOF'
+import json, sys, datetime
+from pathlib import Path
+cfg_path = Path.home()/'.claude'/'clipforge-config.json'
+cfg = json.loads(cfg_path.read_text(encoding='utf-8')) if cfg_path.exists() else {}
+cfg['workspace_default'] = sys.argv[1]
+cfg['configured_at'] = datetime.datetime.now().isoformat()
+cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+print(f"   ✅ 工作目录默认: {cfg['workspace_default']}")
+PYEOF
+  else
+    echo "   未设置（curl 管道或跳过）。首次用时按 env>config>git>cwd 回退。"
+    echo "   建议稍后运行 /clipforge-switch-workspace <路径> 显式指定"
+  fi
 elif [ "$MODE" = "--copy-only" ]; then
   TARGET_DIR=".claude/commands"
   echo "📋 安装模式: 仅复制文件，跳过依赖安装"
