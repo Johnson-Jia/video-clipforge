@@ -527,3 +527,11 @@ components:
     emotion_range: [anticipation, energy, dynamism]
     visual_density: standard
     complexity: css-only
+
+  - name: nest_tree
+    layer: content
+    file: content/nest_tree.html
+    tags: [nest, tree, hierarchy, level, tier, parent-child, architecture, object-model, directory, inheritance, containment, layered]
+    emotion_range: [analysis, depth, structure, clarity]
+    visual_density: standard
+    complexity: css-only

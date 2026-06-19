@@ -1,0 +1,88 @@
+<!--
+@ComponentMeta
+name: nest_tree
+layer: content
+tags: [nest, tree, hierarchy, level, tier, parent-child, architecture, object-model, directory, inheritance, containment, layered]
+emotion_range: [analysis, depth, structure, clarity]
+visual_density: standard
+complexity: css-only
+description: 嵌套层级树——展示父子/包含关系（架构对象模型、目录树、类继承链、分类层级、组织结构）。⛔对齐范式：padding-left 全层统一（内容左对齐，绝不随深度递增导致阶梯倾斜），嵌套深度用背景色梯度（深→浅）+ 左边框颜色 + L 标签三维表达。历史教训：padding-left 随 depth 递增（22→52→82→112）会让内容阶梯倾斜，已弃用。
+parameters:
+  levels: { default: 4, range: [2, 6] }
+/ComponentMeta
+-->
+<!-- HTML -->
+<div class="nest-tree">
+  <!-- 层级 1 — 顶层（最深背景）。用法：替换 nt-name/nt-desc 为实际内容，增删 nt-tier 调整层数，data-depth 标层级 -->
+  <div class="nt-tier" data-depth="1">
+    <span class="nt-level">L1</span>
+    <span class="nt-name">parent</span>
+    <span class="nt-desc">顶层容器</span>
+  </div>
+  <!-- 层级 2 -->
+  <div class="nt-tier" data-depth="2">
+    <span class="nt-level">L2</span>
+    <span class="nt-name">child</span>
+    <span class="nt-desc">子节点</span>
+  </div>
+  <!-- 层级 3 -->
+  <div class="nt-tier" data-depth="3">
+    <span class="nt-level">L3</span>
+    <span class="nt-name">grandchild</span>
+    <span class="nt-desc">孙节点</span>
+  </div>
+  <!-- 层级 4 — 叶层（最浅背景）-->
+  <div class="nt-tier" data-depth="4">
+    <span class="nt-level">L4</span>
+    <span class="nt-name">leaf</span>
+    <span class="nt-desc">叶节点</span>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+/* ⛔ 对齐范式（务必遵守）：padding-left 全层统一 22px（内容左对齐），嵌套深度用
+   背景色梯度（depth 1 深 → 4 浅）+ border-left 颜色 + data-depth 标签表达。
+   历史教训：padding-left 随 depth 递增（如 22→52→82→112）会导致内容阶梯倾斜，
+   盒子 margin 递增会导致整体倾斜——两者都已弃用。改内容对齐 + 背景梯度。 */
+.nest-tree {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  width: 100%; max-width: 820px;
+}
+.nt-tier {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  padding: 14px 22px; border-radius: 13px; box-sizing: border-box;
+}
+.nt-tier .nt-level {
+  font-family: var(--font-data, 'JetBrains Mono', monospace);
+  font-size: 32px; font-weight: 800; min-width: 72px;
+  padding: 6px 0; text-align: center; border-radius: 9px;
+}
+.nt-tier .nt-name {
+  font-family: var(--font-data, 'JetBrains Mono', monospace);
+  font-size: 38px; font-weight: 800; color: #fff; flex: 1; text-align: left;
+}
+.nt-tier .nt-desc {
+  font-size: 32px; color: var(--text-secondary, #9CA3AF);
+}
+/* 层级配色：L1 冷色深背景 → L4 暖色浅背景（梯度表达嵌套深度，内容左对齐不变）*/
+.nt-tier[data-depth="1"] { background: rgba(0,255,163,0.16); border-left: 5px solid var(--accent-cool, #00ff66); }
+.nt-tier[data-depth="1"] .nt-level { background: rgba(0,255,163,0.22); color: var(--accent-cool, #00ff66); }
+.nt-tier[data-depth="2"] { background: rgba(57,208,216,0.12); border-left: 5px solid var(--accent-cool-2, #39D0D8); }
+.nt-tier[data-depth="2"] .nt-level { background: rgba(57,208,216,0.20); color: var(--accent-cool-2, #39D0D8); }
+.nt-tier[data-depth="3"] { background: rgba(255,179,0,0.09); border-left: 5px solid var(--accent-warm, #FFB300); }
+.nt-tier[data-depth="3"] .nt-level { background: rgba(255,179,0,0.20); color: var(--accent-warm, #FFB300); }
+.nt-tier[data-depth="4"] { background: rgba(255,143,0,0.07); border-left: 5px solid var(--accent-warm-2, #FF8F00); }
+.nt-tier[data-depth="4"] .nt-level { background: rgba(255,143,0,0.18); color: var(--accent-warm-2, #FF8F00); }
+/* depth ≥5 兜底（继续暖色淡化，支持更深嵌套扩展）*/
+.nt-tier[data-depth="5"], .nt-tier[data-depth="6"] { background: rgba(255,143,0,0.05); border-left: 5px solid var(--accent-warm-2, #FF8F00); }
+.nt-tier[data-depth="5"] .nt-level, .nt-tier[data-depth="6"] .nt-level { background: rgba(255,143,0,0.14); color: var(--accent-warm-2, #FF8F00); }
+</style>
+
+<!-- JS (GSAP) -->
+<script>
+// 逐层揭示：tier 左滑入 → level 标签弹出 → name 淡入
+tl.from('.nt-tier', {opacity:0, x:-30, duration:0.35, ease:'power2.out', stagger:0.15}, startTime)
+  .from('.nt-level', {scale:0, opacity:0, duration:0.3, ease:'back.out(1.4)', stagger:0.15}, startTime + 0.2)
+  .from('.nt-name', {opacity:0, x:20, duration:0.3, ease:'power2.out', stagger:0.15}, startTime + 0.3);
+</script>
