@@ -2248,6 +2248,12 @@ def check_douyin_platforms_complete(project_dir: Path, params: dict) -> tuple[bo
             if not re.search(r"收藏|存下来|先存|备用", platform_text):
                 issues.append(f"小红书文案缺少收藏引导（需包含'收藏备用''值得存下来'等）")
 
+        # 3f. 正文完整性（标题 + 正文 + 标签三件套，stage7-delivery.md L218）
+        # 正文 = 标题之后、去掉纯 #标签 行后的实质内容；只有标题+标签无正文则拦
+        body_lines = [l for l in non_empty[1:] if re.sub(r'#\S+', '', l).strip()]
+        if len(body_lines) < 1:
+            issues.append(f"{platform_name}只有标题和标签，缺少正文（须标题+正文+标签三件套）")
+
     # ── 4. 评论区自评段 ──
     has_comment_section = (
         "## 评论区自评" in content or
