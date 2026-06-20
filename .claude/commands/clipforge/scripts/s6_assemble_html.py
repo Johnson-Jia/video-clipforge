@@ -369,7 +369,7 @@ def resolve_font_files(family, assets, cache, downloader=None):
         else:
             p = cache / rel[len("cache/"):]
         if p.exists():
-            found.append((p, weight))
+            found.append((p, weight, ""))
     if found:
         return found
     # 2. 字体目录（env > config.json，参照工作目录回退——data_paths.get_fonts_dir）
@@ -397,7 +397,7 @@ def _find_local_fonts(local_dir, family):
             continue
         name = f.stem.lower().replace(" ", "").replace("-", "").replace("_", "")
         if key in name or name in key:
-            matches.append((f, _infer_weight(f.name)))
+            matches.append((f, _infer_weight(f.name), ""))
     return matches
 
 
@@ -421,9 +421,27 @@ def _infer_weight(name):
     return 400
 
 
-def _ensure_font_in_cache(family, cache):
-    """从 Google Fonts 下载 family 的 woff2 到 cache/family/，返回 [(path, weight)]。
+def _parse_google_fonts_css(css):
+    """解析 Google Fonts CSS → [(weight, url, unicode_range)]。
 
+    中文字体分段（同 weight 多 unicode-range 切片），保留所有切片不覆盖。
+    旧逻辑 dest 用 {weight}-normal.woff2 导致同 weight 多切片互相覆盖，只留 1 个 → 缺字。
+    """
+    results = []
+    for block in re.finditer(r'@font-face\s*\{([^}]+)\}', css):
+        text = block.group(1)
+        w = re.search(r'font-weight:\s*(\d+)', text)
+        s = re.search(r'src:\s*url\((https://[^)]+\.woff2)\)', text)
+        u = re.search(r'unicode-range:\s*([^;]+);', text)
+        if w and s:
+            results.append((int(w.group(1)), s.group(1), (u.group(1).strip() if u else "")))
+    return results
+
+
+def _ensure_font_in_cache(family, cache):
+    """从 Google Fonts 下载 family 的 woff2 切片到 cache/family/，返回 [(path, weight, unicode_range)]。
+
+    中文字体分段（同 weight 多 unicode-range 切片），唯一命名 weight-idx 避免覆盖。
     克隆者首次渲染自动下载。网络失败 → 返回空（调用方降级 fallback 字体）。
     """
     import urllib.request
@@ -439,15 +457,12 @@ def _ensure_font_in_cache(family, cache):
         css = urllib.request.urlopen(req, timeout=15).read().decode("utf-8")
         results = []
         cache_sub.mkdir(parents=True, exist_ok=True)
-        for m in re.finditer(r'font-weight:\s*(\d+).*?src:\s*url\((https://[^)]+\.woff2)\)',
-                             css, re.DOTALL):
-            weight = int(m.group(1))
-            url = m.group(2)
-            dest = cache_sub / f"{weight}-normal.woff2"
+        for idx, (weight, url, unicode_range) in enumerate(_parse_google_fonts_css(css)):
+            dest = cache_sub / f"{weight}-{idx}-normal.woff2"
             if not dest.exists():
                 data = urllib.request.urlopen(url, timeout=30).read()
                 dest.write_bytes(data)
-            results.append((dest, weight))
+            results.append((dest, weight, unicode_range))
         return results
     except Exception:
         return []
@@ -476,14 +491,15 @@ def build_font_faces(creative_dir: Path, script_dir: Path) -> str:
     for layer in ("title", "body", "data"):
         family = fonts.get(layer, {}).get("family", "")
         if family and family not in seen:
-            for path, weight in resolve_font_files(family, assets, cache,
+            for path, weight, unicode_range in resolve_font_files(family, assets, cache,
                                                      downloader=_ensure_font_in_cache):
                 abs_path = str(path).replace("\\", "/")
                 ext = path.suffix.lower().lstrip(".")
                 fmt = {"woff2": "woff2", "woff": "woff", "ttf": "truetype"}.get(ext, "woff2")
+                ur = f" unicode-range: {unicode_range};" if unicode_range else ""
                 parts.append(
                     f"@font-face {{ font-family: '{family}'; font-weight: {weight}; "
-                    f"src: url('file:///{abs_path}') format('{fmt}'); }}")
+                    f"src: url('file:///{abs_path}') format('{fmt}');{ur} }}")
             seen.add(family)
     return "\n".join(parts) + "\n"
 

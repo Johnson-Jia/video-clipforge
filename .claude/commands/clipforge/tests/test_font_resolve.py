@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from scripts.s6_assemble_html import resolve_font_files
+from scripts.s6_assemble_html import resolve_font_files, _parse_google_fonts_css
 
 
 class TestResolveFontFiles(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestResolveFontFiles(unittest.TestCase):
                 dl = []
                 r = resolve_font_files("F", assets, cache,
                     downloader=lambda fam, c: dl.append(fam) or [])
-            self.assertEqual(r, [(f, 400)])
+            self.assertEqual(r, [(f, 400, "")])
             self.assertEqual(dl, [])
 
     def test_local_dir_hit(self):
@@ -51,7 +51,7 @@ class TestResolveFontFiles(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             assets = Path(td) / "a"; assets.mkdir()
             cache = Path(td) / "c"
-            dl_ret = [(cache / "ma-shan-zheng" / "400.woff2", 400)]
+            dl_ret = [(cache / "ma-shan-zheng" / "400.woff2", 400, "")]
             called = []
             def dl(fam, c):
                 called.append(fam); return dl_ret
@@ -71,6 +71,34 @@ class TestResolveFontFiles(unittest.TestCase):
                 r = resolve_font_files("UnknownFont", assets, cache,
                     downloader=lambda f, c: [])
             self.assertEqual(r, [])
+
+
+class TestParseGoogleFontsCss(unittest.TestCase):
+    """Google Fonts CSS 分段解析（中文字体多 unicode-range 切片，bug 核心：不能覆盖）。"""
+
+    def test_single_slice(self):
+        css = "@font-face { font-family: 'F'; font-weight: 400; src: url(https://x/a.woff2) format('woff2'); unicode-range: U+0-100; }"
+        self.assertEqual(_parse_google_fonts_css(css),
+                         [(400, "https://x/a.woff2", "U+0-100")])
+
+    def test_multi_slice_same_weight_not_overwrite(self):
+        """同 weight 多切片（中文字体分段）—— 必须全部保留，旧逻辑 dest 覆盖只留 1 个是 bug。"""
+        css = (
+            "@font-face { font-family: 'Ma Shan Zheng'; font-weight: 400; "
+            "src: url(https://x/s1.woff2) format('woff2'); unicode-range: U+0-100; }"
+            "@font-face { font-family: 'Ma Shan Zheng'; font-weight: 400; "
+            "src: url(https://x/s2.woff2) format('woff2'); unicode-range: U+100-200; }"
+        )
+        r = _parse_google_fonts_css(css)
+        self.assertEqual(len(r), 2)
+        self.assertEqual(r[0], (400, "https://x/s1.woff2", "U+0-100"))
+        self.assertEqual(r[1], (400, "https://x/s2.woff2", "U+100-200"))
+
+    def test_no_unicode_range(self):
+        """无 unicode-range（西文字体）→ 空串。"""
+        css = "@font-face { font-family: 'F'; font-weight: 700; src: url(https://x/a.woff2) format('woff2'); }"
+        self.assertEqual(_parse_google_fonts_css(css),
+                         [(700, "https://x/a.woff2", "")])
 
 
 class TestGetFontsDirConfig(unittest.TestCase):
