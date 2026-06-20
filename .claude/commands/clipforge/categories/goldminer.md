@@ -1,248 +1,241 @@
 ---
-name: "技术淘金者"
-description: "对比式淘金专栏：1主角深挖 + 同主题对比衬托，淘金者第一人称评测"
+name: "创业淘金者"
+description: "从创业失败残骸淘教训+可复用点子：1 个失败案例深挖 + 相关失败对比，淘金者第一人称复盘"
 id: "goldminer"
 ---
 
-<!-- CONFIG-START: 机器可解析的配置值 -->
+<!-- CONFIG-START: 机器可解析的配置值，供 render_stage.py 和引擎模块加载 -->
 audio:
   default_voice: "zh-CN-YunjianNeural"
-  default_rate: "+20%"
+  default_rate: "+15%"
   voice_override: true
 
 narration:
-  hook_example: "开淘！今天这个我直接吹爆"
-  topic_example: "同类4个，只有它让我掏钱"
-  hook_json_example: "开淘！今天这个我直接吹爆"
-  cta_purpose: "站队对比"
-  word_count_range: [300, 650]
+  hook_example: "淘金！开淘！今天这家烧了 9 亿美金才明白"
+  topic_example: "烧光上亿才懂的教训"
+  hook_json_example: "淘金！开淘！今天这家烧了 9 亿美金才明白"
+  cta_purpose: "站队/讨论"
+  word_count_range: [410, 640]
   hook_anchors:
+    - "淘金"
     - "开淘"
-    - "同类"
-    - "对比"
-    - "站谁"
-    - "差距"
+    - "烧光"
+    - "归零"
+    - "教训"
+    - "翻车"
+    - "淘到"
 
 delivery:
-  hashtags: "#GitHub星探 #技术淘金者 #开源 #程序员 #AI"
-  cover_badge: "技术淘金者"
-  cover_scene_label: "淘金·对比评测"
+  hashtags: "#创业淘金者 #创业失败 #商业复盘 #创业 #财经"
+  cover_badge: "创业淘金者"
+  cover_scene_label: "失败·淘金复盘"
 
 design:
-  default_style: "淘金暖金风"
-  color_bias: "暖金/沙金为主（区别主轨冷色科技风），深色底"
+  default_style: "淘金暖金风（残骸淘金=宝藏意象）"
+  color_bias: "暖金/琥珀火光为主（区别主轨冷色科技风），深色底"
 
 shared_rules:
-  data_example: "主角 12K★ 同类平均 3K★"
-  hook_data_example: "同类4个，它单日涨星第一"
-  hook_emotion_example: "开淘！今天这个我直接吹爆"
+  data_example: "烧掉 $944M / 4 年死亡 / 233 家同类"
+  hook_data_example: "烧光 9 亿美金才明白的道理"
+  hook_emotion_example: "淘金！开淘！这个教训值 9 个亿"
 <!-- CONFIG-END -->
 
-# 技术淘金者分类配置
+# 创业淘金者分类配置
+
+> **定位转型（2026-06-20）**：技术淘金者（淘 GitHub 开源项目）→ **创业淘金者**（从创业失败残骸淘教训 + 可复用点子）。"淘金"意象更贴失败案例——loot-drop.io 本身就是 "Loot the wreckage"（从残骸捡漏）+ "Ideas to Steal"（可偷的点子）。暖金视觉 IP 保留（宝藏/残骸淘金）。
 
 ## content
 
-### data_source — 对比式淘金的数据基础
+### data_source — loot-drop.io 失败案例库
 
-每期 = **1 个主角项目 + 2-3 个同主题对比项**。主角深挖，对比项衬托差距。数据源沿用 GitHub（`gh api` / `scripts/github_trending.py`），但选取逻辑不同于主轨榜单。
+数据源：**loot-drop.io**（1,749 个失败创业案例，$535B+ 烧掉）。`robots.txt` Allow /，`sitemap.xml` 含全部案例 URL，详情页 SSR 可 requests 抓取。
 
-### selection_strategy — 主角 + 对比项选取
+```bash
+python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 --limit 3
+```
 
-**主角（1 个）选取优先级：**
-1. **反直觉/颠覆性**：用非常规技术做常见事（最强钩子，如"WiFi 感知人体"）
-2. **单日涨星爆发**：涨星速率明显加速
-3. **平民化可用**：普通人能直接用（A 档 GUI/Docker/桌面 app）
-4. **有故事**：独立开发者坚持 / 老项目复兴（情怀档素材）
+产出 `raw_failures.json`，每案例字段：
+- `name`（公司名）/ `region`（地区）/ `funding`（融资额）/ `overview`（业务叙述含融资+技术+伙伴）
+- `failure_analysis`（死因，钩子核心）/ `startup_learnings`（教训）/ `market_analysis`
+- `pivot_concept`（重建点子，淘金核心）/ `related`（相关失败，对比段素材）
 
-**对比项（2-3 个）选取规则：**
-- 必须与主角**同主题/同类别**（同领域解决同类问题）
-- 用 `gh api repos/{owner}/{repo} --jq '{topics}'` 取主角 topics，搜索同 topics 项目
-- 对比项要有**梯度**：一个主流大牌（衬托主角差异化）+ 一个同类竞品（直接对比）+ 可选一个老牌（衬托新）
-- 对比项数据同样用 `gh api` 实时获取（沿用主轨 `data_validation` 三源交叉验证 + `authenticity_verification` 真实性验证，**全部继承主轨 github.md 的 Red Flags**）
+### selection_strategy — 失败案例选取（中国公司起步）
 
-**对比项挖掘问题（写入 content_ready.txt 每个对比项）：**
-1. 主角比它强在哪？（性能/易用/隐私/门槛/活跃度/价格）
-2. 它比主角强在哪？（诚实，制造可信度）
-3. 谁该选谁？（场景化推荐）
+**首批策略（2026-06-20）**：中国公司起步 → 逐步全球知名。`fetch_lootdrop --region 中国` 优先。
+
+| 优先级 | 选取条件 | 钩子潜力 |
+|--------|---------|---------|
+| **1 — 受众熟悉** | 中国受众知道的公司（教培 VIPKid/猿辅导、共享单车、P2P、生鲜电商） | 共鸣强 |
+| **2 — 数据震撼** | 融资额大（>$100M）/ 死亡周期长 / 烧钱离谱 | 数字锚定 |
+| **3 — 死因反直觉** | 技术炫但生意死 / 监管一刀切 / 60% 被偷破坏 | 反直觉钩子 |
+| **4 — 教训可淘** | Learnings 清晰 + Rebuild pivot 有可偷点子 | 淘金价值 |
+
+**选取流程**：
+1. `fetch_lootdrop --region 中国 --limit 3` 抓 3 个候选
+2. 读 `raw_failures.json`，按钩子潜力 + 淘金价值选 1 个主角 + 2-3 个 related（相关失败）作对比
+3. 跨期去重：不连续做同行业（如教培连做 2 期后换共享出行/P2P）
+
+### ⛔ 合规红线（HARD，失败案例必读，诽谤风险）
+
+> loot-drop.io 声明内容是 **AI 辅助总结**（"may contain errors/hallucinations"）。失败案例涉真实公司，**视频必须**：
+
+| 规则 | 要求 | 违反后果 |
+|------|------|---------|
+| **来源标注** | 文案/评论区注明数据来自 loot-drop.io；片尾可加"数据来源：loot-drop.io 创业坟场" | HARD 失败 |
+| **客观转述** | 死因忠实 `failure_analysis` 字段，**禁杜撰/禁夸大/禁添油加醋** | HARD 失败 |
+| **不点名创始人个人** | 只讲公司+商业模式+宏观原因，**禁点名创始人姓名/个人攻击** | HARD 失败（诽谤） |
+| **教育目的** | 调性是"淘教训"非"吃瓜嘲讽"；rebuild pivot 是"可学的"非"抄它" | SOFT |
+
+> stage1（来源标注+不杜撰）/ stage3（不点名创始人）/ stage7（文案声明）门禁强制。
 
 ### preparation_rules — content_ready.txt 格式
 
 ```
-【主角】owner/repo | 语言 | Star(±涨幅) | 中文描述（原: <英文 description>）
-用途: <4-6字利益>
-情绪档位: <惊艳/稳健/翻车/猎奇/情怀>
-对比差距: <一句话，主角强在哪>
+【主角】公司名 | 地区 | 融资 | 行业 | 中文一句话死因（原: <failure_analysis 原文>）
+受众熟悉度: 高/中/低
+死因类型: 烧钱/监管/竞争/单位经济/产品/无市场
+教训: <startup_learnings 提炼，1-2句>
+可淘点子: <pivot_concept 提炼，1句话>
+数据来源: loot-drop.io
 
-【对比1】owner/repo | ... | 强项: X | 弱项: Y | 适合: <场景>
-【对比2】...
-【对比3】...
+【对比1】公司名 | 死因 | 教训（related[0]）
+【对比2】公司名 | 死因 | 教训（related[1]）
 ```
 
-> ⛔ 描述保真铁律、原始英文内嵌、avatar 下载 —— **全部继承主轨 github.md `preparation_rules`**，不重复声明。
+> 每个案例的 failure_analysis **原文内嵌**（保真锚点，禁从公司名杜撰死因）。
 
 ## narration
 
-### hook_templates — 开场签名「开淘！」+ 情绪档位变体
+### hook_templates — 开场签名「淘金！开淘！」+ 失败钩子
 
-> **⛔ 开场铁律（HARD）**：每期 hook 必须以「开淘！」主锚开头 + 情绪档位变体。这是淘金者的听觉识别符，禁用主轨的"涨星最猛/杀入榜单"类钩子（那是主轨中立播报，不是淘金者）。
+> **⛔ 开场铁律（HARD）**：每期 hook 必以「淘金！开淘！」主锚开头。这是创业淘金者的听觉识别符。后接数据/反直觉钩子。
+>
+> **📌 hook 字数豁免（本分类专属）**：豁免 stage3 通用「hook ≤12 字」约束——签名「淘金！开淘！」固定占 6 字 + 数据/反直觉钩子，完整 hook 句约 20-30 字（如「淘金！开淘！1500万美金烧出一个共享单车墓地」）。gate 对 goldminer 分类豁免 hook 字数 checker（签名识别符优先于字数约束）。
 
-按情绪档位选开场变体（LLM 据主角特点选档）：
+**钩子库（按死因选，数据锚定 + 反直觉）：**
 
-| 档位 | 触发（主角特点） | 开场变体 |
-|------|-----------------|---------|
-| 惊艳 | 反直觉/颠覆/暴涨 | 「开淘！今天这个我直接吹爆」 |
-| 稳健 | 扎实工程/实用工具 | 「开淘！今天挖到个靠谱的」 |
-| 翻车 | 刷星/名不副实/体验差 | 「开淘！但这个，别买账」 |
-| 猎奇 | 黑科技/跨界/脑洞 | 「开淘！这也能行？」 |
-| 情怀 | 老项目/独立开发者坚持 | 「开淘！这个故事得说说」 |
+| 死因 | 钩子模板 |
+|------|---------|
+| 烧钱（Bonfire） | 「淘金！开淘！这家烧了 X 亿美金才明白 ___」 |
+| 监管（Outlaw） | 「淘金！开淘！一纸文件，X 亿生意一夜归零」 |
+| 竞争（Crushed） | 「淘金！开淘！它做得没错，还是被巨头碾死了」 |
+| 单位经济（Math） | 「淘金！开淘！越做越亏的生意，烧 X 亿才看懂」 |
+| 无市场（Hallucination） | 「淘金！开淘！建了个没人要的东西，烧了 X 亿」 |
+| 产品（Lemon） | 「淘金！开淘！技术炸裂，生意却死了」 |
 
-开场后接对比悬念句（≤14字）：「同类 4 个，只有它让我 ___」「这个领域我试了一圈，站 ___」
+**利益翻译铁律**：含数字的钩子必须配一句观众能懂的利益/教训（"X 亿买来的教训是 ___"），禁裸报数字。
 
-### special_rules — 淘金者人设 + 对比式五段结构
+### special_rules — 淘金者人设 + 失败复盘五段结构
 
-**① 淘金者人设（固定内核，永不变）：**
-- **第一人称强制**：全程"我"——"我挖到""我试了""我站这个"。禁第三人称中立播报（那是主轨）。中立=退回主轨，不是淘金者。
-- **态度强制（每期必有）**：惊艳在哪 / 坑在哪 / 值不值 / 站谁。**没态度 = 退稿**。
-- **诚实底色**：翻车档不全盘否定，指出具体问题；惊艳档不夸大数据；**没用过的项目不装用过**（第一人称"我试了"是体验承诺，装用过=失信）。开源精神：有理有据地评。
-- **描述保真**：继承主轨 `description` 保真铁律，不从 owner/repo 名杜撰。
+**① 淘金者人设（固定内核）：**
+- **第一人称强制**：全程"我"——"我扒了这家""我淘到一个教训"。禁第三人称中立播报
+- **态度强制**：惋惜在哪 / 教训是什么 / 点子能不能偷 / 值不值得做。没态度=退稿
+- **淘金底色**：不是吃瓜嘲讽，是"从失败里淘有价值的东西"（教训 + 可复用点子）。失败=素材，淘金=目的
+- **客观保真**：死因忠实 failure_analysis，不杜撰；数据（融资/年限）以 raw_failures.json 为准
 
-**② 对比式五段结构（一条视频，60-100s）：**
+**② 失败复盘五段结构（一条视频，70-110s）：**
 
-| 段 | 场景类型 | 内容 | 时长 |
-|----|---------|------|------|
-| 1. 钩子 | hook | 「开淘！」+ 档位变体 + 对比悬念 | 5s |
-| 2. 主角深度 | what→how→capabilities | 是什么/为什么惊艳(反直觉)/怎么用 | 30-45s |
-| 3. 对比衬托 | capabilities(use compare) | 同类 X/Y/Z 怎么做，**主角强在哪**（差距感） | 15-25s |
-| 4. 我的判断 | usecases | 为什么选它/适不适合你/站队 | 10-15s |
-| 5. CTA | cta | 站队问题（主角 vs 对比项）+ 「关注 GitHub星探·技术淘金者」 | 5s |
+| 段 | 场景 | 内容 | 时长 |
+|----|------|------|------|
+| 1. 钩子 | hook | 「淘金！开淘！」+ 数据/反直觉钩子 | 6s |
+| 2. 是什么 | what | 公司做什么 + 融资 + 规模（overview 提炼） | 20-30s |
+| 3. 为什么死 | why_fail | **死因**（failure_analysis，反直觉钩子核心） | 20-30s |
+| 4. 淘什么 | loot | **教训**（learnings）+ **可偷的点子**（rebuild pivot）= 淘金核心 | 15-25s |
+| 5. 对比+CTA | compare | 相关失败（related）对比衬托 + 讨论问题 | 10-15s |
 
-> **对比衬托段（第3段）是 goldminer 区别于主轨的核心**：必须用 `visual_phases` 的 `compare` 类型（双栏：主角 vs 对比项），列出差距点。没有对比段 = 不是对比式淘金 = 退稿。
+> **第4段（loot）是创业淘金者的核心**：必须讲清楚"教训 + 可复用点子"。没有 loot 段 = 不是淘金 = 退稿。第5段对比用 related 失败衬托（同行业不同死法）。
 
-**③ 项目名必报（HARD，继承深度解析铁律）**：what 场景报主角名 + 画面大字；对比段报对比项名；CTA 强化；全程 ≥3 次接触。hook（第1段）不报名（前5秒纯钩子）。
+**③ 项目名必报（HARD）**：what 场景报公司名 + 画面大字；全程 ≥3 次接触。hook（第1段）不报名（前 6 秒纯钩子）。
 
-**④ 站队 CTA**：结尾 1 个站队问题（主角 vs 主要对比项），如「tmux 和 Zellij 你站谁」。站队问题评论率高 3-5×。
+**④ 讨论 CTA**：结尾 1 个讨论问题（如"这个点子你觉得能成吗""你站哪家"），评论率比中性高 3-5×。
 
-### 情绪档位系统
+### 情绪档位系统（失败案例调性）
 
-> 情绪由**主角特点驱动**（有根据的真实反应），不是随机心情（显假）。LLM 读主角特征选档，全期语气、开场、判断话术统一在该档。
-
-| 档位 | 语气 | 旁白示例 | humor_type |
-|------|------|---------|-----------|
-| 惊艳 | 激动强推 | "这个绝了，我直接吹爆" | analogy |
-| 稳健 | 平和客观 | 清晰推荐不夸 | null |
-| 翻车 | 犀利吐槽 | "别被 star 数骗了" | sarcasm |
-| 猎奇 | 惊讶好奇 | "这也能行？" | trivia |
-| 情怀 | 敬意温情 | 延续开源理想底色 | null |
+| 档位 | 触发 | 语气 | 开场变体 |
+|------|------|------|---------|
+| 警醒 | 烧钱教训/单位经济 | 痛心警示 | 「淘金！开淘！这个教训值 X 亿」 |
+| 惋惜 | 好产品败给时代/监管 | 唏嘘感慨 | 「淘金！开淘！技术对了，时机错了」 |
+| 猎奇 | 离谱死法（被偷/被砸） | 惊讶 | 「淘金！开淘！这死法你敢信？」 |
+| 共鸣 | 普通人懂的失败（双减/一刀切） | 同理 | 「淘金！开淘！一夜归零的滋味」 |
+| 理性 | 复杂商业逻辑 | 客观复盘 | 「淘金！开淘！扒一扒这家的账」 |
 
 ### word_count_range
 
-300-650 字（对比式 60-100s，比主轨标准模式长，比深度解析短）。
+410-640 字（匹配失败复盘 70-110s，+15% 约 5.8 字/秒；讲清"是什么+为什么+淘什么"）。
 
 ### 措辞/画面/CTA
 
-遵守 `shared/shared-rules` 全部条款 + 主轨 github.md 的 `jargon_translation`（黑话→利益翻译表）。对比段用观众语言讲"强在哪"，不堆技术术语。
+遵守 `shared/shared-rules` 全部条款。黑话翻译：融资/单位经济/CAC 等术语翻译成观众能懂的（"获客成本"→"拉一个客户要花的钱"）。
 
 ## narrative
 
 ### default_template
 
-`showdown` — 对比式淘金天然是交锋结构（紧张→交锋→揭晓→结论）。副轨固定用 showdown，不用主轨的 contrast-arc。
-
-### humor_rules
-
-继承主轨 github.md `humor_rules`（生活类比、开发者文化梗、中等偏轻吐槽），但按情绪档位调节：翻车档 sarcasm 可加重，情怀档禁幽默。
+`showdown`（失败 vs 教训的交锋结构）或 `contrast-arc`（惋惜→剖析→淘金）。
 
 ### character_presence
 
-true — 启用码力角色。淘金者人设通过码力角色的表情承载：惊艳=explode、思考=think、酷功能=cool、翻车调侃=tease、情怀=moved。
+true — 码力角色承载淘金者人设：惋惜=moved、警醒=think、猎奇=cool、共鸣=moved。
 
 ### immersion_mapping
 
 | 情绪档位 | 沉浸模式 | 视觉风格 |
 |---------|---------|---------|
-| 惊艳 | hyper-pace | 快剪+密集粒子+琥珀火光 #FF6B00 |
-| 稳健 | contrast-arc（默认） | 稳定对比+暖金 #FFB800 |
-| 翻车 | versus | 分屏对比+硬朗 #FF3B30 |
+| 警醒 | contrast-arc | 对比复盘+暖金 #FFB800 |
+| 惋惜 | story-time | 插画风+柔和过渡+暖色 #34C759 |
 | 猎奇 | hidden-gem | 渐进揭示+复古 #FFB800 |
-| 情怀 | story-time | 插画风+柔和过渡+暖色 #34C759 |
-
-> **匹配规则**：按主角情绪档位匹配沉浸模式。无明确匹配时默认用 稳健 / contrast-arc。
+| 共鸣 | story-time | 柔和+暖色 |
+| 理性 | versus | 数据对比+硬朗 #FF6B00 |
 
 ## design
 
 ### default_style
 
-淘金暖金风。背景深色底（#0A0805），主色暖金/沙金（#FFB800/#D4A017），强调色琥珀火光（#FF6B00）。区别于主轨的冷色科技风（深蓝/深紫），但同属"GitHub星探"品牌（暖金=宝藏意象）。
+淘金暖金风（保留技术淘金者视觉 IP）。背景深色底（#0A0805），主色暖金/沙金（#FFB800/#D4A017），强调色琥珀火光（#FF6B00）。暖金=残骸里淘到的宝藏意象。
 
-### visual_signature — 淘金者视觉识别符（弥补无形象短板）
+### visual_signature — 淘金者视觉识别符
 
 | 元素 | 规范 |
 |------|------|
-| 开场动画 | hook 场景引用 `components/content/goldminer_intro.html`（「开淘！」3 秒开场：淘金放大镜 + 筛沙闪光 + 大字"开淘！"） |
-| 标志符号 | 每期出现的淘金者剪影 / 宝藏箱图标（角落小标） |
-| 人名条 | 固定字幕样式「星探·淘金」 |
-| 对比呈现 | 对比段用 CompareSplit（`components/content/compare_split.html`）/ ScoreCompare（`components/content/score_compare.html`）（双栏 + WIN 徽章） |
+| 开场动画 | hook 场景引用 `components/content/goldminer_intro.html`（「淘金！开淘！」开场：淘金放大镜+筛沙闪光+大字） |
+| 标志符号 | 淘金者剪影 / 宝藏箱图标（角落小标） |
+| 对比呈现 | 第5段用 CompareSplit/ScoreCompare（主角 vs related 失败，双栏） |
 
 ### color_bias
 
-暖金为主，琥珀火光做强调，深色底衬托。禁止纯冷色（那是主轨）。
+暖金为主，琥珀火光做强调，深色底衬托。禁止纯冷色（主轨）。
 
-### bg_pool — bg 组件池（满足 stage6 R-R-009/010 bg 多样性）
+### bg_pool — bg 组件池（满足 stage6 R-R-009/010）
 
-> ⛔ **bg 组件选取铁律（HARD，解决 goldminer 暖金风 bg 三件套 fail）**：每个场景从 `components/bg/` 选 **1 个非三件套 bg 组件**（被 gate `_classify_bg_element_types` 识别为含 vignette/beams/wave/dots/contour/scan/noise 等非三件套类型），换暖金色（#FFB800/#D4A017/#FF6B00）。stage6 允许 bg 组件换色（CSS 变量/色值替换），故中性组件换暖金即可。
-
-**✅ 允许（非三件套，换暖金色用）**：
-
-| 组件 | 非三件套类型 |
-|------|------------|
-| radial_beams | beams + vignette（原生暖金，首选）|
-| vignette_glow | vignette |
-| ancient_relic | beams |
-| light_field | beams（暖中性，stage6 暖色回退默认）|
-| gradient_mesh | contour + wave |
-| clean_slate | dots + wave |
-| contour_lines | contour |
-| wave_ripple | contour + wave |
-| hex_grid | beams + wave |
-| scan_grid | scan |
-| noise_field | noise |
-
-**❌ 禁用（纯三件套 glow+gradient，触发 R-R-009）**：ember_glow / diamond_lattice / soft_linen / aurora_flow
-
-**相邻多样性（R-R-010 ≥3 风格）**：相邻场景 bg 组件必须**类型不同**（如 radial_beams[vignette] → gradient_mesh[wave] → clean_slate[dots] 轮换），全片 ≥3 种类型组合，禁连续 2 场景用同类型组件。
+继承原 goldminer bg_pool（非三件套暖金组件）：radial_beams/vignette_glow/gradient_mesh/clean_slate/contour_lines/wave_ripple/hex_grid/scan_grid/noise_field 等。相邻场景类型不同，全片 ≥3 种。
 
 ## delivery
 
 ### hashtags
 
-`#GitHub星探 #技术淘金者 #开源 #程序员 #AI`（含专栏标签 #技术淘金者，区别主轨的 #GitHub热门）
+`#创业淘金者 #创业失败 #商业复盘 #创业 #财经`（含专栏标签 #创业淘金者）。
 
-### cover_badge
+### cover_badge / cover_scene_label
 
-"技术淘金者"
-
-### cover_scene_label
-
-"淘金·对比评测"
+"创业淘金者" / "失败·淘金复盘"
 
 ### cover_content_strategy
 
-封面主标题 = 「开淘！」+ 主角利益（如"开淘！这个 AI 工具我直接吹爆"）。副标题 = 对比悬念（"同类 4 个，我站这个"）。封面用淘金暖金风，区别主轨冷色封面。
+封面主标题 = 「淘金！开淘！」+ 数据钩子（如"淘金！开淘！9 亿美金的教训"）。副标题 = 死因悬念（"技术对了，生意死了"）。暖金风。
 
 ### comment_template
 
 ```
 评论区格式：
-1. 主角 owner/repo + 一句话（它在同类里强在哪）
-2. 对比项列表（owner/repo，标注各自适合谁）
-3. 站队引导："主角 vs 对比项，你站谁"
-4. 不放完整链接，不提搜索，不提平台名（继承主轨）
+1. 公司名 + 一句话死因（数据来源 loot-drop.io）
+2. 对比项（related 失败，各自死法）
+3. 讨论引导："这个点子你觉得能成吗"
+4. 标注：数据来源 loot-drop.io 创业坟场（AI 辅助总结，仅供参考）
+5. 不放完整链接，不提搜索，不点名创始人
 ```
 
 ## audio
 
-### voice_identity — 声音 IP 锚点
+### voice_identity
 
-> 声音是淘金者第一识别符（spec §1.2 头号短板：公共 TTS 无识别度）。CONFIG `default_voice` 当前为 `zh-CN-YunjianNeural`（fallback）。
-
-**声音克隆（voice_clone，spec §3）为 Plan 2**：用户克隆声训练 + stage4 集成上线后，goldminer 切换为用户独占克隆声（主轨同步换声，两轨共享同一声音 = 统一 IP 锚）。当前 fallback 不阻塞内容管线验证。
+CONFIG `default_voice` 当前 `zh-CN-YunjianNeural`（fallback）。voice_clone（用户克隆声）上线后切换为独占克隆声（与主轨共享声音 IP 锚）。当前不阻塞。
