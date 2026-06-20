@@ -83,6 +83,34 @@ def set_workspace_default(path: str) -> Path:
     return resolved
 
 
+def get_fonts_dir() -> str | None:
+    """字体目录（env > config），参照 workspace 回退。None=无本地字体（自动下载 fallback）。
+
+    回退顺序：CLIPFORGE_FONTS_DIR 环境变量 > ~/.claude/clipforge-config.json 的 fonts_dir。
+    用户用 set_fonts_dir（或 /clipforge-switch-workspace 扩展）持久指定本地字体目录（如 E:\\字体），
+    优先于自动下载。env 用于临时覆盖（测试/CI）。
+    """
+    env = os.environ.get("CLIPFORGE_FONTS_DIR")
+    if env and Path(env).exists():
+        return env
+    cfg = get_config()
+    fd = cfg.get("fonts_dir")
+    if fd and Path(fd).exists():
+        return fd
+    return None
+
+
+def set_fonts_dir(path: str) -> str:
+    """设置字体目录（写 USER_CONFIG fonts_dir），返回解析后路径。供 /clipforge-switch-workspace 等命令调用。"""
+    resolved = str(Path(path).resolve())
+    cfg = get_config()
+    cfg["fonts_dir"] = resolved
+    cfg["fonts_configured_at"] = datetime.now().isoformat()
+    USER_CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    USER_CONFIG.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    return resolved
+
+
 # === 解析后的路径常量（脚本 import 用）===
 WORKSPACE_ROOT = resolve_workspace_root()
 PROJECT_ROOT = WORKSPACE_ROOT                                            # 别名，脚本兼容

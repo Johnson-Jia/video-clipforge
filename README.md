@@ -294,6 +294,20 @@ ClipForge 的视觉画面由三层组件构成，每层都可以自由添加新�
 | edge-tts | 中文 TTS 旁白 | `pip install edge-tts` |
 | yt-dlp | YouTube 免版税音乐 | `pip install yt-dlp` |
 
+### 字体（可选环境配置）
+
+视频标题字体（如 Ma Shan Zheng 毛笔体）由 `build_font_faces` **三级回退**获取，字体文件不入 git（仓库不膨胀）：
+
+1. `assets/fonts/`（项目内置，默认空）
+2. 字体目录（env `CLIPFORGE_FONTS_DIR` > `~/.claude/clipforge-config.json` 的 `fonts_dir`，**参照工作目录回退**）——设了直接用本地、不下载：
+   ```bash
+   # 持久（写 config.json，推荐）：编辑 ~/.claude/clipforge-config.json 加 "fonts_dir": "E:\\字体"
+   # 临时：export CLIPFORGE_FONTS_DIR="/path/to/your/fonts"
+   ```
+3. 自动下载到 `~/.cache/hyperframes/fonts/`（克隆者首次渲染从 Google Fonts 自动下载，无需配置）
+
+**克隆者**无需配置，首次渲染自动下载。**本地有字体库**配 `CLIPFORGE_FONTS_DIR` 复用，不重复下载。
+
 ## 支持这个项目
 
 ClipForge 是我个人利用业余时间开发的免费开源项目。如果你觉得它有用，可以请我喝杯咖啡 — 这完全是自愿的。

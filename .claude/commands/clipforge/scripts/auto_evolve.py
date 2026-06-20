@@ -301,11 +301,12 @@ def _write_freshness_feedback(analysis: dict) -> None:
 
 def _make_delta(operation, source, confidence, target_rule_id=None,
                 new_rule_raw=None, modified_fields=None, reason=None,
-                rules=None, traces=None, observation_days=3) -> dict:
+                rules=None, traces=None, observation_days=3, category=None) -> dict:
     d = create_delta(
         operation=operation, source=source, confidence=confidence,
         target_rule_id=target_rule_id, new_rule_raw=new_rule_raw,
         modified_fields=modified_fields, reason=reason,
+        category=category,
     )
     safe_traces = traces or []
     validation = shadow_validate(d, rules or [], safe_traces)
@@ -1006,6 +1007,7 @@ class AutoEvolve:
                 },
                 reason=f"数据驱动: action_number 广度{action_plays:.2f} vs plain {plain_plays:.2f} ({ratio:.1f}x)",
                 rules=self.rules, traces=self.traces,
+                category="github",  # R-S3-008 主轨 hook 词（杀入/冲上/炸）分类隔离，goldminer 不注入
             )
             path = save_delta(d, DELTAS_DIR)
             saved_ids.append(path.name)

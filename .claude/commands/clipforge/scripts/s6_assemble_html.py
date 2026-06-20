@@ -23,6 +23,9 @@ import re
 import sys
 from pathlib import Path
 
+# 让脚本 import engine.lib（读 config 等），parents[1] = clipforge 目录
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 
 # fx 层装饰动画约定 class（LLM 在碎片 layer-fx 子元素上用这些 class，
 # assemble 自动注入对应 GSAP 动画。元素颜色/位置/大小由内联 style 自由控制）
@@ -340,12 +343,122 @@ GOOGLE_FONT_MAP = {
 }
 
 
-def build_font_faces(creative_dir: Path, script_dir: Path) -> str:
-    """生成 @font-face（本地/缓存字体），替代 Google Fonts <link>。
+# family → [(相对路径, weight)]。前缀 assets/ 或 cache/，resolve_font_files 运行时解析。
+# 字体文件不入 git（.gitignore），由三级回退获取（SRC_MAP/本地/下载）。
+_FONT_SRCS = {
+    "Noto Serif SC": [("assets/SourceHanSerifSC-Heavy.woff2", 900), ("assets/SourceHanSerifSC-Regular.woff2", 400)],
+    "Noto Sans SC": [("cache/noto-sans-sc/400-normal.woff2", 400), ("cache/noto-sans-sc/700-normal.woff2", 700)],
+    "JetBrains Mono": [("cache/jetbrains-mono/700-normal.woff2", 700), ("cache/jetbrains-mono/400-normal.woff2", 400)],
+    "Inter": [("cache/inter/900-normal.woff2", 900), ("cache/inter/400-normal.woff2", 400)],
+}
 
-    HyperFrames 0.6.109+ 把 google_fonts_import 升级为 lint error，且不解析 CSS var()。
-    本地 @font-face + 具体 font-family（var 由 assemble 后处理替换为具体名）让 lint 通过。
-    字体来源：SourceHanSerifSC（=Noto Serif SC，assets/fonts/）+ HyperFrames 缓存。
+
+def resolve_font_files(family, assets, cache, downloader=None):
+    """三级回退解析 family → [(path, weight)]：SRC_MAP → CLIPFORGE_FONTS_DIR 本地 → 自动下载。
+
+    用户配 CLIPFORGE_FONTS_DIR（如 E:\\字体）→ 本地字体直接用、不下载；
+    克隆者无本地 → downloader 从 Google Fonts 下载到 cache（首次渲染自动）。
+    字体不入 git，仓库不膨胀 + 环境自包含。
+    """
+    import os
+    # 1. SRC_MAP（assets / 已配置 cache）
+    found = []
+    for rel, weight in _FONT_SRCS.get(family, []):
+        if rel.startswith("assets/"):
+            p = assets / rel[len("assets/"):]
+        else:
+            p = cache / rel[len("cache/"):]
+        if p.exists():
+            found.append((p, weight))
+    if found:
+        return found
+    # 2. 字体目录（env > config.json，参照工作目录回退——data_paths.get_fonts_dir）
+    from engine.lib.data_paths import get_fonts_dir
+    local_dir = get_fonts_dir()
+    if local_dir:
+        local = _find_local_fonts(local_dir, family)
+        if local:
+            return local
+    # 3. 自动下载到 cache（克隆者 fallback）
+    if downloader and family in GOOGLE_FONT_MAP:
+        return downloader(family, cache)
+    return []
+
+
+def _find_local_fonts(local_dir, family):
+    """在本地目录按 family 名关键词模糊匹配 woff2/woff/ttf，返回 [(path, weight)]。"""
+    d = Path(local_dir)
+    if not d.exists():
+        return []
+    key = family.replace(" ", "").lower()
+    matches = []
+    for f in d.rglob("*"):
+        if f.suffix.lower() not in (".woff2", ".woff", ".ttf"):
+            continue
+        name = f.stem.lower().replace(" ", "").replace("-", "").replace("_", "")
+        if key in name or name in key:
+            matches.append((f, _infer_weight(f.name)))
+    return matches
+
+
+def _infer_weight(name):
+    """从文件名推断 CSS weight（数字/关键词），默认 400。"""
+    import re
+    m = re.search(r'(\d{3})', name)
+    if m:
+        w = int(m.group(1))
+        if 100 <= w <= 900:
+            return w
+    low = name.lower()
+    if any(k in low for k in ("black", "heavy")):
+        return 900
+    if "bold" in low:
+        return 700
+    if "medium" in low:
+        return 500
+    if "light" in low:
+        return 300
+    return 400
+
+
+def _ensure_font_in_cache(family, cache):
+    """从 Google Fonts 下载 family 的 woff2 到 cache/family/，返回 [(path, weight)]。
+
+    克隆者首次渲染自动下载。网络失败 → 返回空（调用方降级 fallback 字体）。
+    """
+    import urllib.request
+    import re
+    if family not in GOOGLE_FONT_MAP:
+        return []
+    cache_sub = cache / family.lower().replace(" ", "-")
+    css_url = f"https://fonts.googleapis.com/css2?family={GOOGLE_FONT_MAP[family]}&display=swap"
+    try:
+        req = urllib.request.Request(css_url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        })
+        css = urllib.request.urlopen(req, timeout=15).read().decode("utf-8")
+        results = []
+        cache_sub.mkdir(parents=True, exist_ok=True)
+        for m in re.finditer(r'font-weight:\s*(\d+).*?src:\s*url\((https://[^)]+\.woff2)\)',
+                             css, re.DOTALL):
+            weight = int(m.group(1))
+            url = m.group(2)
+            dest = cache_sub / f"{weight}-normal.woff2"
+            if not dest.exists():
+                data = urllib.request.urlopen(url, timeout=30).read()
+                dest.write_bytes(data)
+            results.append((dest, weight))
+        return results
+    except Exception:
+        return []
+
+
+def build_font_faces(creative_dir: Path, script_dir: Path) -> str:
+    """生成 @font-face（三级回退：assets/本地/下载），替代 Google Fonts <link>。
+
+    HyperFrames 0.6.109+ 把 google_fonts_import 升级为 lint error。本地 @font-face +
+    具体 font-family 让 lint 通过。字体来源三级回退（resolve_font_files）：
+    assets/fonts → $CLIPFORGE_FONTS_DIR（用户本地，如 E:\\字体）→ 自动下载到 hyperframes cache。
     """
     fonts_path = creative_dir / "fonts.json"
     if not fonts_path.exists():
@@ -358,21 +471,19 @@ def build_font_faces(creative_dir: Path, script_dir: Path) -> str:
     import os
     cache = Path(os.path.expanduser("~/.cache/hyperframes/fonts"))
     assets = script_dir.parent / "assets" / "fonts"
-    SRC_MAP = {
-        "Noto Serif SC": [(assets / "SourceHanSerifSC-Heavy.woff2", 900), (assets / "SourceHanSerifSC-Regular.woff2", 400)],
-        "Noto Sans SC": [(cache / "noto-sans-sc" / "400-normal.woff2", 400), (cache / "noto-sans-sc" / "700-normal.woff2", 700)],
-        "JetBrains Mono": [(cache / "jetbrains-mono" / "700-normal.woff2", 700), (cache / "jetbrains-mono" / "400-normal.woff2", 400)],
-        "Inter": [(cache / "inter" / "900-normal.woff2", 900), (cache / "inter" / "400-normal.woff2", 400)],
-    }
     parts = []
     seen = set()
     for layer in ("title", "body", "data"):
         family = fonts.get(layer, {}).get("family", "")
-        if family in SRC_MAP and family not in seen:
-            for src_path, weight in SRC_MAP[family]:
-                if src_path.exists():
-                    abs_path = str(src_path).replace("\\", "/")
-                    parts.append(f"@font-face {{ font-family: '{family}'; font-weight: {weight}; src: url('file:///{abs_path}') format('woff2'); }}")
+        if family and family not in seen:
+            for path, weight in resolve_font_files(family, assets, cache,
+                                                     downloader=_ensure_font_in_cache):
+                abs_path = str(path).replace("\\", "/")
+                ext = path.suffix.lower().lstrip(".")
+                fmt = {"woff2": "woff2", "woff": "woff", "ttf": "truetype"}.get(ext, "woff2")
+                parts.append(
+                    f"@font-face {{ font-family: '{family}'; font-weight: {weight}; "
+                    f"src: url('file:///{abs_path}') format('{fmt}'); }}")
             seen.add(family)
     return "\n".join(parts) + "\n"
 

@@ -48,7 +48,8 @@ __pycache__/
 # 引擎运行时命中率持久化
 .claude/commands/clipforge/hit_counts.json
 
-# 本地大字体文件（SourceHanSerifSC，Adobe/Google 官方可下载；方案A 有 exists() 降级保护）
+# 本地大字体文件（不入库）。build_font_faces 三级回退获取：
+# assets/fonts → $CLIPFORGE_FONTS_DIR（用户本地字体目录，如 E:\字体）→ 自动下载到 hyperframes cache（克隆者首次渲染）
 .claude/commands/clipforge/assets/fonts/
 
 .local

@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine.lib.rule_parser import load_skill, load_rules_by_scope, RULES_DIR, SKILLS_DIR
 from engine.lib.models import Severity, Rigor, Rule, RuleClass
 from engine.lib.positive_rewrite import rewrite_rule
-from engine.lib.delta import load_deltas, apply_delta_to_rules
+from engine.lib.delta import load_deltas, apply_delta_to_rules, filter_deltas_by_category
 
 
 def merge_rules(rules: list[Rule]) -> list[Rule]:
@@ -164,6 +164,7 @@ def generate_injection(
     from datetime import datetime as _dt, timezone as _tz
     try:
         deltas = load_deltas()
+        deltas = filter_deltas_by_category(deltas, category)  # 分类隔离：只应用本分类 + 通用 delta
         auto_deltas = []
         for d in deltas:
             dd = d.get("delta", d)

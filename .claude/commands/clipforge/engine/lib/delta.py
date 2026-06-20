@@ -21,6 +21,7 @@ def create_delta(
     superseded_by: str | None = None,
     reason: str | None = None,
     approved_by: str | None = None,
+    category: str | None = None,
 ) -> dict:
     now = datetime.now(timezone.utc)
     delta_id = f"D-{now.strftime('%Y%m%d')}-{target_rule_id or 'NEW'}"
@@ -35,6 +36,8 @@ def create_delta(
             "created_at": now.isoformat(),
         }
     }
+    if category:
+        delta["delta"]["category"] = category
     if operation == "ADDED" and new_rule_raw:
         delta["delta"]["new_rule"] = new_rule_raw
     if operation == "MODIFIED" and modified_fields:
@@ -63,8 +66,22 @@ def load_deltas(deltas_dir: Path | None = None) -> list[dict]:
     deltas = []
     for fp in sorted(deltas_dir.glob("*.yaml")):
         with open(fp, "r", encoding="utf-8") as f:
-            deltas.append(yaml.safe_load(f))
+            data = yaml.safe_load(f)
+        # 结构守卫：只加载真 delta（有 delta: 顶层键），跳过 feedback report 等非 delta 文件
+        if not isinstance(data, dict) or "delta" not in data:
+            continue
+        deltas.append(data)
     return deltas
+
+
+def filter_deltas_by_category(deltas: list[dict], category: str | None) -> list[dict]:
+    """过滤 delta：只保留 category 匹配 或 通用（无 category）的。
+
+    分类专属 delta（如 R-S3-008 主轨 github hook 词）不注入其他分类；
+    通用 delta（无 category）注入所有分类。让 inject 按分类隔离 delta。
+    """
+    return [d for d in deltas
+            if d.get("delta", d).get("category") in (None, category)]
 
 
 def apply_delta_to_rules(rules: list[Rule], delta: dict) -> list[Rule]:
