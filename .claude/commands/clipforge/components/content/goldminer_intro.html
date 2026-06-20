@@ -1,0 +1,28 @@
+<!-- components/content/goldminer_intro.html -->
+<!-- 「开淘！」3 秒开场动画 — 技术淘金者专栏听觉+视觉签名 -->
+<!-- HyperFrames 渲染安全：纯 CSS animation（seek 可执行），无 JS 动画依赖 -->
+<div class="goldminer-intro" style="position:relative;width:1080px;height:1920px;background:radial-gradient(ellipse at 50% 45%, #2a1a05 0%, #0A0805 70%);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+
+  <!-- 淘金放大镜 + 筛沙闪光（装饰层） -->
+  <div style="position:absolute;width:600px;height:600px;border-radius:50%;border:8px solid rgba(255,184,0,0.15);top:200px;animation:gmi-ring 3s ease-out forwards;"></div>
+  <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(255,184,0,0.25),transparent 70%);top:300px;animation:gmi-glow 3s ease-in-out infinite;"></div>
+
+  <!-- 散落金粒（淘金意象） -->
+  <div style="position:absolute;width:14px;height:14px;border-radius:50%;background:#FFB800;top:600px;left:300px;box-shadow:0 0 20px #FFB800;animation:gmi-spark 1.2s ease-in 0.3s both;"></div>
+  <div style="position:absolute;width:10px;height:10px;border-radius:50%;background:#FFD700;top:720px;left:720px;box-shadow:0 0 16px #FFD700;animation:gmi-spark 1.2s ease-in 0.6s both;"></div>
+  <div style="position:absolute;width:12px;height:12px;border-radius:50%;background:#FF6B00;top:820px;left:420px;box-shadow:0 0 18px #FF6B00;animation:gmi-spark 1.2s ease-in 0.9s both;"></div>
+
+  <!-- 主锚大字「开淘！」-->
+  <div style="position:relative;z-index:2;font-family:'Ma Shan Zheng','PingFang SC',cursive;font-size:280px;font-weight:900;color:#FFB800;letter-spacing:20px;text-shadow:0 0 40px rgba(255,184,0,0.6),0 0 80px rgba(255,107,0,0.4);animation:gmi-text 3s cubic-bezier(0.2,0.8,0.2,1) forwards;">开淘！</div>
+
+  <!-- 副标识 -->
+  <div style="position:relative;z-index:2;margin-top:40px;font-family:'JetBrains Mono',monospace;font-size:42px;letter-spacing:12px;color:rgba(255,215,128,0.7);animation:gmi-sub 3s ease-out 0.5s both;">GOLDMINER · 技术淘金者</div>
+
+  <style>
+    @keyframes gmi-ring { 0%{transform:scale(0.3);opacity:0} 30%{opacity:0.4} 100%{transform:scale(1.1);opacity:0} }
+    @keyframes gmi-glow { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+    @keyframes gmi-spark { 0%{opacity:0;transform:translateY(-30px) scale(0)} 60%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0.8} }
+    @keyframes gmi-text { 0%{opacity:0;transform:scale(0.5) rotate(-8deg)} 40%{opacity:1;transform:scale(1.1) rotate(0deg)} 60%{transform:scale(1)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes gmi-sub { 0%{opacity:0;letter-spacing:4px} 100%{opacity:0.7;letter-spacing:12px} }
+  </style>
+</div>
