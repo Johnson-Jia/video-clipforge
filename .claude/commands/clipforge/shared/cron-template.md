@@ -357,7 +357,14 @@ prompt 内容：
 
 ## §7 输出汇报
 
-完成后汇报：
+视频交付清理完成后，先写发布时机建议（**cleanup 之后写**，避免被清理）：
+
+```bash
+source "$HOME/.claude/commands/clipforge/shared/clipforge-env.sh" 2>/dev/null || source "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/commands/clipforge/shared/clipforge-env.sh"
+python scripts/write_publish_note.py --project-dir "${PROJECT_DIR}"
+```
+
+读 `workspace/evolution/publish_timing_advice.json`（auto_evolve 生成），渲染 `publish_note.md`（confidence=low 提示样本不足；运营决策维度，关联非因果，不进创作 pattern）。完成后汇报：
 
 ```
 📊 <标题>
@@ -365,4 +372,5 @@ prompt 内容：
 文件：workspace/<path>/final.mp4
 时长：XXs | 大小：XX MB
 定时任务续期：✅ Job ID xxxxx
+发布时机：✅ publish_note.md（best=XX confidence=XX）
 ```

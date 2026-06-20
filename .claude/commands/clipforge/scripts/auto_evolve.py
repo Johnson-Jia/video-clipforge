@@ -47,6 +47,7 @@ from engine.success_analyzer import (
 # 统一 hook 分类口径：复用 attribution 权威分类器（5类），废弃本地 _classify_hook（4类，口径冲突）
 from engine.attribution import _classify_hook_type as _classify_hook
 from engine.lib.data_paths import traces_dir as _evolution_traces_dir, pattern_file as _pattern_file, auto_patterns_dir as _auto_patterns_dir
+from engine.publish_time import aggregate_publish_time, analyze_publish_time, build_publish_advice
 
 
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
@@ -392,6 +393,7 @@ class AutoEvolve:
             for pname, pdata in plats.items():
                 if isinstance(pdata, dict) and (pdata.get("plays") or pdata.get("impressions")):
                     per_plat[pname] = pdata
+            _pt = aggregate_publish_time(per_plat)
             raw_projects.append({
                 "name": proj.name,
                 "per_plat": per_plat,
@@ -406,6 +408,8 @@ class AutoEvolve:
                 "freshness": _read_score_freshness(proj),
                 "bgm_source": (_bgm := _read_bgm_source(proj)),
                 "bgm_style": _classify_bgm_style(_bgm),
+                "publish_hour": _pt["publish_hour"],
+                "publish_weekday": _pt["publish_weekday"],
             })
 
         # ── 各平台 plays 池（分位数排名，消除平台量级差异）──
@@ -646,6 +650,34 @@ class AutoEvolve:
                 sc = statistics.mean(g["quality"] for g in stalled)
                 insights["growth_c5s_gap"] = round(gc - sc, 3)
                 self._log(f"  增长组留存={gc:.2f} vs 停滞组={sc:.2f} (差{gc-sc:.2f})")
+
+        # ── 维度5: 发布时段分析（reach_composite 受众广度，运营决策维度）──
+        # 关联非因果：只供发布时机参考，不生成内容 pattern/Delta（运营变量≠内容规律）
+        pt_analysis = analyze_publish_time(valid)
+        if pt_analysis["hour_bucket"] or pt_analysis["weekday"]:
+            insights["publish_time_analysis"] = pt_analysis
+            for _bucket, _st in pt_analysis["hour_bucket"].items():
+                self._log(f"  发布时段 {_bucket:14s}: N={_st['count']:2d}  广度={_st['avg_reach']:.2f}")
+            if pt_analysis["best_hour_bucket"]:
+                _best = pt_analysis["best_hour_bucket"]
+                self._log(f"  ⭐ 最佳发布时段: {_best} "
+                          f"(广度={pt_analysis['hour_bucket'][_best]['avg_reach']:.2f}, "
+                          f"coverage {pt_analysis['coverage_hour']})")
+        else:
+            self._log(f"  发布时段分析: {pt_analysis['note']} (coverage {pt_analysis['coverage_hour']})")
+
+        # 生成发布时机建议文件（供 evolve-daily 汇报；运营决策，不进创作 pattern）
+        _advice = build_publish_advice(pt_analysis, self.market_avg)
+        try:
+            _advice_path = WORKSPACE / "evolution" / "publish_timing_advice.json"
+            _advice_path.parent.mkdir(parents=True, exist_ok=True)
+            _advice_path.write_text(json.dumps({
+                **_advice,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "coverage_note": "基于含时分的发布记录（视频号无时分，4/5 平台覆盖）",
+            }, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as _e:
+            self._log(f"  发布时机建议写入失败: {_e}")
 
         # ── Spearman 相关（共识→广度，质量→广度）──
         if len(valid) >= 10:

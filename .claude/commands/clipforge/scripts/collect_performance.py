@@ -90,13 +90,19 @@ def parse_optional_float(s) -> float | None:
 
 
 def parse_bilibili_date(s) -> str | None:
-    """'2026年05月29日 12:40:34' -> '2026-05-29'"""
+    """'2026年05月29日 12:40:34' -> '2026-05-29 12:40'（保时分）；无时分降级 '2026-05-29'。
+
+    保时分供发布时段分析（engine.publish_time）；[:10] 仍为日期，向后兼容匹配逻辑。
+    """
     if not s:
         return None
-    m = re.match(r"(\d{4})年(\d{2})月(\d{2})日", str(s))
-    if m:
-        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-    return None
+    m = re.match(r"(\d{4})年(\d{2})月(\d{2})日(?:\s*(\d{2}):(\d{2}))?", str(s))
+    if not m:
+        return None
+    date = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    if m.group(4) and m.group(5):
+        return f"{date} {m.group(4)}:{m.group(5)}"
+    return date
 
 
 def parse_wechat_date(s) -> str | None:
@@ -110,13 +116,16 @@ def parse_wechat_date(s) -> str | None:
 
 
 def parse_xhs_date(s) -> str | None:
-    """'2026年05月19日15时39分28秒' -> '2026-05-19'"""
+    """'2026年05月19日15时39分28秒' -> '2026-05-19 15:39'（保时分）；无时分降级 '2026-05-19'。"""
     if not s:
         return None
-    m = re.match(r"(\d{4})年(\d{2})月(\d{2})日", str(s))
-    if m:
-        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-    return None
+    m = re.match(r"(\d{4})年(\d{2})月(\d{2})日(?:\s*(\d{2})时(\d{2})分)?", str(s))
+    if not m:
+        return None
+    date = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    if m.group(4) and m.group(5):
+        return f"{date} {m.group(4)}:{m.group(5)}"
+    return date
 
 
 def safe_int(s) -> int:
@@ -371,14 +380,20 @@ def _read_xlsx_raw(filepath: Path) -> list[list[str]]:
 
 
 def parse_toutiao_date(s) -> str | None:
-    """头条发布时间 → YYYY-MM-DD。兼容 '2026-06-10 12:34' / '2026年06月10日' / '2026/6/10'。"""
+    """头条发布时间 → 'YYYY-MM-DD HH:MM'（保时分）；无时分降级 'YYYY-MM-DD'。
+
+    兼容 '2026-06-10 12:34' / '2026年06月10日' / '2026/6/10'。
+    """
     if not s:
         return None
     s = str(s).strip()
-    m = re.match(r"(\d{4})\D(\d{1,2})\D(\d{1,2})", s)
-    if m:
-        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
-    return None
+    m = re.match(r"(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\D+(\d{1,2}):(\d{2}))?", s)
+    if not m:
+        return None
+    date = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    if m.group(4) and m.group(5):
+        return f"{date} {int(m.group(4)):02d}:{m.group(5)}"
+    return date
 
 
 def _parse_toutiao_percent(s) -> float | None:
@@ -878,7 +893,8 @@ def backfill_matches(
                                "completion_5s_rate", "completion_rate", "cover_ctr",
                                "share_rate", "like_rate", "save_rate",
                                "followers_gained", "avg_watch_duration",
-                               "impressions", "click_rate", "forwards"}
+                               "impressions", "click_rate", "forwards",
+                               "published_at"}
             snap = {"platform": platform, "source_date": rec.get("_data_date", "")}
             for f in snapshot_fields:
                 if f in perf:

@@ -41,6 +41,7 @@ auto_evolve 自动完成六阶段：
 - 分析项目数 / 新增 Pattern / 重验 Pattern / 新增 Delta（自动生效的）
 - 训练钩子状态：join 样本数 / trained / model_version（heuristic-v1 还是 trained-vN）
 - 阈值变更
+- 发布时机建议：读 `workspace/evolution/publish_timing_advice.json`，汇报 best_hour_bucket / confidence / coverage（运营决策维度，关联非因果，供发布时机参考；confidence=low 时说明样本不足）
 
 若近 24h 无新播放数据（`workspace/sources/视频数据/` 无当日目录），简短说明跳过原因，不报错。
 
