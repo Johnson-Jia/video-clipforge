@@ -11,6 +11,7 @@
 - <article class="startup-card-v2" data-href="/startup/ID-slug">...<h3 class="card-v2-name">NAME</h3>
 """
 from __future__ import annotations
+import html as html_lib
 import re
 
 # 地区关键词（中国公司筛选依赖，首批中国起步）
@@ -70,14 +71,17 @@ def parse_failure_detail(html: str, url: str = "") -> dict:
 
     region = infer_region(overview)
 
-    # 6维 section（card-title + card-text）
+    # 6维 section（grid-card data-full-text 全文；card-text 只是摘要，modal JS 动态填充）
     fields = {key: "" for key in SECTION_KEYS.values()}
-    for title, key in SECTION_KEYS.items():
-        m = re.search(
-            rf'<h3 class="card-title">\s*{re.escape(title)}\s*</h3>\s*</div>\s*'
-            r'<p class="card-text">([^<]+)</p>', html)
-        if m:
-            fields[key] = m.group(1).strip()
+    for m in re.finditer(
+        r'<article class="grid-card"[^>]*data-full-text="(.*?)"[^>]*>(.*?)</article>',
+        html, re.DOTALL):
+        full_text = html_lib.unescape(m.group(1)).strip()
+        title_m = re.search(r'<h3 class="card-title">([^<]+)</h3>', m.group(2))
+        if title_m:
+            title = title_m.group(1).strip()
+            if title in SECTION_KEYS:
+                fields[SECTION_KEYS[title]] = full_text
 
     # Pivot Concept（重建点子）：Pivot Concept 到 Execution Plan 间文本去标签
     pivot = ""

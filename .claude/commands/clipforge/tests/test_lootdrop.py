@@ -34,6 +34,10 @@ class TestParseFailureDetail(unittest.TestCase):
     def test_failure_analysis_section(self):
         self.assertIn("unit economics", self.r["failure_analysis"].lower())
 
+    def test_failure_analysis_full_not_summary(self):
+        """data-full-text 全文（非 card-text 摘要，防回退）。Plenty 全文 > 500 字。"""
+        self.assertGreater(len(self.r["failure_analysis"]), 500)
+
     def test_startup_learnings_section(self):
         self.assertIn("unit economics", self.r["startup_learnings"].lower())
 
