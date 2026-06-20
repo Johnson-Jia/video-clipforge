@@ -48,6 +48,7 @@ from engine.success_analyzer import (
 from engine.attribution import _classify_hook_type as _classify_hook
 from engine.lib.data_paths import traces_dir as _evolution_traces_dir, pattern_file as _pattern_file, auto_patterns_dir as _auto_patterns_dir
 from engine.publish_time import aggregate_publish_time, analyze_publish_time, build_publish_advice
+from engine.recency import project_data_weight, weighted_mean
 
 
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
@@ -82,6 +83,12 @@ def _spearman(x: list[float], y: list[float]) -> float:
     ry = {sorted_y[i]: i for i in range(n)}
     d_sq = sum((rx[i] - ry[i]) ** 2 for i in range(n))
     return 1 - 6 * d_sq / (n * (n * n - 1))
+
+
+def _wmean(items: list[dict], key: str) -> float:
+    """加权均值（用 data_weight，缺省 1.0 等权）。近期数据权重高，校准偏向新表现。"""
+    return weighted_mean([p.get(key, 0.0) for p in items],
+                         [p.get("data_weight", 1.0) for p in items])
 
 
 # _classify_hook 已迁移至 engine.attribution._classify_hook_type（顶部 import as _classify_hook）
@@ -410,6 +417,7 @@ class AutoEvolve:
                 "bgm_style": _classify_bgm_style(_bgm),
                 "publish_hour": _pt["publish_hour"],
                 "publish_weekday": _pt["publish_weekday"],
+                "data_weight": project_data_weight(data.get("snapshots", []), date.today().isoformat()),
             })
 
         # ── 各平台 plays 池（分位数排名，消除平台量级差异）──
@@ -459,7 +467,7 @@ class AutoEvolve:
         self._log(f"  跨平台共识爆款(≥2平台前30%): {len(consensus_hits)}")
 
         # 大盘基线：当前全体有效项目的受众广度均值（相对衰减的基准，phase3.5 复用）
-        self.market_avg = round(statistics.mean(p["reach_composite"] for p in valid), 4) if valid else 0.0
+        self.market_avg = round(_wmean(valid, "reach_composite"), 4) if valid else 0.0
 
         insights: dict = {"valid_count": len(valid), "market_avg_reach": self.market_avg}
 
@@ -508,8 +516,8 @@ class AutoEvolve:
         insights["topic_analysis"] = {}
         for tp, items in sorted(topic_groups.items(),
                                 key=lambda x: -statistics.mean(p["reach_composite"] for p in x[1])):
-            avg_reach = statistics.mean(p["reach_composite"] for p in items)
-            avg_qual = statistics.mean(p["quality_composite"] for p in items)
+            avg_reach = _wmean(items, "reach_composite")
+            avg_qual = _wmean(items, "quality_composite")
             insights["topic_analysis"][tp] = {
                 "count": len(items),
                 "avg_reach": round(avg_reach, 3),
@@ -524,8 +532,8 @@ class AutoEvolve:
         insights["hook_analysis"] = {}
         for ht, items in sorted(hook_groups.items(),
                                 key=lambda x: -statistics.mean(p["quality_composite"] for p in x[1])):
-            avg_reach = statistics.mean(p["reach_composite"] for p in items)
-            avg_qual = statistics.mean(p["quality_composite"] for p in items)
+            avg_reach = _wmean(items, "reach_composite")
+            avg_qual = _wmean(items, "quality_composite")
             insights["hook_analysis"][ht] = {
                 "count": len(items),
                 "avg_plays": round(avg_reach, 3),   # 向后兼容（reach 0-1 尺度）
@@ -541,7 +549,7 @@ class AutoEvolve:
         insights["cover_analysis"] = {}
         for cb, items in sorted(cover_groups.items(),
                                 key=lambda x: -statistics.mean(p["reach_composite"] for p in x[1])):
-            avg_reach = statistics.mean(p["reach_composite"] for p in items)
+            avg_reach = _wmean(items, "reach_composite")
             insights["cover_analysis"][cb] = {
                 "count": len(items),
                 "avg_reach": round(avg_reach, 3),
@@ -562,7 +570,7 @@ class AutoEvolve:
             for _val, _items in sorted(_sub_groups.items(),
                                        key=lambda x: -statistics.mean(p["reach_composite"] for p in x[1])):
                 if len(_items) >= 2:
-                    _avg = statistics.mean(p["reach_composite"] for p in _items)
+                    _avg = _wmean(_items, "reach_composite")
                     insights["cover_analysis"][f"{_sub_label}_{_val}"] = {"count": len(_items), "avg_reach": round(_avg, 3)}
                     self._log(f"  封面{_sub_label}{_val}: N={len(_items):2d}  广度={_avg:.2f}")
 
@@ -575,7 +583,7 @@ class AutoEvolve:
         insights["narration_analysis"] = {}
         for emo, items in sorted(narr_groups.items(),
                                  key=lambda x: -statistics.mean(p["quality_composite"] for p in x[1])):
-            avg_qual = statistics.mean(p["quality_composite"] for p in items)
+            avg_qual = _wmean(items, "quality_composite")
             attrs0 = items[0].get("narration_attrs") or {}
             insights["narration_analysis"][emo] = {
                 "count": len(items),
@@ -592,8 +600,8 @@ class AutoEvolve:
         insights["mode_analysis"] = {}
         for mode, items in sorted(mode_groups.items(),
                                   key=lambda x: -statistics.mean(p["reach_composite"] for p in x[1])):
-            avg_reach = statistics.mean(p["reach_composite"] for p in items)
-            avg_qual = statistics.mean(p["quality_composite"] for p in items)
+            avg_reach = _wmean(items, "reach_composite")
+            avg_qual = _wmean(items, "quality_composite")
             insights["mode_analysis"][mode] = {
                 "count": len(items),
                 "avg_plays": round(avg_reach, 3),
@@ -613,7 +621,7 @@ class AutoEvolve:
         insights["c5s_analysis"] = {}
         for bucket, items in c5s_buckets.items():
             if items:
-                avg_reach = statistics.mean(p["reach_composite"] for p in items)
+                avg_reach = _wmean(items, "reach_composite")
                 insights["c5s_analysis"][bucket] = {"count": len(items), "avg_plays": round(avg_reach, 3)}
                 self._log(f"  留存 {bucket:8s}: N={len(items):2d}  广度={avg_reach:.2f}")
 
@@ -621,8 +629,8 @@ class AutoEvolve:
         high_save = [p for p in valid if p["save_rate"] > 0.03]
         low_save = [p for p in valid if p["save_rate"] < 0.01]
         if high_save and low_save:
-            hs_avg = statistics.mean(p["reach_composite"] for p in high_save)
-            ls_avg = statistics.mean(p["reach_composite"] for p in low_save)
+            hs_avg = _wmean(high_save, "reach_composite")
+            ls_avg = _wmean(low_save, "reach_composite")
             insights["save_ratio"] = hs_avg / max(ls_avg, 0.01)
             self._log(f"  收藏率: 高(>3%)广度={hs_avg:.2f} vs 低(<1%)={ls_avg:.2f} ({hs_avg/max(ls_avg,0.01):.1f}x)")
 

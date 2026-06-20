@@ -308,7 +308,7 @@ LLM 生成此文件，脚本读取后填充模板。LLM 的创意域 = 所有字
 
 ## §6 确保播放数据提醒已注册
 
-> 自进化系统需要平台播放数据来校准机器评分。注册一个每日检查任务，如数据超过 3 天未更新则提醒用户。
+> 自进化系统需要平台播放数据来校准机器评分。注册一个每日检查任务，如数据超过 2 天未更新则提醒用户。
 
 > ⚠️ 以下检查逻辑是 `shared/playback-reminder.md` 的独立副本（cron 文件必须是自包含 prompt）。
 > 修改 `playback-reminder.md` 时必须同步更新此处。
@@ -332,13 +332,13 @@ prompt 内容：
 2. 检查 workspace/sources/视频数据/ 目录：
    - 不存在或为空 → stale=true
    - 找最新日期子目录，计算距今天数
-   - 超过 3 天 → stale=true
-   - 3 天内 → stale=false，静默退出
+   - 超过 2 天 → stale=true
+   - 2 天内 → stale=false，静默退出
 3. 如 stale=true，输出提醒：
 
 📊 播放数据提醒
 
-最近导出：{latest_date}（超过 3 天未更新）
+最近导出：{latest_date}（超过 2 天未更新）
 
 自进化系统需要播放数据来校准机器评分。
 请导出平台数据后运行 /clipforge-feedback。

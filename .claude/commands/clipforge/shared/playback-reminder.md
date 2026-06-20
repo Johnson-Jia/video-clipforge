@@ -1,6 +1,6 @@
 # 播放数据新鲜度检查
 
-> 每日定时任务。检查 `workspace/sources/视频数据/` 是否有新鲜的平台导出数据。如超过 3 天未更新且存在已交付视频，提醒用户导出数据。
+> 每日定时任务。检查 `workspace/sources/视频数据/` 是否有新鲜的平台导出数据。如超过 2 天未更新且存在已交付视频，提醒用户导出数据。
 
 ## §1 检查逻辑
 
@@ -45,7 +45,7 @@ else
     latest_sec=$(date -d "$latest_date" +%s 2>/dev/null || echo 0)
     now_sec=$(date +%s)
     diff_days=$(( (now_sec - latest_sec) / 86400 ))
-    if [ $diff_days -gt 3 ]; then
+    if [ $diff_days -gt 2 ]; then
       stale=true
     else
       stale=false
@@ -63,7 +63,7 @@ fi
 ```
 📊 播放数据提醒
 
-最近导出：{latest_date}（超过 3 天未更新）
+最近导出：{latest_date}（超过 2 天未更新）
 
 自进化系统需要播放数据来校准机器评分。请导出平台数据后运行 /clipforge-feedback。
 

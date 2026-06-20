@@ -12,6 +12,7 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from statistics import mean
+from engine.recency import weighted_mean
 
 WEEKDAYS_ZH = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -103,30 +104,34 @@ def analyze_publish_time(projects: list[dict]) -> dict:
 
     运营决策维度：关联非因果，只供发布时机参考，不生成内容 pattern/Delta。
     """
-    hour_groups: dict[str, list[float]] = defaultdict(list)
+    hour_groups: dict[str, list[tuple]] = defaultdict(list)
     for p in projects:
         h = p.get("publish_hour")
         if h is None:
             continue
-        hour_groups[hour_to_bucket(h)].append(p.get("reach_composite", 0.0))
+        hour_groups[hour_to_bucket(h)].append((p.get("reach_composite", 0.0), p.get("data_weight", 1.0)))
 
     hour_analysis: dict = {}
     for bucket in BUCKET_ORDER:
-        reachs = hour_groups.get(bucket, [])
-        if len(reachs) >= 3:
-            hour_analysis[bucket] = {"count": len(reachs), "avg_reach": round(mean(reachs), 3)}
+        items = hour_groups.get(bucket, [])
+        if len(items) >= 3:
+            reachs = [r for r, _ in items]
+            weights = [w for _, w in items]
+            hour_analysis[bucket] = {"count": len(items), "avg_reach": round(weighted_mean(reachs, weights), 3)}
 
-    weekday_groups: dict[str, list[float]] = defaultdict(list)
+    weekday_groups: dict[str, list[tuple]] = defaultdict(list)
     for p in projects:
         wd = p.get("publish_weekday")
         if not wd or wd == "未知":
             continue
-        weekday_groups[wd].append(p.get("reach_composite", 0.0))
+        weekday_groups[wd].append((p.get("reach_composite", 0.0), p.get("data_weight", 1.0)))
 
     weekday_analysis: dict = {}
-    for wd, reachs in weekday_groups.items():
-        if len(reachs) >= 3:
-            weekday_analysis[wd] = {"count": len(reachs), "avg_reach": round(mean(reachs), 3)}
+    for wd, items in weekday_groups.items():
+        if len(items) >= 3:
+            reachs = [r for r, _ in items]
+            weights = [w for _, w in items]
+            weekday_analysis[wd] = {"count": len(items), "avg_reach": round(weighted_mean(reachs, weights), 3)}
 
     best_hour = max(hour_analysis, key=lambda b: hour_analysis[b]["avg_reach"]) if hour_analysis else None
     n_with_hour = sum(len(v) for v in hour_groups.values())
