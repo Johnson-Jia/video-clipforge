@@ -26,7 +26,7 @@ parameters:
       <span class="pfc-category">WiFi 黑科技</span>
     </div>
     <div class="pfc-use">家用路由器感知人体</div>
-    <div class="pfc-name">RuView</div>
+    <div class="pfc-name"><span class="pfc-owner">example-owner /</span> <span class="pfc-repo">RuView</span></div>
   </div>
 
   <!-- 中部带：avatar 锚点 + 描述 + 涨星数据条（纵向填满中段） -->
@@ -117,10 +117,18 @@ parameters:
   letter-spacing: 0.02em;
 }
 .pfc-name {
-  font-size: 72px; font-weight: 800; color: #fff;
+  width: 100%; text-align: center;
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: -0.02em; line-height: 1.05;
+  line-height: 1.08; letter-spacing: -0.01em;
   word-break: break-word;   /* 长名换行完整显示，禁 nowrap+ellipsis 截断 */
+}
+.pfc-owner {   /* owner 小字灰：完整 owner/repo 可搜索（防只 repo 如 skills 搜不到）。32px 对齐 director_gate MIN_TEXT 下限（28px 会撞字号下限 HARD）*/
+  font-size: 32px; font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.04em;
+}
+.pfc-repo {   /* repo 大字白：主标识。owner(32px)+repo(60px) 同行最长 DeusData/codebase-memory-mcp≈886px<900px（JetBrains Mono 实际字符宽<0.6em，余量更大），超长名靠 word-break 换行 */
+  font-size: 60px; font-weight: 800; color: #fff;
 }
 
 /* ── 中部带 ── */

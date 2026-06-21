@@ -4,7 +4,7 @@ category: null
 source_traces: []
 skill_scope: "stage6-production"
 
-description: "ProjectFullCard 项目名（尤其 owner/repo 长名）独占一行全宽居中，不放在 flex 三栏的中间信息列，防止等宽体长名触发 word-break 换行"
+description: "ProjectFullCard 项目名（owner/repo）独占一行全宽居中：完整 owner+repo 保证可搜索（禁只 repo 如 skills 搜不到），word-break:break-word 长名换行完整显示（禁 nowrap 防溢出屏幕右边）"
 
 evidence:
   sample_size: 1
@@ -12,6 +12,6 @@ evidence:
   confidence: 0.9
 
 as_preference:
-  text: "ProjectFullCard 项目名（.pfc-name）独占一行：放在 .pfc-category 之后、.pfc-main 之前，width:100% text-align:center white-space:nowrap。排名/描述/星标放下方 .pfc-main flex 行。原因：owner/repo 长名（如 NVIDIA/SkillSpector）在等宽体 58-64px 下宽达 665px，而 flex 中间列 .pfc-info 被排名(150px)+星标(~200px)挤占只剩 ~480px，长名超出触发 word-break 从字符间断行"
+  text: "ProjectFullCard 项目名（.pfc-name）独占一行：放在 .pfc-category 之后、.pfc-main 之前，width:100% text-align:center word-break:break-word（禁 nowrap / overflow:hidden / ellipsis）。项目名含完整 owner/repo（如 mattpocock/skills）保证可搜索：owner 小字（.pfc-owner 28px 灰）+ repo 大字（.pfc-repo 60px 白）同行。排名/描述/星标放下方 .pfc-main flex 行。原因：① 只显示 repo（如 skills）用户在 GitHub 搜不到，必须 owner/repo 完整；② nowrap 会让长名溢出屏幕右边（DeusData/codebase-memory-mcp 事故，29 字符推出屏幕）；③ word-break 长名换行完整显示，owner(28px)+repo(60px) 同行最长约 869px < 900px 可用宽，不溢出"
   weight: HIGH
   source_pattern: "P-layout-project-name-row"

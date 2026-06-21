@@ -234,6 +234,15 @@ def main():
     else:
         ok("无 text-overflow:ellipsis（content 层文字完整显示）")
 
+    # ── 3.5b 项目名溢出（禁 nowrap 推出屏幕，2026-06-21 codebase-memory-mcp 事故）──
+    # nowrap 让长 owner/repo 项目名溢出屏幕右边不可见。通用扫 .pfc-name 的 white-space:nowrap，
+    # 强制 word-break:break-word 换行完整显示（与 seed pattern P-layout-project-name-row + 组件库一致）。
+    nowrap_in_pfcname = re.findall(r'\.pfc-name\s*\{[^}]*white-space:\s*nowrap', html, re.IGNORECASE)
+    if nowrap_in_pfcname:
+        fail(f"发现 {len(nowrap_in_pfcname)} 处 .pfc-name 含 white-space:nowrap（长项目名 owner/repo 会溢出屏幕右边不可见。改 width:100% + word-break:break-word 让长名换行完整显示）")
+    else:
+        ok("无 .pfc-name nowrap（项目名 word-break 完整显示）")
+
     # ── 4. 相邻场景背景差异 ──
     print("\n── 4. 场景视觉反差 ──")
     # 提取场景类名

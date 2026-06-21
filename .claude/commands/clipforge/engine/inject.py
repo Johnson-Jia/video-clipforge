@@ -354,9 +354,10 @@ def generate_injection(
                 )
                 rh = ctx.get("recent_hooks") or []
                 if rh:
-                    sec.append("- 近期已用 hook（避开相似句式/数字锚点）：")
-                    for h in rh[:5]:
+                    sec.append("- 近期已用 hook（⛔ 本期 hook 的【主题/句式/数字锚点】都不得与这些重复 — 连续多期同主题会让观众产生营销疲劳，如「砍AI输入/token」连用 3 期事故）：")
+                    for h in rh[:7]:
                         sec.append(f"  · {h}")
+                    sec.append("- 必须识别上述 hook 的【主题】（如「砍AI输入」「单日涨星」「个人vs大厂」等抽象角度），本期换完全不同的主题，不只换句式或数字")
                 tp = ctx.get("top_projects") or []
                 if tp:
                     sec.append(f"- 近期高频项目（避免重复展开，可一带而过）：{', '.join(tp[:6])}")

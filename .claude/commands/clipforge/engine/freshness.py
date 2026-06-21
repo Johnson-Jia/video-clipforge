@@ -203,7 +203,7 @@ def analyze_freshness_signals(feedback_results: list[dict], min_samples: int = 5
     }
 
 
-def recent_context(project_dir, n: int = 5) -> dict:
+def recent_context(project_dir, n: int = 7) -> dict:
     """近 n 期历史摘要（供 inject 注入，引导 LLM 避开同质化）。
 
     Returns: {freshness: dict, recent_hooks: list[str], top_projects: list[str]}
@@ -215,7 +215,7 @@ def recent_context(project_dir, n: int = 5) -> dict:
     for p in recents:
         h = _hook_text(p)
         if h:
-            hooks.append(h[:40])
+            hooks.append(h[:60])
         for proj_name in _project_set(p):
             proj_counter[proj_name] = proj_counter.get(proj_name, 0) + 1
     top_projects = [p for p, _ in sorted(proj_counter.items(), key=lambda x: -x[1])[:8]]
