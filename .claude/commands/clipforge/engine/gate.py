@@ -1384,7 +1384,14 @@ def _extract_layer_chunk(scene_html: str, layer_class: str) -> str:
 
 
 def _classify_bg_element_types(bg_chunk: str) -> set[str]:
-    """分类 bg 层中的视觉元素类型。"""
+    """分类 bg 层中的视觉元素类型。
+
+    优先读组件声明（data-bg-types，由 s6_assemble_html 从 @ComponentMeta visual_types 注入），
+    无声明时用正则识别。声明优先避免分类器正则追不上组件库实际 CSS 写法（2026-06-23 事故）。
+    """
+    decl = re.search(r'data-bg-types="([^"]+)"', bg_chunk)
+    if decl:
+        return {t.strip() for t in decl.group(1).split(",") if t.strip()}
     types = set()
     if re.search(r'(?<!repeating-)(?:linear|radial)-gradient\s*\(', bg_chunk):
         types.add("gradient")
@@ -1408,6 +1415,18 @@ def _classify_bg_element_types(bg_chunk: str) -> set[str]:
     if re.search(r'background-image\s*:[^;]{0,40}radial-gradient[^;]{0,80}circle[^;]{0,40}\d+px[^;]{0,30}\d+px',
                  bg_chunk):
         types.add("dots")
+    # 粒子：发光小圆点（box-shadow:0 0 Npx 是粒子典型发光，区别于 filter:blur 的 glow 光晕）。
+    # 组件库大量用 <div border-radius:50% + box-shadow:0 0 Npx> 做粒子，旧分类器不认导致
+    # diamond_lattice 等丰富组件被误判为 glow+grid 三件套（2026-06-23 事故）
+    if re.search(r'box-shadow\s*:\s*0(?:px)?\s+0(?:px)?\s+\d{1,2}px', bg_chunk):
+        types.add("particles")
+    # 几何节点：clip-path 菱形/多边形/圆形装饰前景（旧分类器完全不识别）
+    if re.search(r'clip-path\s*:\s*(?:polygon|circle|ellipse|inset)', bg_chunk):
+        types.add("geometry")
+    # 流光条带：横向/纵向 linear-gradient 条带（两端 transparent 的光带，非 conic 的 beams 补充）
+    if re.search(r'linear-gradient\([^)]{0,30}transparent[^)]{0,80}transparent[^)]{0,30}\)', bg_chunk) \
+       and not re.search(r'linear-gradient[^;]{0,60}1px', bg_chunk):
+        types.add("beams")
     return types
 
 

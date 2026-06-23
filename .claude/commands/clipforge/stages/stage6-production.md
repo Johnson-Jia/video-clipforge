@@ -166,6 +166,12 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 
 **LLM 逐个填充 `creative/sNN.html` 碎片文件，每个碎片只包含三层 div 的内容（bg/fx/content），不含 clip 包裹和 GSAP。**
 
+> **⛔ bg 层铁律（2026-06-23 事故固化）：layer-bg 里写的内容会被组装脚本覆盖，bg 不是创作空间。**
+> `s6_assemble.sh` 检测 `<!-- bg-component: NAME -->` 标记后，用 `components/bg/NAME.html` 的组件 DOM **整体覆盖** layer-bg 内一切——碎片里自写的 bg CSS/元素全部丢弃（从机制上强制 R-R-021，`s6_assemble_html.py:_inject_bg_component`）。
+> - **bg 创作空间 = 选组件 + CSS 变量换色**：layer-bg 内只放一行 `<!-- bg-component: NAME -->`（NAME 从 `components/bg/` 选），换色靠 `creative/style.css` 的 `:root` CSS 变量
+> - **选组件先确认视觉类型达标**：选中组件须含 ≥2 种视觉类型且非纯 glow+grid（R-R-009）。组件 `@ComponentMeta` 的 `visual_types` 字段已声明类型，gate 优先读它判定——选 `visual_types` 含 beams/contour/wave/noise/particles/geometry/vignette/dots/scan 的组件即安全；只含 {gradient, glow} 的会被误判淘汰。查全部组件达标：`python scripts/check_bg_components.py --check`
+> - **fx/content 才是自由创作层**：layer-fx（特效动画）和 layer-content（文字卡片）由 LLM 自由发挥，不被覆盖
+
 **碎片示例（多 phase 场景 `creative/s01.html`）：**
 ```html
 <!-- 场景: hook | 时长: 20.0s -->

@@ -82,11 +82,11 @@ audio{display:none;}
 """
 
 
-def _parse_bg_component(component_path: Path) -> tuple[str, list[str]]:
-    """解析 bg 组件文件，返回 (dom_html, keyframes_css_list)。
+def _parse_bg_component(component_path: Path) -> tuple[str, list[str], list[str]]:
+    """解析 bg 组件文件，返回 (dom_html, keyframes_css_list, visual_types)。
 
     组件文件三层结构：
-    1. <!-- @ComponentMeta ... --> — 元数据，跳过
+    1. <!-- @ComponentMeta ... --> — 元数据（含 visual_types 声明）
     2. <!-- @keyframes ... --> — CSS 动画，提取注入 index.html <style>
     3. DOM HTML — 实际元素，注入 layer-bg
     """
@@ -99,9 +99,17 @@ def _parse_bg_component(component_path: Path) -> tuple[str, list[str]]:
         if "@keyframes" in block:
             keyframes.append(block)
 
+    # 提取 @ComponentMeta 的 visual_types 声明（供 gate R-R-009 优先读取，防分类器正则误判）
+    visual_types: list[str] = []
+    meta_match = re.search(r"@ComponentMeta\b.*?/ComponentMeta", content, re.DOTALL)
+    if meta_match:
+        vt_match = re.search(r"visual_types:\s*\[([^\]]*)\]", meta_match.group(0))
+        if vt_match:
+            visual_types = [t.strip() for t in vt_match.group(1).split(",") if t.strip()]
+
     # DOM = 去掉所有注释后的纯 HTML
     dom = re.sub(r"<!--.*?-->", "", content, flags=re.DOTALL).strip()
-    return dom, keyframes
+    return dom, keyframes, visual_types
 
 
 def _find_layer_bg_range(html: str) -> tuple[int, int]:
@@ -148,7 +156,7 @@ def _inject_bg_component(frag_html: str, sid: str) -> tuple[str, list[str]]:
     if not comp_path.exists():
         print(f"[WARN] {sid}: bg-component '{comp_name}' 不存在于 {COMPONENTS_BG_DIR}", file=sys.stderr)
         return frag_html, []
-    dom, keyframes = _parse_bg_component(comp_path)
+    dom, keyframes, visual_types = _parse_bg_component(comp_path)
     if not dom:
         print(f"[WARN] {sid}: bg-component '{comp_name}' 解析后无 DOM 内容", file=sys.stderr)
         return frag_html, []
@@ -156,7 +164,10 @@ def _inject_bg_component(frag_html: str, sid: str) -> tuple[str, list[str]]:
     if start < 0:
         return frag_html, []
     marker = marker_match.group(0)
-    new_bg = f'<div class="layer-bg">\n{marker}\n{dom}\n</div>'
+    # 注入 data-bg-types 声明：gate _classify_bg_element_types 优先读取，正则作 fallback。
+    # 声明优先避免分类器正则追不上组件库的实际 CSS 写法（2026-06-23 diamond_lattice 误判事故）
+    types_attr = f' data-bg-types="{",".join(visual_types)}"' if visual_types else ""
+    new_bg = f'<div class="layer-bg"{types_attr}>\n{marker}\n{dom}\n</div>'
     return frag_html[:start] + new_bg + frag_html[end:], keyframes
 
 
