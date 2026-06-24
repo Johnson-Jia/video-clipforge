@@ -14,7 +14,7 @@ billboard_data.json schema:
   "channel": "GitHub 星探",
   "title": "GitHub 今日榜单",
   "subtitle": "热门开源项目",
-  "avatar_path": "D:/.../科技兔头像.png",
+  "avatar_path": "workspace/covers/科技兔头像.png",   # 相对项目根（clone 友好，禁绝对路径）
   "items": [
     {"rank":1,"name":"owner/repo","lang":"Python","desc":"中文描述","stars":"15,523","today":"+3,590","medal":"gold"}
   ]
@@ -26,6 +26,11 @@ import base64
 import json
 import os
 import sys
+
+# 项目根 = scripts/ 上 4 级（scripts→clipforge→commands→.claude→项目根）
+# 用于把相对 avatar_path 解析为绝对，clone 到任意目录都能工作
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR))))
 
 
 CSS = """
@@ -99,6 +104,8 @@ def main():
     av = d.get("avatar_path")
     if av:
         try:
+            if not os.path.isabs(av):
+                av = os.path.join(PROJECT_ROOT, av)  # 相对路径 → 相对项目根（clone 友好）
             avatar_b64 = base64.b64encode(open(av, "rb").read()).decode()
         except Exception as e:
             print(f"WARN: 头像读取失败 {e}", file=sys.stderr)
