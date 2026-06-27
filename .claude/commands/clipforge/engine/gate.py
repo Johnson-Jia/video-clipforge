@@ -1666,7 +1666,64 @@ def check_fx_animation_present(project_dir: Path, params: dict) -> tuple[bool, s
     return True, f"{len(scenes)} 场景 fx 动画合格"
 
 
+def check_safezone_rendered(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """渲染后内容必须在安全区内(竖屏 y∈[180,1700] / 横屏 y∈[60,1860])。
+    优先读 visual_qa_report.json(s6_visual_qa.py 产出);不存在则自抽帧(解耦,门禁不依赖 QA 是否跑过)。
+
+    skip(output.mp4 缺失)是有意设计:本门禁在渲染前(组合结构检查阶段,output 不存在)和渲染后两次触发,渲染前必须 skip 不阻塞;这与 video_bitrate 等 sibling 门禁(仅渲染后触发,output 缺失即 fail)不同。
+    """
+    import sys, shutil
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from lib.visual_qa import extract_scene_frames, analyze_frame, check_safezone
+
+    output_mp4 = project_dir / "output.mp4"
+    if not output_mp4.exists():
+        return (True, "skip(output.mp4 不存在,渲染前检查)")  # 仅在 output 存在时生效
+
+    orientation = "portrait"
+    design = project_dir / "design.md"
+    if design.exists():
+        if re.search(r"^orientation:\s*landscape", design.read_text(encoding="utf-8"), re.M):
+            orientation = "landscape"
+
+    scenes = None
+    report_path = project_dir / "visual_qa_report.json"
+    if report_path.exists():
+        try:
+            scenes = json.loads(report_path.read_text(encoding="utf-8")).get("scenes")
+        except (json.JSONDecodeError, ValueError, OSError):
+            scenes = None  # malformed → fallback to self-extract
+    if scenes is None:
+        seg_path = project_dir / "segment_durations.json"
+        if not seg_path.exists():
+            return (True, "skip(无 segment_durations.json,无法定位场景时间点)")
+        segs = json.loads(seg_path.read_text(encoding="utf-8")).get("segments", [])
+        t = 0.0
+        time_points = []
+        for s in segs:
+            dur = s.get("actual_duration", 0)
+            time_points.append({"scene": s.get("scene", "s"), "t": t + dur / 2})
+            t += dur
+        out_dir = project_dir / ".qa_frames_gate"
+        try:
+            frames = extract_scene_frames(str(output_mp4), time_points, str(out_dir))
+            scenes = []
+            for f in frames:
+                cy = analyze_frame(f["path"])["content_y"]
+                scenes.append({"id": f["scene"], "content_y": cy})
+        finally:
+            shutil.rmtree(out_dir, ignore_errors=True)
+
+    for sc in scenes:
+        res = check_safezone(sc.get("content_y"), orientation)
+        if not res["ok"]:
+            return (False, f"{sc.get('id')}: 内容溢出安全区 {res['overflow']} "
+                    f"(content_y={sc.get('content_y')}, bounds={res['bounds']})")
+    return (True, f"全部 {len(scenes)} 场景内容在安全区内")
+
+
 GATE_CHECKERS[GateType.fx_animation_present] = check_fx_animation_present
+GATE_CHECKERS[GateType.safezone_rendered] = check_safezone_rendered
 
 
 def check_portrait_typography(project_dir: Path, params: dict) -> tuple[bool, str]:

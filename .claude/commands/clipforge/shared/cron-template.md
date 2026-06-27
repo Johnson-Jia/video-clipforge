@@ -189,6 +189,9 @@ SubAgent-3 的 prompt 中必须包含以下完整指令：
 2. **单层 padding 原则**：padding 只设在 `.phase` 或 `.scene-wrap` 上（二选一），禁止在 composition / clip / layer-content 等其他层级设置 padding
 3. **禁止修改值**：安全区 padding 值是平台适配标准，不允许 SubAgent 自行调整
 
+**渲染后视觉 QA 自审（门禁前,非强制但强烈建议）**:
+渲染 output.mp4 后,运行 `python scripts/s6_visual_qa.py --project-dir <PROJECT_DIR>`。读 visual_qa_report.json 的 blank_bands + 看 qa_frames/*.png 帧截图,判断布局是否有断层/间距问题(创意判断归你)。不满意则调整 creative/ 碎片重渲染;满意则继续门禁。这一步让你「看见」渲染结果再迭代。
+
 完成 creative/ 碎片填充 + s6_assemble.sh 组装 + 渲染后，必须执行门禁校验：
 
 cd .claude/commands/clipforge && python engine/gate.py --skill stage6-production --project-dir <PROJECT_DIR>

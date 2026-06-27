@@ -48,6 +48,7 @@ class GateType(str, Enum):
     adjacent_bg_diversity = "adjacent_bg_diversity"
     fx_layer_not_empty = "fx_layer_not_empty"
     video_bitrate_valid = "video_bitrate_valid"
+    safezone_rendered = "safezone_rendered"
     html_no_css_visibility = "html_no_css_visibility"
     cover_layers_present = "cover_layers_present"
     bgm_silence_valid = "bgm_silence_valid"

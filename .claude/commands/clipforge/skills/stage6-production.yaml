@@ -197,6 +197,8 @@ skill:
       - gate: no_global_text_shadow
         params:
           file: "index.html"
+      - gate: safezone_rendered
+        params: {}
     soft:
       - gate: phase_anchor_coverage
         params:

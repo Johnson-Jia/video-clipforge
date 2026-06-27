@@ -217,7 +217,7 @@ rules:
     class: QUALITY
     scope: SKILL
     skill: stage6-production
-    source: "stages/stage6-production.md §6.10 动画规则"
+    source: "stages/stage6-production.md §6.11 动画规则"
 
   - id: "R-R-018"
     type: REQUIRED_METHOD

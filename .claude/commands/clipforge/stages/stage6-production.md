@@ -223,7 +223,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 2. **读取 `narration_segments.json`** — 每段的 `scene`、`text`（旁白内容）、`visual_phases`、`character_expression`、`humor_type`
 3. **读取 `design.md` 的 `storyboard`** — 沉浸模式、叙事模板、情感曲线
 4. **读取 `stage6-components.md`** — 视觉推导系统 + CSS 特效参考库 + 组件模板
-5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.9 的匹配流程生成
+5. **运行组件匹配** — 如果 `component_manifest.md` 不存在，执行 §6.10 的匹配流程生成
 6. **设计视觉（每个场景独立创作）** — 读场景内容，像导演一样构思画面：
    - 这段内容在说什么？观众该感受到什么？什么视觉能强化这个感受？
    - 参考 `stage6-components.md` 的设计格言（5 条正面引导）
@@ -335,7 +335,19 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 - **bg 亮度底线**（gate: frame_analysis.py §4）：bg 组件底色亮度 L ≥ 12%（hsl 第三参数），装饰元素（线条/光晕/粒子）alpha ≥ 0.12。底色过暗或装饰 alpha 过低 → 渲染平均亮度 < 25/255 → frame_analysis warn/fail。暗调场景（危机/破产）通过降低装饰密度实现"暗"，底色仍需 L ≥ 12%
 - fx/content 层的组件库仍是工具箱和灵感来源，不强制
 
-## §6.9 特效工坊（组件匹配 + 新特效创建）
+## §6.9 渲染后视觉 QA 自审（LLM 创意轨,非门禁）
+
+output.mp4 渲染完成后,运行视觉 QA 抽帧分析,**让你看见自己的渲染结果**再决定布局要不要改:
+
+python scripts/s6_visual_qa.py --project-dir <PROJECT_DIR>
+
+读 `visual_qa_report.json` + 看 `qa_frames/*.png`:
+- **安全区**:每场景 content_y 应在 [180,1700](竖屏)/[60,1860](横屏)。溢出会被后续 stage6 门禁 HARD 拦截,这里先自查。
+- **断层/间距**(创意判断归你):看 blank_bands 和帧截图,判断空白带是「有意留白」还是「布局断层」。项目名与头像、各元素间距是否舒适,由你决定。不满意就调整 creative/sNN.html 碎片重渲染。
+
+⛔ 代码只产客观数据(content_y / blank_bands 坐标),不替你下「是不是断层」的判断——布局审美归 LLM。这一步是非强制自审,但强烈建议:你终于能看见渲染结果了。
+
+## §6.10 特效工坊（组件匹配 + 新特效创建）
 
 > **两阶段触发：**
 > 1. §6.7 负责运行组件匹配 — 如果 `component_manifest.md` 不存在，执行下方匹配流程
@@ -397,7 +409,7 @@ bash .claude/commands/clipforge/scripts/s6_assemble.sh --project-dir .
 - **content**: project_full_card (library) — params: {rank: 1}
 ```
 
-## §6.10 视觉分镜（Visual Phasing）
+## §6.11 视觉分镜（Visual Phasing）
 
 > **当场景时长 >15 秒时必须使用。** 完整规范见 `clipforge/shared/visual-phasing`。
 
@@ -580,7 +592,7 @@ CTA 必须：中心光晕 + 大标题（竖屏 96px+ / 横屏 72px+）+ 副标�
 24. 渲染前确保 `lint` 通过
 25. **渲染后白屏/空白检查**：`frame_analysis.py`（Layer 2）自动执行暗帧和亮度检测，`stage6_gate.sh` 调用
 
-## §6.11 画布方向
+## §6.12 画布方向
 
 方向由 `design.md` 的 `orientation` 字段决定：
 
@@ -670,7 +682,7 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 - 安全内容区：60px ~ 1020px（垂直），120px ~ 1800px（水平）
 - padding：`60px 120px 60px 120px`
 
-## §6.12 渲染管线（全自动）
+## §6.13 渲染管线（全自动）
 
 > `s6_render.sh` 一次性完成: 渲染前检查 → 导演门禁 → BGM 音量注入 → renderbak 隔离 → HyperFrames lint + render → renderbak 恢复 → output_no_bgm 合成 → 音频验证 → 完成门禁。
 
@@ -692,20 +704,20 @@ final_no_bgm.mp4  = cover.png + output_no_bgm.mp4（Stage 7 拼接）
 > 封面帧拼接由 Stage 7 的 `s7_delivery.sh` 统一处理，Stage 6 不负责。
 > **禁止**从 output.mp4 提取音频轨（只有 1 条混合轨，BGM 无法分离）。
 
-## §6.13 无 BGM 版本合成（output_no_bgm.mp4）
+## §6.14 无 BGM 版本合成（output_no_bgm.mp4）
 
 > 由 `s6_render.sh` Step 10 触发，调用 `scripts/build_no_bgm.sh` 执行合成。
 
 **合成规则：**
 - 输入：`output.mp4` 的**视频轨**（`-an`）+ `narration.mp3` 的**音频轨**（`-vn`）
 - 输出：`output_no_bgm.mp4`（仅含旁白，无 BGM）
-- **禁止**：从 `output.mp4` 提取音频轨（只有 1 条混合轨，BGM 不可分离，见 §6.12）
+- **禁止**：从 `output.mp4` 提取音频轨（只有 1 条混合轨，BGM 不可分离，见 §6.13）
 - 验证：产出 `output_no_bgm.mp4`，Stage 7 前置检查依赖此文件（见 stage7-delivery.md §7.1）
 
 ---
 
 ## 约束声明
 
-**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.13）= 双版本输出失败。
+**Iron Law:** 渲染前未移除 cover.html = 渲染必冲突。GSAP timeline 未注册 = 全片空白。output_no_bgm.mp4 未从 narration.mp3 合成（§6.14）= 双版本输出失败。
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage6-production` 获取完整约束 prompt。

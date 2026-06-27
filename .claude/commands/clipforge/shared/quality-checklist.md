@@ -32,7 +32,7 @@ description: Stage 6 渲染前品质检查清单
 | 11 | `window.__hf` 存在（duration + seek） | R-S6-007 |
 | 12 | 场景 id 映射正确（#sN 与 narration_segments.json 对应） | R-S6-008 |
 | 13 | GSAP timeline 注册（`__timelines`） | R-S6-009 |
-| 14 | 音频 `<audio>` 元素内嵌 | stage6 §6.12 |
+| 14 | 音频 `<audio>` 元素内嵌 | stage6 §6.13 |
 
 ## §4 安全禁令
 

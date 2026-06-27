@@ -9,7 +9,7 @@ rules:
     class: EXPERIENTIAL
     scope: SKILL
     skill: "stage6-production"
-    source: "stage6-production.md §6.10"
+    source: "stage6-production.md §6.11"
 
   - id: "R-S6-002"
     type: FORBIDDEN_ACTION
