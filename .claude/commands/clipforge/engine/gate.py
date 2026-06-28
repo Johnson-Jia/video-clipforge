@@ -149,6 +149,32 @@ def check_no_forbidden_speech(project_dir: Path, params: dict,
     return True, ""
 
 
+def check_narration_translation_pattern(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """SOFT: 检测旁白中'不是X而是Y'/'而非X而是Y'翻译腔套路句。
+
+    'not X but Y' 是英语直译，违背中文表达习惯（中文宜直接肯定句），
+    知识区/科技区滥用成套路，观众审美疲劳。详见 shared/shared-rules.md §1.2。
+    """
+    pattern = re.compile(r"(不是|而非)[^。！？\n]{0,30}而是")
+    check_files = params.get("files", ["narration.txt"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        for m in pattern.finditer(content):
+            start = max(0, m.start() - 4)
+            end = min(len(content), m.end() + 8)
+            snippet = content[start:end].replace("\n", " ")
+            found.append(f"{fname}: '…{snippet}…'")
+    if found:
+        return (False, f"发现 {len(found)} 处'不是X而是Y'翻译腔套路句"
+                f"（非中文表达习惯，宜用直接肯定句，详见 shared-rules §1.2）: "
+                f"{' | '.join(found[:3])}")
+    return True, ""
+
+
 def check_no_real_person_name(project_dir: Path, params: dict,
                                guardrails: list | None = None) -> tuple[bool, str]:
     """R-G-008: 检测旁白/文案中的真实人名+头衔组合，防平台隐私审核"""
@@ -420,6 +446,7 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
 
 # 更新 GATE_CHECKERS
 GATE_CHECKERS[GateType.hook_pattern_verified] = check_hook_pattern_verified
+GATE_CHECKERS[GateType.narration_translation_pattern] = check_narration_translation_pattern
 
 
 def check_hf_api_present(project_dir: Path, params: dict) -> tuple[bool, str]:

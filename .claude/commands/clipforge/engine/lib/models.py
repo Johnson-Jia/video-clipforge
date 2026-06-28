@@ -72,6 +72,7 @@ class GateType(str, Enum):
     no_real_person_name = "no_real_person_name"
     no_school_name = "no_school_name"
     no_competitor_attack = "no_competitor_attack"
+    narration_translation_pattern = "narration_translation_pattern"  # SOFT: 翻译腔套路句（不是X而是Y）
     no_search_cta = "no_search_cta"
     gradient_text_no_dark_shadow = "gradient_text_no_dark_shadow"
     no_scene_wrap = "no_scene_wrap"

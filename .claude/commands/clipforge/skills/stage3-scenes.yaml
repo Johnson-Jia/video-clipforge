@@ -60,7 +60,10 @@ skill:
       - gate: no_competitor_attack
         params:
           files: ["narration.txt"]
-    soft: []
+    soft:
+      - gate: narration_translation_pattern
+        params:
+          files: ["narration.txt"]
     max_retries: 2
   trace:
     capture: true
