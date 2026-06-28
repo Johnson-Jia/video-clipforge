@@ -236,7 +236,7 @@ done
 echo ""
 echo "--- 删除临时目录 ---"
 
-for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" ".diag_frames"; do
+for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" ".diag_frames" "qa_frames" ".qa_frames_gate"; do
   for match in $d; do
     if [ -d "$match" ]; then
       safe_rm_rf "$match/"
