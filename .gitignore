@@ -54,3 +54,4 @@ __pycache__/
 .claude/commands/clipforge/assets/fonts/
 
 .local
+docs/superpowers/
