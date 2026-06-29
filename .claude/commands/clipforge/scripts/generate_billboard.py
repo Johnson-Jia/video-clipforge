@@ -62,6 +62,22 @@ body { width:1080px; height:1920px; background:#0d1117; font-family:'Microsoft Y
 .stars { font-size:30px; font-weight:700; color:#e3b341; font-family:'Consolas',monospace; }
 .today { font-size:24px; color:#3fb950; font-weight:700; font-family:'Consolas',monospace; margin-top:4px; }
 .footer { text-align:center; padding-top:18px; border-top:1px solid #30363d; color:#6e7681; font-size:24px; letter-spacing:1px; }
+/* 紧凑布局：items > 12（如周榜 Top 15-20）自动启用，缩小 avatar/padding/字号容纳 20 项；日榜 10 项不受影响 */
+.wrap.compact .header { padding-bottom:10px; }
+.wrap.compact .avatar { width:76px; height:76px; border-width:2px; box-shadow:0 0 12px rgba(88,166,255,0.4); }
+.wrap.compact .channel { font-size:23px; letter-spacing:2px; }
+.wrap.compact .h-title { font-size:40px; margin-top:3px; }
+.wrap.compact .h-sub { font-size:19px; margin-top:2px; }
+.wrap.compact .date-pill { font-size:23px; padding:10px 20px; }
+.wrap.compact .list { gap:4px; padding-top:12px; padding-bottom:4px; }
+.wrap.compact .item { padding:8px 16px; gap:12px; border-radius:12px; }
+.wrap.compact .rank { width:42px; height:42px; font-size:24px; border-radius:9px; }
+.wrap.compact .name { font-size:24px; }
+.wrap.compact .name .lang { font-size:16px; margin-left:8px; }
+.wrap.compact .desc { font-size:18px; margin-top:2px; line-height:1.25; }
+.wrap.compact .stars { font-size:22px; }
+.wrap.compact .today { font-size:17px; margin-top:1px; }
+.wrap.compact .footer { padding-top:8px; font-size:18px; }
 """
 
 
@@ -117,7 +133,7 @@ def main():
         if avatar_b64 else ""
     )
     body = (
-        '<div class="wrap">'
+        '<div class="wrap' + (' compact' if len(items) > 12 else '') + '">'
         '<div class="header"><div class="brand">'
         f'{avatar_html}<div>'
         f'<div class="channel">{d.get("channel","")}</div>'
@@ -127,7 +143,7 @@ def main():
         f'<div class="date-pill">{d.get("date","")}</div>'
         '</div>'
         f'<div class="list">{items_str}</div>'
-        f'<div class="footer">按今日涨星排序 · Top {len(items)}</div>'
+        f'<div class="footer">按涨星排序 · Top {len(items)}</div>'
         '</div>'
     )
     html = (
