@@ -225,6 +225,17 @@ def main():
         else:
             ok(f"text-shadow blur 合理（最大 {max(shadow_blurs):.0f}px）")
 
+    # ── 3.4b 渐变文字白端点（手机 OLED 过曝 + 深背景灰暗，feedback-gradient-text-brightness）──
+    # 渐变文字（linear-gradient + background-clip:text）端点含纯白 → 手机高亮屏过曝刺眼/深背景灰暗无力
+    white_in_gradient = []
+    for _g in re.findall(r'linear-gradient\([^)]*\)', html):
+        if re.search(r'#fff\b|#ffffff|rgba?\(\s*255\s*,\s*255\s*,\s*255', _g, re.IGNORECASE):
+            white_in_gradient.append(_g[:70])
+    if white_in_gradient:
+        warn(f"渐变含纯白端点: {white_in_gradient[:2]} — 手机 OLED 高亮屏过曝(刺眼/层次糊)/深背景灰暗。改同色系高饱和端点(domain→lighten(domain)→domain)，禁 #fff（text-effects.md §渐变）")
+    else:
+        ok("渐变无纯白端点（同色系高饱和，手机/深背景都清晰）")
+
     # ── 3.5 文字完整性（禁 ellipsis 截断）──
     # 短视频手机端文字必须完整可读，text-overflow:ellipsis 截断（如项目名 SkillSpect...）不可读。
     # 通用扫 CSS 属性，不依赖 class 名——LLM 自创任何结构只要用了 ellipsis 都拦。

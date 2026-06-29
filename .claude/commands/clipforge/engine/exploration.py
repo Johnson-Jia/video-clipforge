@@ -122,9 +122,21 @@ def _read_freshness_feedback() -> dict | None:
 def write_directive(project_dir: str, date_str: str, category: str = "github") -> Path:
     """生成 exploration_directive.yaml 写入项目目录。"""
     import yaml
+    from engine.lib.data_paths import WORKSPACE_ROOT
+    # 防误写技能目录：resolve + 校验 project_dir 在主 workspace 下（workspace 可由
+    # CLIPFORGE_WORKSPACE 环境变量 / clipforge-config.json / git 根 四级回退定制）
+    proj = Path(project_dir).resolve()
+    ws = (Path(WORKSPACE_ROOT) / "workspace").resolve()
+    try:
+        proj.relative_to(ws)
+    except ValueError:
+        raise SystemExit(
+            f"⛔ project_dir 解析为 {proj}，不在主 workspace({ws})下，拒绝写（防误写技能目录）。"
+            f" workspace 可由 CLIPFORGE_WORKSPACE 环境变量 / clipforge-config.json / git 根 定制；"
+            f" 请传 workspace 下的绝对路径，如 {ws}/YYYY/MM/DD/<项目名>。"
+        )
     result = decide(project_dir, date_str, category,
                     freshness_feedback=_read_freshness_feedback())
-    proj = Path(project_dir)
     proj.mkdir(parents=True, exist_ok=True)
     fp = proj / "exploration_directive.yaml"
     fp.write_text(yaml.dump(result, allow_unicode=True, default_flow_style=False), encoding="utf-8")

@@ -57,7 +57,7 @@ tl.to('.breath', {
 
 ### §2.2 渐变文字 gradient-text
 
-**安全约束**：用 `background-image`（**禁 `background:` 简写**，会重置 clip）；同色系高饱和端点（**禁白色 `#fff`**，深色背景上灰暗无力）；`text-shadow` blur ≤12px alpha≤0.4；双写 `-webkit-` 前缀。
+**安全约束**：用 `background-image`（**禁 `background:` 简写**，会重置 clip）；同色系高饱和端点（**禁白色 `#fff`**——深色背景灰暗无力 **+ 手机 OLED 高亮屏过曝刺眼/层次糊**）；`text-shadow` blur ≤12px alpha≤0.4；**glow（独立发光，非描边）≤30px**（过大手机 OLED 过曝）；双写 `-webkit-` 前缀。
 
 ```css
 .grad-text {

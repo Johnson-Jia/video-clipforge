@@ -8,12 +8,16 @@
 export LANG=zh_CN.UTF-8
 TODAY=$(date +%Y-%m-%d)
 DATE_DIR="$(date +%Y)/$(date +%m)/$(date +%d)"
-PROJECT_DIR="workspace/${DATE_DIR}/<project-name>"
+# ⛔ PROJECT_DIR 必须用绝对路径——cd 到 CF_DIR 后相对路径会误写技能目录
+# （exploration.py / inject.py 已加 WORKSPACE_ROOT 校验拦截，源头用绝对最稳）。
+# workspace 默认在 git 根下；CLIPFORGE_WORKSPACE 环境变量 / clipforge-config.json
+# 定制了 workspace 时，把下一行根目录改成定制的 workspace 根。
+PROJECT_DIR="$(git rev-parse --show-toplevel)/workspace/${DATE_DIR}/<project-name>"
 mkdir -p "${PROJECT_DIR}"
 
 # 探索-利用决策（种子化确定性，全 DAG 各 SubAgent 读同一 directive）
 # 决定本次视频走 explore（采集冷门维度数据）还是 exploit（用最强经验组合）
-cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../../../${PROJECT_DIR}" --date "${TODAY}" --category <CATEGORY>
+cd .claude/commands/clipforge && python engine/exploration.py --project-dir "${PROJECT_DIR}" --date "${TODAY}" --category <CATEGORY>
 ```
 
 > **代理：** 如果本机需要代理才能访问外网，请在执行前设置 `https_proxy` / `http_proxy` 环境变量。
@@ -74,7 +78,7 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 
 1. 运行约束注入（在 `.claude/commands/clipforge/` 目录下）：
    ```bash
-   cd .claude/commands/clipforge && python engine/inject.py --skill <stage-id> --category <category> --project-dir "../../../${PROJECT_DIR}"
+   cd .claude/commands/clipforge && python engine/inject.py --skill <stage-id> --category <category> --project-dir "${PROJECT_DIR}"
    ```
 
 2. 将 inject 输出作为 **约束段** 附加到 SubAgent prompt 的最前面（在 stage 内容之前）：
@@ -118,8 +122,8 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 加载：`skills/stage0-env.yaml` + `skills/stage0.5-topic-plan.yaml` + `skills/stage1-content.yaml` + `skills/stage2-analysis.yaml` + `skills/stage3-scenes.yaml`
 
 **约束注入**：依次运行（输出拼接为约束段附加到 SubAgent prompt 最前面）：
-1. `cd .claude/commands/clipforge && python engine/inject.py --skill stage0.5-topic-plan --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`（选题规划：题材轮换 + 新鲜度约束 + 近期重复预警）
-2. `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`（场景拆解约束）
+1. `cd .claude/commands/clipforge && python engine/inject.py --skill stage0.5-topic-plan --category <CATEGORY> --project-dir "${PROJECT_DIR}"`（选题规划：题材轮换 + 新鲜度约束 + 近期重复预警）
+2. `cd .claude/commands/clipforge && python engine/inject.py --skill stage3-scenes --category <CATEGORY> --project-dir "${PROJECT_DIR}"`（场景拆解约束）
 
 传入参数：
 
@@ -146,7 +150,7 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 
 加载：`skills/stage4-audio.yaml`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage4-audio --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage4-audio --category <CATEGORY> --project-dir "${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -163,7 +167,7 @@ cd .claude/commands/clipforge && python engine/exploration.py --project-dir "../
 
 加载：`skills/stage6-production.yaml`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage6-production --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage6-production --category <CATEGORY> --project-dir "${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 
@@ -213,7 +217,7 @@ HARD 门禁失败时：修复问题，重新渲染，再次运行门禁。最多
 
 加载：`skills/stage7-delivery.yaml` + `shared/machine-scoring.md` + `shared/cleanup-rules.md`
 
-**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage7-delivery --category <CATEGORY> --project-dir "../../../${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
+**约束注入**：运行 `cd .claude/commands/clipforge && python engine/inject.py --skill stage7-delivery --category <CATEGORY> --project-dir "${PROJECT_DIR}"`，将输出作为约束段附加到 SubAgent prompt 最前面。
 
 传入参数：
 

@@ -101,7 +101,7 @@ parameters:
 .pfc-rank {
   font-size: 96px; font-weight: 900; line-height: 0.9;
   color: var(--accent-warm);
-  text-shadow: 0 0 60px rgba(240,180,41,0.4);
+  text-shadow: 0 0 24px rgba(240,180,41,0.5);  /* glow 降：60px 手机 OLED 过曝，24px + 提 alpha 补 */
   font-family: 'JetBrains Mono', monospace;
 }
 .pfc-category {
@@ -127,8 +127,8 @@ parameters:
   color: rgba(255,255,255,0.45);
   letter-spacing: 0.04em;
 }
-.pfc-repo {   /* repo 大字白：主标识。owner(32px)+repo(60px) 同行最长 DeusData/codebase-memory-mcp≈886px<900px（JetBrains Mono 实际字符宽<0.6em，余量更大），超长名靠 word-break 换行 */
-  font-size: 60px; font-weight: 800; color: #fff;
+.pfc-repo {   /* repo 大字：主标识。owner(32px)+repo(60px) 同行最长 DeusData/codebase-memory-mcp≈886px<900px（JetBrains Mono 实际字符宽<0.6em，余量更大），超长名靠 word-break 换行 */
+  font-size: 60px; font-weight: 800; color: #f5f5f5;  /* #fff→#f5f5f5 降一档，手机 OLED 不过曝 */
 }
 
 /* ── 中部带 ── */

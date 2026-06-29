@@ -321,7 +321,16 @@ def generate_injection(
     if project_dir is not None:
         try:
             from datetime import datetime as _dt2, timezone as _tz2
-            proj = Path(project_dir)
+            from engine.lib.data_paths import WORKSPACE_ROOT
+            # 防误写技能目录：resolve + 校验 project_dir 在主 workspace 下（workspace 可定制）
+            proj = Path(project_dir).resolve()
+            ws = (Path(WORKSPACE_ROOT) / "workspace").resolve()
+            try:
+                proj.relative_to(ws)
+            except ValueError:
+                import sys as _sys
+                print(f"⚠ inject: project_dir {proj} 不在主 workspace({ws})下，跳过 injected_patterns 落盘（防误写技能目录）。请传 workspace 下绝对路径。", file=_sys.stderr)
+                raise
             proj.mkdir(parents=True, exist_ok=True)
             meta_payload = {
                 "source": "realtime",  # 实时注入（区别于 backfill 推导的历史视频）

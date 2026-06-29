@@ -88,6 +88,7 @@ def main():
             })
             continue
         tts_text = fix_polyphone(raw_text)
+        tts_text = tts_text.replace('_', ' ')  # 下划线不读"下划线"，换空格分词（daily_stock_analysis → daily stock analysis）
 
         with open(text_file, 'w', encoding='utf-8') as f:
             f.write(tts_text)
