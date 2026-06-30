@@ -347,6 +347,8 @@ python scripts/s6_visual_qa.py --project-dir <PROJECT_DIR>
 
 ⛔ 代码只产客观数据(content_y / blank_bands 坐标),不替你下「是不是断层」的判断——布局审美归 LLM。这一步是非强制自审,但强烈建议:你终于能看见渲染结果了。
 
+> **⛔ 顺序铁律（防 qa_frames 残留）**：§6.9 QA 在 **stage6 渲染后、cleanup 之前**。流程：渲染 → §6.9 QA（产 qa_frames）→ stage7 delivery → **cleanup（清 qa_frames，管线终点）**。**cleanup 之后禁止再跑 `s6_visual_qa.py`**——会重新产 qa_frames 残留（cleanup 已清过，2026-06-30 goldminer 事故）。交付前若需复查布局，读已保留的 `visual_qa_report.json`（在 RETAIN 白名单）即可，不重新抽帧。
+
 ## §6.10 特效工坊（组件匹配 + 新特效创建）
 
 > **两阶段触发：**
