@@ -189,7 +189,9 @@ def _read_narration(proj_dir: Path) -> dict:
                 result["hook_text"] = (first.get("narration_segment") or first.get("text") or "")[:80]
                 has_struct = any(first.get(k) for k in ("scene_type", "emotion", "humor_type", "contrarian_angle"))
                 scene_types = [s.get("scene_type") for s in segs if isinstance(s, dict) and s.get("scene_type")]
-                emotions = [s.get("emotion") for s in segs if isinstance(s, dict) and s.get("emotion")]
+                # 只收 str 类型 emotion（防历史数据 emotion 误存 float/int 致 dominant_emotion 非 str，
+                # 2026-06-30 auto_evolve L594 {emo:12s} 崩溃根因；float/int/None 一律排除 → dominant 必 str）
+                emotions = [s.get("emotion") for s in segs if isinstance(s, dict) and isinstance(s.get("emotion"), str)]
                 humor = sum(1 for s in segs if isinstance(s, dict) and s.get("humor_type"))
                 contrarian = sum(1 for s in segs if isinstance(s, dict) and s.get("contrarian_angle"))
                 result["attrs"] = {

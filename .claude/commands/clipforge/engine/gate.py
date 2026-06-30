@@ -175,6 +175,33 @@ def check_narration_translation_pattern(project_dir: Path, params: dict) -> tupl
     return True, ""
 
 
+def check_narration_emotion_type_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """SOFT: 检查 narration_segments.json 各 segment emotion 必 str 名（6 拍 grab/build/reveal/climax/settle/summon）。
+
+    防 LLM 把 emotion_intensity 数字误填进 emotion（float），致 auto_evolve 取众数 dominant_emotion 非 str 崩。
+    auto_evolve L192 已 isinstance(str) 兜底，此 checker 让数据源头干净。
+    """
+    fpath = project_dir / params.get("file", "narration_segments.json")
+    if not fpath.exists():
+        return True, ""
+    try:
+        data = json.loads(fpath.read_text(encoding="utf-8"))
+    except Exception:
+        return True, ""
+    segs = data if isinstance(data, list) else data.get("segments", [])
+    bad = []
+    for i, s in enumerate(segs):
+        if not isinstance(s, dict):
+            continue
+        emo = s.get("emotion")
+        if emo is not None and not isinstance(emo, str):
+            bad.append(f"seg{i}: emotion={emo!r} ({type(emo).__name__})")
+    if bad:
+        return (False, f"narration emotion 必 str 名（grab/build/reveal/climax/settle/summon），发现非 str: {bad[:3]}"
+                f"（auto_evolve dominant_emotion 取众数，非 str 致分析崩）")
+    return True, ""
+
+
 def check_no_real_person_name(project_dir: Path, params: dict,
                                guardrails: list | None = None) -> tuple[bool, str]:
     """R-G-008: 检测旁白/文案中的真实人名+头衔组合，防平台隐私审核"""
@@ -447,6 +474,7 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
 # 更新 GATE_CHECKERS
 GATE_CHECKERS[GateType.hook_pattern_verified] = check_hook_pattern_verified
 GATE_CHECKERS[GateType.narration_translation_pattern] = check_narration_translation_pattern
+GATE_CHECKERS[GateType.narration_emotion_type_valid] = check_narration_emotion_type_valid
 
 
 def check_hf_api_present(project_dir: Path, params: dict) -> tuple[bool, str]:

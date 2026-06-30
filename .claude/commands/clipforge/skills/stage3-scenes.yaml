@@ -64,6 +64,9 @@ skill:
       - gate: narration_translation_pattern
         params:
           files: ["narration.txt"]
+      - gate: narration_emotion_type_valid
+        params:
+          file: "narration_segments.json"
     max_retries: 2
   trace:
     capture: true
