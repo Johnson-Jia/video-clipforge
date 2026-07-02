@@ -508,6 +508,18 @@ Stage 1 门禁（`description_fidelity_valid`）会用确定性子串匹配校�
 
 true — GitHub 系列视频固定使用 YunjianNeural +25%，不需要查通用声音选择表。
 
+### bgm_style
+
+GitHub 快速播报的 BGM 定位是**低调辅助**——衬底不抢人声，不能当主角。科技感靠画面和音色，不靠激昂配乐。
+
+| 用途 | 分类（workspace/bgm/ 库名前缀） | 说明 |
+|------|--------------------------------|------|
+| ✅ 首选 | clean-corporate / warm-editorial / monochrome | 低调不抢，适合持续快播报 |
+| ⚠️ 节制 | neon-electric / pastel-soft | 科技感/情绪点缀，不连续两期用 |
+| ⛔ 避开 | bold-energetic / epic-trailer / epic-uplifting | 电子激昂高频吵，抢旁白，观众反馈"大" |
+
+> 选曲优先 ✅ 首选，跨期去重（bgm_history 5 天）。neon-electric 虽有科技感但高频合成音主观吵，不连续用。
+
 ## delivery
 
 ### hashtags

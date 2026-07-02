@@ -22,7 +22,7 @@ BGM 音量校准：均值公式 + LRA 动态分档峰值约束
   2. 双层按 BGM 动态范围（LRA）分档，mean_gap / peak_gap 同档取值：
      - flat (LRA ≤ 2):      氛围/lo-fi/钢琴，mean_gap=11, peak_gap=8  dB（窄动态额外压低）
      - balanced (2-4):      轻流行/民谣/窄动态电影配乐，mean_gap=15, peak_gap=11 dB（cinematic 持续铺底抢旁白，2026-06 用户反馈 0.38 仍响→0.2 适合，mean_gap 加大根治）
-     - beat-heavy (4-6):    电子/合成波，    mean_gap=9,  peak_gap=15 dB
+     - beat-heavy (4-6):    电子/合成波，    mean_gap=10, peak_gap=15 dB
      - dynamic (>6):        交响/电影，      mean_gap=9,  peak_gap=14 dB
      取 min(均值层, 峰值层) 作为最终 volume。
      LRA 未传时回退 spread 分档（flat≤12/balanced 12-14/beat 14-16/dynamic>16），仅作兼容兜底。
@@ -48,7 +48,7 @@ MEAN_GAP_TARGET = 9.0  # BGM 有效均值比旁白均值低 9 dB（自然融合�
 LRA_TIERS = [
     {"name": "flat",        "max": 2,   "peak_gap": 8,  "mean_gap": 11, "desc": "氛围/lo-fi/钢琴（窄动态，额外压低）"},
     {"name": "balanced",    "max": 4,   "peak_gap": 11, "mean_gap": 15, "desc": "轻流行/民谣/窄动态电影配乐"},
-    {"name": "beat-heavy",  "max": 6,   "peak_gap": 15, "mean_gap": 9,  "desc": "电子/合成波"},
+    {"name": "beat-heavy",  "max": 6,   "peak_gap": 15, "mean_gap": 10, "desc": "电子/合成波（高频主观吵，2026-07-02 mean_gap 9→10 让位旁白）"},
     {"name": "dynamic",     "max": 999, "peak_gap": 14, "mean_gap": 9,  "desc": "交响/电影"},
 ]
 
@@ -57,7 +57,7 @@ LRA_TIERS = [
 SPREAD_TIERS = [
     {"name": "flat",        "max_spread": 12,  "peak_gap": 8,  "mean_gap": 11, "desc": "氛围/lo-fi/钢琴（兼容兜底，与 LRA 一致）"},
     {"name": "balanced",    "max_spread": 14,  "peak_gap": 11, "mean_gap": 15, "desc": "轻流行/民谣/窄动态电影配乐"},
-    {"name": "beat-heavy",  "max_spread": 16,  "peak_gap": 15, "mean_gap": 9,  "desc": "电子/合成波"},
+    {"name": "beat-heavy",  "max_spread": 16,  "peak_gap": 15, "mean_gap": 10, "desc": "电子/合成波（兼容兜底，与 LRA 档一致）"},
     {"name": "dynamic",     "max_spread": 999, "peak_gap": 14, "mean_gap": 9,  "desc": "交响/电影"},
 ]
 
