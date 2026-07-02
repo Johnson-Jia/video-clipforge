@@ -357,6 +357,7 @@ GOOGLE_FONT_MAP = {
 # family → [(相对路径, weight)]。前缀 assets/ 或 cache/，resolve_font_files 运行时解析。
 # 字体文件不入 git（.gitignore），由三级回退获取（SRC_MAP/本地/下载）。
 _FONT_SRCS = {
+    "Ma Shan Zheng": [("assets/MaShanZheng-400.ttf", 400)],
     "Noto Serif SC": [("assets/SourceHanSerifSC-Heavy.woff2", 900), ("assets/SourceHanSerifSC-Regular.woff2", 400)],
     "Noto Sans SC": [("cache/noto-sans-sc/400-normal.woff2", 400), ("cache/noto-sans-sc/700-normal.woff2", 700)],
     "JetBrains Mono": [("cache/jetbrains-mono/700-normal.woff2", 700), ("cache/jetbrains-mono/400-normal.woff2", 400)],
