@@ -219,9 +219,12 @@ def main():
             if _nums:
                 shadow_blurs.append(float(_nums[-1]))  # 最后一个 px 值（blur；无 blur 时是 v offset，小值不触发 >16）
     if shadow_blurs:
-        big_blurs = sorted({b for b in shadow_blurs if b > 16})
-        if big_blurs:
-            warn(f"text-shadow blur 过大（>16px）: {big_blurs}px — 过大发光让小字边缘重影发虚（24px+ 糊掉 38px 小字），建议普通文字 ≤12px、大字 ≤16px")
+        huge_blurs = sorted({b for b in shadow_blurs if b > 28})   # >28 fail：严重泛光，手机 OLED 远端晕染刺眼（2026-07-03 80px 事故根治）
+        big_blurs = sorted({b for b in shadow_blurs if 16 < b <= 28})
+        if huge_blurs:
+            fail(f"text-shadow blur 过大（>28px）: {huge_blurs}px — 严重泛光，手机高亮屏远端晕染刺眼。大字≤20px、普通文字≤12px")
+        elif big_blurs:
+            warn(f"text-shadow blur 偏大（17-28px）: {big_blurs}px — 大字可接受，普通文字建议≤12px")
         else:
             ok(f"text-shadow blur 合理（最大 {max(shadow_blurs):.0f}px）")
 
@@ -235,6 +238,20 @@ def main():
         warn(f"渐变含纯白端点: {white_in_gradient[:2]} — 手机 OLED 高亮屏过曝(刺眼/层次糊)/深背景灰暗。改同色系高饱和端点(domain→lighten(domain)→domain)，禁 #fff（text-effects.md §渐变）")
     else:
         ok("渐变无纯白端点（同色系高饱和，手机/深背景都清晰）")
+
+    # ── 3.4c 胶囊小标签禁用 grad clip:text（feedback-bgclip-text-capsule-conflict，2026-07-03 .pfc-use 文案消失事故根治）──
+    # 胶囊（padding+border+background）+ background-clip:text → background 被裁到文字范围，
+    # 文字 transparent + 胶囊底被 clip → 整个标签消失。胶囊用纯色 color，禁 clip:text/background-image。
+    capsule_clip_conflict = []
+    for _sel, _body in re.findall(r'([.#][\w-]+)\s*\{([^}]+)\}', html):
+        _compact = _body.replace(' ', '')
+        if 'background-clip:text' in _compact or '-webkit-background-clip:text' in _compact:
+            if 'padding' in _body and 'border' in _body and 'background' in _body:
+                capsule_clip_conflict.append(_sel)
+    if capsule_clip_conflict:
+        fail(f"胶囊元素用了 background-clip:text: {capsule_clip_conflict} — 胶囊(padding+border+background)+clip:text 导致文字透明+胶囊底被裁=整个标签消失。胶囊用纯色 color，去掉 clip:text 与 background-image")
+    else:
+        ok("无胶囊+clip:text 冲突（胶囊用纯色文字）")
 
     # ── 3.5 文字完整性（禁 ellipsis 截断）──
     # 短视频手机端文字必须完整可读，text-overflow:ellipsis 截断（如项目名 SkillSpect...）不可读。

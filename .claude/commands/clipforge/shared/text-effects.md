@@ -10,6 +10,7 @@
 - **循环态用 GSAP `repeat:N yoyo:true`**（N = 场景时长 / 特效周期，向上取整；或 CSS `animation:...infinite` 但 0%帧必须可见）。
 - **opacity 范围 0.3–0.9 禁归零**（归零 + seek 不执行 = 永久不可见，phase-visibility 事故同源）。
 - 渐变文字必须 `-webkit-background-clip:text` + `background-clip:text` 双写，用 `background-image`（禁 `background` 简写）。
+- **胶囊小标签禁用 grad 渐变文字**（feedback-bgclip-text-capsule-conflict）：胶囊元素（含 `padding`+`border`+`background`，如 `.pfc-use`）组合 `grad-*`（`background-clip:text`+`color:transparent`）时，background 被裁到文字范围 + 文字透明 → **整个标签消失**。胶囊用纯场景色 `color`，不组合 `grad-*`。渐变文字只能用在**无胶囊样式**的纯文字元素（大标题/数字）。
 - 所有配方的 GSAP `startTime` 是组件示例占位，组装进 index.html 时替换为该场景的 `sceneStart + 偏移`。
 
 ## §1 HyperFrames 特效兼容规则
