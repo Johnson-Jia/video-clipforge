@@ -253,6 +253,34 @@ def main():
     else:
         ok("无胶囊+clip:text 冲突（胶囊用纯色文字）")
 
+    # ── 3.4c-bis HTML 元素组合：.pfc-use + grad-*（跨 class 冲突，2026-07-03 test/cinema-github 复发事故）──
+    # 单规则扫描（3.4c）抓不到跨 class 组合：<div class="pfc-use grad-cyan"> 时，.pfc-use 胶囊 + .grad-cyan clip:text 冲突 → 标签消失。
+    # BASE_CSS 已全局兜底（.pfc-use[class*="grad-"] 强制纯色可见），此处 warn 提示用纯色 class 替代 grad-*。
+    pfc_grad_combo = re.findall(r'class="[^"]*\bpfc-use\b[^"]*\bgrad-[\w-]+\b[^"]*"', html)
+    if pfc_grad_combo:
+        warn(f".pfc-use 与 grad-* 组合 {len(pfc_grad_combo)} 处 — 胶囊+grad clip:text 跨 class 冲突致标签消失（BASE_CSS 已兜底纯色可见；建议 .pfc-use 用纯色 class 替代 grad-*，feedback-bgclip-text-capsule-conflict）")
+
+    # ── 3.4c-ter grad clip:text + line-height<1.0 上部截断（fc-data-value 事故，2026-07-03 客观确认）──
+    # clip:text 的 background 画在元素 line-box；line-height<1.0 → line-box < 字形 → 字形 ascender 超出 box 无 background → 上部截断。
+    # 实色文字不受影响（color 填充整个字形）。只 clip:text 渐变文字触发（图像分析客观证实：大数字上部截断，小字实色完整）。
+    cliptext_low_lh = []
+    for _sel, _body in re.findall(r'([.#][\w-]+)\s*\{([^}]+)\}', html):
+        _compact = _body.replace(' ', '')
+        if 'background-clip:text' in _compact or '-webkit-background-clip:text' in _compact:
+            _m = re.search(r'line-height:\s*([\d.]+)', _body)
+            if _m and float(_m.group(1)) < 1.0:
+                cliptext_low_lh.append((_sel, _m.group(1)))
+    if cliptext_low_lh:
+        warn(f"clip:text 渐变文字 line-height<1.0: {cliptext_low_lh} — line-box<字形，上部 ascender 无 background=截断（fc-data-value 事故）。渐变文字 line-height ≥ 1.0（feedback-grad-cliptext-line-height）")
+
+    # ── 3.4d 运动预设（禁裸线性 ease，PPT 运动根源，motion-presets.md）──
+    # Williams: 均匀间距（linear）= PPT 运动签名。用 EASE.{standard,tension,resolve,ambient}（s6_assemble 自动注入）。
+    linear_eases = re.findall(r"ease:\s*['\"](linear|power0(?:\.in|\.out)?)['\"]", html, re.IGNORECASE)
+    if linear_eases:
+        warn(f"GSAP 用了线性 ease: {linear_eases} — 均匀间距=PPT 运动根源。用 EASE.standard/tension/resolve/ambient（见 motion-presets.md；fx-spin 匀速旋转用 'none' 不在此列)")
+    else:
+        ok("GSAP 无裸线性 ease（用 EASE 预设或非线性）")
+
     # ── 3.5 文字完整性（禁 ellipsis 截断）──
     # 短视频手机端文字必须完整可读，text-overflow:ellipsis 截断（如项目名 SkillSpect...）不可读。
     # 通用扫 CSS 属性，不依赖 class 名——LLM 自创任何结构只要用了 ellipsis 都拦。
@@ -324,14 +352,19 @@ def main():
         warn("无 CSS 变量声明")
 
     # ── 6. layer-fx 内容检查 ──
-    print("\n── 6. 三层架构完整性 ──")
+    print("\n── 6. 四层架构完整性（bg/fx/content 必需 + cinema 可选）──")
     layer_fx_blocks = re.findall(r'class="layer-fx"', html)
     layer_bg_blocks = re.findall(r'class="layer-bg"', html)
     layer_content_blocks = re.findall(r'class="layer-content"', html)
+    layer_cinema_blocks = re.findall(r'class="layer-cinema"', html)
 
     ok(f"layer-bg: {len(layer_bg_blocks)} 个") if layer_bg_blocks else warn("layer-bg 缺失")
     ok(f"layer-fx: {len(layer_fx_blocks)} 个") if layer_fx_blocks else warn("layer-fx 缺失")
     ok(f"layer-content: {len(layer_content_blocks)} 个") if layer_content_blocks else warn("layer-content 缺失")
+    if layer_cinema_blocks:
+        ok(f"layer-cinema: {len(layer_cinema_blocks)} 个（后处理签名层，cinema-effects.md）")
+    else:
+        print("  ℹ️ layer-cinema 未使用（可选签名层；质感档期建议加 vignette/grain，快速播报可不加）")
 
     # 检查 layer-fx 是否有实际内容（不只是空 div）
     fx_with_content = 0
@@ -377,7 +410,7 @@ def main():
     html_no_kf = re.sub(r'@keyframes\s+[\w-]+\s*\{(?:[^{}]|\{[^{}]*\})*\}', '', html, flags=re.DOTALL)
     all_opacity_zero = len(re.findall(r'opacity:\s*0\s*;', html_no_kf))
     bg_glow_opacity = len(re.findall(
-        r'(?:glow-orb|grid-overlay|layer-bg)[^}]*opacity:\s*0\s*;', html, re.DOTALL
+        r'(?:glow-orb|grid-overlay|layer-bg|cinema-lightflash)[^}]*opacity:\s*0\s*;', html, re.DOTALL
     ))
     anim_opacity = len(re.findall(
         r'\.anim-in[^}]*opacity:\s*0\s*;', html, re.DOTALL

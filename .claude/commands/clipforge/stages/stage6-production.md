@@ -27,7 +27,7 @@ Stage 2 已将视觉风格方向和故事板写入 `design.md`。**本阶段只�
 | `storyboard.narrative_template` | 叙事模板 → 影响场景布局选择 |
 | `storyboard.humor_style` | 幽默策略 → 是否添加 SpeechBubble 组件 |
 | `storyboard.character_presence` | 角色出场 → 是否添加 CharOverlay 组件 |
-| `narration_segments.json` 的 `visual_intent` | 每场景 × 每层的导演视觉意图（bg/fx/content 三层） |
+| `narration_segments.json` 的 `visual_intent` | 每场景 × 每层的导演视觉意图（bg/fx/content 三层 + cinema 后处理可选，见 `cinema-effects.md`） |
 
 **沉浸模式 → CSS 变量映射：** 从 `stage6-components.md` 的「沉浸模式配色速查」表获取具体色值，写入 `:root` CSS 变量。
 
@@ -457,12 +457,14 @@ python scripts/s6_visual_qa.py --project-dir <PROJECT_DIR>
 <script>
 window.__timelines = {};
 var tl = gsap.timeline({ paused: true });
+// EASE 运动预设由 s6_assemble 自动注入（const EASE={standard,tension,resolve,ambient}，见 motion-presets.md）
+// 禁裸 linear/power0（PPT 运动根源），用 EASE.standard/tension/resolve/ambient
 
 // 内容入场: tl.from() 只用 scale/x/y，禁止 opacity
-tl.from('#s1-title', {scale:0.85, duration:0.15, ease:'power3.out'}, 0);
+tl.from('#s1-title', {scale:0.85, duration:0.15, ease:EASE.standard}, 0);
 
 // FX 动画: tl.to() 允许 repeat:-1 + yoyo:true，允许 opacity
-tl.to('#s1-ring', {scale:1.15, duration:3, ease:'sine.inOut', repeat:-1, yoyo:true}, 0);
+tl.to('#s1-ring', {scale:1.15, duration:3, ease:EASE.ambient, repeat:-1, yoyo:true}, 0);
 
 window.__hf = {
   duration: TOTAL_DURATION,

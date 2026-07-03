@@ -230,7 +230,10 @@ def build_scene_fragment(
         f'<div class="layer-fx">\n'
         f"  <!-- 在此填充特效（fx-glow / fx-line / fx-dot） -->\n"
         f"</div>\n"
-        f"{content_html}"
+        f"{content_html}\n"
+        f'<div class="layer-cinema">\n'
+        f"  <!-- 可选：cinema 后处理原语（cinema-vignette/grain/halation/lightflash/aberration），见 cinema-effects.md。质感档期选 1-2 个签名，快速播报可留空 -->\n"
+        f"</div>"
     )
 
 

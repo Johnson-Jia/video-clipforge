@@ -11,6 +11,7 @@
 - **opacity 范围 0.3–0.9 禁归零**（归零 + seek 不执行 = 永久不可见，phase-visibility 事故同源）。
 - 渐变文字必须 `-webkit-background-clip:text` + `background-clip:text` 双写，用 `background-image`（禁 `background` 简写）。
 - **胶囊小标签禁用 grad 渐变文字**（feedback-bgclip-text-capsule-conflict）：胶囊元素（含 `padding`+`border`+`background`，如 `.pfc-use`）组合 `grad-*`（`background-clip:text`+`color:transparent`）时，background 被裁到文字范围 + 文字透明 → **整个标签消失**。胶囊用纯场景色 `color`，不组合 `grad-*`。渐变文字只能用在**无胶囊样式**的纯文字元素（大标题/数字）。
+- **渐变文字（clip:text）line-height 必须 ≥ 1.0**（feedback-grad-cliptext-line-height，2026-07-03 fc-data-value 事故）：clip:text 的 background 画在元素 line-box；`line-height<1.0` → line-box < 字形高 → 字形上部 ascender 超出 line-box **无 background → 上部截断**（透明缺失）。实色文字不受影响（`color` 填充整个字形）。大字渐变（数字/标题）务必 `line-height ≥ 1.0`（建议 1.1）。
 - 所有配方的 GSAP `startTime` 是组件示例占位，组装进 index.html 时替换为该场景的 `sceneStart + 偏移`。
 
 ## §1 HyperFrames 特效兼容规则

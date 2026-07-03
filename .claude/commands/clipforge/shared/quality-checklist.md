@@ -44,3 +44,14 @@ description: Stage 6 渲染前品质检查清单
 | 18 | 视觉密度合理（无过度空旷或拥挤） | design.md |
 | 19 | 无多余 composition（只一个根 composition） | R-S6-009 |
 | 20 | `.clip` 必须是 `inset:0`（禁止 top/right/bottom/left 偏移 → 黑边） | render-safety |
+
+## §5 四轴诊断（软引导 / advisory，不阻塞渲染）
+
+> 借鉴视觉叙事四轴（Block/Murch/Williams/McCloud），诊断「为什么像 PPT」。**advisory 非硬性**——快速播报可酌情，深度解析尽量满足。
+
+| # | 检查项 | 杠杆 |
+|---|--------|------|
+| 21 | **视觉强度进程**（Block）：视觉密度/对比是否向高潮递进，还是全程均匀（平的视觉强度线 = PPT 签名） | 中 |
+| 22 | **剪辑在论点完成处**（Murch）：场景断点是否落在旁白「一个想法完成」处（观众准备眨眼），而非机械段落边界 | 中 |
+| 23 | **运动间距非线性**（Williams）：ease 是否用 EASE 预设（standard/tension/resolve/ambient），禁裸 `linear`（均匀间距 = PPT 运动根源，director_gate warn） | 高 |
+| 24 | **转场多样**（McCloud）：相邻场景转场是否含 moment-to-moment（让节拍呼吸）/ aspect-to-aspect（游荡氛围），而非全是 action-to-action | 低 |

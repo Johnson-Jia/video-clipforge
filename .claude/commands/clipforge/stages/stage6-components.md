@@ -35,6 +35,11 @@
 | 10 | HexGrid | SVG 六边形蜂窝网格 + 翡翠绿辉光 + 脉冲 | confidence, precision, tech | `components/bg/hex_grid.html` |
 | 11 | NebulaCloud | 星云色团漂移 + 星点闪烁 | wonder, mystery, beauty | `components/bg/nebula_cloud.html` |
 | 12 | EmberGlow | 琥珀/橙色余烬上浮 + 火星粒子 + 暖纹 | warmth, nostalgia, beauty | `components/bg/ember_glow.html` |
+| 12a | AmberAura | 金黄光环漂移 + 暖雾 + 金色尘埃（柔和暖黄，区别 EmberGlow 红橙炭火） | warmth, comfort, hope | `components/bg/amber_aura.html` |
+| 12b | RubyPulse | 深红宝石脉冲 + 危险光线闪（酒红/血红，warning/警醒） | warning, danger, tension | `components/bg/ruby_pulse.html` |
+| 12c | ForgeEmber | 锻造火花迸溅 + 周期锤击光闪（明亮金黄火花向上轨迹） | energy, tension, industry | `components/bg/forge_ember.html` |
+
+> **暖色 bg 组件**（EmberGlow / AmberAura / RubyPulse / ForgeEmber）覆盖 4 种暖色情绪（nostalgia/comfort/danger/energy），相邻场景轮换满足 R-R-010 多样性。暖金风内容（goldminer/intro）不再因暖色组件稀缺触发 R-R-010。
 | 13 | DiamondLattice | 45° 金色菱形网格 + 对角漂移 + 金色辉光 | pride, confidence, elegance | `components/bg/diamond_lattice.html` |
 | 14 | ElectricPulse | 旋转光弧 + 脉冲环 + 青白能量核心 | excitement, power, climax | `components/bg/electric_pulse.html` |
 | 15 | CosmicPlanet | 地球（海洋/大陆/云层/冰盖/城市灯光）+ 星空 | wonder, epic, mystery | `components/bg/cosmic_planet.html` |

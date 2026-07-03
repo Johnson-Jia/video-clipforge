@@ -614,6 +614,16 @@ def check_composition_structure(project_dir: Path, params: dict) -> tuple[bool, 
     if not re.search(r'gsap\.timeline\s*\(\s*\{[^}]*paused\s*:\s*true', content):
         issues.append("GSAP timeline 未设置 {paused: true}")
 
+    # GSAP repeat:-1（OOM/probe 根因：infinite repeat 破坏 HF 确定性捕获引擎，HF lint error，2026-07-03 复现）
+    if re.search(r'repeat:\s*-1', content):
+        issues.append("GSAP repeat:-1（infinite）→ 破坏 HF 确定性捕获，browser probe 可能 OOM。用有限 repeat: Math.floor(duration/cycle)-1，或环境运动改 CSS animation infinite")
+
+    # data-composition-id 与 __timelines["X"] 匹配（OOM 根因：mismatch → probe 等 timeline 注册超时 45s → OOM "Set maximum size exceeded"）
+    comp_m = re.search(r'data-composition-id="([^"]+)"', content)
+    tl_m = re.search(r'__timelines\[\s*["\']([^"\']+)["\']\s*\]\s*=', content)
+    if comp_m and tl_m and comp_m.group(1) != tl_m.group(1):
+        issues.append(f'data-composition-id="{comp_m.group(1)}" 与 __timelines["{tl_m.group(1)}"] 不匹配 → browser probe 等 timeline 注册超时 → OOM。两者必须一致（通常 =main）')
+
     if issues:
         return False, f"composition 结构缺陷: {'; '.join(issues)}" + _ASSEMBLE_HINT
 
@@ -643,6 +653,9 @@ def check_root_attributes_complete(project_dir: Path, params: dict) -> tuple[boo
         missing.append("data-height")
     if missing:
         issues.append(f"根组合缺少 {', '.join(missing)} → HyperFrames viewport 错误 → 黑帧")
+    # 根 data-start="0"（OOM 根因：缺 data-start → HF runtime 无法开始播放 → browser probe 异常 → "Set maximum size exceeded"，2026-07-03 复现确认）
+    if 'data-start="' not in root_tag:
+        issues.append('根组合缺少 data-start="0" → HF runtime 无法开始播放，browser probe 异常可能 OOM（Set maximum size exceeded）')
 
     # 检查 audio 元素的 data-start
     audio_tags = re.findall(r'<audio[^>]*>', content)

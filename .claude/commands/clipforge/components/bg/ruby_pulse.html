@@ -1,0 +1,62 @@
+<!--
+@ComponentMeta
+name: ruby_pulse
+layer: bg
+tags: [ruby, warm, deep-red, pulse, danger, warning, beams, tension, alarm]
+emotion_range: [warning, danger, tension]
+visual_density: medium
+complexity: css-only
+description: 深红宝石脉冲（酒红/血红，区别 ember_glow 橙红炭火）+ 强脉冲节奏 + 危险光线闪。适合 warning/danger/tension 场景（失败/风险/警醒），与 ember_glow/amber_aura 风格差异满足 R-R-010 相邻多样性。
+parameters:
+  pulse_count: { default: 3, range: [2, 4] }
+  pulse_period: { default: 8, range: [6, 12] }
+visual_types: [glow, gradient, beams]
+/ComponentMeta
+-->
+<!-- CSS keyframes (全局共享，在 index.html <style> 中引入) -->
+<!--
+@keyframes rubyPulse {
+  0%, 100% { transform: scale(1); opacity: 0.30; }
+  50% { transform: scale(1.15); opacity: 0.55; }
+}
+@keyframes dangerBeam {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.42; }
+}
+@keyframes alarmFlicker {
+  0%, 100% { opacity: 0.35; }
+  45% { opacity: 0.40; }
+  50% { opacity: 0.65; }
+  55% { opacity: 0.38; }
+}
+-->
+<!-- HTML (嵌入 .layer-bg) -->
+<!-- bg-component: ruby_pulse -->
+<!-- 深红黑底 -->
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,hsl(348,25%,6%),hsl(340,18%,8%))"></div>
+<!-- 深红脉冲 1（大，酒红） -->
+<div style="position:absolute;top:45%;left:18%;width:480px;height:480px;border-radius:50%;
+  background:radial-gradient(circle,hsla(350,75%,45%,0.40),hsla(340,60%,30%,0.12),transparent 70%);
+  filter:blur(90px);animation:rubyPulse 8s ease-in-out infinite 0s"></div>
+<!-- 深红脉冲 2（中，血红） -->
+<div style="position:absolute;top:55%;left:55%;width:380px;height:380px;border-radius:50%;
+  background:radial-gradient(circle,hsla(0,70%,42%,0.35),hsla(355,55%,28%,0.10),transparent 70%);
+  filter:blur(75px);animation:rubyPulse 10s ease-in-out infinite 3s"></div>
+<!-- 深红脉冲 3（小，亮红） -->
+<div style="position:absolute;top:35%;left:42%;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,hsla(355,80%,50%,0.32),hsla(348,65%,35%,0.10),transparent 70%);
+  filter:blur(65px);animation:rubyPulse 7s ease-in-out infinite 5s"></div>
+<!-- 危险光线带 1 -->
+<div style="position:absolute;top:25%;left:-10%;width:120%;height:180px;
+  background:linear-gradient(95deg,transparent 15%,hsla(350,72%,48%,0.16),hsla(0,65%,40%,0.10),transparent 85%);
+  filter:blur(50px);animation:dangerBeam 6s ease-in-out infinite"></div>
+<!-- 危险光线带 2（对角） -->
+<div style="position:absolute;top:60%;left:-10%;width:120%;height:140px;
+  background:linear-gradient(85deg,transparent 20%,hsla(355,68%,45%,0.14),transparent 80%);
+  filter:blur(45px);transform:rotate(-6deg);animation:dangerBeam 9s ease-in-out infinite 2s"></div>
+<!-- 警示裂纹线 -->
+<div style="position:absolute;top:40%;left:-5%;width:90%;height:2px;
+  background:linear-gradient(90deg,transparent 10%,hsla(0,78%,50%,0.30) 40%,hsla(350,72%,48%,0.22) 60%,transparent 90%);
+  filter:blur(1.5px);transform:rotate(-10deg);animation:alarmFlicker 5s ease-in-out infinite"></div>
+<!-- 深红暗角 -->
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 35%,hsla(345,30%,3%,0.42) 100%)"></div>

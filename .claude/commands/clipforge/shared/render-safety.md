@@ -156,9 +156,9 @@
 - GSAP `.from()` 动画是可靠的入场机制：元素 CSS 默认 `opacity:1`，GSAP `.from({opacity:0})` 在 seek 时正确执行
 - 动画 offset 必须与场景 `data-start` 对齐（如 hook 场景从 0 开始，what 场景从 hook 时长开始）
 
-## §2. 三层渲染架构
+## §2. 四层渲染架构
 
-> **每个场景必须严格分离为三层。** 这是结构规则，不是样式建议。违反会导致特效遮挡内容或背景穿透。
+> **每个场景必须严格分离为三层（bg/fx/content）+ 可选第四层 cinema 后处理。** 这是结构规则，不是样式建议。违反会导致特效遮挡内容或背景穿透。cinema 层是全帧签名质感层（颗粒/暗角/光晕/色差），见 `cinema-effects.md`。
 
 ### §2.1 层级定义
 
@@ -167,6 +167,7 @@
 | 底层 `.layer-bg` | 1 | 场景背景 | 渐变色、光晕、网格底纹、纯色填充 |
 | 中间层 `.layer-fx` | 2 | 视觉特效 | 粒子、爆炸、矩阵雨、3D、漂浮物等动态装饰 |
 | 顶层 `.layer-content` | 3 | 可读内容 | 文字、数字、徽章、卡片、标签等所有用户需要阅读的元素 |
+| 签名层 `.layer-cinema`（可选） | 4 | 后处理质感 | 颗粒、暗角、光晕环绕、色差——全帧签名，见 `cinema-effects.md` |
 
 ### §2.2 CSS 模板
 
@@ -175,11 +176,12 @@
 .layer-bg { position: absolute; inset: 0; z-index: 1; }
 .layer-fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .layer-content { position: relative; z-index: 3; height: 100%; }
+.layer-cinema { position: absolute; inset: 0; z-index: 4; pointer-events: none; }   /* 可选后处理签名层，cinema-effects.md */
 ```
 
 ### §2.3 规则
 
-- **每个场景必须包含三层**，无例外
+- **每个场景必须包含三层**（bg/fx/content，无例外）；`.layer-cinema` 第四层可选（质感档期用，快速播报不强制每场景）
 - `.layer-fx` 必须 `pointer-events: none`，防止特效遮挡交互
 - 特效 opacity 建议 0.3-0.6（不遮挡内容但可见）
 - 特效类型不固定，根据场景情绪和内容主题自行推导（见 `stage6-components.md` 情绪映射表）

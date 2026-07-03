@@ -100,6 +100,30 @@ components:
     visual_density: low
     complexity: css-only
 
+  - name: amber_aura
+    layer: bg
+    file: bg/amber_aura.html
+    tags: [amber, warm, gold, aura, soft, glow, drift, dust, comfort, hope]
+    emotion_range: [warmth, comfort, hope]
+    visual_density: low
+    complexity: css-only
+
+  - name: ruby_pulse
+    layer: bg
+    file: bg/ruby_pulse.html
+    tags: [ruby, warm, deep-red, pulse, danger, warning, beams, tension, alarm]
+    emotion_range: [warning, danger, tension]
+    visual_density: medium
+    complexity: css-only
+
+  - name: forge_ember
+    layer: bg
+    file: bg/forge_ember.html
+    tags: [forge, warm, sparks, burst, hammer, energy, industry, tension, bright]
+    emotion_range: [energy, tension, industry]
+    visual_density: medium
+    complexity: css-only
+
   - name: diamond_lattice
     layer: bg
     file: bg/diamond_lattice.html
