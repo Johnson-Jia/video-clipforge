@@ -244,15 +244,17 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
     return "\n\n".join(clips), cumulative, missing, fx_info, list(bg_keyframes_seen.keys())
 
 
-def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_info: dict | None = None) -> str:
+def build_gsap(segments: list, phase_timings: dict, total_duration: float,
+               fx_info: dict | None = None, narration_segs: list | None = None) -> str:
     """从时间数据自动生成 GSAP timeline。
 
-    完全确定性：场景硬切时间 = 累计 start；phase 切换 = global_start + start_offset；
-    fx 装饰动画按约定 class 注入。LLM 永不手写这段，根除 phase opacity 漏恢复。
+    完全确定性：场景过渡 = 累计 start（按 transition 字段）；phase 切换 = global_start + start_offset；
+    fx 装饰动画按约定 class 注入；运镜相机动画按 camera_move 字段注入。LLM 永不手写这段，根除 phase opacity 漏恢复。
     """
     n = len(segments)
     ids = [f"#s{i+1:02d}" for i in range(n)]
     fx_info = fx_info or {}
+    narration_segs = narration_segs or []
 
     # 累计起止时间
     starts: list[float] = []
@@ -269,11 +271,17 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_in
         lines.append(f"tl.set([{quoted}], {{opacity:0}}, 0);")
     lines.append(f"tl.set('{ids[0]}', {{opacity:1}}, 0);")
 
-    # 场景硬切（前场景隐藏，当前场景显示）
+    # 场景过渡（按 transition 字段：硬切/叠化/淡入/淡出/黑场）
+    from scripts.cinematic import transition_to_phase
     for i in range(1, n):
         t = starts[i]
-        lines.append(f"tl.set('{ids[i-1]}', {{opacity:0}}, {t:.2f});")
-        lines.append(f"tl.set('{ids[i]}', {{opacity:1}}, {t:.2f});")
+        prev_sid = f"s{i:02d}"
+        cur_sid = f"s{i+1:02d}"
+        # transition 属"前镜→当前镜"过渡，读当前镜（narration_segs 索引 i）
+        ns_seg = narration_segs[i] if i < len(narration_segs) else None
+        tr = (ns_seg.get("transition") if isinstance(ns_seg, dict) else None) or "硬切"
+        for stmt in transition_to_phase(prev_sid, cur_sid, t, tr):
+            lines.append(stmt + ";")
 
     # Phase 切换（phase_timings.json 句子锚点校准，精度 ±50ms）
     scenes = phase_timings.get("scenes", []) if isinstance(phase_timings, dict) else []
@@ -327,6 +335,18 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float, fx_in
                     f"tl.to('#{sid} .{cls}', {{{props},duration:{cycle},"
                     f"repeat:{repeat}{yoyo_str},ease:'{ease}'}}, {scene_start:.2f});"
                 )
+
+    # 运镜相机动画（按 camera_move 字段，对 .scene-content 注入 GSAP）
+    from scripts.cinematic import camera_move_to_gsap
+    for i, s in enumerate(segments):
+        sid = f"s{i+1:02d}"
+        scene_start = starts[i]
+        scene_dur = float(s.get("actual_duration", s.get("duration", 0)))
+        ns_seg = narration_segs[i] if i < len(narration_segs) else None
+        cm = (ns_seg.get("camera_move") if isinstance(ns_seg, dict) else None) or "固定"
+        stmt = camera_move_to_gsap(sid, cm, scene_start, scene_dur)
+        if stmt:
+            lines.append(stmt + ";")
 
     # HyperFrames 注册
     lines.append("window.__timelines=window.__timelines||{};")
@@ -531,6 +551,15 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
 
     phase_timings = load_json(project_dir / "phase_timings.json")
 
+    # 加载电影级字段（shot_size/camera_move/transition，来自 stage3 narration_segments.json）
+    narration_segs = []
+    ns_path = project_dir / "narration_segments.json"
+    if ns_path.exists():
+        try:
+            narration_segs = json.loads(ns_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            narration_segs = []
+
     # 读取 LLM 自定义 CSS（可选）
     custom_css = ""
     custom_css_path = creative_dir / "style.css"
@@ -539,7 +568,7 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
 
     # 构建 clips + GSAP（B: build_clips 现同时注入 bg 组件并收集 keyframes）
     clips_html, total_duration, missing, fx_info, bg_keyframes = build_clips(segments, creative_dir)
-    gsap_js = build_gsap(segments, phase_timings, total_duration, fx_info)
+    gsap_js = build_gsap(segments, phase_timings, total_duration, fx_info, narration_segs)
     bg_keyframes_css = "\n\n".join(bg_keyframes) if bg_keyframes else ""
 
     # 读取 BGM 音量（已在 tts/bgm 管线算好）

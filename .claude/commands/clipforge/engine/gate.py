@@ -49,6 +49,38 @@ def check_json_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     return True, ""
 
 
+def check_cinematic_fields(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """软校验 narration_segments.json 的电影级字段（shot_size/camera_move/transition）在白名单。
+
+    软校验：非法值不 fail（cinematic.py 映射函数已默认兜底），仅在 msg 记录警告，供评分/追溯。
+    缺文件/解析失败 → 跳过（通过）。
+    """
+    fp = project_dir / params.get("file", "narration_segments.json")
+    if not fp.exists():
+        return True, "narration_segments.json 缺失（跳过电影级字段校验）"
+    try:
+        segs = json.loads(fp.read_text(encoding="utf-8"))
+    except Exception:
+        return True, "narration_segments.json 解析失败（跳过电影级字段校验）"
+    try:
+        from scripts.cinematic import SHOT_SIZES, CAMERA_MOVES, TRANSITIONS
+    except ImportError:
+        return True, "cinematic 模块缺失（跳过）"
+    bad = []
+    for i, s in enumerate(segs, 1):
+        if not isinstance(s, dict):
+            continue
+        for field, whitelist in (("shot_size", SHOT_SIZES),
+                                 ("camera_move", CAMERA_MOVES),
+                                 ("transition", TRANSITIONS)):
+            v = s.get(field)
+            if v is not None and v not in whitelist:
+                bad.append(f"S{i}.{field}={v}")
+    if bad:
+        return True, f"电影级字段非法值（默认兜底）: {', '.join(bad[:5])}"
+    return True, "电影级字段白名单通过"
+
+
 def check_loudnorm_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
     fp = project_dir / params.get("file", "narration.mp3")
     if not fp.exists():
@@ -3951,6 +3983,14 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
         "total_stages": len(phases),
         "stages_passed": sum(1 for p in phases.values() if p.get("hard_passed")),
     }
+
+    # cinematic 字段合规（软校验，记录到 score_report 供评分/追溯）
+    # check_cinematic_fields 总 passed=True（软），msg 记录字段白名单合规情况（"通过" / "非法值默认兜底"）
+    try:
+        ns_ok, ns_msg = check_cinematic_fields(project_dir, {"file": "narration_segments.json"})
+        score_report["cinematic_compliance"] = {"passed": ns_ok, "msg": ns_msg}
+    except Exception:
+        pass
 
     report_path = project_dir / "score_report.json"
     report_path.write_text(

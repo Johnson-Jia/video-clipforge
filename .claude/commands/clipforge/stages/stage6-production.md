@@ -684,6 +684,16 @@ primary/标题元素根据文本长度缩放：≤4 字 = 1.0×，5-8 字 = 0.85
 - 安全内容区：60px ~ 1020px（垂直），120px ~ 1800px（水平）
 - padding：`60px 120px 60px 120px`
 
+### 电影级渲染（运镜 + 转场，assemble 自动注入）
+
+> stage3 填的 `camera_move` / `transition` 由 `s6_assemble_html.py build_gsap` 自动映射注入（流程固化，LLM 不碰映射）：
+
+- **运镜** → GSAP 相机动画（对 `.scene-content`，按 camera_move：推=scale up、摇=translateX、手持=抖动…）。映射在 `scripts/cinematic.py camera_move_to_gsap`。
+- **转场** → phase opacity 过渡（按 transition：硬切=即时、叠化=crossfade 0.4s、黑场=经 0 过渡…）。映射在 `scripts/cinematic.py transition_to_phase`，替换默认硬切。
+- **景别** → 布局密度引导（特写=大字少元素、远景=小字多元素），半确定（LLM 选组件/布局参考 `shot_size_to_density`）。
+
+**LLM 不手写相机动画/转场 GSAP**（creative/sNN.html 写内容时按 shot_size 布局密度选字号/元素数；运镜/转场由 assemble 自动注入，避免冲突）。
+
 ## §6.13 渲染管线（全自动）
 
 > `s6_render.sh` 一次性完成: 渲染前检查 → 导演门禁 → BGM 音量注入 → renderbak 隔离 → HyperFrames lint + render → renderbak 恢复 → output_no_bgm 合成 → 音频验证 → 完成门禁。
