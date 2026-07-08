@@ -73,11 +73,11 @@ audio{display:none;}
 .fx-aura{position:absolute;border-radius:50%;filter:blur(70px);animation:fxAura 4.5s ease-in-out infinite;}
 .fx-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.5);animation:fxRingExp 5s ease-in-out infinite;}
 .fx-particle{position:absolute;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.7);animation:fxFloat 4s ease-in-out infinite;}
-.fx-scan{position:absolute;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);opacity:.5;animation:fxScanMove 6s ease-in-out infinite;}
-.fx-beam{position:absolute;top:40%;width:80%;height:50px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);filter:blur(6px);mix-blend-mode:screen;animation:fxBeamSweep 5s ease-in-out infinite;}
-.fx-stream{position:absolute;width:3px;height:35%;background:linear-gradient(180deg,transparent,rgba(255,255,255,.6),transparent);animation:fxStreamFall 3s linear infinite;}
-.fx-bolt{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.4),transparent 60%);animation:fxBolt 5s steps(1) infinite;}
-.fx-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:50px 50px;animation:fxGridPulse 8s ease-in-out infinite;}
+.fx-scan{position:absolute;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,rgba(94,234,212,.55),transparent);opacity:.5;animation:fxScanMove 6s ease-in-out infinite;}
+.fx-beam{position:absolute;top:40%;width:80%;height:50px;background:linear-gradient(90deg,transparent,rgba(94,234,212,.45),transparent);filter:blur(6px);mix-blend-mode:screen;animation:fxBeamSweep 5s ease-in-out infinite;}
+.fx-stream{position:absolute;width:3px;height:35%;background:linear-gradient(180deg,transparent,rgba(94,234,212,.5),transparent);animation:fxStreamFall 3s linear infinite;}
+.fx-bolt{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 30%,rgba(94,234,212,.4),transparent 60%);animation:fxBolt 5s steps(1) infinite;}
+.fx-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(94,234,212,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(94,234,212,.09) 1px,transparent 1px);background-size:50px 50px;animation:fxGridPulse 8s ease-in-out infinite;}
 .fx-orbit{position:absolute;top:50%;left:50%;width:12px;height:12px;margin:-6px;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 0 10px rgba(255,255,255,.5);animation:fxOrbit 6s linear infinite;}
 .fx-pulse-ring{position:absolute;top:calc(50% - 100px);left:calc(50% - 100px);width:200px;height:200px;margin:0;border-radius:50%;border:2px solid rgba(255,255,255,.5);animation:fxPulseRing 3s ease-out infinite;}
 /* === cinema 后处理原语库（全帧签名层 z:4，LLM 在 .layer-cinema 内用 <div class="cinema-xxx"> 引用，无需写 CSS）===
@@ -89,8 +89,41 @@ audio{display:none;}
 .cinema-lightflash{position:absolute;inset:0;mix-blend-mode:screen;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,228,180,0.55),transparent 62%);pointer-events:none;}
 .cinema-aberration{position:absolute;inset:0;filter:drop-shadow(1.5px 0 rgba(255,40,90,0.45)) drop-shadow(-1.5px 0 rgba(40,200,255,0.45));pointer-events:none;}
 .pfc-use[class*="grad-"]{background-image:none;-webkit-background-clip:border-box;background-clip:border-box;-webkit-text-fill-color:#f5f5f5;color:#f5f5f5;} /* 全局兜底：胶囊禁 grad clip:text（feedback-bgclip-text-capsule-conflict），SubAgent 误用 grad-* 时强制纯色可见；项目级 .pfc-use.grad-xxx 可覆盖分色 */
+.tut-scene{display:flex;flex-direction:column;justify-content:center;align-items:stretch;width:100%;height:100%;} /* 教程横屏：撑满 phase content box（phase padding 管安全区），align-items:stretch 让 region 水平撑满（根治偏右，不缩中间）*/
+.tut-grid{width:100%;height:100%;}
 /* === LLM 自定义组件层（来自 creative/style.css）=== */
 """
+
+
+def read_orientation(project_dir: Path) -> str:
+    """读 design.md 的 orientation 字段（stage2 写入），默认 portrait。
+
+    横屏分类（如 tutorial orientation_hint: landscape）stage2 写入 design.md，
+    assemble 据此切换画布 1920×1080 + 横屏安全区 padding。
+    """
+    design = project_dir / "design.md"
+    if not design.exists():
+        return "portrait"
+    try:
+        txt = design.read_text(encoding="utf-8")
+    except OSError:
+        return "portrait"
+    m = re.search(r"orientation\s*[:：]\s*(landscape|portrait)", txt, re.IGNORECASE)
+    return m.group(1).lower() if m else "portrait"
+
+
+def build_base_css(orientation: str = "portrait") -> str:
+    """根据画布方向生成基础 CSS。
+
+    方向相关：body/#root/.clip 宽高（1080×1920 ↔ 1920×1080）+ .phase 安全区 padding
+    （竖屏 180px 90px 220px 90px ↔ 横屏 60px 120px 60px 120px，render-safety.md §3.5）。
+    其余（layer z-index / fx 原语 / cinema 原语 / pfc-use 兜底）方向无关，固定不变。
+    """
+    if orientation == "landscape":
+        css = BASE_CSS.replace("width:1080px;height:1920px", "width:1920px;height:1080px")
+        css = css.replace("padding:180px 90px 220px 90px", "padding:60px 120px 60px 120px")
+        return css
+    return BASE_CSS
 
 
 def _parse_bg_component(component_path: Path) -> tuple[str, list[str], list[str]]:
@@ -208,17 +241,21 @@ def parse_fx_classes(frag_html: str) -> set[str]:
     return classes
 
 
-def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[str], dict, list[str]]:
+def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[str], dict, list[str], dict, dict]:
     """读取每个场景的创意碎片，包裹 clip div。
 
-    Returns: (clips_html, total_duration, missing_scenes, fx_info, bg_keyframes)
+    Returns: (clips_html, total_duration, missing_scenes, fx_info, bg_keyframes, tutorial_reveals, tutorial_countups)
         fx_info: {sid: set(fx 动画 class)}，供 build_gsap 注入装饰动画
         bg_keyframes: 所有场景 bg 组件的 @keyframes CSS（去重），注入 <style>
+        tutorial_reveals: {sid: [reveal_time,...]}，教程模式一屏多区域逐步 reveal（data-reveal 属性，非 phase 切换）
+        tutorial_countups: {sid: [(target, count_at), ...]}，教程模式数据 count-up（data-count-to + data-count-at）
     """
     clips: list[str] = []
     missing: list[str] = []
     fx_info: dict[str, set[str]] = {}
     bg_keyframes_seen: dict[str, None] = {}
+    tutorial_reveals: dict[str, list[float]] = {}
+    tutorial_countups: dict[str, list[tuple[float, float]]] = {}
     cumulative = 0.0
 
     for idx, seg in enumerate(segments, 1):
@@ -241,6 +278,24 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
             for kf in kfs:
                 bg_keyframes_seen[kf] = None
             fx_info[sid] = parse_fx_classes(body)
+            # 教程模式 reveal：扫 data-reveal 时间 + data-reveal-dir 方向（横屏教程元素级 stagger，从左/从上/淡入）
+            reveals = {}
+            for m in re.finditer(r'<[^>]*data-reveal="([\d.]+)"[^>]*>', body):
+                tag = m.group(0)
+                t = float(m.group(1))
+                dir_m = re.search(r'data-reveal-dir="(\w+)"', tag)
+                reveals[t] = dir_m.group(1) if dir_m else 'fade'
+            if reveals:
+                tutorial_reveals[sid] = reveals
+            # count-up：data-count-to + data-count-at（数据飞升：0 → target，按 count_at 时间点触发）
+            # 两种属性顺序都要扫（LLM 可能写 to 在前或 at 在前）
+            countups: set[tuple[float, float]] = set()
+            for m in re.finditer(r'data-count-to="(-?[\d.]+)"[^>]*\sdata-count-at="([\d.]+)"', body):
+                countups.add((float(m.group(1)), float(m.group(2))))
+            for m in re.finditer(r'data-count-at="([\d.]+)"[^>]*\sdata-count-to="(-?[\d.]+)"', body):
+                countups.add((float(m.group(2)), float(m.group(1))))
+            if countups:
+                tutorial_countups[sid] = sorted(countups)
 
         dur = float(seg.get("actual_duration", seg.get("duration", 0)))
         clip = (
@@ -252,11 +307,13 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
         clips.append(clip)
         cumulative += dur
 
-    return "\n\n".join(clips), cumulative, missing, fx_info, list(bg_keyframes_seen.keys())
+    return "\n\n".join(clips), cumulative, missing, fx_info, list(bg_keyframes_seen.keys()), tutorial_reveals, tutorial_countups
 
 
 def build_gsap(segments: list, phase_timings: dict, total_duration: float,
-               fx_info: dict | None = None, narration_segs: list | None = None) -> str:
+               fx_info: dict | None = None, narration_segs: list | None = None,
+               tutorial_reveals: dict | None = None,
+               tutorial_countups: dict | None = None) -> str:
     """从时间数据自动生成 GSAP timeline。
 
     完全确定性：场景过渡 = 累计 start（按 transition 字段）；phase 切换 = global_start + start_offset；
@@ -266,6 +323,7 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float,
     ids = [f"#s{i+1:02d}" for i in range(n)]
     fx_info = fx_info or {}
     narration_segs = narration_segs or []
+    tutorial_countups = tutorial_countups or {}
 
     # 累计起止时间
     starts: list[float] = []
@@ -297,6 +355,8 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float,
 
     # Phase 切换（phase_timings.json 句子锚点校准，精度 ±50ms）
     scenes = phase_timings.get("scenes", []) if isinstance(phase_timings, dict) else []
+    if tutorial_reveals:
+        scenes = []  # 教程模式 reveal（tutorial_reveals 非空）跳过 phase 切换——用 data-reveal 同屏 reveal，不切屏（避免 phase 切换隐藏唯一 phase 致空帧，feedback SA3 建议）
     for sc in scenes:
         seg_idx = sc.get("segment_index", 0)
         base = sc.get(
@@ -322,6 +382,45 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float,
                 )
                 lines.append(
                     f"tl.set('#{sid} .phase-{pn-1}', {{opacity:0}}, {t:.2f});"
+                )
+
+    # 教程模式 reveal（横屏教程一屏多区域逐步 reveal，不切屏）：按 data-reveal 时间点 + data-reveal-dir 方向 生成 reveal
+    # 方向：left=从左滑入(x:-40→0) / top=从上滑入(y:-40→0) / fade=纯 opacity（默认）
+    if tutorial_reveals:
+        for i, s in enumerate(segments):
+            sid = f"s{i+1:02d}"
+            scene_start = starts[i]
+            for reveal_time, direction in tutorial_reveals.get(sid, {}).items():
+                t = scene_start + reveal_time
+                selector = f'#{sid} [data-reveal="{reveal_time:g}"]'
+                if direction == 'left':
+                    lines.append(f"tl.fromTo('{selector}', {{opacity:0,x:-40}}, {{opacity:1,x:0,duration:0.5}}, {t:.2f});")
+                elif direction == 'top':
+                    lines.append(f"tl.fromTo('{selector}', {{opacity:0,y:-40}}, {{opacity:1,y:0,duration:0.5}}, {t:.2f});")
+                else:
+                    lines.append(f"tl.to('{selector}', {{opacity:1,duration:0.5}}, {t:.2f});")
+
+    # count-up（数据飞升：data-count-to + data-count-at，按 count_at 时间点 0→target）
+    # LLM 在碎片写 <span data-count-to="N" data-count-at="T">0</span>，assemble 自动注入 GSAP
+    # textContent tween（snap 整数/小数自动适配）。重 render 不丢——根治 v3 重 assemble 覆盖手写 index.html。
+    # prefix（+/-）由 CSS ::before attr(data-count-prefix) 处理，GSAP 只控数字。
+    if tutorial_countups:
+        for i, s in enumerate(segments):
+            sid = f"s{i+1:02d}"
+            scene_start = starts[i]
+            for target, count_at in tutorial_countups.get(sid, []):
+                t = scene_start + count_at
+                # snap：整数 1，小数 0.1
+                snap = 1 if target == int(target) else 0.1
+                # target 值：整数转 int（避免 104.0），小数保留 float
+                target_val = int(target) if target == int(target) else target
+                # selector：用原 target 字符串匹配碎片 data-count-to 值（104/76.6/-16.4）
+                # target_val 经 int 转换后 104.0 → 104 → "104"；小数 76.6 → 76.6 → "76.6"；负数同理
+                target_str = str(target_val)
+                selector = f'#{sid} [data-count-to="{target_str}"]'
+                lines.append(
+                    f"tl.to('{selector}', {{textContent:{target_val},duration:0.9,"
+                    f"snap:{{textContent:{snap}}},ease:'power2.out'}}, {t:.2f});"
                 )
 
     # fx 层装饰动画（确定性注入：LLM 只需在碎片用约定 class）
@@ -579,8 +678,8 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
         custom_css = custom_css_path.read_text(encoding="utf-8").strip()
 
     # 构建 clips + GSAP（B: build_clips 现同时注入 bg 组件并收集 keyframes）
-    clips_html, total_duration, missing, fx_info, bg_keyframes = build_clips(segments, creative_dir)
-    gsap_js = build_gsap(segments, phase_timings, total_duration, fx_info, narration_segs)
+    clips_html, total_duration, missing, fx_info, bg_keyframes, tutorial_reveals, tutorial_countups = build_clips(segments, creative_dir)
+    gsap_js = build_gsap(segments, phase_timings, total_duration, fx_info, narration_segs, tutorial_reveals, tutorial_countups)
     bg_keyframes_css = "\n\n".join(bg_keyframes) if bg_keyframes else ""
 
     # 读取 BGM 音量（已在 tts/bgm 管线算好）
@@ -592,21 +691,26 @@ def assemble(project_dir: Path) -> tuple[str, list[str]]:
 
     fonts_link = build_font_faces(creative_dir, Path(__file__).resolve().parent)
 
+    # 画布方向（横屏分类如 tutorial：design.md orientation=landscape → 1920×1080 + 横屏安全区）
+    orientation = read_orientation(project_dir)
+    base_css = build_base_css(orientation)
+    canvas_w, canvas_h = (1920, 1080) if orientation == "landscape" else (1080, 1920)
+
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=1080,height=1920">
+<meta name="viewport" content="width={canvas_w},height={canvas_h}">
 <style>
 {fonts_link}
-{BASE_CSS}
+{base_css}
 {custom_css}
 /* === bg 组件 @keyframes（自动注入，来自 components/bg/）=== */
 {bg_keyframes_css}
 </style>
 </head>
 <body>
-<div id="root" data-composition-id="main" data-start="0" data-duration="{total_duration:.2f}" data-width="1080" data-height="1920">
+<div id="root" data-composition-id="main" data-start="0" data-duration="{total_duration:.2f}" data-width="{canvas_w}" data-height="{canvas_h}">
 <audio id="narration" src="narration.mp3" data-volume="1" data-track="1" data-start="0"></audio>
 <audio id="bgm" src="bgm.wav" data-volume="{bgm_volume}" data-track="2" data-start="0"></audio>
 

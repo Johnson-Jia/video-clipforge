@@ -21,6 +21,7 @@ Thumbs.db
 .claude/commands/*-weekly-*.md
 .claude/commands/goldminer.md
 
+
 .idea/
 
 .idea/agents/

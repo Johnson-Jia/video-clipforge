@@ -228,14 +228,41 @@ def main():
         else:
             ok(f"text-shadow blur 合理（最大 {max(shadow_blurs):.0f}px）")
 
+    # text-shadow 发光检测（offset 0 0 = 发光，泛光刺眼，E04 claudemd/github 事故根治）
+    # blur 检查只查 blur 值（>28 fail），但"0 0 10px"（blur 10）过门禁仍泛光。offset 0 0 = 发光，HARD 拦截
+    glow_shadows = []
+    for _decl in shadow_decls:
+        for _shadow in _decl.split(','):
+            _s = _shadow.strip()
+            if re.match(r'^0\s+0\s+[\d.]+px', _s):
+                glow_shadows.append(_s[:50])
+    if glow_shadows:
+        fail(f"text-shadow 发光（0 0 Xpx）致泛光刺眼: {glow_shadows[:3]} — 改极淡 drop `0 2px 6px rgba(30,41,59,0.08)`（E04/github 事故根治）")
+    else:
+        ok("text-shadow 无发光（0 0 Xpx）")
+
     # ── 3.4b 渐变文字白端点（手机 OLED 过曝 + 深背景灰暗，feedback-gradient-text-brightness）──
     # 渐变文字（linear-gradient + background-clip:text）端点含纯白 → 手机高亮屏过曝刺眼/深背景灰暗无力
     white_in_gradient = []
     for _g in re.findall(r'linear-gradient\([^)]*\)', html):
-        if re.search(r'#fff\b|#ffffff|rgba?\(\s*255\s*,\s*255\s*,\s*255', _g, re.IGNORECASE):
+        # 可见白端点判定（feedback-gradient-text-brightness + bg 不可见层排除 2026-07-06）：
+        # - #fff/#ffffff / rgb(255,255,255) → 可见白（alpha=1）
+        # - rgba(255,255,255, ALPHA) → 仅 ALPHA>0.05 算可见白端点
+        #   （≤0.05 肉眼不可见，如 bg 组件 hex_grid/scan_grid glassShimmer 折射层，不算违例）
+        has_visible_white = False
+        if re.search(r'#fff(?:fff)?\b', _g, re.IGNORECASE):
+            has_visible_white = True
+        elif re.search(r'(?<!a)rgb\(\s*255\s*,\s*255\s*,\s*255', _g, re.IGNORECASE):
+            has_visible_white = True
+        else:
+            for _m in re.finditer(r'rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*([\d.]+)', _g, re.IGNORECASE):
+                if float(_m.group(1)) > 0.05:
+                    has_visible_white = True
+                    break
+        if has_visible_white:
             white_in_gradient.append(_g[:70])
     if white_in_gradient:
-        warn(f"渐变含纯白端点: {white_in_gradient[:2]} — 手机 OLED 高亮屏过曝(刺眼/层次糊)/深背景灰暗。改同色系高饱和端点(domain→lighten(domain)→domain)，禁 #fff（text-effects.md §渐变）")
+        fail(f"渐变含纯白端点: {white_in_gradient[:2]} — 手机 OLED 高亮屏过曝(刺眼/层次糊)/深背景灰暗。改同色系高饱和端点(domain→lighten(domain)→domain)，禁 #fff（feedback-gradient-text-brightness）")
     else:
         ok("渐变无纯白端点（同色系高饱和，手机/深背景都清晰）")
 

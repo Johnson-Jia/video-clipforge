@@ -1301,7 +1301,17 @@ def check_phase_visibility_present(project_dir: Path, params: dict) -> tuple[boo
 
     segs = narr_data if isinstance(narr_data, list) else narr_data.get("segments", [])
 
+    # 教程 reveal 模式（§6.16）：单 phase div + 多 region + data-reveal，不切 phase。
+    # 此模式下 visual_phases 记录 reveal 步骤（每步一个 region reveal 时间点），不对应 phase-2+ 切换。
+    # 判定：任一 segment 标 tutorial_reveal_mode:true，且 HTML 含 data-reveal 属性 → 跳过 phase-2+ 可见性检查
+    tutorial_reveal = any(
+        (seg.get("tutorial_reveal_mode") in (True, "true", 1, "1"))
+        for seg in segs if isinstance(seg, dict)
+    )
+
     html = html_file.read_text(encoding="utf-8", errors="ignore")
+    if tutorial_reveal and 'data-reveal="' in html:
+        return True, "教程 reveal 模式（§6.16 单 phase + 多 region + data-reveal），跳过 phase-2+ 可见性检查"
 
     # 提取 HTML 中所有 clip 的真实 id（按出现顺序，适配 s01/s1 等任意格式）
     html_clip_ids: list[str] = re.findall(r'<div[^>]*class="clip"[^>]*\bid="([^"]+)"', html)

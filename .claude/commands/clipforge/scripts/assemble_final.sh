@@ -34,45 +34,79 @@ echo "[assemble_final] 源视频: ${SOURCE_DUR}s, ${FPS}fps, profile=${PROFILE},
 
 # ── Step 3: 生成 output_no_bgm.mp4（从 output.mp4 视频 + narration.mp3 音频）──
 # 这是唯一正确的生成方式：禁止从 output.mp4 提取音频轨
+# 音频强制 -ar 48000 -ac 2（stereo 48k），匹配 cover.mp4 的 anullsrc stereo 48k，
+# 否则 Step 6 concat（cover + output_no_bgm）因声道/采样率不兼容致 final_no_bgm 只剩 cover 帧（0.5s 损坏）
 echo "[assemble_final] 生成 output_no_bgm.mp4（output.mp4 视频 + narration.mp3 音频）..."
 ffmpeg -y -i output.mp4 -i narration.mp3 \
-  -c:v copy -c:a aac -b:a 192k \
-  -map 0:v -map 1:a -shortest \
+  -map 0:v -map 1:a \
+  -c:v copy -c:a aac -b:a 192k -ar 48000 -ac 2 \
+  -shortest \
   output_no_bgm.mp4 2>/dev/null
 echo "[assemble_final] output_no_bgm.mp4 已生成"
 
-# ── Step 4: 封面片段制备（1 帧，TS 格式，匹配源视频参数）──
+# ── Step 4: 封面片段制备（1 帧，mp4 格式，含静音音频轨匹配源，避免 concat 丢音频）──
 ffmpeg -y -loop 1 -t $FRAME_DUR -framerate $FPS -i cover.png \
+  -f lavfi -t $FRAME_DUR -i "anullsrc=channel_layout=stereo:sample_rate=48000" \
   -c:v libx264 -profile:v $PROFILE -pix_fmt yuv420p \
   -vf "scale=${VIDEO_W}:${VIDEO_H}" \
-  -frames:v 1 \
-  -f mpegts cover.ts 2>/dev/null
+  -c:a aac -b:a 192k -ar 48000 \
+  -shortest -frames:v 1 cover.mp4 2>/dev/null
 
-# ── Step 5: 版本一：含 BGM ──
-echo "[assemble_final] 生成 final.mp4（含BGM）..."
-ffmpeg -y -i output.mp4 -c copy -f mpegts main.ts 2>/dev/null
-ffmpeg -y -f mpegts -i "concat:cover.ts|main.ts" \
-  -c copy -movflags +faststart final.mp4 2>/dev/null
-rm -f main.ts
+# ── Step 5: 版本一：含 BGM（filter concat re-encode，根治 mpegts concat DTS 不单调）──
+echo "[assemble_final] 生成 final.mp4（含BGM，filter concat）..."
+printf "file 'cover.mp4'\nfile 'output.mp4'\n" > concat_final.txt
+ffmpeg -y -f concat -safe 0 -i concat_final.txt \
+  -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k \
+  -movflags +faststart final.mp4 2>/dev/null
+rm -f concat_final.txt
 
-# ── Step 6: 版本二：无 BGM ──
-echo "[assemble_final] 生成 final_no_bgm.mp4（仅旁白）..."
-ffmpeg -y -i output_no_bgm.mp4 -c copy -f mpegts nobgm.ts 2>/dev/null
-ffmpeg -y -f mpegts -i "concat:cover.ts|nobgm.ts" \
-  -c copy -movflags +faststart final_no_bgm.mp4 2>/dev/null
-rm -f nobgm.ts cover.ts
+# ── Step 6: 版本二：无 BGM（filter concat re-encode）──
+echo "[assemble_final] 生成 final_no_bgm.mp4（filter concat）..."
+printf "file 'cover.mp4'\nfile 'output_no_bgm.mp4'\n" > concat_nobgm.txt
+ffmpeg -y -f concat -safe 0 -i concat_nobgm.txt \
+  -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k \
+  -movflags +faststart final_no_bgm.mp4 2>/dev/null
+rm -f concat_nobgm.txt cover.mp4
 
-# ── Step 7: Mastering: 平台响度标准化 ──
+# ── Step 7: Mastering: 平台响度标准化（双 pass linear，稳定）──
 # 混音阶段管平衡（旁白 vs BGM），mastering 阶段管响度（匹配平台标准）。
-# 目标 I=-14 LUFS（短视频平台标准），TP=-1 dB（防爆音）。
+# 目标 I=-14 LUFS（短视频平台标准），TP=-1.5 dB（防爆音）。
+# 双 pass linear loudnorm：Pass1 measure → Pass2 linear 固定增益。
+# 单 pass 动态 loudnorm 同段多次跑结果不同（重 render 段响度偏离 bug 根因）；
+# 双 pass linear 用 measured_I/TP/LRA 固定增益，同段多次结果完全一致。
 # 视频流 copy 不重编码，只重编码音频。
-echo "[assemble_final] Mastering: 响度标准化 (I=-11 LUFS, TP=-0.5 dB)..."
-for FINAL_FILE in final.mp4 final_no_bgm.mp4; do
-    ffmpeg -y -i "$FINAL_FILE" -c:v copy \
-      -af "loudnorm=I=-11:TP=-0.5" \
+master_loudnorm_linear() {
+    local FILE="$1"
+    local TI="-14" TPV="-1.5"
+    # 保存 shell 选项 → 全禁 set -e + pipefail（measure/grep 在某些段 SIGPIPE exit 非 0）
+    local OLD_OPTS
+    OLD_OPTS=$(set +o)
+    set +e
+    set +o pipefail 2>/dev/null || true
+    # Pass 1: measure（loudnorm json 写临时文件）
+    ffmpeg -i "$FILE" -af "loudnorm=I=${TI}:TP=${TPV}:print_format=json" -f null /dev/null 2> _ln.json >/dev/null || true
+    local MI MTP MLRA OFF
+    MI=$(grep -oP '"input_i"\s*:\s*"\K[^"]+' _ln.json | head -n1) || true
+    MTP=$(grep -oP '"input_tp"\s*:\s*"\K[^"]+' _ln.json | head -n1) || true
+    MLRA=$(grep -oP '"input_lra"\s*:\s*"\K[^"]+' _ln.json | head -n1) || true
+    OFF=$(grep -oP '"target_offset"\s*:\s*"\K[^"]+' _ln.json | head -n1) || true
+    rm -f _ln.json
+    # 恢复 shell 选项
+    eval "$OLD_OPTS"
+    if [ -z "$MI" ]; then
+        echo "[assemble_final]   WARN: measure 解析失败，跳过 Mastering（保留原 final）"
+        return 0
+    fi
+    echo "[assemble_final]   measured: I=${MI} TP=${MTP} LRA=${MLRA} offset=${OFF}"
+    # Pass 2: linear apply（固定增益，稳定）
+    ffmpeg -y -i "$FILE" -c:v copy \
+      -af "loudnorm=I=${TI}:TP=${TPV}:measured_I=${MI}:measured_TP=${MTP}:measured_LRA=${MLRA}:offset=${OFF}:linear=true" \
       -c:a aac -b:a 192k -ar 48000 \
-      "${FINAL_FILE}.mastered.mp4" 2>/dev/null
-    mv "${FINAL_FILE}.mastered.mp4" "$FINAL_FILE"
+      "${FILE}.mastered.mp4" 2>/dev/null && mv "${FILE}.mastered.mp4" "$FILE"
+}
+echo "[assemble_final] Mastering: 双 pass linear loudnorm (I=-14 LUFS 平台标准, TP=-1.5 dB)..."
+for FINAL_FILE in final.mp4 final_no_bgm.mp4; do
+    master_loudnorm_linear "$FINAL_FILE"
 done
 echo "[assemble_final] Mastering 完成"
 
@@ -87,8 +121,9 @@ echo "  final.mp4: $(du -h final.mp4 | cut -f1), ${FINAL_DUR}s, 音频轨道: ${
 echo "  final_no_bgm.mp4: $(du -h final_no_bgm.mp4 | cut -f1), ${NOBGM_DUR}s, 音频轨道: ${NOBGM_AUDIO}"
 
 # ── Step 9: 硬性断言：时长不膨胀 + 音频不丢失 ──
-# final.mp4 时长不应超过 output.mp4 + 0.1 秒（1帧封面 ≈ 0.033s + TS对齐开销 ≤ 0.06s）
-if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.1)}"; then
+# final.mp4 时长不应超过 output.mp4 + 0.15 秒
+# （1帧封面 ≈ 0.033s + filter concat 对齐 ≤ 0.06s + 双 pass Mastering 重编码 ≤ 0.05s）
+if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.15)}"; then
   echo "FAIL: final.mp4 时长 ($FINAL_DUR) 远超源视频 ($SOURCE_DUR)，封面膨胀导致 A/V 脱节风险"
   exit 1
 fi

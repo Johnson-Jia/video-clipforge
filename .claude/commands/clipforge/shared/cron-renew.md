@@ -28,7 +28,8 @@
 2. CronList 列出所有定时任务
    - 如 CronList 失败或返回空，记录警告并重试（最多 2 次）
 3. 找到 prompt 包含 "<任务关键词>" 的所有旧 job
-4. CronCreate 创建新任务（使用读到的 cron 表达式，durable: true）
+4. CronCreate 创建新任务（使用读到的 cron 表达式，**durable: true**）
+   > ⛔ HARD：`durable` 必须**显式传 `true`**。CronCreate 默认 `durable:false`（session-only），会话退出任务即蒸发——续期漏传 durable 是定时任务静默丢失的根因（无报错无告警，靠 SessionStart hook 自愈兜底）。
 5. 确认新 job 创建成功（记录 new_job_id）
 6. 逐个 CronDelete 删除步骤 3 找到的旧 job（排除刚创建的 new_job_id）
 7. 再次 CronList 确认只有 1 个该类型任务存在

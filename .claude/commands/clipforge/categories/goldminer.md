@@ -71,9 +71,15 @@ python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 -
 | **4 — 教训可淘** | Learnings 清晰 + Rebuild pivot 有可偷点子 | 淘金价值 |
 
 **选取流程**：
-1. `fetch_lootdrop --region 中国 --limit 3` 抓 3 个候选
-2. 读 `raw_failures.json`，按钩子潜力 + 淘金价值选 1 个主角 + 2-3 个 related（相关失败）作对比
-3. 跨期去重：不连续做同行业（如教培连做 2 期后换共享出行/P2P）
+1. `fetch_lootdrop --region 中国 --limit 8` 抓 8 个候选（候选池扩大，避免前几个全做过）
+2. **跑 `scripts/goldminer_history.py --filter-candidates raw_failures.json`**（HARD 防重复）：过滤已做过企业，主角从未做过清单选
+3. 从未做过清单按钩子潜力 + 淘金价值选 1 个主角 + 2-3 个 related（相关失败）作对比
+4. 候选全部已做过 → 扩大 `--limit` 或换 `--region`（美国/印度/欧洲）重抓，直到有未做过的新企业
+
+**⛔ 跨期去重（HARD + SOFT）**：
+- **HARD 同企业零容忍**：主角企业不得与历史任何一期重复（中英文别名等同，`goldminer_history.py` 检测）。重复 = 停止重选，不可"换个角度讲同一公司"
+- **SOFT 同行业连续 ≤2 期**：同一行业（教培/共享出行/P2P/生鲜电商等）不连续做超 2 期，第 3 期强制换行业。行业 key 取 `content_ready.txt` 主角行第 4 字段（行业），由 `goldminer_history.py --report` 自动检测
+- **历史快照**：每次跑写 `workspace/evolution/goldminer_done.json`（企业频次 + 行业频次），供 LLM 选题参考
 
 ### ⛔ 合规红线（HARD，失败案例必读，诽谤风险）
 

@@ -412,6 +412,10 @@ Stage 1 门禁（`description_fidelity_valid`）会用确定性子串匹配校�
 
 暗色科技风。背景以深蓝/深紫渐变为基底，强调色偏橙蓝（`#FF8C32` 橙 + `#4DA8DA` 蓝），双光晕（暖冷色调），字体无衬线粗体。
 
+**⛔ text-shadow 规则（极淡 0.08，禁发光）**：文字 text-shadow 用极淡 drop `text-shadow: 0 2px 6px rgba(30,41,59,0.08)`（几乎看不见）。**禁发光 `0 0 Xpx rgba(...)`**（github 事故：`0 0 18px rgba(255,140,50,0.55)` / `0 0 18px rgba(77,168,218,0.55)` 高 alpha 发光致泛光刺眼）。文字清晰靠**本身亮色 + bg 对比**，不依赖发光浮起。修复：`sed -i -E 's/text-shadow:[^;]*;/text-shadow: 0 2px 6px rgba(30,41,59,0.08);/g' creative/style.css`
+
+**⛔ 渐变文字配色（禁白色端点 + 同色系）**：background-clip:text 渐变**禁白色端点**（#fff/white/rgba(255,255,255)——OLED 过曝泛光）。用**同色系高饱和**：橙 `#FF8C32→#FB923C→#FDBA74` / 蓝 `#4DA8DA→#60A5FA→#93C5FD` / 金 `#FBBF24→#F59E0B→#FCD34D`。参照 [[feedback-gradient-text-brightness]]（tutorial 验证的同色系配色表）。
+
 ### color_bias
 
 冷色为主（深蓝/深紫），强调色用暖色（橙色/金色）形成对比。科技感光晕效果。

@@ -74,12 +74,17 @@ def main():
     all_sentence_timestamps = []
 
     for i, seg in enumerate(segments):
-        seg_id = seg.get('id', i + 1)
+        # seg_id 优先取 scene_index（int），否则 id 若为 int 直接用，否则用 enumerate 索引
+        raw_id = seg.get('scene_index', seg.get('id', i + 1))
+        if isinstance(raw_id, int):
+            seg_id = raw_id
+        else:
+            seg_id = i + 1
         text_file = f'narration_seg_{seg_id:02d}.txt'
         mp3_file = f'narration_seg_{seg_id:02d}.mp3'
         srt_file = f'narration_seg_{seg_id:02d}.srt'
 
-        scene_id = seg.get('scene') or seg.get('id', f's{i+1}')
+        scene_id = seg.get('id', f's{i+1}')
         raw_text = seg.get('text') or seg.get('narration_segment', '') or seg.get('narration', '')
         if not raw_text:
             durations.append({'scene': scene_id, 'actual_duration': 0})

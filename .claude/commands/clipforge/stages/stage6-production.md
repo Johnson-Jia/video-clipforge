@@ -726,6 +726,107 @@ final_no_bgm.mp4  = cover.png + output_no_bgm.mp4（Stage 7 拼接）
 - 输入：`output.mp4` 的**视频轨**（`-an`）+ `narration.mp3` 的**音频轨**（`-vn`）
 - 输出：`output_no_bgm.mp4`（仅含旁白，无 BGM）
 - **禁止**：从 `output.mp4` 提取音频轨（只有 1 条混合轨，BGM 不可分离，见 §6.13）
+
+## §6.15 长视频渲染（10min+ 整片）
+
+> 长视频整片（如"服务即软件"10min 解析等）远超标准 45-55s，HyperFrames 渲染面临 OOM/超时风险，本节是防护指引。**tutorial 分类按合集规划是片段制作**（ClipForge 视觉片段 + Playwright 屏录片段 + 自己配音 + 剪映合成，见 `categories/tutorial.md` 片段制作指引），不套用整片渲染；仅当未来 tutorial 转"整片自动"模式时参考本节。
+
+### OOM 根因（feedback-hf-composition-structure）
+
+HyperFrames V8 堆 OOM（"Set maximum size exceeded"）根因是 **composition 结构 lint 不合规**（非内存/CDP/模糊）：
+
+1. 根 composition 必须有 `class="clip"` 子元素（缺 → HF 把第一个子 clip 当 composition → 递归解析爆炸）
+2. 每 scene `data-composition-id` 必须与 `__timelines` 注册 id 匹配
+3. 禁 `repeat:-1`（无限循环 → 帧累积 OOM）；s6_assemble 自动算 `repeat: N`（N=scene_dur/cycle-1）
+4. 禁缺 `data-start`（clip 无起始时间 → HF 无法定位帧）
+
+`s6_assemble_html.py` 已自动生成合规结构（class=clip + data-start + composition-id 匹配 + repeat 计算），**SubAgent 禁手写 composition**。渲染失败首先查结构（`window.__hf` / `__timelines` / class=clip / data-start），回 creative/ 修碎片重跑组装，**禁手补 index.html**。
+
+### 长视频分段
+
+| 项 | 标准 45-55s | tutorial 10-15min |
+|----|-------------|-------------------|
+| 场景数 | 4-5 | 5-8（钩子30s→讲什么30s→主体7min→案例1.5min→CTA30s）|
+| 单场景时长 | 8-15s | 60-180s |
+| phase/场景 | 0-4 | 3-6（长场景必须 phase 切换防静态疲劳）|
+| 渲染耗时 | 5-10min | 30-90min（帧数线性增长）|
+
+### 长场景 phase 切换（防静态疲劳）
+
+tutorial 单场景 60-180s 远超标准 8-15s。长场景必须用 phase 切换（每 20-40s 一个 phase）保持视觉变化：
+
+- **visual_phases ≥2 的场景必须配等量 phase div + GSAP 切换**（feedback-visualphases-fragment-match）
+- CSS 默认 `.phase{opacity:0}` + `.phase:first-child{opacity:1}`（BASE_CSS 已固化）+ GSAP timeline 写 phase 切换（s6_assemble `build_gsap` 自动生成）
+- 长场景（>30s）拆 3-6 phase，按 narration 句子锚点切（`phase_timings.json`）
+
+### 渲染超时预案
+
+- 10min 视频渲染约 30-60min（10min × 30fps = 18000 帧，按场景复杂度线性增长）
+- **渲染前先 `s6_assemble.sh --validate`** 校验碎片完整性（避免渲染中途失败浪费 30min）
+- 渲染后 `s6_visual_qa.py` 抽 5-8 场景帧检查布局，发现问题回 creative/ 修碎片重渲染
+
+### 横屏长视频特有
+
+- 横屏 1920×1080 + 长时长 → 帧数大，渲染负载高
+- 教程类观众要读代码/文字/流程图，**动画克制**（tutorial design：流程图逐步展开 > 粒子光晕过载）
+- 横屏视觉增强（§6.12 每场景 fx + 渐变标题 + bg 纹理）长视频要适度克制，避免每场景过载
+
+## §6.16 教程横屏视觉范式（一屏多区域 + reveal）
+
+> **教程类横屏视频的核心差异**（区别竖屏短视频）：横屏教程要**一屏展示多元素高信息密度**（标题+要点+图表+代码+注释同屏），观众"读"画面消化；**不是**竖屏的"一句话切一个元素、切一个屏幕"（强切换单聚焦）。这是教程类横屏 vs 短视频竖屏的本质区别，也是教程类最大误区。
+
+### 教程横屏 vs 竖屏短视频
+
+| 维度 | 竖屏短视频（github/goldminer）| 横屏教程（tutorial）|
+|------|------------------------------|------------------|
+| 屏幕利用 | 单元素聚焦，大字冲击 | **一屏多区域高密度**（标题+要点+图表+注释同屏）|
+| 节奏 | 3 秒切换，强冲击 | 观众"读"画面，停留消化 |
+| 动画语义 | phase 切换 = 换元素/换屏幕 | **reveal = 同屏逐步淡入区域**（不换屏，累积丰富）|
+
+### 一屏多区域布局（教程横屏标准）
+
+每屏（scene）**单 phase div**，内含多区域（grid/flex 布局），同屏展示：
+
+```html
+<div class="layer-content">
+  <div class="phase phase-1 tut-scene">
+    <div class="tut-grid">  <!-- 多区域 grid 布局，一屏高密度 -->
+      <h1 class="tut-region" data-reveal="0">标题区</h1>
+      <ul class="tut-region" data-reveal="3">要点列表区</ul>
+      <div class="tut-region chart" data-reveal="6">图表/数据区</div>
+      <div class="tut-region quote" data-reveal="9">金句/注释区</div>
+    </div>
+  </div>
+</div>
+```
+
+### reveal 动画（data-reveal 时间点，s6_assemble 自动生成）
+
+教程横屏用 **reveal**（同屏区域依次淡入），**不用 phase 切换**（换屏）：
+
+- CSS：`.tut-region{opacity:0;}` 初始隐藏（所有区域同屏布局，初始不可见）
+- `s6_assemble build_gsap` 扫碎片 `data-reveal="N"` 属性，按时间点 N（相对场景开始秒）淡入区域：
+  ```js
+  tl.to('#s01 [data-reveal="3"]', {opacity:1, duration:0.5}, 3.0);  // 场景开始 3s 后 reveal 要点区
+  ```
+- **区域 reveal 后保持**（不隐藏），同屏累积丰富（区别竖屏 phase 切换"换屏"）
+
+### data-reveal 时间点设计
+
+按 narration 句子锚点定 reveal 时间点（观众听到讲解时画面同步 reveal 对应区域）：
+- `data-reveal="0"`：场景开始即显示（标题区，跟场景入场同步）
+- `data-reveal="N"`：narration 讲到该区域时 reveal（如讲"3 个要点"时 reveal 要点列表区）
+
+### 教程横屏禁忌（最大误区）
+
+- ⛔ **一句话切一个屏幕**（竖屏 phase 切换逻辑硬套横屏）—— 教程最大误区
+- ⛔ **单元素大字聚焦**（横屏空间浪费）—— 横屏要高密度多元素
+- ⛔ **3 秒强切换**（教程观众要消化，不是被切着走）
+- ✅ **一屏多区域 + reveal**（区域依次淡入同屏，累积丰富）
+- ✅ **信息密度**（标题+要点+图表+注释同屏，观众"读"画面）
+- ✅ **动画克制**（reveal 淡入 > 粒子光晕过载，教程重内容轻视觉）
+
+> 教程横屏 visual_phases 仍可记录 reveal 步骤（每步对应一个区域 reveal 时间点），但**碎片用单 phase div + 多 region + data-reveal**（s6_assemble 按 data-reveal 生成 reveal，不切 phase）。
 - 验证：产出 `output_no_bgm.mp4`，Stage 7 前置检查依赖此文件（见 stage7-delivery.md §7.1）
 
 ---
