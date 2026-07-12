@@ -458,6 +458,53 @@ def main():
     else:
         ok("未使用 gsap.from()")
 
+    # ── 7b. timeline phase 独占（多 phase 同屏重叠根治，feedback-s6-assemble-phase-overlap）──
+    print("\n── 7b. timeline phase 独占（多 phase 同屏）──")
+    # s6_assemble 多 phase timeline bug：切换新 phase 只 set 新=1，漏 set :first-child phase-1=0
+    # → phase-1 永驻（CSS .phase:first-child{opacity:1} 默认）与新 phase 同屏重叠 4-8s。
+    # 本 checker 静态解析 GSAP timeline，模拟每时刻可见 phase 数，>1 = 重叠。渲染前 fail-fast 拦截。
+    import collections as _collections
+    _scene_events = _collections.defaultdict(list)
+    # 单元素 set：tl.set('#sNN .phase-X', {opacity:Y}, time)
+    for _m in re.finditer(r"tl\.set\(\s*['\"]#(s\d+)\s+\.phase-(\d+)['\"]\s*,\s*\{\s*opacity:\s*([01])\s*\}\s*,\s*([\d.]+)\s*\)", html):
+        _scene_events[_m.group(1)].append((float(_m.group(4)), int(_m.group(2)), int(_m.group(3))))
+    # 多元素 set：tl.set(['#sNN .phase-X', ...], {opacity:Y}, time)
+    for _m in re.finditer(r"tl\.set\(\s*\[([^\]]+)\]\s*,\s*\{\s*opacity:\s*([01])\s*\}\s*,\s*([\d.]+)\s*\)", html):
+        for _sel in re.findall(r"#(s\d+)\s+\.phase-(\d+)", _m.group(1)):
+            _scene_events[_sel[0]].append((float(_m.group(3)), int(_sel[1]), int(_m.group(2))))
+
+    _overlap_violations = []
+    _scenes_checked = 0
+    for _scene, _events in _scene_events.items():
+        if not _events:
+            continue
+        _scenes_checked += 1
+        _phases = {p for _, p, _ in _events}
+        _phases.add(1)  # phase-1 默认存在（:first-child）
+        _state = {p: 0 for p in _phases}
+        _state[1] = 1  # CSS .phase:first-child{opacity:1} 默认值
+        _time_groups = _collections.defaultdict(list)
+        for _t, _p, _op in _events:
+            _time_groups[_t].append((_p, _op))
+        _scene_overlap = False
+        for _t in sorted(_time_groups):
+            for _p, _op in _time_groups[_t]:
+                _state[_p] = _op
+            _visible = sorted(pp for pp, o in _state.items() if o >= 1)
+            if len(_visible) > 1:
+                _overlap_violations.append(f"#{_scene} t={_t:.2f}s phase{_visible}")
+                _scene_overlap = True
+                break
+        if not _scene_overlap:
+            ok(f"#{_scene} 多 phase 独占校验通过（任意时刻单 phase 可见）")
+
+    if _overlap_violations:
+        fail(f"timeline phase 同屏重叠 {_overlap_violations} — s6_assemble 多 phase bug：切换新 phase 漏隐藏 :first-child，phase-1 永驻与新 phase 同屏。改单 phase 或修 s6_assemble timeline（feedback-s6-assemble-phase-overlap）")
+    elif _scenes_checked == 0:
+        ok("无多 phase timeline 切换（单 phase 或无 set 语句，无重叠风险）")
+    else:
+        ok(f"全部 {_scenes_checked} 个多 phase scene timeline 独占校验通过")
+
     # ── 8. 单层 padding 检查 ──
     print("\n── 8. 单层 padding 原则 ──")
     # 检测 scene-wrap 和 .phase 是否同时有 padding

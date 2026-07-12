@@ -87,6 +87,10 @@ _CUSTOM_PHRASES = {
     '八行': [['bā'], ['háng']],
     '九行': [['jiǔ'], ['háng']],
     '零行': [['líng'], ['háng']],
+    # ── 校(jiào) 上下文 — 防止 edge-tts 读成 xiào(学校) ──
+    '校验': [['jiào'], ['yàn']],
+    '校对': [['jiào'], ['duì']],
+    '校正': [['jiào'], ['zhèng']],
     # ── 长(cháng) 上下文 — 防止 edge-tts 读成 zhǎng ──
     '长视频': [['cháng'], ['shì'], ['pín']],
     '长篇': [['cháng'], ['piān']],
@@ -114,6 +118,7 @@ _POLYPHONE_MAP = {
     '几': {'ji1': '机'},
     '处': {'chu4': '触'},  # 处 as place: chù → 触 (but 触 is chù too)
     '为': {'wei4': '未'},  # 为 as "because": wèi → 未
+    '校': {'jiao4': '较'},  # 校 jiào (校验/校对) → 较 (比较核对)，防读 xiào(学校)
 }
 
 # ── K 数字转换：edge-tts 把 K 读成英文字母 ──

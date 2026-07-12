@@ -380,9 +380,18 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float,
                 lines.append(
                     f"tl.set('#{sid} .phase-{pn}', {{opacity:1}}, {t:.2f});"
                 )
-                lines.append(
-                    f"tl.set('#{sid} .phase-{pn-1}', {{opacity:0}}, {t:.2f});"
+                # 切换新 phase 时隐藏该 scene 内所有其他 phase（含 :first-child phase-1）。
+                # 根治 s6_assemble 多 phase 同屏重叠 bug：旧版只 set phase-(n-1)=0，
+                # 但 phase-1（CSS 默认 opacity:1）或跳号场景下 n-1 非实际可见 phase → 旧 phase
+                # 未隐藏 → 与新 phase 同屏重叠 4-8s（feedback-s6-assemble-phase-overlap）。
+                # director_gate §7b timeline_phase_exclusive 静态校验此修复。
+                others = ", ".join(
+                    f"'#{sid} .phase-{ph}'" for ph in phases_in_scene if ph != pn
                 )
+                if others:
+                    lines.append(
+                        f"tl.set([{others}], {{opacity:0}}, {t:.2f});"
+                    )
 
     # 教程模式 reveal（横屏教程一屏多区域逐步 reveal，不切屏）：按 data-reveal 时间点 + data-reveal-dir 方向 生成 reveal
     # 方向：left=从左滑入(x:-40→0) / top=从上滑入(y:-40→0) / fade=纯 opacity（默认）

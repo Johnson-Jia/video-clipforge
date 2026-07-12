@@ -21,6 +21,8 @@ W_HOOK_NUMBER = 0.10
 W_PROJECT_COUNT = 0.10
 BASE = 0.25
 MIN_SAMPLES = 100
+MIN_R2_TRAIN = 0.1    # 训练模型 holdout R² 达此值才升级（明显优于均值预测，防退化模型污染 score）
+MIN_R2_PREDICT = 0.0  # predict 防御：已有模型 R²<0（明确退化）时回退启发式
 
 CONTRARIAN_WORDS = ("居然", "竟然", "不用", "无需", "砍掉", "翻车", "泄露", "免费", "零", "亲自", "下场")
 NUMBER_RE = re.compile(r"\d")
@@ -92,6 +94,11 @@ def train_if_ready(samples):
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
         model = Ridge(alpha=1.0).fit(X_tr, y_tr)
         r2 = model.score(X_te, y_te)
+        # R² 门禁：holdout 上必须明显优于均值预测才升级，否则保留启发式（防退化模型污染 score）
+        if r2 < MIN_R2_TRAIN:
+            return {"trained": False, "samples": n, "r2": round(float(r2), 3),
+                    "reason": "r2_below_threshold",
+                    "note": f"训练 R²={r2:.3f} < {MIN_R2_TRAIN}（holdout），特征预测力不足，未升级，继续启发式"}
         # 训练分布分位数（predict 把 log_plans 归一化到 0-1 用）
         qs = {f"P{p}": round(float(np.percentile(y, p)), 3) for p in (10, 50, 90)}
 
@@ -129,7 +136,9 @@ def predict_plays_score(project_dir, history_n: int = 10) -> dict:
     }
 
     bundle, meta = _load_model()
-    if bundle and meta:
+    # 防御：已有模型 R²<0（明确退化）时不信任，回退启发式（防残留烂模型污染 score）
+    model_r2 = meta.get("r2", 0) if meta else 0
+    if bundle and meta and model_r2 >= MIN_R2_PREDICT:
         try:
             import numpy as np
             feats = bundle["features"]
