@@ -48,18 +48,26 @@ def calibrate_scene(scene_id, segment_index, visual_phases, sentences,
     num_phases = len(visual_phases)
     num_sentences = len(sentences)
 
-    if num_sentences == 0:
-        # 无句子信息时回退到等分
+    # fix 2026-07-13: 全部按时间均分（根治 phase-2 退到短尾/0 时长）
+    # 原因：tts_pipeline 的 sentence_timestamps 句子分布极不均（长句吞掉整段或每 scene 仅 1 句），
+    # 按句 anchor 校准会让 phase-2 锚到句尾的 0.02-0.07s（一帧），视频看不到 phase-2 + 其 bg。
+    # 时间均分让每 phase 等长占 scene/num_phases，视觉协调 + phase-2 必显示。
+    # 下方保留的 sentence-anchor 逻辑（num_sentences>=num_phases 分支）已不再触发，留作未来精校参考。
+    if num_sentences == 0 or num_sentences < num_phases or True:
         phase_dur = duration / max(num_phases, 1)
         phases = []
         for i in range(num_phases):
+            start_off = round(i * phase_dur, 3)
+            end_off = round((i + 1) * phase_dur, 3)
+            s_range = [si for si, s in enumerate(sentences) if start_off <= s['start'] < end_off] if sentences else []
             phases.append({
                 'phase': i + 1,
-                'start_offset': round(i * phase_dur, 3),
-                'end_offset': round((i + 1) * phase_dur, 3),
-                'sentences': [],
-                'calibration': 'fallback-equal-split'
+                'start_offset': start_off,
+                'end_offset': end_off,
+                'sentences': s_range,
+                'calibration': 'time-equal-split'
             })
+        phases[0]['start_offset'] = 0.0
         phases[-1]['end_offset'] = round(duration, 3)
         return phases
 

@@ -136,8 +136,28 @@ def render_cover_png(cover_html: Path, output_png: Path, orientation: str) -> bo
             cwd=tmpdir, capture_output=True, encoding="utf-8", errors="replace", timeout=120,
         )
         if result.returncode != 0:
-            print(f"HyperFrames render failed: {result.stderr[-500:]}", file=sys.stderr)
-            return False
+            print(f"HyperFrames render failed: {result.stderr[-300:]}, fallback to playwright", file=sys.stderr)
+            # fix 2026-07-13: HyperFrames 失败时 playwright 截图兜底
+            # viewport 必须匹配 cover.html 的 data-width/height（如 2160×3840 retina），
+            # 否则截图裁 .cover 左上角 → safe-zone 失效（内容铺满/溢出，封面不在安全区）
+            try:
+                from playwright.sync_api import sync_playwright
+                import re as _re
+                html_text = cover_html.read_text(encoding='utf-8')
+                m = _re.search(r'data-width="(\d+)"[^>]*data-height="(\d+)"', html_text)
+                w = int(m.group(1)) if m else (2160 if orientation == 'portrait' else 1920)
+                h = int(m.group(2)) if m else (3840 if orientation == 'portrait' else 1080)
+                with sync_playwright() as pw:
+                    browser = pw.chromium.launch()
+                    page = browser.new_page(viewport={"width": w, "height": h})
+                    page.goto(cover_html.resolve().as_uri())
+                    page.wait_for_timeout(1500)
+                    page.screenshot(path=str(output_png))
+                    browser.close()
+                return output_png.exists()
+            except Exception as e:
+                print(f"playwright fallback failed: {e}", file=sys.stderr)
+                return False
 
         scale = "1080:1920" if orientation == "portrait" else "1920:1080"
         subprocess.run([

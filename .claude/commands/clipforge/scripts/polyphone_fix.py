@@ -111,6 +111,7 @@ _CUSTOM_PHRASES = {
 _POLYPHONE_MAP = {
     '行': {'hang2': '航'},
     '长': {'zhang3': '掌'},
+    '涨': {'zhang3': '掌'},  # 涨 zhǎng (涨星/涨水) → 掌，强制三声；pypinyin 推 zhang3 正确但 edge-tts 实际读 zhang4，替换为无多音字「掌」强制 zhǎng
     '重': {'chong2': '虫'},
     '乐': {'yue4': '悦'},
     '会': {'kuai4': '快'},
