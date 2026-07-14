@@ -220,7 +220,7 @@ for f in narration_seg_*.txt narration_seg_*.mp3 narration_seg_*.srt \
          silence_*.mp3 hyperframes.json frame_check.png \
          verify_*.png check_*.png frame_*.png v2_*.png scenes.yaml \
          debug_*.png chk_*.png s[0-9]_*.png *_frame.png .frame_*.png \
-         _output_*.mp4 _output_no_bgm_*.mp4 _*.mp4.bak .render.log \
+         _output_*.mp4 _output_no_bgm_*.mp4 _*.mp4.bak .render.log _inject_*.txt \
          stage-handoff.json skills-lock.json webreader_checklist.json \
          cover_final.png cover_segment.mp4 narration.srt \
          cover_1frame.mp4 cover_1frame_audio.mp4 cover.ts output.ts \
