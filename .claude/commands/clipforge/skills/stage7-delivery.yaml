@@ -69,7 +69,10 @@ skill:
           files: ["narration.txt", "douyin.md"]
       - gate: no_school_name
         params:
-          files: ["narration.txt", "douyin.md"]
+          files: ["narration.txt", "douyin.md", "cover.html"]
+      - gate: no_app_name
+        params:
+          files: ["narration.txt", "douyin.md", "cover.html"]
       - gate: no_competitor_attack
         params:
           files: ["narration.txt", "douyin.md", "index.html"]

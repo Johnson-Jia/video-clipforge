@@ -112,6 +112,19 @@ rules:
     scope: GLOBAL
     source: "shared/shared-rules.md §4.2 + engine/gate.py check_no_school_name"
 
+  - id: "R-G-014"
+    type: FORBIDDEN_SPEECH
+    pattern: "旁白/画面/封面/文案提及具体商业 app/软件名（剪映/CapCut 等）"
+    positive: "用功能泛化（'视频剪辑工具''剪辑软件'），不提具体 app 名，禁'XX 替代/对标 XX'"
+    guardrail: "剪映是字节系（抖音母公司）产品，提它做'替代'触发抖音封禁；其他商业 app 名同理触发平台审核"
+    detection:
+      keywords: ["剪映", "CapCut", "必剪", "快剪辑", "快影", "小影"]
+      semantic_check: true
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "shared/shared-rules.md §4.2 + engine/gate.py check_no_app_name"
+
   - id: "R-G-010"
     type: FORBIDDEN_SPEECH
     pattern: "竞品负面对比/拉踩"
@@ -164,7 +177,7 @@ rules:
     scope: GLOBAL
     source: "engine/gate.py check_no_search_cTA"
 
-  - id: "R-G-014"
+  - id: "R-G-015"
     type: FORBIDDEN_ACTION
     pattern: "douyin.md 四平台文案中包含 URL/链接"
     positive: "douyin.md 全文零链接，项目只以 owner/repo 文本路径形式出现在评论区自评段"

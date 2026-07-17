@@ -25,6 +25,7 @@ SAFETY_GATES = {
     "no_url_in_output",
     "no_real_person_name",
     "no_school_name",
+    "no_app_name",
     "no_competitor_attack",
     "no_search_cta",
 }

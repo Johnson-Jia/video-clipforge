@@ -57,6 +57,9 @@ skill:
       - gate: no_school_name
         params:
           files: ["narration.txt"]
+      - gate: no_app_name
+        params:
+          files: ["narration.txt"]
       - gate: no_competitor_attack
         params:
           files: ["narration.txt"]

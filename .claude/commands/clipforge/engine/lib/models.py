@@ -71,6 +71,7 @@ class GateType(str, Enum):
     design_storyboard_valid = "design_storyboard_valid"
     no_real_person_name = "no_real_person_name"
     no_school_name = "no_school_name"
+    no_app_name = "no_app_name"
     no_competitor_attack = "no_competitor_attack"
     narration_translation_pattern = "narration_translation_pattern"  # SOFT: 翻译腔套路句（不是X而是Y）
     narration_emotion_type_valid = "narration_emotion_type_valid"  # SOFT: emotion 必 str 名（防 float 致 auto_evolve dominant 崩）

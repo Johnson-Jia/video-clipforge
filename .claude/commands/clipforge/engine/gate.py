@@ -293,6 +293,38 @@ def check_no_school_name(project_dir: Path, params: dict,
     return True, ""
 
 
+def check_no_app_name(project_dir: Path, params: dict,
+                      guardrails: list | None = None) -> tuple[bool, str]:
+    """R-G-014: 检测具体商业 app/软件名（剪映/CapCut 等）。
+
+    剪映是字节系（抖音母公司）产品，在抖音提它做"替代/对标"会触发封禁
+    （前两期事故）。用功能泛化（"视频剪辑工具"）替代具体 app 名。
+    """
+    app_names = [
+        # 视频剪辑类（剪映封禁事故，2026-07）
+        "剪映", "CapCut", "必剪", "快剪辑", "快影", "小影",
+    ]
+    check_files = params.get("files", ["narration.txt", "douyin.md", "index.html"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        # 去掉 HTML 标签
+        if fname.endswith(".html"):
+            import re as _re
+            content = _re.sub(r'<style[^>]*>.*?</style>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<script[^>]*>.*?</script>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<[^>]+>', ' ', content)
+        for app in app_names:
+            if app in content:
+                found.append(f"{fname}: '{app}'")
+    if found:
+        return False, f"R-G-014: 发现商业 app/软件名（剪映是字节系产品，提它做替代触发封禁；用功能泛化如'视频剪辑工具'）: {'; '.join(found[:5])}"
+    return True, ""
+
+
 def check_no_competitor_attack(project_dir: Path, params: dict,
                                 guardrails: list | None = None) -> tuple[bool, str]:
     """R-G-010: 检测竞品负面对比/拉踩"""
@@ -434,6 +466,7 @@ GATE_CHECKERS = {
     GateType.no_url_in_output: check_no_url,
     GateType.no_real_person_name: check_no_real_person_name,
     GateType.no_school_name: check_no_school_name,
+    GateType.no_app_name: check_no_app_name,
     GateType.no_competitor_attack: check_no_competitor_attack,
     GateType.no_search_cta: check_no_search_cTA,
     GateType.duration_in_range: check_duration_in_range,
@@ -3882,6 +3915,7 @@ SAFETY_GATES = {
     GateType.no_url_in_output,
     GateType.no_real_person_name,
     GateType.no_school_name,
+    GateType.no_app_name,
     GateType.no_competitor_attack,
     GateType.no_search_cta,
 }

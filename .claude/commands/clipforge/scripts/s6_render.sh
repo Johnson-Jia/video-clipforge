@@ -77,7 +77,7 @@ echo "[OK] 非渲染文件已隔离"
 echo "--- Step 7/12: HyperFrames lint ---"
 npx hyperframes@latest lint
 echo "--- Step 8/12: HyperFrames render ---"
-npx hyperframes@latest render . --output output.mp4 --video-bitrate 5M --workers 4
+npx hyperframes@latest render . --output output.mp4 --video-bitrate 5M --workers 2
 echo "[OK] output.mp4 已渲染"
 
 # ── Step 9: 恢复 renderbak 文件 ──

@@ -161,6 +161,9 @@ skill:
       - gate: no_school_name
         params:
           files: ["index.html"]
+      - gate: no_app_name
+        params:
+          files: ["index.html"]
       - gate: no_competitor_attack
         params:
           files: ["index.html"]

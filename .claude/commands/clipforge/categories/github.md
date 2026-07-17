@@ -716,6 +716,7 @@ true — GitHub 系列视频启用码力角色。
 | 中文描述从 owner/repo 名推断 | 描述必须忠实翻译 raw `description` 字段，owner 名（如 refactoringhq）不代表项目功能 |
 | content_ready.txt 出现 raw_trending.json 中不存在的项目 | 杜撰项目，Stage 1 门禁会拦截 |
 | 项目属违法/盗版工具领域 | VPN 翻墙（如 MasterDnsVPN）、IPTV 盗版直播源（如 iptv-org）、破解/盗链工具涉及违法违规，零容忍剔除。无安全替代时宁可少一个项目。stage1/stage6/stage7 的 `no_forbidden_speech` 门禁会兜底拦截（翻墙/电视直播源/直播源/破解版/盗版/盗链） |
+| 描述/旁白/画面/文案出现商业 app 名 | 剪映、CapCut、PR、AE、必剪等具体商业 app/软件名零容忍——剪映是字节系（抖音母公司）产品，提它做"替代/对标"会被抖音封禁（前两期事故）。用功能泛化"视频剪辑工具"，禁"XX 的替代/对标 XX"。raw 原文 description 含 CapCut 时保真锚点保留原文，但中文翻译/旁白/画面/文案必须泛化，不把产品名译进视频 |
 
 ### Common Rationalizations（GitHub 特定）
 
