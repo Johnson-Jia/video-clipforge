@@ -69,3 +69,34 @@ def diagnose_timing_drift(recent: list[dict], all_projects: list[dict],
         "advice": (f"近{n}条 {best_slot} 占比 {recent_ratio:.0%}（全期 {baseline_ratio:.0%}），"
                    f"建议下个发布窗口调 {best_slot}") if drift else None,
     }
+
+
+def compute_c5s_trend(projects: list[dict]) -> dict:
+    """真 5s 完播（c5s_real）月度趋势，近月 vs 上月。
+
+    判定：月降幅 > 15% → flag=True。依据：0.43→0.32（-25%）。
+    projects: [{"c5s_real": float|None, "pub_date": "YYYY-MM-DD"}, ...]
+    """
+    by_month: dict[str, list[float]] = defaultdict(list)
+    for p in projects:
+        c = p.get("c5s_real")
+        d = p.get("pub_date") or ""
+        if c is not None and d.startswith("20"):
+            by_month[d[:7]].append(c)
+    months = sorted(by_month)
+    if len(months) < 2:
+        return {"trend": "insufficient", "months": len(months)}
+    cur = statistics.median(by_month[months[-1]])
+    prev = statistics.median(by_month[months[-2]])
+    drop = (prev - cur) / prev if prev else 0.0
+    flag = drop > 0.15
+    return {
+        "current_month": months[-1],
+        "previous_month": months[-2],
+        "current": round(cur, 3),
+        "previous": round(prev, 3),
+        "drop": round(drop, 3),
+        "flag": flag,
+        "advice": (f"5s完播 {prev:.2f}→{cur:.2f}（-{drop:.0%}），开头吸引力退化，"
+                   f"检查 hook 文案/封面") if flag else None,
+    }

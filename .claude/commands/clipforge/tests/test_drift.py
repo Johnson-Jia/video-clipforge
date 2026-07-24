@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from engine.drift import proj_date, within_days, diagnose_timing_drift
+from engine.drift import proj_date, within_days, diagnose_timing_drift, compute_c5s_trend
 
 
 def _proj(hour=None):
@@ -59,6 +59,33 @@ class TestTimingDrift(unittest.TestCase):
     def test_no_best_slot(self):
         r = diagnose_timing_drift([_proj(8)], [_proj(8)], None)
         self.assertFalse(r["drift"])
+
+
+def _proj_c5s(c5s, month):
+    """构造一条带 c5s_real + pub_date 的记录。"""
+    return {"c5s_real": c5s, "pub_date": f"2026-{month}-15"}
+
+
+class TestC5sTrend(unittest.TestCase):
+    def test_flag_when_drop_exceeds_15pct(self):
+        """5s完播 0.43→0.32（-25%）→ flag=True（本次塌方场景）。"""
+        projects = [_proj_c5s(0.43, "06")] * 5 + [_proj_c5s(0.32, "07")] * 5
+        r = compute_c5s_trend(projects)
+        self.assertTrue(r["flag"])
+        self.assertEqual(r["current_month"], "2026-07")
+        self.assertEqual(r["previous_month"], "2026-06")
+        self.assertGreater(r["drop"], 0.15)
+        self.assertIsNotNone(r["advice"])
+
+    def test_no_flag_when_stable(self):
+        projects = [_proj_c5s(0.40, "06")] * 5 + [_proj_c5s(0.39, "07")] * 5
+        r = compute_c5s_trend(projects)
+        self.assertFalse(r["flag"])
+
+    def test_insufficient_months(self):
+        projects = [_proj_c5s(0.40, "07")] * 5
+        r = compute_c5s_trend(projects)
+        self.assertEqual(r["trend"], "insufficient")
 
 
 if __name__ == "__main__":
