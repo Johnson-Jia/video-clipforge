@@ -121,9 +121,9 @@ echo "  final.mp4: $(du -h final.mp4 | cut -f1), ${FINAL_DUR}s, 音频轨道: ${
 echo "  final_no_bgm.mp4: $(du -h final_no_bgm.mp4 | cut -f1), ${NOBGM_DUR}s, 音频轨道: ${NOBGM_AUDIO}"
 
 # ── Step 9: 硬性断言：时长不膨胀 + 音频不丢失 ──
-# final.mp4 时长不应超过 output.mp4 + 0.15 秒
-# （1帧封面 ≈ 0.033s + filter concat 对齐 ≤ 0.06s + 双 pass Mastering 重编码 ≤ 0.05s）
-if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.15)}"; then
+# final.mp4 时长不应超过 output.mp4 + 0.2 秒（容差 0.2s，对齐 feedback-final-duration-gate）
+# （1帧封面 ≈ 0.033s + filter concat 对齐 ≤ 0.06s + 双 pass Mastering 重编码 ≤ 0.1s）
+if awk "BEGIN{exit !($FINAL_DUR > $SOURCE_DUR + 0.2)}"; then
   echo "FAIL: final.mp4 时长 ($FINAL_DUR) 远超源视频 ($SOURCE_DUR)，封面膨胀导致 A/V 脱节风险"
   exit 1
 fi
