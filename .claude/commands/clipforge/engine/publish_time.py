@@ -189,15 +189,35 @@ BUCKET_ZH = {
 }
 
 
+def _drift_banner(advice: dict) -> str:
+    """从 advice.recent_drift 构造执行漂移高亮 block；无漂移返回空串。"""
+    rd = advice.get("recent_drift") or {}
+    if not rd.get("enabled"):
+        return ""
+    lines = []
+    t = rd.get("timing") or {}
+    if t.get("drift") and t.get("advice"):
+        lines.append(f"- ⏰ 时段：{t['advice']}")
+    c = rd.get("c5s") or {}
+    if c.get("flag") and c.get("advice"):
+        lines.append(f"- 📉 5s完播：{c['advice']}")
+    if not lines:
+        return ""
+    win = rd.get("window", "14d")
+    return f"\n> ⚠️ **执行漂移（近{win}）**\n>\n" + "\n".join(f"> {l}" for l in lines) + "\n\n"
+
+
 def render_publish_note(advice: dict | None) -> str:
     """从 advice 渲染 publish_note.md 内容（交付物发布时机提示）。
 
     纯函数：advice dict → markdown 字符串。confidence=low 或无 best → 样本不足提示。
-    运营决策维度，关联非因果，不进创作 pattern。
+    若 advice.recent_drift 有 flag → 顶部加执行漂移高亮。运营决策，关联非因果。
     """
+    drift = _drift_banner(advice or {})
     if not advice or not advice.get("best_hour_bucket"):
         return (
-            "# 发布时机建议\n\n"
+            f"# 发布时机建议\n\n"
+            f"{drift}"
             "⚠️ 当前发布时段数据样本不足，暂无统计建议。\n\n"
             "建议参考你历史发布效果最好的时段，或先在早间/晚间黄金时段发布。\n"
             "> 数据积累后 auto_evolve 会自动生成建议（publish_timing_advice.json）\n"
@@ -211,6 +231,7 @@ def render_publish_note(advice: dict | None) -> str:
     emoji = "⭐" if confidence == "high" else ("💡" if confidence == "medium" else "⚠️")
     return (
         f"# 发布时机建议\n\n"
+        f"{drift}"
         f"{emoji} 建议在 **{best_zh}** 发布（置信度：{confidence}）\n\n"
         f"- 该时段受众广度 {best_reach:.2f}，高于大盘均值 {market:.2f}\n"
         f"- 基于 {coverage} 条含时分的发布记录（视频号无时分，4/5 平台覆盖）\n\n"
