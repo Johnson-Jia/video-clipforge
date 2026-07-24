@@ -48,6 +48,7 @@ from engine.success_analyzer import (
 from engine.attribution import _classify_hook_type as _classify_hook
 from engine.lib.data_paths import traces_dir as _evolution_traces_dir, pattern_file as _pattern_file, auto_patterns_dir as _auto_patterns_dir
 from engine.publish_time import aggregate_publish_time, analyze_publish_time, build_publish_advice
+from engine.drift import proj_date  # noqa: E402  (执行漂移诊断：pub_date 数据源)
 from engine.recency import project_data_weight, weighted_mean
 
 
@@ -405,6 +406,7 @@ class AutoEvolve:
             _pt = aggregate_publish_time(per_plat)
             raw_projects.append({
                 "name": proj.name,
+                "pub_date": proj_date(proj),
                 "per_plat": per_plat,
                 "hook_text": narr["hook_text"],
                 "hook_type": _classify_hook(narr["hook_text"]),
@@ -456,6 +458,7 @@ class AutoEvolve:
             rp["quality_consensus"] = len(succ_flags)
             rp["plays"] = rp["reach_composite"]      # 向后兼容：题材/封面信号（0-1）
             rp["c5s"] = rp["quality_composite"]      # 向后兼容：话术/旁白信号（0-1）
+            rp["c5s_real"] = round(statistics.mean(c5s_v), 4) if c5s_v else None
             rp["completion"] = round(statistics.mean(comp_v), 4) if comp_v else 0.0
             rp["save_rate"] = round(statistics.mean(save_v), 4) if save_v else 0.0
             rp["share_rate"] = round(statistics.mean(share_v), 4) if share_v else 0.0
