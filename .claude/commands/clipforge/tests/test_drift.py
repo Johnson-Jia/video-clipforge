@@ -36,10 +36,14 @@ class TestWithinDays(unittest.TestCase):
         from datetime import date
         self.assertFalse(within_days(None, date(2026, 7, 24), 14))
 
+    def test_future_date_returns_false(self):
+        from datetime import date
+        self.assertFalse(within_days("2026-08-01", date(2026, 7, 24), 14))
+
 
 class TestTimingDrift(unittest.TestCase):
     def test_drift_when_recent_best_slot_drops_to_zero(self):
-        """evening 全期 16%、近期 0% → drift=True（本次塌方场景）。"""
+        """evening 全期 ≈12%、近期 0% → drift=True（本次塌方场景）。"""
         # publish_hour 19-22 = evening（hour_to_bucket 分桶）
         all_p = [_proj(8)] * 10 + [_proj(20)] * 2 + [_proj(13)] * 5   # evening 占 2/17≈12%
         recent = [_proj(8)] * 6 + [_proj(13)] * 4                       # evening 占 0%
@@ -59,6 +63,13 @@ class TestTimingDrift(unittest.TestCase):
     def test_no_best_slot(self):
         r = diagnose_timing_drift([_proj(8)], [_proj(8)], None)
         self.assertFalse(r["drift"])
+
+    def test_empty_recent_no_false_positive(self):
+        """空 recent / 全无 publish_hour → drift=False（最小样本保护，不误报）。"""
+        r1 = diagnose_timing_drift([], [_proj(20)] * 5, "evening")
+        self.assertFalse(r1["drift"])
+        r2 = diagnose_timing_drift([_proj(None)] * 5, [_proj(20)] * 5, "evening")
+        self.assertFalse(r2["drift"])
 
 
 def _proj_c5s(c5s, month):
@@ -85,6 +96,16 @@ class TestC5sTrend(unittest.TestCase):
     def test_insufficient_months(self):
         projects = [_proj_c5s(0.40, "07")] * 5
         r = compute_c5s_trend(projects)
+        self.assertEqual(r["trend"], "insufficient")
+
+    def test_prev_zero_no_crash(self):
+        """prev=0.0 不崩，drop=0.0（`if prev` 短路）。"""
+        projects = [_proj_c5s(0.0, "06")] * 5 + [_proj_c5s(0.3, "07")] * 5
+        r = compute_c5s_trend(projects)
+        self.assertEqual(r["drop"], 0.0)
+
+    def test_empty_projects(self):
+        r = compute_c5s_trend([])
         self.assertEqual(r["trend"], "insufficient")
 
 

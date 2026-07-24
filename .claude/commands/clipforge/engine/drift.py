@@ -53,16 +53,22 @@ def diagnose_timing_drift(recent: list[dict], all_projects: list[dict],
 
     判定：recent_ratio < baseline_ratio × 0.5 且 recent_ratio < 0.20 → drift=True。
     依据：evening 全期 16%、7月 0%（recent=0 < 16%×0.5=8% 且 <20%）。
+    最小样本保护：含时分记录 <3 → drift=False（空 recent / 全无 publish_hour 不误报）。
+    注：baseline_ratio 基于 all_projects（含 recent），运营级粗筛；recent 占全期比例小时影响有限。
     """
     if not best_slot:
-        return {"drift": False, "best_slot": None, "note": "无 best_slot"}
-    recent_ratio = _bucket_ratio(recent, best_slot)
-    baseline_ratio = _bucket_ratio(all_projects, best_slot)
-    drift = recent_ratio < baseline_ratio * 0.5 and recent_ratio < 0.20
+        return {"drift": False, "best_slot": None, "recent_ratio": 0.0,
+                "baseline_ratio": 0.0, "recent_n": 0, "advice": None, "note": "无 best_slot"}
     n = _count_with_hour(recent)
+    baseline_ratio = _bucket_ratio(all_projects, best_slot)
+    if n < 3:
+        return {"drift": False, "best_slot": best_slot, "recent_ratio": 0.0,
+                "baseline_ratio": round(baseline_ratio, 3), "recent_n": n,
+                "advice": None, "note": "近期样本不足（含时分记录少）"}
+    recent_ratio = _bucket_ratio(recent, best_slot)
+    drift = recent_ratio < baseline_ratio * 0.5 and recent_ratio < 0.20
     return {
-        "best_slot": best_slot,
-        "drift": drift,
+        "best_slot": best_slot, "drift": drift,
         "recent_ratio": round(recent_ratio, 3),
         "baseline_ratio": round(baseline_ratio, 3),
         "recent_n": n,
@@ -85,7 +91,8 @@ def compute_c5s_trend(projects: list[dict]) -> dict:
             by_month[d[:7]].append(c)
     months = sorted(by_month)
     if len(months) < 2:
-        return {"trend": "insufficient", "months": len(months)}
+        return {"trend": "insufficient", "months": len(months),
+                "flag": False, "advice": None}
     cur = statistics.median(by_month[months[-1]])
     prev = statistics.median(by_month[months[-2]])
     drop = (prev - cur) / prev if prev else 0.0
