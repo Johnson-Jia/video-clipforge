@@ -681,6 +681,20 @@ class AutoEvolve:
 
         # 生成发布时机建议文件（供 evolve-daily 汇报；运营决策，不进创作 pattern）
         _advice = build_publish_advice(pt_analysis, self.market_avg)
+        # ── 执行漂移诊断（近期 vs 基线；运营 timing + 内容 c5s 健康度）──
+        # 纯读：timing 路由 advice.recent_drift（publish_note 高亮），c5s 进 report
+        _drift = self._diagnose_drift(valid, _advice)
+        insights["execution_drift"] = _drift
+        _advice["recent_drift"] = _drift  # 随 advice 写盘（:684 合并字段已含）
+        if _drift.get("enabled"):
+            _t = _drift["timing"]
+            if _t.get("drift"):
+                self._log(f"  ⚠ 执行漂移·时段: 近{_drift['window']} {_t['best_slot']} "
+                          f"占比 {_t['recent_ratio']:.0%}（全期 {_t['baseline_ratio']:.0%}）")
+            _c = _drift["c5s"]
+            if _c.get("flag"):
+                self._log(f"  ⚠ 执行漂移·5s完播: {_c['previous']:.2f}→{_c['current']:.2f}"
+                          f"（-{_c['drop']:.0%}），开头吸引力退化")
         try:
             _advice_path = WORKSPACE / "evolution" / "publish_timing_advice.json"
             _advice_path.parent.mkdir(parents=True, exist_ok=True)
@@ -706,6 +720,33 @@ class AutoEvolve:
         insights["regression"] = self._regression_attribution(valid)
 
         return insights
+
+    def _diagnose_drift(self, valid: list[dict], advice: dict) -> dict:
+        """近期执行漂移诊断：timing drift + c5s trend。
+
+        近期窗口=近14天；样本<5 降级当月；再不足空转。纯读，不写状态。
+        timing 路由 advice.recent_drift（→ publish_note），c5s 进 report。
+        """
+        from engine.drift import diagnose_timing_drift, compute_c5s_trend, within_days
+        today = date.today()
+        recent = [p for p in valid if within_days(p.get("pub_date"), today, 14)]
+        window = "14d"
+        if len(recent) < 5:
+            recent = [p for p in valid
+                      if (p.get("pub_date") or "").startswith(today.strftime("%Y-%m"))]
+            window = "month"
+        if len(recent) < 5:
+            return {"enabled": False, "note": f"近期样本不足（{len(recent)}）"}
+        timing = diagnose_timing_drift(recent, valid, advice.get("best_hour_bucket"))
+        c5s = compute_c5s_trend(valid)
+        return {
+            "enabled": True,
+            "window": window,
+            "recent_n": len(recent),
+            "generated_at": today.isoformat(),
+            "timing": timing,
+            "c5s": c5s,
+        }
 
     def _regression_attribution(self, valid: list[dict]) -> dict:
         """statsmodels OLS 回归归因：输出"控制其他变量后的边际净效应"。
