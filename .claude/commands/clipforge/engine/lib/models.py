@@ -76,6 +76,7 @@ class GateType(str, Enum):
     narration_translation_pattern = "narration_translation_pattern"  # SOFT: 翻译腔套路句（不是X而是Y）
     narration_emotion_type_valid = "narration_emotion_type_valid"  # SOFT: emotion 必 str 名（防 float 致 auto_evolve dominant 崩）
     no_search_cta = "no_search_cta"
+    no_meta_instruction = "no_meta_instruction"  # 创作元指令/制作术语泄露（一带而过/老朋友/快速带过/熟面孔/先放一边/信息节制）
     gradient_text_no_dark_shadow = "gradient_text_no_dark_shadow"
     no_scene_wrap = "no_scene_wrap"
     gsap_pattern = "gsap_pattern"

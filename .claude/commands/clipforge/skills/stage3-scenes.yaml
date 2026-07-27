@@ -63,6 +63,9 @@ skill:
       - gate: no_competitor_attack
         params:
           files: ["narration.txt"]
+      - gate: no_meta_instruction
+        params:
+          files: ["narration.txt"]
     soft:
       - gate: narration_translation_pattern
         params:

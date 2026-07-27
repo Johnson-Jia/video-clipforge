@@ -325,6 +325,40 @@ def check_no_app_name(project_dir: Path, params: dict,
     return True, ""
 
 
+def check_no_meta_instruction(project_dir: Path, params: dict,
+                              guardrails: list | None = None) -> tuple[bool, str]:
+    """R-G-016: 检测创作元指令/制作术语泄露到旁白。
+
+    "一带而过/快速带过/老朋友/熟面孔/先放一边/信息节制" 是给创作者的决策
+    （如 selection_strategy 的"连续霸榜项目快速带过 3-4s"），不是给观众的内容。
+    观众听到会感到被敷衍+意识到偷懒；"老朋友/熟面孔"还对新观众指代落空、
+    建立观看门槛（频道定位是排行榜快速播报、每天拉新）。用内容化表达替代
+    （直接介绍项目，不标"快报/一带而过"）。2026-07-26 github s6 "老朋友一带而过" 事故触发。
+    """
+    meta_terms = [
+        "一带而过", "快速带过", "老朋友", "熟面孔", "先放一边", "信息节制",
+    ]
+    check_files = params.get("files", ["narration.txt"])
+    found: list[str] = []
+    for fname in check_files:
+        fp = project_dir / fname
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+        # 去掉 HTML 标签（兼容未来扩展到 index.html）
+        if fname.endswith(".html"):
+            import re as _re
+            content = _re.sub(r'<style[^>]*>.*?</style>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<script[^>]*>.*?</script>', '', content, flags=_re.DOTALL)
+            content = _re.sub(r'<[^>]+>', ' ', content)
+        for term in meta_terms:
+            if term in content:
+                found.append(f"{fname}: '{term}'")
+    if found:
+        return False, f"R-G-016: 创作元指令/制作术语泄露到旁白（一带而过/老朋友/快速带过/熟面孔/先放一边/信息节制是给创作者的决策，不是给观众的内容，改用内容化表达）: {'; '.join(found[:5])}"
+    return True, ""
+
+
 def check_no_competitor_attack(project_dir: Path, params: dict,
                                 guardrails: list | None = None) -> tuple[bool, str]:
     """R-G-010: 检测竞品负面对比/拉踩"""
@@ -467,6 +501,7 @@ GATE_CHECKERS = {
     GateType.no_real_person_name: check_no_real_person_name,
     GateType.no_school_name: check_no_school_name,
     GateType.no_app_name: check_no_app_name,
+    GateType.no_meta_instruction: check_no_meta_instruction,
     GateType.no_competitor_attack: check_no_competitor_attack,
     GateType.no_search_cta: check_no_search_cTA,
     GateType.duration_in_range: check_duration_in_range,

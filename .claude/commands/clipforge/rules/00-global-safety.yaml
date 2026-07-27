@@ -189,3 +189,15 @@ rules:
     class: SAFETY
     scope: GLOBAL
     source: "engine/gate.py check_douyin_platforms_complete"
+
+  - id: "R-G-016"
+    type: FORBIDDEN_SPEECH
+    pattern: "创作元指令/制作术语泄露到旁白（一带而过/老朋友/快速带过/熟面孔/先放一边/信息节制）"
+    positive: "旁白只写观众能懂的内容/项目介绍；创作决策（一带而过/快速带过）用内容化表达替代；不称呼项目为老朋友/熟面孔"
+    guardrail: "narration 出现'一带而过/快速带过/老朋友/熟面孔/先放一边/信息节制'等创作元指令——这些是给创作者的决策（如 selection_strategy 的'连续霸榜快速带过'），观众听到会感到被敷衍+意识到偷懒；'老朋友'还对新观众指代落空、建立观看门槛"
+    detection:
+      keywords: ["一带而过", "快速带过", "老朋友", "熟面孔", "先放一边", "信息节制"]
+    severity: HARD
+    class: SAFETY
+    scope: GLOBAL
+    source: "engine/gate.py check_no_meta_instruction + feedback-no-meta-instruction-in-content"

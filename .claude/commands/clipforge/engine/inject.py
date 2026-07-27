@@ -369,7 +369,7 @@ def generate_injection(
                     sec.append("- 必须识别上述 hook 的【主题】（如「砍AI输入」「单日涨星」「个人vs大厂」等抽象角度），本期换完全不同的主题，不只换句式或数字")
                 tp = ctx.get("top_projects") or []
                 if tp:
-                    sec.append(f"- 近期高频项目（避免重复展开，可一带而过）：{', '.join(tp[:6])}")
+                    sec.append(f"- 近期高频项目（避免重复展开，可简短提及）：{', '.join(tp[:6])}")
                 sec.append("- 本次选题/钩子请主动差异化：换题材角度、换数字锚点、换叙事结构")
                 lines.append("\n".join(sec))
                 lines.append("")
