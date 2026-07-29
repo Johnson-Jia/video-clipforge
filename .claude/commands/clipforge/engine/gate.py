@@ -519,10 +519,25 @@ _DEFAULT_HOOK_NUMBER_ANCHORS: tuple[str, ...] = ()
 
 
 def _get_hook_anchors(params: dict) -> tuple[str, ...]:
-    """从 params 中获取 hook_anchors，或使用默认值。"""
+    """从 params 或 category 配置获取 hook_anchors（桥接 category，参照 attribution.py:22-31）。
+
+    gap 修复：原仅读 params.hook_anchors，但 stage3 yaml 未传 → github 分类下数字锚定恒 False。
+    现 fallback 读 CLIPFORGE_CATEGORY 对应 category 的 narration.hook_anchors。
+    """
     anchors = params.get("hook_anchors")
     if anchors:
         return tuple(anchors)
+    import os
+    cat_id = os.environ.get("CLIPFORGE_CATEGORY")
+    if cat_id:
+        try:
+            from engine.lib.category_config import load_category_config, get as _cfg_get
+            cfg = load_category_config(cat_id)
+            cat_anchors = _cfg_get(cfg, "narration.hook_anchors", [])
+            if cat_anchors:
+                return tuple(cat_anchors)
+        except Exception:
+            pass
     return _DEFAULT_HOOK_NUMBER_ANCHORS
 
 
@@ -558,7 +573,20 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
         if hook_text.startswith(forbidden) or forbidden in hook_text[:10]:
             return False, f"hook 命中禁用模式 '{forbidden}'（疑问/互动平均 1,195 播放，数据来源：抖音 58 条）"
 
-    # 检查是否命中高优或数字锚定
+    # 具象度检查（c5s 根因修复：parse_hook_metrics 与 score 子分共用，避免重复解析）
+    # 数据：6月高 c5s hook 均≤15字+具象锚点；7月 0729 38字+元铺垫 c5s 0.32
+    from engine.hook_strength import parse_hook_metrics
+    m = parse_hook_metrics(hook_text)
+    if m["len"] > 20:
+        return False, f"hook 字数 {m['len']}>20（前5秒需精简，6月高 c5s 均≤15字）: {hook_text[:30]}"
+    if m["has_pileup"]:
+        return False, f"hook 含堆叠连接词（多信息稀释钩子）: {hook_text[:30]}"
+    if m["has_meta_premise"]:
+        return False, f"hook 含元铺垫「方向/今天讲什么」（制作层信息，与 R-G-016 同构）: {hook_text[:30]}"
+    if not (m["has_conflict"] or m["has_number"]):
+        return False, f"hook 未命中数字或冲突词（c5s 需具象锚点）: {hook_text[:30]}"
+
+    # 命中高优或数字锚定（信息性，具象度已 HARD 拦截不达标）
     is_high_value = any(kw in hook_text for kw in HOOK_HIGH_VALUE_KEYWORDS)
     hook_anchors = _get_hook_anchors(params)
     is_number_anchor = any(kw in hook_text for kw in hook_anchors) if hook_anchors else False
@@ -568,7 +596,7 @@ def check_hook_pattern_verified(project_dir: Path, params: dict) -> tuple[bool, 
     if is_number_anchor:
         return True, f"hook 命中数字锚定模式（平均 42,783 播放）: {hook_text[:30]}"
 
-    return True, f"hook 未命中高优模式但未违规: {hook_text[:30]}"
+    return True, f"hook 通过具象度校验: {hook_text[:30]}"
 
 
 # 更新 GATE_CHECKERS
@@ -4051,7 +4079,7 @@ def generate_score_report(project_dir: Path, skills_dir: Path | None = None) -> 
         print(f"[score] predicted_plays 计算失败: {e}", file=sys.stderr)
 
     # 多维加权总分：overall = w1·合规 + w2·新鲜度 + w3·播放潜力
-    # w3 低权因 predicted 为启发式（未训练），auto_evolve 验证后调高
+    # 注：曾试加 hook_strength 子分，审查发现与 gate 拦截重叠（已砍，gate 拦截是核心）
     W_COMPLIANCE = 0.6
     W_FRESHNESS = 0.3
     W_PREDICTED = 0.1

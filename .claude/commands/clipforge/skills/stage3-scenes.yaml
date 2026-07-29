@@ -27,6 +27,9 @@ skill:
       - thought: "场景数量和节奏差不多就行"
         reality: "节奏是视频质量的根本，必须严格按 emotion_curve 设计"
         trigger: "试图跳过节奏设计"
+      - thought: "把 hook 写得抽象/有格调（如'几个猛项目''替你跑全流程''方向挺杂'）"
+        reality: "抽象文案=0 信息增量，观众1秒划走；具象数字+反直觉收益 c5s 高（6月0.42 vs 7月0.22，drill-c5s 验证）"
+        trigger: "试图用比喻/形容词/宏大叙事/元铺垫（今天讲什么）替代具体数据/对比/冲突"
     spirit_vs_letter:
       - rule_ref: "R-S3-*"
         mode: LETTER

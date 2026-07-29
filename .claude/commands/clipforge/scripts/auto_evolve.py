@@ -213,6 +213,23 @@ def _read_narration(proj_dir: Path) -> dict:
     return result
 
 
+def _flatten_title_styles(items) -> list[str]:
+    """递归提取 title 中的 style（兼容平铺 [{...}] 与嵌套 [[{...}]] 格式）。
+
+    bug 修复：原平铺遍历 isinstance(t,dict)，嵌套数组的 t 是 list → style 全丢
+   （title_styles 恒 "none"）。参照 freshness.py:55-67 / auto_evolve._read_narration 的 list/dict 兼容模式。
+    """
+    out: list[str] = []
+    if not isinstance(items, list):
+        return out
+    for t in items:
+        if isinstance(t, dict) and t.get("style"):
+            out.append(t["style"])
+        elif isinstance(t, list):
+            out.extend(_flatten_title_styles(t))
+    return out
+
+
 def _read_cover_attrs(proj_dir: Path) -> dict:
     """读 cover_params.json → 封面属性（封面维度分析输入）。无文件返回空 dict。"""
     cp_file = proj_dir / "cover_params.json"
@@ -223,7 +240,7 @@ def _read_cover_attrs(proj_dir: Path) -> dict:
     except Exception:
         return {}
     title = cp.get("title", [])
-    styles = [t.get("style") for t in title if isinstance(t, dict) and t.get("style")] if isinstance(title, list) else []
+    styles = _flatten_title_styles(title) if isinstance(title, list) else []
     def _to_float(v):
         try:
             return float(v) if v else 0.0
