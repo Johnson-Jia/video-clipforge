@@ -1121,9 +1121,10 @@ GATE_CHECKERS[GateType.estimation_accuracy_valid] = check_estimation_accuracy
 def _parse_content_ready_projects(text: str) -> list[tuple[str, str]]:
     """解析 content_ready.txt 中的显式项目条目行，返回 [(owner/repo, full_line), ...]。
 
-    兼容两种格式：
+    兼容三种格式：
     - 编号列表：`5. refactoringhq/tolaria | TypeScript | ... | AI 代码重构平台`
     - Markdown 表格：`| 1 | apple/container | Swift | ... |`
+    - Markdown 标题：`## 1. lyogavin/airllm（反直觉钩子核心 · A 档）`（2026-08-04 daily 格式）
     提取每行第一个 `owner/repo` token（排除 URL/文件路径）。
     """
     projects: list[tuple[str, str]] = []
@@ -1132,9 +1133,11 @@ def _parse_content_ready_projects(text: str) -> list[tuple[str, str]]:
     repo_re = re.compile(r"(?<![\w/.])([A-Za-z][\w.-]*/[A-Za-z][\w.-]*)")
     for line in text.splitlines():
         stripped = line.lstrip("| ").strip()
-        # 仅处理形如"条目"的行：以数字开头，或表格行含 |
-        is_entry = bool(re.match(r"^\d+[\.\)、\s]", stripped)) or (
-            line.count("|") >= 2 and re.search(r"\| *\d+[\s|]", line)
+        # 仅处理形如"条目"的行：以数字开头，或表格行含 |，或 ## N. owner/repo 标题
+        is_entry = (
+            bool(re.match(r"^\d+[\.\)、\s]", stripped))
+            or (line.count("|") >= 2 and re.search(r"\| *\d+[\s|]", line))
+            or bool(re.match(r"^#{1,6}\s*\d+[\.\)、\s]", stripped))
         )
         if not is_entry:
             continue
@@ -1237,6 +1240,124 @@ def check_description_fidelity(project_dir: Path, params: dict) -> tuple[bool, s
 
 
 GATE_CHECKERS[GateType.description_fidelity_valid] = check_description_fidelity
+
+
+def check_project_no_consecutive_repeat(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """单项目禁近 N 天连续入选（防同质化硬拦截，2026-08-04 airllm 连3期事故）。
+
+    stage1 时 content_ready.txt 已含本期选定项目。与近 window_days 天历史视频
+    （github-trending / ai-wind / github-trending-weekly，项目命名按日期路径段判断）
+    的入选项目集求交集——非空即 HARD 失败，强制 SubAgent 换项目。
+
+    例外（真爆款不拦）：交集项目若今日 raw_trending.json 中 stars_today 排名
+    进 top exempt_top_n，放行（连续上榜爆款可一句带过增量）。
+
+    为什么 HARD 而非 SOFT：stage0.5 题材轮换只到"题材级"，LLM 会用"同一项目换
+    角度"绕过（airllm 连3期换第3角度仍重复）；freshness 是事后评分不回拦。
+    此 gate 在 stage1（选定项目刚落盘、尚未做音频/视频重活）前置拦截，成本最低。
+    """
+    window_days = int(params.get("window_days", 2))
+    exempt_top_n = int(params.get("exempt_top_n", 3))
+    cur = Path(project_dir)
+
+    # weekly 周榜豁免：周榜性质=一周热门汇总回顾，与近2天 daily 重叠是天然属性，
+    # 硬拦会让周一视频选不出 12-15 个项目（2026-08-04 用户决策：weekly 豁免）
+    if "weekly" in cur.name.lower():
+        return True, "weekly 周榜（一周汇总回顾属性），豁免近2天重复检查"
+
+    # 当前项目集：content_ready.txt 显式 owner/repo 条目行解析（_parse_content_ready_projects），
+    # 与历史集同解析器（口径一致）。注：freshness._project_set 全文正则过贪婪（误判 1/3、
+    # assets/avatars、2026/08 等非项目 token），故统一改用条目行解析——只认"数字条目/表格行"
+    # 里的 owner/repo，准确且历史/当前口径一致。content_ready 缺失即非盘点类，优雅跳过。
+    content_fp = cur / params.get("content_file", "content_ready.txt")
+    if not content_fp.exists():
+        return True, "无 content_ready.txt（非盘点类项目），跳过项目重复检查"
+    entries = _parse_content_ready_projects(content_fp.read_text(encoding="utf-8", errors="ignore"))
+    if not entries:
+        return True, "content_ready.txt 无显式项目条目（非盘点类），跳过"
+    cur_projects = {repo.lower() for repo, _ in entries}
+
+    # 本期 raw_trending.json：top exempt_top_n 例外白名单（按 stars_today）
+    raw_fp = cur / "raw_trending.json"
+    exempt: set[str] = set()
+    if raw_fp.exists():
+        try:
+            raw = json.loads(raw_fp.read_text(encoding="utf-8"))
+            ps = raw.get("projects", raw) if isinstance(raw, dict) else raw
+            ps = sorted([p for p in ps if isinstance(p, dict)],
+                        key=lambda x: -int(x.get("stars_today") or 0))
+            for p in ps[:exempt_top_n]:
+                fn = str(p.get("full_name") or (str(p.get("owner","")) + "/" + str(p.get("repo","")))).strip("/")
+                if fn and "/" in fn:
+                    exempt.add(fn.lower())
+        except Exception:
+            pass
+
+    # 近 window_days 天历史项目集（按日期路径段过滤；含跨 album）
+    import re as _re
+    from datetime import date as _date
+    _date_seg = _re.compile(r"(20\d{2})[/-](\d{2})[/-](\d{2})")
+    def _proj_date(p: Path):
+        m = _date_seg.search(str(p).replace("\\", "/"))
+        if not m:
+            return None
+        try:
+            return _date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return None
+    cur_date = _proj_date(cur)
+    if cur_date is None:
+        return True, "当前项目路径无日期段，跳过（无法界定近2天窗口）"
+
+    from engine.freshness import _find_recent_projects
+
+    def _hist_set(hp: Path) -> set[str]:
+        """历史项目集：与当前集同用条目行解析器（口径一致），content_ready 缺失回退 content.md。"""
+        for name in ("content_ready.txt", "content.md"):
+            fp = hp / name
+            if fp.exists():
+                try:
+                    ents = _parse_content_ready_projects(fp.read_text(encoding="utf-8", errors="ignore"))
+                except Exception:
+                    continue
+                if ents:
+                    return {r.lower() for r, _ in ents}
+        return set()
+
+    # 仅同类别（同 album 目录名）校验，不跨类别（2026-08-04 用户决策：daily 与 ai-wind
+    # 是不同频道各自独立检测——ai-wind 内部连续 / daily 内部连续才拦，跨频道不拦）
+    cur_album = cur.name
+    hist_projects: set[str] = set()
+    for hp in _find_recent_projects(cur, n=30):
+        if hp.name != cur_album:  # 跨类别跳过
+            continue
+        d = _proj_date(hp)
+        if d is None:
+            continue
+        gap = (cur_date - d).days
+        if 1 <= gap <= window_days:  # 近2天（昨日/前日），不含今天/未来
+            hist_projects |= _hist_set(hp)
+
+    if not hist_projects:
+        return True, "近2天无历史视频可比（首期），视为通过"
+
+    overlap = sorted(cur_projects & hist_projects)
+    if not overlap:
+        return True, f"近{window_days}天无重复项目（{len(cur_projects)} 个项目均新鲜）"
+
+    blocked = [p for p in overlap if p not in exempt]
+    allowed = [p for p in overlap if p in exempt]
+    if blocked:
+        msg = (f"近{window_days}天已入选的项目本期重复（HARD 拦截）: {', '.join(blocked[:6])}"
+               f"。修复：换成 raw_trending.json 中近{window_days}天未入选的其他项目"
+               f"（可补选同子方向替代），重写 content_ready.txt 后重跑 stage1 gate")
+        if allowed:
+            msg += f" | 例外放行（今日 top{exempt_top_n} 爆款）: {', '.join(allowed)}"
+        return False, msg
+    return True, f"近{window_days}天重复项目均属今日 top{exempt_top_n} 爆款例外放行: {', '.join(allowed)}"
+
+
+GATE_CHECKERS[GateType.project_no_consecutive_repeat] = check_project_no_consecutive_repeat
 
 
 def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, str]:

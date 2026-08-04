@@ -370,6 +370,50 @@ def generate_injection(
                 tp = ctx.get("top_projects") or []
                 if tp:
                     sec.append(f"- 近期高频项目（避免重复展开，可简短提及）：{', '.join(tp[:6])}")
+                # 近2天项目硬避免清单（与 stage1 project_no_consecutive_repeat HARD gate 对齐，2026-08-04 airllm 连3期事故）
+                # 与 gate 同用条目行解析器 _parse_content_ready_projects（口径一致），
+                # 不用 freshness._project_set（全文正则过贪婪，误判 1/3、assets/avatars 等非项目 token）
+                try:
+                    from engine.freshness import _find_recent_projects
+                    from engine.gate import _parse_content_ready_projects
+                    import re as _re2
+                    from datetime import date as _date2
+                    _cur = Path(project_dir)
+                    _seg = _re2.compile(r"(20\d{2})[/-](\d{2})[/-](\d{2})")
+                    def _pd(p):
+                        m = _seg.search(str(p).replace("\\", "/"))
+                        if not m: return None
+                        try: return _date2(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                        except ValueError: return None
+                    def _hset(hp):
+                        for _nm in ("content_ready.txt", "content.md"):
+                            _fp = hp / _nm
+                            if _fp.exists():
+                                try:
+                                    _e = _parse_content_ready_projects(_fp.read_text(encoding="utf-8", errors="ignore"))
+                                except Exception:
+                                    continue
+                                if _e:
+                                    return {r.lower() for r, _ in _e}
+                        return set()
+                    _cd = _pd(_cur)
+                    # weekly 周榜豁免（与 gate 对齐：周榜回顾属性，不注入近2天避免清单）
+                    # 仅同类别（同 album 目录名），不跨类别（daily/ai-wind 各自独立）
+                    _album = _cur.name
+                    if _cd is not None and "weekly" not in _album.lower():
+                        _avoid: set[str] = set()
+                        for _hp in _find_recent_projects(_cur, n=30):
+                            if _hp.name != _album:  # 跨类别跳过
+                                continue
+                            _d = _pd(_hp)
+                            if _d is not None and 1 <= (_cd - _d).days <= 2:
+                                _avoid |= _hset(_hp)
+                        if _avoid:
+                            sec.append(f"- ⛔ 近2天已入选项目（本期禁选，stage1 HARD 拦截，换角度不算差异化）：{', '.join(sorted(_avoid)[:10])}")
+                            sec.append("  · 这些项目昨天/前天刚讲过——同一项目连续多天出现会让观众觉得是重复内容。本期必须换成 raw 中未入选的其他项目")
+                            sec.append("  · 唯一例外：某项目今日 stars_today 涨进当日 raw 前3（真爆款），可一句带过增量，不展开")
+                except Exception:
+                    pass
                 sec.append("- 本次选题/钩子请主动差异化：换题材角度、换数字锚点、换叙事结构")
                 lines.append("\n".join(sec))
                 lines.append("")

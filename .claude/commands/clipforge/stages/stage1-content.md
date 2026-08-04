@@ -64,3 +64,5 @@ clipforge/categories/{category}.md
 ## 约束声明
 
 > 本阶段的结构化约束（HARD/SOFT 规则 + Guard Red Flags）由引擎注入提供。执行前运行 `python engine/inject.py --skill stage1-content` 获取完整约束 prompt。
+
+**盘点类项目重复硬约束**（gate `project_no_consecutive_repeat`，2026-08-04 airllm 连3期事故）：单个项目**禁同频道近2天连续入选**（昨日/前日同频道已选 → 本期换项目，换角度不算差异化）。**仅同类别校验，不跨频道**（daily/ai-wind 各自独立）。例外：今日 `stars_today` 涨进当日 raw 前3 的真爆款可一句带过。**weekly 周榜豁免**（回顾属性）。详见 `categories/github.md → selection_strategy`。

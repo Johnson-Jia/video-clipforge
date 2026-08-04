@@ -95,6 +95,7 @@ class GateType(str, Enum):
     description_fidelity_valid = "description_fidelity_valid"
     font_consistency = "font_consistency"
     list_alignment_valid = "list_alignment_valid"
+    project_no_consecutive_repeat = "project_no_consecutive_repeat"  # HARD: 单项目禁近2天连续入选（airllm 连3期事故）
 
 
 class Rigor(str, Enum):

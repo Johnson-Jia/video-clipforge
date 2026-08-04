@@ -37,6 +37,11 @@ skill:
         params:
           content_file: "content_ready.txt"
           raw_file: "raw_trending.json"
+      - gate: project_no_consecutive_repeat
+        params:
+          content_file: "content_ready.txt"
+          window_days: 2
+          exempt_top_n: 3
       - gate: no_forbidden_speech
         params:
           files: ["content_ready.txt"]
