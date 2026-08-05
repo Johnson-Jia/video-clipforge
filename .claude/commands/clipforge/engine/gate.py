@@ -1360,6 +1360,98 @@ def check_project_no_consecutive_repeat(project_dir: Path, params: dict) -> tupl
 GATE_CHECKERS[GateType.project_no_consecutive_repeat] = check_project_no_consecutive_repeat
 
 
+# ── AI 项目判定（复用 ai_trending.py 逻辑，自包含避免 import scripts）──
+_AI_TOPICS = {
+    "ai", "artificial-intelligence", "ai-agent", "ai-agents", "llm",
+    "large-language-models", "large-language-model", "agent", "autonomous-agents",
+    "machine-learning", "ml", "deep-learning", "neural-network", "neural-networks",
+    "transformer", "transformers", "gpt", "chatgpt", "openai", "anthropic",
+    "langchain", "langgraph", "rag", "generative-ai", "generative",
+    "stable-diffusion", "diffusion", "diffusion-model", "huggingface",
+    "pytorch", "tensorflow", "keras", "computer-vision", "cv",
+    "nlp", "natural-language-processing", "speech-recognition",
+    "text-to-speech", "tts", "speech-to-text", "speech-to-speech",
+    "reinforcement-learning", "robotics", "ocr", "vision-language", "multimodal",
+}
+_AI_DESC_PATTERNS = [
+    r"\bAI\b", r"\bLLMs?\b", r"\bGPT\b", r"\bAgents?\b", r"\bTransformers?\b",
+    r"\bgenerative[- ]ai\b", r"\bmachine[- ]learning\b", r"\bdeep[- ]learning\b",
+    r"\bchatbot\b", r"\btext-to-(image|speech|video|3d)\b", r"\bspeech-to-(text|speech)\b",
+    r"\bopen[- ]?source\s+(ai|llm|model)\b", r"\blocal\s+(ai|llm)\b",
+    r"智能体", r"大模型", r"机器学习", r"深度学习", r"生成式",
+]
+
+
+def _is_ai_project(topics: list, desc: str) -> bool:
+    """判定 AI 项目：topics 命中 或 description 命中（与 ai_trending.is_ai_project 一致）。"""
+    if {t.lower() for t in (topics or [])} & _AI_TOPICS:
+        return True
+    for pat in _AI_DESC_PATTERNS:
+        if re.search(pat, desc or "", re.IGNORECASE):
+            return True
+    return False
+
+
+def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """github-trending 综合榜 AI 项目数上限（HARD，有 ai-wind 专项后差异化）。
+
+    有了 ai-wind（AI 风向标）专项专辑承接 AI 深度后，daily 综合榜应回归多元
+    （工具/基建/安全/硬件/前端），AI 项目占比需限制——避免两专辑内容高度重叠。
+    2026-08-05 daily 5 项目里 4 个 AI（80%），与 ai-wind 同日撞车 superpowers/uber-ADR。
+
+    仅对 github-trending 生效：ai-wind 是 AI 专项不限；weekly 周榜豁免（回顾属性）。
+    cap 默认 2（5-6 项目里最多 2 个 AI）。判定复用 ai_trending.is_ai_project 逻辑。
+    """
+    cap = int(params.get("max_ai", 2))
+    cur = Path(project_dir)
+
+    # 仅 github-trending 综合榜生效
+    if cur.name != "github-trending":
+        return True, f"非 github-trending 综合榜（{cur.name}），跳过 AI 占比检查"
+
+    content_fp = cur / params.get("content_file", "content_ready.txt")
+    if not content_fp.exists():
+        return True, "无 content_ready.txt（非盘点类），跳过 AI 占比检查"
+    entries = _parse_content_ready_projects(content_fp.read_text(encoding="utf-8", errors="ignore"))
+    if not entries:
+        return True, "content_ready.txt 无显式项目条目，跳过"
+
+    raw_fp = cur / params.get("raw_file", "raw_trending.json")
+    if not raw_fp.exists():
+        return True, "无 raw_trending.json，跳过 AI 占比检查"
+    try:
+        raw = json.loads(raw_fp.read_text(encoding="utf-8"))
+    except Exception:
+        return True, "raw_trending.json 解析失败，跳过"
+    raw_projects = raw.get("projects", raw) if isinstance(raw, dict) else raw
+    raw_map = {}
+    for p in raw_projects:
+        if not isinstance(p, dict):
+            continue
+        fn = str(p.get("full_name") or (str(p.get("owner", "")) + "/" + str(p.get("repo", "")))).strip("/")
+        if fn:
+            raw_map[fn.lower()] = p
+
+    ai_projects = []
+    for repo, _line in entries:
+        p = raw_map.get(repo.lower())
+        if not p:
+            continue
+        if _is_ai_project(p.get("topics") or [], p.get("description") or ""):
+            ai_projects.append(repo)
+
+    if len(ai_projects) > cap:
+        return False, (
+            f"AI 项目 {len(ai_projects)} 个 > 上限 {cap}（有 ai-wind 专项承接 AI 深度，"
+            f"daily 综合榜应多元: 工具/基建/安全/硬件/前端）: {', '.join(ai_projects[:6])}。"
+            f"修复：把超出的 AI 项目换成 raw_trending.json 中非 AI 方向项目，重写 content_ready.txt 后重跑 stage1 gate"
+        )
+    return True, f"AI 项目 {len(ai_projects)}/{len(entries)} ≤ {cap}（综合榜多元配比达标，AI 深度交 ai-wind）"
+
+
+GATE_CHECKERS[GateType.ai_project_cap] = check_ai_project_cap
+
+
 def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 phase_timings.json 的完整性：phase 时间覆盖完整场景时长，无间隙/重叠。
     手工 GSAP 硬编码断点会导致旁白与画面不同步；phase_calibrator.py 自动校准后，本门禁确保产出完整无遗漏。

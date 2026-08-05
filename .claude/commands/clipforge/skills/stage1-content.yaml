@@ -42,6 +42,11 @@ skill:
           content_file: "content_ready.txt"
           window_days: 2
           exempt_top_n: 3
+      - gate: ai_project_cap
+        params:
+          content_file: "content_ready.txt"
+          raw_file: "raw_trending.json"
+          max_ai: 2
       - gate: no_forbidden_speech
         params:
           files: ["content_ready.txt"]
