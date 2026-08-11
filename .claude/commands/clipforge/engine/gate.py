@@ -1446,7 +1446,25 @@ def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
             f"daily 综合榜应多元: 工具/基建/安全/硬件/前端）: {', '.join(ai_projects[:6])}。"
             f"修复：把超出的 AI 项目换成 raw_trending.json 中非 AI 方向项目，重写 content_ready.txt 后重跑 stage1 gate"
         )
-    return True, f"AI 项目 {len(ai_projects)}/{len(entries)} ≤ {cap}（综合榜多元配比达标，AI 深度交 ai-wind）"
+    # 总数下限 + 非 AI 下限（多元保障，2026-08-11 daily 选 2 AI 变 mini-ai-wind 事故根因）
+    # AI≤2 是上限约束（5-6 项目里 AI 最多 2），不是"选 2 AI 就完事"；非 AI 必须补足到 min_count+
+    min_count = int(params.get("min_count", 4))
+    min_non_ai = int(params.get("min_non_ai", 2))
+    total = len(entries)
+    non_ai = total - len(ai_projects)
+    if total < min_count:
+        return False, (
+            f"项目总数 {total} < 下限 {min_count}（daily 综合榜多元盘点 5-6 项目，AI≤2 是上限非目标，"
+            f"非 AI 必须补足）。修复：扩大 raw（fetch 更深）或放宽敏感中性化，选足 "
+            f"{min_count}+ 项目（AI≤2 + 非 AI 补足），重写 content_ready.txt 后重跑 stage1 gate。"
+            f"pool 真枯竭则跳过本期不发劣质 <{min_count} 项目视频"
+        )
+    if non_ai < min_non_ai:
+        return False, (
+            f"非 AI 项目 {non_ai} 个 < 下限 {min_non_ai}（daily 综合榜多元，AI 深度交 ai-wind 专项，"
+            f"daily 须≥{min_non_ai} 非 AI: 工具/基建/安全/硬件/前端）。修复：把部分 AI 换成 raw 非 AI 项目"
+        )
+    return True, f"AI 项目 {len(ai_projects)}/{total} ≤ {cap}，总数 {total} ≥ {min_count}，非 AI {non_ai} ≥ {min_non_ai}（综合榜多元配比达标，AI 深度交 ai-wind）"
 
 
 GATE_CHECKERS[GateType.ai_project_cap] = check_ai_project_cap
