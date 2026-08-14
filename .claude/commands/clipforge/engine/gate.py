@@ -1129,8 +1129,10 @@ def _parse_content_ready_projects(text: str) -> list[tuple[str, str]]:
     """
     projects: list[tuple[str, str]] = []
     seen: set[str] = set()
-    # 贪心匹配 owner/repo（最长匹配，避免 last30days-skill 被截断）
-    repo_re = re.compile(r"(?<![\w/.])([A-Za-z][\w.-]*/[A-Za-z][\w.-]*)")
+    # 贪心匹配 owner/repo（最长匹配，避免 last30days-skill 被截断）。
+    # owner 段允许数字开头（GitHub 合法用户名如 3b1b、666ghj），repo 段仍须字母开头
+    # （避免误匹配日期路径段如 2026/08、版本号 1/3 等非项目 token）。
+    repo_re = re.compile(r"(?<![\w/.])([\w][\w.-]*/[A-Za-z][\w.-]*)")
     for line in text.splitlines():
         stripped = line.lstrip("| ").strip()
         # 仅处理形如"条目"的行：以数字开头，或表格行含 |，或 ## N. owner/repo 标题
@@ -1442,9 +1444,12 @@ def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
 
     if len(ai_projects) > cap:
         return False, (
-            f"AI 项目 {len(ai_projects)} 个 > 上限 {cap}（有 ai-wind 专项承接 AI 深度，"
-            f"daily 综合榜应多元: 工具/基建/安全/硬件/前端）: {', '.join(ai_projects[:6])}。"
-            f"修复：把超出的 AI 项目换成 raw_trending.json 中非 AI 方向项目，重写 content_ready.txt 后重跑 stage1 gate"
+            f"AI 项目 {len(ai_projects)} 个 > 上限 {cap}（上限非下限：可 0/1/2 个，不必凑满 {cap}；"
+            f"有 ai-wind 专项承接 AI 深度，daily 综合榜应多元: 工具/基建/安全/硬件/前端）: {', '.join(ai_projects[:6])}。"
+            f"修复：把超出的 AI 项目换成 raw_trending.json 中非 AI 方向项目，重写 content_ready.txt 后重跑 stage1 gate。"
+            f"⚠️ 若非 AI 候选看似枯竭，先按 categories/github.md「security_tools 安全工具入池规则」"
+            f"审视 OSINT/安全工具（攻击面测绘/邮箱自查/威胁情报等合法开源工具）是否可中性化入池"
+            f"（讲自查/防御，禁攻击向）——勿笼统判灰色剔除而跳过本期"
         )
     # 总数下限 + 非 AI 下限（多元保障，2026-08-11 daily 选 2 AI 变 mini-ai-wind 事故根因）
     # AI≤2 是上限约束（5-6 项目里 AI 最多 2），不是"选 2 AI 就完事"；非 AI 必须补足到 min_count+
@@ -1462,7 +1467,10 @@ def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
     if non_ai < min_non_ai:
         return False, (
             f"非 AI 项目 {non_ai} 个 < 下限 {min_non_ai}（daily 综合榜多元，AI 深度交 ai-wind 专项，"
-            f"daily 须≥{min_non_ai} 非 AI: 工具/基建/安全/硬件/前端）。修复：把部分 AI 换成 raw 非 AI 项目"
+            f"daily 须≥{min_non_ai} 非 AI: 工具/基建/安全/硬件/前端）。修复：把部分 AI 换成 raw 非 AI 项目。"
+            f"⚠️ 若非 AI 候选看似枯竭，先按 categories/github.md「security_tools 安全工具入池规则」"
+            f"审视 OSINT/安全工具（攻击面测绘/邮箱自查/威胁情报等合法开源工具）是否可中性化入池"
+            f"（讲自查/防御，禁攻击向）——勿笼统判灰色剔除而跳过本期。真违法盗版（VPN/IPTV/破解）才零容忍"
         )
     return True, f"AI 项目 {len(ai_projects)}/{total} ≤ {cap}，总数 {total} ≥ {min_count}，非 AI {non_ai} ≥ {min_non_ai}（综合榜多元配比达标，AI 深度交 ai-wind）"
 

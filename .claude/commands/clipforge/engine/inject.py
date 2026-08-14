@@ -412,6 +412,19 @@ def generate_injection(
                             sec.append(f"- ⛔ 近2天已入选项目（本期禁选，stage1 HARD 拦截，换角度不算差异化）：{', '.join(sorted(_avoid)[:10])}")
                             sec.append("  · 这些项目昨天/前天刚讲过——同一项目连续多天出现会让观众觉得是重复内容。本期必须换成 raw 中未入选的其他项目")
                             sec.append("  · 唯一例外：某项目今日 stars_today 涨进当日 raw 前3（真爆款），可一句带过增量，不展开")
+                        # 跨频道 AI 去重（SOFT，2026-08-14 反馈）：daily 选 AI 时避开昨日 ai-wind 已选 AI（观众视角重复）
+                        # gate 仅同频道硬拦，跨频道（daily↔ai-wind）用 SOFT 引导，不硬拦（硬拦会限制过死）
+                        if _album == "github-trending" and _cd is not None:
+                            _cross_ai: set[str] = set()
+                            for _hp in _find_recent_projects(_cur, n=30):
+                                if _hp.name != "ai-wind":
+                                    continue
+                                _d = _pd(_hp)
+                                if _d is not None and 1 <= (_cd - _d).days <= 2:
+                                    _cross_ai |= _hset(_hp)
+                            if _cross_ai:
+                                sec.append(f"- ⚠️ 跨频道 AI 去重（SOFT，非硬拦）：昨日/前日 ai-wind 已选 {len(_cross_ai)} 个 AI 项目：{', '.join(sorted(_cross_ai)[:10])}")
+                                sec.append("  · daily 选 AI 项目时主动避开这些（观众连续两天刷到同一 AI 会觉重复）；非 AI 项目不受此约束")
                 except Exception:
                     pass
                 sec.append("- 本次选题/钩子请主动差异化：换题材角度、换数字锚点、换叙事结构")
