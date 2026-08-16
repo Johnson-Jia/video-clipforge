@@ -56,14 +56,16 @@ def load_patterns_meta(category: str | None = None, skill_name: str | None = Non
     files = all_pattern_files() if patterns_dir is None else sorted(patterns_dir.glob("*.yaml"))
     metas: list[dict] = []
     for fp in files:
-        import yaml
-        mtime = datetime.fromtimestamp(fp.stat().st_mtime)
-        if (datetime.now() - mtime).days > MAX_AGE_DAYS:
+        from engine.lib.pattern_io import load_pattern
+        data = load_pattern(fp)
+        if data is None:
             continue
-        with open(fp, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        if not data:
-            continue
+        # mtime 老化仅限 auto pattern：seed（人工经验）从不被回写、mtime 停在入库时刻，
+        # 按文件年龄淘汰会于 ~90 天后静默清空全部人工经验注入池（2026-08-16 审计 P0 修复）
+        if data.get("seed") is not True:
+            mtime = datetime.fromtimestamp(fp.stat().st_mtime)
+            if (datetime.now() - mtime).days > MAX_AGE_DAYS:
+                continue
         if category and data.get("category") != category and data.get("category") is not None:
             continue
         pid = data.get("id") or fp.stem
@@ -76,7 +78,9 @@ def load_patterns_meta(category: str | None = None, skill_name: str | None = Non
             scopes = [s.strip() for s in str(scope_raw).split(",") if s.strip()]
             if skill_name not in scopes:
                 continue
-        if (data.get("status") or (data.get("evidence") or {}).get("status")) == "deprecated":
+        # deprecated 单源判定（engine/lib/pattern_io.py），写读层级统一
+        from engine.lib.pattern_io import is_deprecated
+        if is_deprecated(data):
             continue
         if "as_preference" in data:
             pref = data["as_preference"]

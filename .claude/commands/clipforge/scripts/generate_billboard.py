@@ -93,9 +93,9 @@ def item_html(it):
     )
 
 
-def render_screenshot(html_path, png_path, width=1080, height=1920, dsf=1):
-    """playwright 截图 HTML → PNG。dsf=1 出 1080×1920（手机查看/社交分享最佳），
-    dsf=2 出 2160×3840 retina（桌面/打印/高清存档）。"""
+def render_screenshot(html_path, png_path, width=1080, height=1920, dsf=2):
+    """playwright 截图 HTML → PNG。dsf=2（默认）出 2160×3840 retina（高清存档/
+    桌面查看，SA 免二次重截），--no-retina 传 dsf=1 出 1080×1920。"""
     from playwright.sync_api import sync_playwright
     url = "file:///" + os.path.abspath(html_path).replace("\\", "/")
     with sync_playwright() as p:
@@ -112,6 +112,7 @@ def main():
     ap.add_argument("--data", required=True, help="billboard_data.json 路径")
     ap.add_argument("--output", required=True, help="输出 HTML 路径")
     ap.add_argument("--render", action="store_true", help="生成 HTML 后用 playwright 截图为 PNG")
+    ap.add_argument("--no-retina", action="store_true", help="禁用 retina，出 1080×1920（默认 retina 2160×3840）")
     ap.add_argument("--png", help="PNG 输出路径（默认 = output 同名 .png）")
     args = ap.parse_args()
 
@@ -154,8 +155,10 @@ def main():
     print(f"HTML 已生成: {args.output} ({len(items)} 项, 头像={'有' if avatar_b64 else '无'})")
     if args.render:
         png_path = args.png or os.path.splitext(args.output)[0] + ".png"
-        render_screenshot(args.output, png_path)
-        print(f"PNG 已截图: {png_path}")
+        dsf = 1 if args.no_retina else 2
+        render_screenshot(args.output, png_path, dsf=dsf)
+        size = "1080×1920" if dsf == 1 else "2160×3840 retina"
+        print(f"PNG 已截图: {png_path} ({size})")
 
 
 if __name__ == "__main__":

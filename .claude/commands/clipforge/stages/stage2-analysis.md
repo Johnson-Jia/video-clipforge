@@ -92,7 +92,7 @@
 
 视频按 6 个情感节拍规划：**grab（好奇）→ build（期待）→ reveal（惊喜）→ climax（激动）→ settle（思考）→ summon（行动）**。时长分配由内容决定，不套固定比例。
 
-`emotion_curve` 是一个 6 元素数组，值域 [0,1]，表示每个节拍的情感强度。示例：`[0.3, 0.5, 0.8, 1.0, 0.6, 0.4]`。各阶段根据节拍名称自主推导视觉方法，不查表。
+`emotion_curve` 是一个**恰好 6 个**元素的数组（与 6 拍一一对应；gate 校验元素数量为 6，多写/少写拦截、不校验数值类型——请写 [0,1] 数字，示例：`[0.3, 0.5, 0.8, 1.0, 0.6, 0.4]`），表示每个节拍的情感强度。各阶段根据节拍名称自主推导视觉方法，不查表。
 
 ### 角色出场规划
 
@@ -167,6 +167,13 @@ orientation_source: default  # default | user_explicit | category_hint
 ```
 
 > **beat_mapping 说明：** 这是场景到情感节拍的粗映射，帮助 Stage 3 和 Stage 6 理解每个场景应传递的情感。不是严格约束，Stage 3 可以调整。
+
+> **格式硬约束（gate 字面校验，写错即拦）——最小正确样例，直接照抄格式：**
+> - `emotion_curve:` 必须恰含 **6 个数字**元素（与 6 拍一一对应，8 元素/4 元素都会被拦）：
+>   `emotion_curve: [0.3, 0.5, 0.8, 1.0, 0.6, 0.4]`
+> - `color_direction:` 必须是 **YAML 键 + 冒号**写法（gate 校验 `color_direction:` 子串存在；推荐键名单独一行 + 子项缩进的标准 YAML 写法），写成无冒号标题（如 `## 配色方向 color_direction`）会被字面匹配拦截：
+>   `color_direction:`
+>   `  background: 深色暗调`
 
 > **design.md 定位：** 方向性指导，不包含具体色值/字号/间距。Stage 6 根据 `style`、`color_direction`、`orientation`、`immersion_mode` 和 `fonts` 选择对应的组件、配色和字体（字体加载参数见 `shared/font-palette`），Stage 7 封面复用同一风格方向（封面字体有独立规则，不复用 `fonts`）。
 

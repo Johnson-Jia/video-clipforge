@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from engine.lib.data_paths import auto_patterns_dir
+from engine.lib.pattern_io import is_deprecated, is_seed
 PATTERNS_DIR = auto_patterns_dir()
 EPSILON = 0.15          # explore 概率（85% exploit / 15% explore）
 WEIGHT_RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
@@ -58,14 +59,13 @@ def decide(project_dir: str, date_str: str, category: str = "github",
     patterns_dir = patterns_dir or PATTERNS_DIR
     candidates = []
     for fp in sorted(patterns_dir.glob("P-*.yaml")):
-        try:
-            import yaml
-            data = yaml.safe_load(fp.read_text("utf-8"))
-        except Exception:
+        from engine.lib.pattern_io import load_pattern
+        data = load_pattern(fp)
+        if data is None or is_seed(data):
             continue
-        if not data or data.get("seed") is True:
-            continue
-        if data.get("status") == "deprecated":
+        # deprecated 过滤经 pattern_io 单源取值（auto_evolve 写 evidence.status 嵌套层，
+        # 只读顶层曾致已淘汰 pattern 仍被选为注入目标 —— 2026-08-16 审计 P0 修复）
+        if is_deprecated(data):
             continue
         if category and data.get("category") and data.get("category") != category:
             continue

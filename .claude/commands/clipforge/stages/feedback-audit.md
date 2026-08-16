@@ -138,5 +138,5 @@
 **禁止**:
 
 - `P-feedback-*` 前缀(无对应真实 pattern,从源头杜绝悬空引用)。
-- 事故日期(`2026-05-28` 之类)与项目名(`ai-training-impact` 之类)——属 git history,不入 source 字段(去运行时化)。
+- 事故日期(YYYY-MM-DD 格式)与项目名(`ai-training-impact` 之类)——属 git history,不入 source 字段(去运行时化)。
 - 指向不存在文件的文件名引用。

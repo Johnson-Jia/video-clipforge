@@ -18,6 +18,35 @@ source "${SCRIPT_DIR}/_cd_project.sh" && cd_project "$@"
 
 echo "=== Stage 6 渲染管线 ==="
 
+# ── 渲染僵尸进程回收（按年龄判，非数量）──
+# 渲染失败的 chrome-headless-shell 若不回收会在并发期累积吃 RAM，
+# 导致后续渲染 x264 malloc 连锁失败（17 僵尸事故）。
+# ⚠ 不能按数量阈值全局 taskkill //IM：多管线并发时活跃渲染进程本就可达十几个，
+# 会误杀其他管线的健康渲染。按进程年龄外科式判定——活跃渲染通常 <10 分钟，
+# ≥20 分钟的 chrome-headless-shell 几乎必为失败遗留，逐 PID 清理。
+kill_render_zombies() {
+  local ZOMBIE_AGE_MIN=40
+  # wmic 行尾是 \r\r\n：\r 不入 bash IFS，read 会把 \r 带进 pid 致 taskkill 静默失败——
+  # 必须 tr -d '\r' 后再 read，且 pid 再去一次空白（对抗审查 2026-08-16 H1）
+  wmic process where "name='chrome-headless-shell.exe'" get ProcessId,CreationDate 2>/dev/null | \
+  tr -d '\r' | \
+  while read -r created pid; do
+    case "$created" in [0-9]*) ;; *) continue ;; esac   # 跳过表头/空行
+    pid=$(printf '%s' "$pid" | tr -d '[:space:]')
+    [ -n "$pid" ] || continue
+    local ts="${created:0:14}"                          # yyyyMMddHHmmss
+    [ ${#ts} -eq 14 ] || continue
+    local born
+    born=$(date -d "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:8:2}:${ts:10:2}:${ts:12:2}" +%s 2>/dev/null) || continue
+    local age=$(( ($(date +%s) - born) / 60 ))
+    if [ "${age:-0}" -ge "$ZOMBIE_AGE_MIN" ]; then
+      echo "[WARN] chrome-headless-shell PID=$pid 年龄 ${age}min ≥ ${ZOMBIE_AGE_MIN}min（失败渲染遗留），清理"
+      taskkill //F //PID "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+  echo "[OK] 渲染前僵尸预检完成（仅清 ≥${ZOMBIE_AGE_MIN}min 残留，不影响并发活跃渲染）"
+}
+
 # ══════════════════════════════════════════════════
 # Phase A: 渲染前检查
 # ══════════════════════════════════════════════════
@@ -74,10 +103,15 @@ done
 echo "[OK] 非渲染文件已隔离"
 
 # ── Step 7-8: HyperFrames lint + render ──
+kill_render_zombies  # 渲染前预检：清失败渲染遗留的 chrome-headless-shell
 echo "--- Step 7/12: HyperFrames lint ---"
 npx hyperframes@latest lint
 echo "--- Step 8/12: HyperFrames render ---"
-npx hyperframes@latest render . --output output.mp4 --video-bitrate 5M --workers 2
+if ! npx hyperframes@latest render . --output output.mp4 --video-bitrate 5M --workers 2; then
+    kill_render_zombies  # 失败分支：回收本次渲染可能遗留的僵尸进程再退出
+    echo "FAIL: HyperFrames 渲染失败"
+    exit 1
+fi
 echo "[OK] output.mp4 已渲染"
 
 # ── Step 9: 恢复 renderbak 文件 ──

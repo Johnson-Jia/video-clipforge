@@ -142,7 +142,7 @@
 | "商业SaaS闭源数据不过自己的手" | "OpenTalking支持私有化部署，数据在本地" |
 | "XX不如这个" | "这个项目在XX方面做了探索" |
 
-**HARD，gate: no_exaggerated_claims** — 禁止绝对化/夸大用语（"别人没做的事"、"远超预期"等），触发"虚假宣传"审核。
+**HARD，gate: no_forbidden_speech** — 禁止绝对化/夸大用语（"别人没做的事"、"远超预期"等，词表见 gate.py base_forbidden），触发"虚假宣传"审核。
 
 | 禁止 | 替换为 |
 |------|--------|

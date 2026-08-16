@@ -62,6 +62,6 @@
 
 - `content`（stage1）：按 `topic_plan.angle` 抓取数据，不偏离选题方向
 - `narration`（stage3）：hook 遵循 `novelty_strategy`，避开 `avoid_recent` 项目重复展开
-- `freshness` 门禁（stage1/stage3 gate）：用 `target_freshness` 校验实际新鲜度
+- `freshness` 评分（machine-scoring 事后）：machine-scoring 阶段计算 hook_sim/project_jaccard/template_sim 加权进 overall_score，不设 stage1/stage3 gate
 
-> 本阶段是「选题系统化」的入口，配套题材库 `patterns/seed/topic-*.yaml`（P1-2）和探索-利用（exploration.py 已支持 topic 维度）。让选题从 LLM 临场判断，升级为有轮换约束 + 新鲜度门禁的系统化决策。
+> 本阶段是「选题系统化」的入口，配套题材库 `patterns/seed/topic-*.yaml`（P1-2）和探索-利用（exploration.py 已支持 topic 维度）。让选题从 LLM 临场判断，升级为有轮换约束 + 新鲜度评分（machine-scoring 事后加权，非 gate）的系统化决策。

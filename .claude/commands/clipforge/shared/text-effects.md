@@ -11,7 +11,7 @@
 - **opacity 范围 0.3–0.9 禁归零**（归零 + seek 不执行 = 永久不可见，phase-visibility 事故同源）。
 - 渐变文字必须 `-webkit-background-clip:text` + `background-clip:text` 双写，用 `background-image`（禁 `background` 简写）。
 - **胶囊小标签禁用 grad 渐变文字**（feedback-bgclip-text-capsule-conflict）：胶囊元素（含 `padding`+`border`+`background`，如 `.pfc-use`）组合 `grad-*`（`background-clip:text`+`color:transparent`）时，background 被裁到文字范围 + 文字透明 → **整个标签消失**。胶囊用纯场景色 `color`，不组合 `grad-*`。渐变文字只能用在**无胶囊样式**的纯文字元素（大标题/数字）。
-- **渐变文字（clip:text）line-height 必须 ≥ 1.0**（feedback-grad-cliptext-line-height，2026-07-03 fc-data-value 事故）：clip:text 的 background 画在元素 line-box；`line-height<1.0` → line-box < 字形高 → 字形上部 ascender 超出 line-box **无 background → 上部截断**（透明缺失）。实色文字不受影响（`color` 填充整个字形）。大字渐变（数字/标题）务必 `line-height ≥ 1.0`（建议 1.1）。
+- **渐变文字（clip:text）line-height 必须 ≥ 1.0**（feedback-grad-cliptext-line-height）：clip:text 的 background 画在元素 line-box；`line-height<1.0` → line-box < 字形高 → 字形上部 ascender 超出 line-box **无 background → 上部截断**（透明缺失）。实色文字不受影响（`color` 填充整个字形）。大字渐变（数字/标题）务必 `line-height ≥ 1.0`（建议 1.1）。
 - 所有配方的 GSAP `startTime` 是组件示例占位，组装进 index.html 时替换为该场景的 `sceneStart + 偏移`。
 
 ## §1 HyperFrames 特效兼容规则
@@ -157,7 +157,7 @@ tl.set('.card3d', { rotationY: -90, opacity: 0.5 }, 0)
 
 **适用**：项目卡片层叠、特性展示、产品对比。参考 `layered_cards.html`。
 
-> ✅ **3D 已验证**（2026-06-15 effects-test）：`perspective:1200px` 父容器 + `rotateY` 循环在 H.264 编码后透视保留（抽帧确认卡片左右边不平行、明显纵深）。下方「CSS animation 循环版」已实测通过；GSAP `rotationY` 版同理（tween 逐帧应用 transform，与 CSS animation 循环等价）。
+> ✅ **3D 已验证**（effects-test）：`perspective:1200px` 父容器 + `rotateY` 循环在 H.264 编码后透视保留（抽帧确认卡片左右边不平行、明显纵深）。下方「CSS animation 循环版」已实测通过；GSAP `rotationY` 版同理（tween 逐帧应用 transform，与 CSS animation 循环等价）。
 
 **CSS animation 循环版（effects-test 已验证）**：
 
@@ -289,12 +289,12 @@ tl.set('.typewriter span', { opacity: 0 }, 0)
 
 ## §5 验证记录
 
-| 配方 | 验证状态 | 验证方式 | 日期 |
-|------|---------|---------|------|
-| 呼吸 breathing | ✅ 已验证（CSS animation 循环态，技术等价 3D） | effects-test 同期 | 2026-06-15 |
-| 渐变文字 gradient-text | ✅ 已验证（06/15 生产） | feedback-gradient-text | 2026-05 |
-| 跑马灯 marquee | ✅ 已验证（CSS animation 循环态，技术等价 3D） | effects-test 同期 | 2026-06-15 |
-| 3D 3d-card | ✅ 已验证（perspective+rotateY 循环，H.264 透视保留） | effects-test s02 抽帧 | 2026-06-15 |
-| 故障/霓虹/打字机/流光/描边 | 待验证 | 后续抽帧 | — |
+| 配方 | 验证状态 | 验证方式 |
+|------|---------|---------|
+| 呼吸 breathing | ✅ 已验证（CSS animation 循环态，技术等价 3D） | effects-test 同期 |
+| 渐变文字 gradient-text | ✅ 已验证（生产验证） | feedback-gradient-text |
+| 跑马灯 marquee | ✅ 已验证（CSS animation 循环态，技术等价 3D） | effects-test 同期 |
+| 3D 3d-card | ✅ 已验证（perspective+rotateY 循环，H.264 透视保留） | effects-test s02 抽帧 |
+| 故障/霓虹/打字机/流光/描边 | 待验证 | 后续抽帧 |
 
 > 验证流程：`workspace/test/effects-test/` 各场景放 1 类特效 → s6_render → frame_analysis 亮度 + 人工抽帧 → 结论回填本表。

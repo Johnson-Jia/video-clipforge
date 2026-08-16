@@ -275,6 +275,87 @@ def lint_consistency(
     return {"errors": errors, "warnings": warnings, "passed": passed}
 
 
+# ── gate 标注-接线一致性（承诺即接线，2026-08-16 审计 P1）────────────────
+
+_GATE_LABEL_RE = re.compile(r'gate:\s*([a-zA-Z_][a-zA-Z0-9_]*)')
+
+# 有意搁置的标注（规则文件明确记录待评估/待启用，不视为虚假承诺）
+_GATE_WIRING_ALLOWLIST = {
+    "no_scene_wrap": "rules/stage6.yaml R-S6-025 注明 checker 待评估启用（历史项目多有 scene-wrap 合法结构）",
+    "gsap_pattern": "checker 已实现但与 director_gate 的 from/fromTo 口径互相矛盾（一个禁 fromTo 一个要求 fromTo），统一前不接线——stage6-production.md 已降「待启用」标注",
+    # 异层真实执行（非 gate.py Layer 0，勿误报为空头门禁）：
+    "director_gate": "Layer 1 渲染前门禁，由 scripts/director_gate.py 独立执行（clipforge.md §6）",
+    "frame_analysis": "Layer 2 渲染后帧分析，由 scripts/frame_analysis.py 独立执行（非阻塞）",
+    "clip_no_offset": "Layer 1 director_gate.py 内的 text-shadow offset 检查（脚本内联实现）",
+    "double_padding": "Layer 1/3 结构检查，由 s6 组装/导演门禁内联实现",
+    # 元规则（约束 LLM 行为，无 checker 是设计而非空炮）：
+    "config_integrity": "确定轨只读元规则（clipforge.md 主控声明），约束对象是 LLM 非产出物",
+}
+
+
+def lint_gate_wiring(skills_dir: Path | None = None) -> list[str]:
+    """文档 `gate: xxx` 标注 ↔ skills yaml 接线 一致性。
+
+    背景（2026-08-16 审计 P1）：`HARD，gate: gsap_pattern` 类标注存在于 stage 文档、
+    checker 在 gate.py 已实现并注册，但 skills yaml 未声明 → gate.py 遍历
+    skill.gate.hard 永不执行该 checker，承诺空转。本检查扫描 .claude/commands/
+    全部 md 的 gate: 标注，逐个验证：① gate.py 有此 checker；② 至少一个
+    skills yaml 声明。任一不满足即警告（接线或改标注，消灭空头门禁）。
+    """
+    skills_dir = skills_dir or SKILLS_DIR
+    warnings: list[str] = []
+
+    # ① gate.py 已注册 checker（解析源码注册行，避免重量级 import）。
+    #    两种注册形态都要抓：字典字面量 `GateType.x: check_x,` 与赋值式 `GATE_CHECKERS[GateType.x] = check_x`
+    gate_py = SKILLS_DIR.parent / "engine" / "gate.py"
+    registered: set[str] = set()
+    try:
+        src = gate_py.read_text(encoding="utf-8")
+        registered |= set(re.findall(r"GATE_CHECKERS\[GateType\.(\w+)\]", src))
+        registered |= set(re.findall(r"^\s{4}GateType\.(\w+):\s*check_\w+", src, re.MULTILINE))
+    except Exception:
+        warnings.append("gate_wiring: 无法读取 gate.py 注册表，检查跳过")
+        return warnings
+
+    # ② skills yaml 已声明的 gate（hard+soft）
+    declared: set[str] = set()
+    for name, skill in load_all_skills(skills_dir).items():
+        for gd in skill.gate.hard + skill.gate.soft:
+            declared.add(gd.gate.value)
+
+    # ③ 扫描全部技能 md 的 gate: 标注
+    commands_dir = SKILLS_DIR.parent.parent
+    clipforge_root = SKILLS_DIR.parent
+    md_files = list(clipforge_root.rglob("*.md"))
+    controller = commands_dir / "clipforge.md"
+    if controller.exists():
+        md_files.append(controller)
+
+    annotated: dict[str, list[str]] = {}
+    for md in md_files:
+        try:
+            text = md.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        for m in _GATE_LABEL_RE.finditer(text):
+            annotated.setdefault(m.group(1), []).append(str(md.relative_to(commands_dir)))
+
+    for gname, files in sorted(annotated.items()):
+        if gname in _GATE_WIRING_ALLOWLIST:
+            continue
+        if gname not in registered:
+            warnings.append(
+                f"gate_wiring: 标注 `gate: {gname}`（{files[0]} 等 {len(files)} 处）但 gate.py 无此 checker"
+                f"——补实现或改标注"
+            )
+        elif gname not in declared:
+            warnings.append(
+                f"gate_wiring: 标注 `gate: {gname}`（{files[0]} 等 {len(files)} 处）checker 已实现"
+                f"但无 skills yaml 声明，gate.py 永不执行——接线（skills yaml gate.hard）或降标注"
+            )
+    return warnings
+
+
 def lint_all(
     rules_dir: Path | None = None,
     skills_dir: Path | None = None,
@@ -289,10 +370,11 @@ def lint_all(
     rigor_warns = lint_rigor_redflags()
     safety_errs = lint_safety_protection()  # SAFETY 保护缺失 = error
     numb_warns = _scan_numbering()
+    wiring_warns = lint_gate_wiring(skills_dir)
 
     return {
         "errors": r["errors"] + s["errors"] + c["errors"] + safety_errs,
-        "warnings": r["warnings"] + s["warnings"] + c["warnings"] + rigor_warns + numb_warns,
+        "warnings": r["warnings"] + s["warnings"] + c["warnings"] + rigor_warns + numb_warns + wiring_warns,
         "passed": r["passed"] + s["passed"] + c["passed"],
         "details": {
             "rules": {"errors": len(r["errors"]), "warnings": len(r["warnings"]), "passed": r["passed"]},
@@ -301,13 +383,18 @@ def lint_all(
             "numbering": {"warnings": len(numb_warns)},
             "rigor_redflags": {"warnings": len(rigor_warns)},
             "safety_protection": {"errors": len(safety_errs)},
+            "gate_wiring": {"warnings": len(wiring_warns)},
         },
     }
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # Windows GBK 控制台中文乱码防护
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="ClipForge 双轨 lint")
-    parser.add_argument("command", choices=["check", "rules", "skills", "consistency", "numbering", "rigor", "safety"])
+    parser.add_argument("command", choices=["check", "rules", "skills", "consistency", "numbering", "rigor", "safety", "wiring"])
     parser.add_argument("--rules-dir", default=None)
     parser.add_argument("--skills-dir", default=None)
     parser.add_argument("--stages-dir", default=None)
@@ -331,6 +418,8 @@ def main():
         result = {"errors": [], "warnings": lint_rigor_redflags()}
     elif args.command == "safety":
         result = {"errors": lint_safety_protection(), "warnings": []}
+    elif args.command == "wiring":
+        result = {"errors": [], "warnings": lint_gate_wiring(skills_dir)}
 
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if result["errors"]:

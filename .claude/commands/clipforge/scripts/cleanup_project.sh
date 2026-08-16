@@ -238,7 +238,11 @@ done
 echo ""
 echo "--- 删除临时目录 ---"
 
-for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" ".diag_frames" "qa_frames" ".qa_frames_gate"; do
+# _redo_bak/ + creative_bak/：重做流程的旧版备份（重做完成后无回滚价值），
+# 不入清理清单会长期滞留（单项目曾积 230M 需手动清）。
+# ⚠ 若重做尚未完成（需回滚），勿在本阶段跑 cleanup——备份一旦删除不可恢复
+echo "[提示] 将删除 _redo_bak/creative_bak 重做备份——请确认重做流程已完成"
+for d in "work-*" ".agents" "renders" "snapshots" "backup" "lib" "frames" "frames_check" "segments" "raw_tts" "clips_16x9" ".diag_frames" "qa_frames" ".qa_frames_gate" "_redo_bak" "creative_bak"; do
   for match in $d; do
     if [ -d "$match" ]; then
       safe_rm_rf "$match/"

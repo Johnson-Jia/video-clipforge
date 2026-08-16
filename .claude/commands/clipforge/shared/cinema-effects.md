@@ -72,9 +72,9 @@ tl.to('.cinema-lightflash', {opacity: 0.8, duration: 0.12, ease: EASE.tension}, 
 
 ## §5 验证记录
 
-| 原语 | 状态 | 验证方式 | 日期 |
-|------|------|---------|------|
-| vignette / grain / lightflash | ✅ 已验证 | `workspace/test/cinema-github/` PIL 像素实证：vignette 暗角比 0.848（中心边缘 6.5×）/ grain 邻差 4.31×（SVG feTurbulence 真渲染）/ lightflash 闪峰 +50.8 | 2026-07-03 |
-| halation / aberration | ✅ 已验证 | 同上端到端渲染（HyperFrames 截帧兼容 mix-blend-mode:screen/overlay + drop-shadow） | 2026-07-03 |
+| 原语 | 状态 | 验证方式 |
+|------|------|---------|
+| vignette / grain / lightflash | ✅ 已验证 | `workspace/test/cinema-github/` PIL 像素实证：vignette 暗角比 0.848（中心边缘 6.5×）/ grain 邻差 4.31×（SVG feTurbulence 真渲染）/ lightflash 闪峰 +50.8 |
+| halation / aberration | ✅ 已验证 | 同上端到端渲染（HyperFrames 截帧兼容 mix-blend-mode:screen/overlay + drop-shadow） |
 
 > 验证要点：cinema 原语全部在 HyperFrames（Puppeteer 截帧）正常渲染，CSS 兼容性确认。SVG `feTurbulence` data URI 的 `%23`/`%25` 转义正确，grain 噪点客观可见（PIL 邻差 4.31×）。

@@ -185,7 +185,7 @@
 - `.layer-fx` 必须 `pointer-events: none`，防止特效遮挡交互
 - 特效 opacity 建议 0.3-0.6（不遮挡内容但可见）
 - 特效类型不固定，根据场景情绪和内容主题自行推导（见 `stage6-components.md` 情绪映射表）
-- `.layer-bg` 必须使用 `components/bg/` 中的 bg 组件（保留 `<!-- bg-component: NAME -->` 标记），允许换色和叠加背景图片；底色亮度 L ≥ 12%（hsl 第三参数）、装饰元素 alpha ≥ 0.12，否则渲染平均亮度 < 25/255 被 frame_analysis.py §4 拦截（gate）
+- `.layer-bg` 必须使用 `components/bg/` 中的 bg 组件（保留 `<!-- bg-component: NAME -->` 标记），允许换色和叠加背景图片；底色过暗/装饰过淡会在渲染后被 frame_analysis.py §4 **警告**（Layer 2，非阻塞）
 - **特效层非空规则（§2.4）见下**
 
 ### §2.4 特效层非空规则

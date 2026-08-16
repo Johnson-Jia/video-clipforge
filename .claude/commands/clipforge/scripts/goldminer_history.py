@@ -21,6 +21,7 @@ from pathlib import Path
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")  # Windows GBK 终端中文兜底
+    sys.stderr.reconfigure(encoding="utf-8")  # 告警走 stderr，同样兜底防乱码
 except Exception:
     pass
 
@@ -64,22 +65,30 @@ def keys_match(a: set[str], b: set[str]) -> bool:
     return False
 
 
-def parse_episodes() -> list[dict]:
-    """扫描所有 goldminer content_ready.txt → episode 列表（按日期升序）。"""
+def parse_episodes() -> tuple[list[dict], list[tuple[str, str]]]:
+    """扫描所有 goldminer content_ready.txt → (episode 列表, 未识别清单)。
+
+    未识别清单 = [(content_ready.txt 路径, 原因)]。静默跳过会让格式不符的期
+    （如非【主角】标题格式）漏出防重复扫描 → 相同企业重复入选，故必须上告。
+    """
     episodes = []
+    skipped: list[tuple[str, str]] = []
     for cr in sorted(WS.glob("**/goldminer/content_ready.txt")):
         parts = cr.parts
         try:
             idx = parts.index("workspace")
             date = f"{parts[idx+1]}-{parts[idx+2]}-{parts[idx+3]}"
         except (ValueError, IndexError):
+            skipped.append((str(cr), "日期路径解析失败"))
             continue
         try:
             txt = cr.read_text(encoding="utf-8")
-        except Exception:
+        except Exception as e:
+            skipped.append((str(cr), f"读取失败({type(e).__name__})"))
             continue
         m = re.search(r"【主角】([^\n]+)", txt)
         if not m:
+            skipped.append((str(cr), "主角未识别（格式不符，非【主角】行）"))
             continue
         fields = [f.strip() for f in m.group(1).split("|")]
         company_raw = fields[0] if fields else "?"
@@ -92,7 +101,17 @@ def parse_episodes() -> list[dict]:
             "industry": fields[3] if len(fields) > 3 else "",
             "industry_key": next(iter(normalize_keys(fields[3])), "") if len(fields) > 3 else "",
         })
-    return episodes
+    return episodes, skipped
+
+
+def warn_skipped(skipped: list[tuple[str, str]]) -> None:
+    """未识别期汇总告警到 stderr（不阻断管线，退出码保持 0）。"""
+    if not skipped:
+        return
+    print(f"[WARN] {len(skipped)} 期扫描未识别（格式不符）：", file=sys.stderr)
+    for path, reason in skipped:
+        print(f"    {reason}: {path}", file=sys.stderr)
+    print("[WARN] 上述期未进防重复库 —— 选主角前请 grep 这些目录兜底核验", file=sys.stderr)
 
 
 def fuzzy_match(name: str, episodes: list[dict]) -> list[dict]:
@@ -186,7 +205,8 @@ def main():
     ap.add_argument("--filter-candidates", help="过滤候选 raw_failures.json，输出未做过清单")
     args = ap.parse_args()
 
-    episodes = parse_episodes()
+    episodes, skipped = parse_episodes()
+    warn_skipped(skipped)
 
     if args.check:
         sys.exit(cmd_check(args.check, episodes))

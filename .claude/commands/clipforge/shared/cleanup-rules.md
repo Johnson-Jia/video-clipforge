@@ -171,6 +171,8 @@ frames/                 # 帧分析/提取临时帧
 frames_check/           # 帧检查临时帧
 segments/               # 音频分段临时目录
 raw_tts/                # TTS 原始输出（合并前）
+_redo_bak/              # 重做流程旧版备份（重做完成后无回滚价值，滞留会积数百 MB）
+creative_bak/           # 重做流程的 creative/ 旧版备份（同上）
 ```
 
 ### 按条件删除

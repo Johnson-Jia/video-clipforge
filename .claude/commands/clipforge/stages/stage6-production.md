@@ -166,7 +166,7 @@ bash .claude/commands/clipforge/scripts/s6_prepare.sh --project-dir .
 
 **LLM 逐个填充 `creative/sNN.html` 碎片文件，每个碎片只包含三层 div 的内容（bg/fx/content），不含 clip 包裹和 GSAP。**
 
-> **⛔ bg 层铁律（2026-06-23 事故固化）：layer-bg 里写的内容会被组装脚本覆盖，bg 不是创作空间。**
+> **⛔ bg 层铁律：layer-bg 里写的内容会被组装脚本覆盖，bg 不是创作空间。**
 > `s6_assemble.sh` 检测 `<!-- bg-component: NAME -->` 标记后，用 `components/bg/NAME.html` 的组件 DOM **整体覆盖** layer-bg 内一切——碎片里自写的 bg CSS/元素全部丢弃（从机制上强制 R-R-021，`s6_assemble_html.py:_inject_bg_component`）。
 > - **bg 创作空间 = 选组件 + CSS 变量换色**：layer-bg 内只放一行 `<!-- bg-component: NAME -->`（NAME 从 `components/bg/` 选），换色靠 `creative/style.css` 的 `:root` CSS 变量
 > - **选组件先确认视觉类型达标**：选中组件须含 ≥2 种视觉类型且非纯 glow+grid（R-R-009）。组件 `@ComponentMeta` 的 `visual_types` 字段已声明类型，gate 优先读它判定——选 `visual_types` 含 beams/contour/wave/noise/particles/geometry/vignette/dots/scan 的组件即安全；只含 {gradient, glow} 的会被误判淘汰。查全部组件达标：`python scripts/check_bg_components.py --check`
@@ -347,7 +347,7 @@ python scripts/s6_visual_qa.py --project-dir <PROJECT_DIR>
 
 ⛔ 代码只产客观数据(content_y / blank_bands 坐标),不替你下「是不是断层」的判断——布局审美归 LLM。这一步是非强制自审,但强烈建议:你终于能看见渲染结果了。
 
-> **⛔ 顺序铁律（防 qa_frames 残留）**：§6.9 QA 在 **stage6 渲染后、cleanup 之前**。流程：渲染 → §6.9 QA（产 qa_frames）→ stage7 delivery → **cleanup（清 qa_frames，管线终点）**。**cleanup 之后禁止再跑 `s6_visual_qa.py`**——会重新产 qa_frames 残留（cleanup 已清过，2026-06-30 goldminer 事故）。交付前若需复查布局，读已保留的 `visual_qa_report.json`（在 RETAIN 白名单）即可，不重新抽帧。
+> **⛔ 顺序铁律（防 qa_frames 残留）**：§6.9 QA 在 **stage6 渲染后、cleanup 之前**。流程：渲染 → §6.9 QA（产 qa_frames）→ stage7 delivery → **cleanup（清 qa_frames，管线终点）**。**cleanup 之后禁止再跑 `s6_visual_qa.py`**——会重新产 qa_frames 残留（cleanup 已清过一次）。交付前若需复查布局，读已保留的 `visual_qa_report.json`（在 RETAIN 白名单）即可，不重新抽帧。
 
 ## §6.10 特效工坊（组件匹配 + 新特效创建）
 
@@ -448,9 +448,9 @@ python scripts/s6_visual_qa.py --project-dir <PROJECT_DIR>
 6. 根元素必须有 `data-start="0"`
 7. **`data-start` 和 `data-duration` 使用秒（不是毫秒）**
 8. **`window.__hf` 必须定义 + GSAP timeline 必须注册**（完整代码模板见 `shared/render-safety.md` §1.13）
-   - **HARD，gate: hyperframes_api_valid**
+   - **HARD，gate: hf_api_present**
    - **门禁自动校验**：`gate.py` 的 `hf_api_present` 检查器会扫描 index.html 中的 `window.__hf` 声明、`duration` 字段和 `seek` 函数
-9. **GSAP 初始化模板（唯一允许的写法，R-S6-026 HARD，gate: gsap_pattern）**:
+9. **GSAP 初始化模板（唯一允许的写法，R-S6-026 HARD，gate: 待启用——checker 已实现，接线前需先统一 from/fromTo 口径：check_gsap_pattern 禁 .fromTo( 而 director_gate 反而要求 fromTo，两者矛盾）**:
 
 ```html
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -513,7 +513,7 @@ window.__timelines["main"] = tl;
 > **CSS 渲染安全规则全部在 `shared/render-safety.md` §1 中定义。** 以下仅列 Stage 6 独有规则，不重复渲染安全内容。
 
 10. **`.clip` 必须铺满全画幅**：`position:absolute; inset:0`（与 `.composition` 同尺寸 1080×1920）。`.clip` 只做时间定位（data-start/data-duration），**不做空间裁剪**。安全区内缩由 `.phase` 的 padding 负责（见 `shared/render-safety.md` §1.5）。如果 `.clip` 有 top/right/bottom/left 偏移，背景层会被限制在 clip 内，clip 外显示黑色 → 四面黑边。
-11. **DOM 三层直系铁律**（R-S6-025 HARD，gate: no_scene_wrap）:
+11. **DOM 三层直系铁律**（R-S6-025 HARD，gate: 待启用——checker 已实现，接线前需先评估历史项目误报率）:
    `.clip` 的直接子元素必须且仅包含 `.layer-bg` + `.layer-fx` + `.layer-content`。
    禁止任何中间包裹层（`scene-wrap`、额外 `div` 容器等）。内容容器使用 `.phase`（`position:absolute; inset:0; padding:安全区; display:flex; flex-direction:column; justify-content:center; opacity:1`）。
 12. **⛔ 禁止在 `.grad-text` 元素上使用 `background:` 简写**（R-S6-021 HARD）。CSS `background` 简写会重置 `background-clip` 回 `border-box`，导致 `.grad-text` 的 `background-clip:text` 失效，渐变变成纯色背景块、`color:transparent` 隐藏文字——只看到色块看不到字。**正确：`background-image:linear-gradient(...)`，错误：`background:linear-gradient(...)`**。竖屏横屏均适用。

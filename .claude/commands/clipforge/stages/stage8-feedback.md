@@ -66,7 +66,7 @@ python scripts/collect_performance.py --scan --backfill
 ```
 
 脚本会自动解析四平台文件、通过标题匹配到项目目录、回填 performance 数据。
-也可指定日期：`--date 2026-05-29`，或用 `--dry-run` 先查看匹配结果。
+也可指定日期：`--date <YYYY-MM-DD>`，或用 `--dry-run` 先查看匹配结果。
 
 ### 1. 播放数据回填（手动备选）
 
@@ -112,8 +112,8 @@ python engine/trace.py backfill \
 
 ```yaml
 project: "workspace/2026/05/29/my-project"
-created: "2026-05-29T15:30:00Z"
-updated: "2026-06-02T10:00:00Z"
+created: "YYYY-MM-DDThh:mm:ssZ"
+updated: "YYYY-MM-DDThh:mm:ssZ"
 
 machine_scoring:
   overall_soft_score: 1.0
@@ -124,7 +124,7 @@ performance:
   plays: 5200
   completion_5s_rate: 0.42
   completion_rate: 0.045
-  collected_at: "2026-06-02"
+  collected_at: "YYYY-MM-DD"
 
 human_scores:
   hook: 2

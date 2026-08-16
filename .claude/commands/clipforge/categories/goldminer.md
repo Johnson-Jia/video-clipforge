@@ -42,7 +42,7 @@ shared_rules:
 
 # 创业淘金者分类配置
 
-> **定位转型（2026-06-20）**：技术淘金者（淘 GitHub 开源项目）→ **创业淘金者**（从创业失败残骸淘教训 + 可复用点子）。"淘金"意象更贴失败案例——loot-drop.io 本身就是 "Loot the wreckage"（从残骸捡漏）+ "Ideas to Steal"（可偷的点子）。暖金视觉 IP 保留（宝藏/残骸淘金）。
+> **定位转型**：技术淘金者（淘 GitHub 开源项目）→ **创业淘金者**（从创业失败残骸淘教训 + 可复用点子）。"淘金"意象更贴失败案例——loot-drop.io 本身就是 "Loot the wreckage"（从残骸捡漏）+ "Ideas to Steal"（可偷的点子）。暖金视觉 IP 保留（宝藏/残骸淘金）。
 
 ## content
 
@@ -61,7 +61,7 @@ python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 -
 
 ### selection_strategy — 失败案例选取（中国公司起步）
 
-**首批策略（2026-06-20）**：中国公司起步 → 逐步全球知名。`fetch_lootdrop --region 中国` 优先。
+**首批策略**：中国公司起步 → 逐步全球知名。`fetch_lootdrop --region 中国` 优先。
 
 | 优先级 | 选取条件 | 钩子潜力 |
 |--------|---------|---------|
@@ -151,7 +151,7 @@ python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 -
 
 > **第4段（loot）是创业淘金者的核心**：必须讲清楚"教训 + 可复用点子"。没有 loot 段 = 不是淘金 = 退稿。第5段对比用 related 失败衬托（同行业不同死法）。
 
-**③ 项目名必报（HARD）**：what 场景报公司名 + 画面大字；全程 ≥3 次接触。hook（第1段）不报名（前 6 秒纯钩子）。
+**③ 项目名必报（必查·LLM 自审，暂无 gate）**：what 场景报公司名 + 画面大字；全程 ≥3 次接触。hook（第1段）不报名（前 6 秒纯钩子）。
 
 **④ 讨论 CTA**：结尾 1 个讨论问题（如"这个点子你觉得能成吗""你站哪家"），评论率比中性高 3-5×。
 

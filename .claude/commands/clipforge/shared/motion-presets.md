@@ -58,8 +58,8 @@ gsap.to('.aura', {scale: 1.1, duration: 3, ease: EASE.ambient, yoyo: true, repea
 
 ## §4 验证记录
 
-| 预设 | 状态 | 验证方式 | 日期 |
-|------|------|---------|------|
-| standard/tension/resolve/ambient | ✅ 已验证 | `workspace/test/cinema-github/` 端到端：standard×5（入场）/ tension×5（张力揭示）/ resolve×3（CTA 沉淀）/ ambient×18（循环呼吸）替换裸 sine.inOut，director_gate 无 linear warn，GSAP 执行正常 | 2026-07-03 |
+| 预设 | 状态 | 验证方式 |
+|------|------|---------|
+| standard/tension/resolve/ambient | ✅ 已验证 | `workspace/test/cinema-github/` 端到端：standard×5（入场）/ tension×5（张力揭示）/ resolve×3（CTA 沉淀）/ ambient×18（循环呼吸）替换裸 sine.inOut，director_gate 无 linear warn，GSAP 执行正常 |
 
 > 验证要点：4 预设在 build_gsap 自动注入的 `const EASE` 常量上工作，HyperFrames seek 渲染下 ease 曲线正确呈现；moving hold（hk-num/pfc-stars-num 慢呼吸）替代死帧。

@@ -32,6 +32,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ── 并发安全：临时文件全部进本次运行专属目录 ──
+# 固定名 /tmp/bgm_* 在多管线并发时互踩（A 的 rm 清掉 B 正在写的文件）。
+# mktemp -d 保证唯一，trap EXIT 兜底清理（含所有 exit 0/1 路径）。
+TMP_WORK="$(mktemp -d "${TMPDIR:-/tmp}/bgm_pipeline.XXXXXX")"
+trap 'rm -rf "$TMP_WORK"' EXIT
+
 echo "=== BGM 管线启动 ==="
 
 if [ ! -f "$BGM_FILE" ]; then
@@ -182,7 +188,7 @@ for s in d['segments']:
 
         for f in "${PL_FILES[@]}"; do
             PADDED_IDX=$(printf "%02d" $IDX)
-            NORM_FILE="/tmp/bgm_pln_${PADDED_IDX}.wav"
+            NORM_FILE="${TMP_WORK}/bgm_pln_${PADDED_IDX}.wav"
             ffmpeg -y -i "$f" -af "loudnorm=I=-18:TP=-2" -c:a pcm_s16le -ar 44100 "$NORM_FILE" 2>/dev/null
 
             if [ "$IDX" -eq 0 ]; then
@@ -193,7 +199,7 @@ for s in d['segments']:
                     echo "  已达目标时长 ${TARGET_DUR}s，停止拼接"
                     break
                 fi
-                MERGED_FILE="/tmp/bgm_plm_${PADDED_IDX}.wav"
+                MERGED_FILE="${TMP_WORK}/bgm_plm_${PADDED_IDX}.wav"
                 ffmpeg -y -i "$PREV_FILE" -i "$NORM_FILE" \
                     -filter_complex "[0:a][1:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[aout]" \
                     -map "[aout]" -c:a pcm_s16le "$MERGED_FILE" 2>/dev/null
@@ -209,7 +215,7 @@ for s in d['segments']:
         ffmpeg -y -i "$PREV_FILE" -t "$TARGET_DUR" \
             -af "afade=t=in:st=0:d=1.5,afade=t=out:st=${FADE_START}:d=2" \
             -c:a pcm_s16le "$BGM_FILE"
-        rm -f /tmp/bgm_pln_*.wav /tmp/bgm_plm_*.wav
+        rm -f "${TMP_WORK}"/bgm_pln_*.wav "${TMP_WORK}"/bgm_plm_*.wav
 
         # 合并短于目标 → 循环补足
         MERGED_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$BGM_FILE")
@@ -301,8 +307,8 @@ except Exception:
         PLAYLIST=""
         IDX=0
 
-        cp "$BGM_FILE" /tmp/bgm_part_00.wav
-        PLAYLIST="/tmp/bgm_part_00.wav"
+        cp "$BGM_FILE" "${TMP_WORK}/bgm_part_00.wav"
+        PLAYLIST="${TMP_WORK}/bgm_part_00.wav"
         IDX=1
 
         CURRENT_DUR=$BGM_DUR
@@ -316,21 +322,21 @@ except Exception:
             fi
 
             PADDED_IDX=$(printf "%02d" $IDX)
-            ffmpeg -y -i "$candidate" -c:a pcm_s16le -ar 44100 "/tmp/bgm_part_${PADDED_IDX}.wav" 2>/dev/null
-            PART_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "/tmp/bgm_part_${PADDED_IDX}.wav")
+            ffmpeg -y -i "$candidate" -c:a pcm_s16le -ar 44100 "${TMP_WORK}/bgm_part_${PADDED_IDX}.wav" 2>/dev/null
+            PART_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${TMP_WORK}/bgm_part_${PADDED_IDX}.wav")
 
             NEXT_IDX=$(printf "%02d" $((IDX + 1)))
             if [ $IDX -eq 1 ]; then
                 OFFSET=$(python -c "print(round($CURRENT_DUR - $XFADE_DUR, 2))")
-                ffmpeg -y -i "/tmp/bgm_part_00.wav" -i "/tmp/bgm_part_01.wav" \
+                ffmpeg -y -i "${TMP_WORK}/bgm_part_00.wav" -i "${TMP_WORK}/bgm_part_01.wav" \
                     -filter_complex "[0:a][1:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[aout]" \
-                    -map "[aout]" -c:a pcm_s16le "/tmp/bgm_merged_${NEXT_IDX}.wav" 2>/dev/null
+                    -map "[aout]" -c:a pcm_s16le "${TMP_WORK}/bgm_merged_${NEXT_IDX}.wav" 2>/dev/null
             else
-                PREV_MERGED=$(printf "/tmp/bgm_merged_%02d.wav" $IDX)
+                PREV_MERGED=$(printf "%s/bgm_merged_%02d.wav" "$TMP_WORK" $IDX)
                 OFFSET=$(python -c "print(round($CURRENT_DUR - $XFADE_DUR, 2))")
-                ffmpeg -y -i "$PREV_MERGED" -i "/tmp/bgm_part_${PADDED_IDX}.wav" \
+                ffmpeg -y -i "$PREV_MERGED" -i "${TMP_WORK}/bgm_part_${PADDED_IDX}.wav" \
                     -filter_complex "[0:a][1:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[aout]" \
-                    -map "[aout]" -c:a pcm_s16le "/tmp/bgm_merged_${NEXT_IDX}.wav" 2>/dev/null
+                    -map "[aout]" -c:a pcm_s16le "${TMP_WORK}/bgm_merged_${NEXT_IDX}.wav" 2>/dev/null
             fi
 
             CURRENT_DUR=$(python -c "print(round($CURRENT_DUR + $PART_DUR - $XFADE_DUR, 2))")
@@ -339,7 +345,7 @@ except Exception:
         done < <(echo "$EXTRA_BGMS")
 
         FINAL_IDX=$(printf "%02d" $IDX)
-        FINAL_MERGED="/tmp/bgm_merged_${FINAL_IDX}.wav"
+        FINAL_MERGED="${TMP_WORK}/bgm_merged_${FINAL_IDX}.wav"
 
         if [ ! -f "$FINAL_MERGED" ]; then
             echo "WARNING: 多首拼接未成功，回退到 concat"
@@ -352,7 +358,7 @@ except Exception:
             mv "$BGM_FILE" bgm_orig.wav
             mv bgm_aligned.wav "$BGM_FILE"
 
-            rm -f /tmp/bgm_part_*.wav /tmp/bgm_merged_*.wav
+            rm -f "${TMP_WORK}"/bgm_part_*.wav "${TMP_WORK}"/bgm_merged_*.wav
 
             echo "OK: 多首 BGM 拼接完成，总时长 ${TARGET_DUR}s（${IDX} 首，xfade ${XFADE_DUR}s）"
 

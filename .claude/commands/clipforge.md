@@ -33,7 +33,7 @@ description: ClipForge — 从任意内容出发，编排带配乐的抖音短�
 | 7 delivery | `s7_delivery.sh` 全自动；封面模板锁定结构；cover_check 门禁 | `cover_params.json` 配色文案 + 四平台文案 `douyin.md` |
 | 8 feedback | `auto_evolve.py` + `collect_performance.py` 全自动 | 人类主观评分（手动模式） |
 
-**组件库约束**：bg 层强制从 `components/bg/` 选用 1 个组件（R-R-021 HARD），保留 `<!-- bg-component: NAME -->` 标记，允许换色/叠图，**禁自写 bg CSS**；底色 L≥12%、装饰 alpha≥0.12（否则 `frame_analysis.py` 拦截）。组件库共 66 个（27 bg + 14 fx + 25 content），经 `registry.yaml` 粗筛 + 情绪标签匹配，细节见 `stages/stage6-components.md`。
+**组件库约束**：bg 层强制从 `components/bg/` 选用 1 个组件（R-R-021 HARD），保留 `<!-- bg-component: NAME -->` 标记，允许换色/叠图，**禁自写 bg CSS**；底色过暗会在渲染后被 `frame_analysis.py` **警告**（Layer 2，非阻塞，按整体亮度间接反映）。组件清单以 `components/registry.yaml` 为准（bg/fx/content 三层），按其粗筛 + 情绪标签匹配，细节见 `stages/stage6-components.md`。
 
 > 确定轨 LLM 不碰，跳过 = 产出不可靠；创意轨不受脚本限制。本表是「职责归属全景」，§4 时序图是「执行时序」，视角互补。
 

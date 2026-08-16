@@ -60,7 +60,7 @@
 
 > 嵌入 `.layer-fx`，提供动态视觉装饰。
 
-**fx 原语库（BASE_CSS 自动注入，优先用，2026-06-17）**：10 个 CSS animation 循环态原语（HyperFrames 安全），LLM 在 `.layer-fx` 内用 `<div class="fx-xxx">` 直接引用，**无需写 CSS**。颜色默认半透明白，可 inline 覆盖（`style="background:var(--accent-warm)"`）。R-R-008 要求 **≥3 元素 且 ≥2 种不同 fx class**（防同类凑数）。
+**fx 原语库（BASE_CSS 自动注入，优先用）**：10 个 CSS animation 循环态原语（HyperFrames 安全），LLM 在 `.layer-fx` 内用 `<div class="fx-xxx">` 直接引用，**无需写 CSS**。颜色默认半透明白，可 inline 覆盖（`style="background:var(--accent-warm)"`）。R-R-008 要求 **≥3 元素 且 ≥2 种不同 fx class**（防同类凑数）。
 
 | 原语 | 视觉 | 情绪 |
 |------|------|------|
@@ -75,7 +75,7 @@
 | `fx-orbit` | 轨道粒子 | energy/dynamic |
 | `fx-pulse-ring` | 脉冲环扩散 | focus/alert |
 
-> 下方 fx 组件库（13 个）为重型特效参考，但依赖 GSAP `.from`（HyperFrames seek 不执行入场），**默认用上方原语**；组件库需手动复制且效果不稳定。
+> 下方 fx 组件库（14 个）为重型特效参考，但依赖 GSAP `.from`（HyperFrames seek 不执行入场），**默认用上方原语**；组件库需手动复制且效果不稳定。
 
 | # | 组件名 | 一句话描述 | 适用场景类型 | 文件路径 |
 |---|--------|-----------|-------------|---------|
@@ -92,6 +92,7 @@
 | 11 | Constellation | 星座网络（发光节点 + 邻近连接线 + 漂移） | tech, network, connection | `components/fx/constellation.html` |
 | 12 | Vortex | 能量漩涡（开普勒螺旋粒子 + 星轨拖尾） | energy, immersion, dynamic | `components/fx/vortex.html` |
 | 13 | Lightning | 分形闪电（递归分支 + 双层辉光 + 闪光） | shock, dramatic, climax | `components/fx/lightning.html` |
+| 14 | Wildfire | 星火燎原火焰粒子（500 粒子点燃→上升→余烬，带强度衰减） | energy, spark, climax | `components/fx/wildfire.html` |
 
 ### 内容层 (content/)
 
@@ -121,6 +122,10 @@
 | 20 | SpotlightCard | 聚光灯卡片（径向聚焦 + 光束射线） | feature, key-point, highlight | `components/content/spotlight_card.html` |
 | 21 | KineticText | 动态排版（逐字弹入，冲击力极强） | impact, statement, cta | `components/content/kinetic_text.html` |
 | 22 | Breakthrough | 破屏而出（裂纹扩展 + 内容冲出） | reveal, breakthrough, climax | `components/content/breakthrough.html` |
+| 23 | Terminal | 终端模拟器（macOS 风格窗口，打字动画/命令输出/语法高亮） | tech, coding, developer | `components/content/terminal.html` |
+| 24 | SlideDrawer | 通用滑入抽屉（6 方向 × 3 曲线 × 3 裁切 = 54 种滑入特效） | transition, entrance, reveal | `components/content/slide_drawer.html` |
+| 25 | NestTree | 嵌套层级树（父子/包含关系，背景色梯度 + 左边框表达深度） | hierarchy, architecture, structure | `components/content/nest_tree.html` |
+| 26 | GoldminerIntro | 「开淘！」3 秒开场签名动画（淘金放大镜 + 金粒火花，纯 CSS） | hook, opening, goldminer | `components/content/goldminer_intro.html` |
 
 ## content 层规范（布局铺满 + 文字特效）
 

@@ -559,3 +559,11 @@ components:
     emotion_range: [analysis, depth, structure, clarity]
     visual_density: standard
     complexity: css-only
+
+  - name: goldminer_intro
+    layer: content
+    file: content/goldminer_intro.html
+    tags: [goldminer, intro, opening, signature, kai-tao, gold-rush, amber, gold, spark, hook]
+    emotion_range: [excitement, energy, curiosity]
+    visual_density: generous
+    complexity: css-only

@@ -1362,7 +1362,8 @@ def check_project_no_consecutive_repeat(project_dir: Path, params: dict) -> tupl
 GATE_CHECKERS[GateType.project_no_consecutive_repeat] = check_project_no_consecutive_repeat
 
 
-# ── AI 项目判定（复用 ai_trending.py 逻辑，自包含避免 import scripts）──
+# ── AI 项目判定（加权制，阈值见 _AI_SCORE_THRESHOLD；与 ai_trending.py 的宽判定有意分叉：
+#    抓取侧宽进（任一信号即入 AI 池），门禁侧加权（品牌名后缀"ToolJet AI"不误计））──
 _AI_TOPICS = {
     "ai", "artificial-intelligence", "ai-agent", "ai-agents", "llm",
     "large-language-models", "large-language-model", "agent", "autonomous-agents",
@@ -1384,14 +1385,34 @@ _AI_DESC_PATTERNS = [
 ]
 
 
-def _is_ai_project(topics: list, desc: str) -> bool:
-    """判定 AI 项目：topics 命中 或 description 命中（与 ai_trending.is_ai_project 一致）。"""
+def _ai_score(topics: list, desc: str, name: str = "") -> float:
+    """AI 判定加权分：topics 强信号 2.0 > 仓库名主体 1.0 > 描述独立信号 ≥3 个 1.75 / 1-2 个 0.75。
+
+    背景（2026-08-16 审计 P0）：旧版裸 \\bAI\\b 描述命中把品牌名后缀（"ToolJet AI"）误判为
+    AI 项目，而 description_fidelity 又强制 content_ready 内嵌原文描述 → 创意轨无解，
+    综合榜非 AI 池被错误挤枯。加权后：描述带 1-2 个 AI 字样（品牌附注典型形态）不再
+    误判；真 AI 项目靠 topics 自我声明（仓库维护者标签，最可信）或名称主体定夺；
+    描述独立命中 ≥3 个不同 AI 信号（AI+Agents+LLM 等并举）也判 AI。
+    """
+    score = 0.0
     if {t.lower() for t in (topics or [])} & _AI_TOPICS:
-        return True
-    for pat in _AI_DESC_PATTERNS:
-        if re.search(pat, desc or "", re.IGNORECASE):
-            return True
-    return False
+        score += 2.0
+    if name and re.search(r"(^|[-_/.])(ai|llm|gpt|agents?|copilot)([-_/.]|$)", str(name).lower()):
+        score += 1.0
+    hits = sum(1 for pat in _AI_DESC_PATTERNS if re.search(pat, desc or "", re.IGNORECASE))
+    if hits >= 3:
+        score += 1.75
+    elif hits >= 1:
+        score += 0.75
+    return score
+
+
+_AI_SCORE_THRESHOLD = 1.5
+
+
+def _is_ai_project(topics: list, desc: str, name: str = "") -> bool:
+    """判定 AI 项目：加权分 ≥ 1.5（topics 2.0 / 名称 1.0 / 描述 0.75-1.75）。"""
+    return _ai_score(topics, desc, name) >= _AI_SCORE_THRESHOLD
 
 
 def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
@@ -1402,7 +1423,7 @@ def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
     2026-08-05 daily 5 项目里 4 个 AI（80%），与 ai-wind 同日撞车 superpowers/uber-ADR。
 
     仅对 github-trending 生效：ai-wind 是 AI 专项不限；weekly 周榜豁免（回顾属性）。
-    cap 默认 2（5-6 项目里最多 2 个 AI）。判定复用 ai_trending.is_ai_project 逻辑。
+    cap 默认 2（5-6 项目里最多 2 个 AI）。判定用加权制（_ai_score 阈值 1.5，与 ai_trending 宽判定有意分叉）。
     """
     cap = int(params.get("max_ai", 2))
     cur = Path(project_dir)
@@ -1439,7 +1460,8 @@ def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
         p = raw_map.get(repo.lower())
         if not p:
             continue
-        if _is_ai_project(p.get("topics") or [], p.get("description") or ""):
+        if _is_ai_project(p.get("topics") or [], p.get("description") or "",
+                          p.get("full_name") or ""):
             ai_projects.append(repo)
 
     if len(ai_projects) > cap:
@@ -2650,9 +2672,18 @@ def _parse_douyin_platform_sections(content: str) -> dict[str, list[str]]:
 
 
 def _count_title_chars(line: str) -> int:
-    """计算标题行的中文字符数（去掉标签和空白）。"""
+    """计算标题行的中文字符数（去掉标签、markdown 装饰和空白）。
+
+    2026-08-16 审计 P0：`**标题**：` 等 markdown 装饰前缀曾被计入字数（7 字吃掉视频号
+    16 字上限近半，连续两天误拦）。先剥装饰再计数，只量内容本身。
+    """
     # 去掉标签部分
     text = re.sub(r'#\S+', '', line).strip()
+    # 剥 markdown 装饰：加粗/斜体星号、行首引语/列表符
+    text = re.sub(r'\*+', '', text)
+    text = re.sub(r'^[>\-\s]+', '', text)
+    # 仅剥已知栏位标签前缀（标题：/备选1：/备选标题：等）——标题内部的冒号短语（"AI 转型：三步"）不属于装饰，保留
+    text = re.sub(r'^(标题|主标题|副标题|备选(标题)?\d*|正文)\s*[：:]\s*', '', text)
     # 统计字符数（中文=1字，英文单词/数字=0.5字近似，直接按 len 统计视觉宽度）
     # 简化：直接用 len(text) 作为字数（中文为主的场景足够准确）
     return len(text.replace(" ", ""))
