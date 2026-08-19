@@ -248,14 +248,14 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
         fx_info: {sid: set(fx 动画 class)}，供 build_gsap 注入装饰动画
         bg_keyframes: 所有场景 bg 组件的 @keyframes CSS（去重），注入 <style>
         tutorial_reveals: {sid: [reveal_time,...]}，教程模式一屏多区域逐步 reveal（data-reveal 属性，非 phase 切换）
-        tutorial_countups: {sid: [(target, count_at), ...]}，教程模式数据 count-up（data-count-to + data-count-at）
+        tutorial_countups: {sid: [(raw_target_str, count_at), ...]}，教程模式数据 count-up（data-count-to 原始属性串 + data-count-at）
     """
     clips: list[str] = []
     missing: list[str] = []
     fx_info: dict[str, set[str]] = {}
     bg_keyframes_seen: dict[str, None] = {}
     tutorial_reveals: dict[str, list[float]] = {}
-    tutorial_countups: dict[str, list[tuple[float, float]]] = {}
+    tutorial_countups: dict[str, list[tuple[str, float]]] = {}
     cumulative = 0.0
 
     for idx, seg in enumerate(segments, 1):
@@ -288,14 +288,16 @@ def build_clips(segments: list, creative_dir: Path) -> tuple[str, float, list[st
             if reveals:
                 tutorial_reveals[sid] = reveals
             # count-up：data-count-to + data-count-at（数据飞升：0 → target，按 count_at 时间点触发）
-            # 两种属性顺序都要扫（LLM 可能写 to 在前或 at 在前）
-            countups: set[tuple[float, float]] = set()
+            # 两种属性顺序都要扫（LLM 可能写 to 在前或 at 在前）。
+            # 存原始属性串 raw（"74.0"/"74"/"7.5"），不提前 float()——selector 须精确匹配
+            # 碎片属性写法，数值化交给消费端（float 化丢写法差异会致 selector 失配）
+            countups: set[tuple[str, float]] = set()
             for m in re.finditer(r'data-count-to="(-?[\d.]+)"[^>]*\sdata-count-at="([\d.]+)"', body):
-                countups.add((float(m.group(1)), float(m.group(2))))
+                countups.add((m.group(1), float(m.group(2))))
             for m in re.finditer(r'data-count-at="([\d.]+)"[^>]*\sdata-count-to="(-?[\d.]+)"', body):
-                countups.add((float(m.group(2)), float(m.group(1))))
+                countups.add((m.group(2), float(m.group(1))))
             if countups:
-                tutorial_countups[sid] = sorted(countups)
+                tutorial_countups[sid] = sorted(countups, key=lambda c: (float(c[0]), c[1]))
 
         dur = float(seg.get("actual_duration", seg.get("duration", 0)))
         clip = (
@@ -417,16 +419,16 @@ def build_gsap(segments: list, phase_timings: dict, total_duration: float,
         for i, s in enumerate(segments):
             sid = f"s{i+1:02d}"
             scene_start = starts[i]
-            for target, count_at in tutorial_countups.get(sid, []):
+            for raw_target, count_at in tutorial_countups.get(sid, []):
                 t = scene_start + count_at
+                target = float(raw_target)
                 # snap：整数 1，小数 0.1
                 snap = 1 if target == int(target) else 0.1
                 # target 值：整数转 int（避免 104.0），小数保留 float
                 target_val = int(target) if target == int(target) else target
-                # selector：用原 target 字符串匹配碎片 data-count-to 值（104/76.6/-16.4）
-                # target_val 经 int 转换后 104.0 → 104 → "104"；小数 76.6 → 76.6 → "76.6"；负数同理
-                target_str = str(target_val)
-                selector = f'#{sid} [data-count-to="{target_str}"]'
+                # selector 直接用碎片原始属性串匹配（"74.0"/"74"/"7.5"/"-16.4" 精确命中）。
+                # 禁 int 化再 str()——74.0 → "74" 与碎片属性 "74.0" 失配，动画静默丢失（08-19 事故）
+                selector = f'#{sid} [data-count-to="{raw_target}"]'
                 lines.append(
                     f"tl.to('{selector}', {{textContent:{target_val},duration:0.9,"
                     f"snap:{{textContent:{snap}}},ease:'power2.out'}}, {t:.2f});"
