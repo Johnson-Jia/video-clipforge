@@ -97,6 +97,7 @@ class GateType(str, Enum):
     list_alignment_valid = "list_alignment_valid"
     project_no_consecutive_repeat = "project_no_consecutive_repeat"  # HARD: 单项目禁近2天连续入选（airllm 连3期事故）
     ai_project_cap = "ai_project_cap"  # HARD: github-trending AI 项目数上限（有 ai-wind 专项后差异化）
+    company_status_verified = "company_status_verified"  # HARD: goldminer 主角企业现状核验留痕（悟空租车判死事故）
 
 
 class Rigor(str, Enum):

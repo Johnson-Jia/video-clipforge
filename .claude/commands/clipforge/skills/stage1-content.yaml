@@ -42,6 +42,9 @@ skill:
           content_file: "content_ready.txt"
           window_days: 2
           exempt_top_n: 3
+      - gate: company_status_verified
+        params:
+          content_file: "content_ready.txt"
       - gate: ai_project_cap
         params:
           content_file: "content_ready.txt"

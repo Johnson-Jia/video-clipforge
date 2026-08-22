@@ -1500,6 +1500,58 @@ def check_ai_project_cap(project_dir: Path, params: dict) -> tuple[bool, str]:
 GATE_CHECKERS[GateType.ai_project_cap] = check_ai_project_cap
 
 
+def check_company_status_verified(project_dir: Path, params: dict) -> tuple[bool, str]:
+    """goldminer 主角企业现状核验留痕（HARD，2026-08-22 悟空租车事故）。
+
+    loot-drop.io 是 AI 辅助总结源（官方声明 may contain errors/hallucinations），
+    把在营公司判死 = 商业诽谤 + 事实错误（悟空租车被 loot-drop 判"烧光死亡"，
+    实为在营行业头部 483 城且业务描述张冠李戴）。
+
+    本 gate 无法机器判定企业真伪（需 web 搜索），改为强制「核验动作留痕」：
+    content_ready.txt 含【主角】行（goldminer 特征）时，必须存在「现状核验：」行，
+    且行内同时含 ①证据词（官网已关闭/停业/停运/破产/清算/关停/停止运营/解散）
+    ②来源词（官网/公告/报道/新闻/媒体）——两者齐备才算留痕完整。
+    无【主角】行（非 goldminer 项目）优雅跳过。
+    """
+    content_fp = project_dir / params.get("content_file", "content_ready.txt")
+    if not content_fp.exists():
+        return True, "content_ready.txt 不存在，跳过企业现状核验"
+
+    text = content_fp.read_text(encoding="utf-8", errors="ignore")
+
+    # 仅 goldminer 项目（【主角】行是 goldminer_history.py 依赖的格式特征）
+    if not re.search(r"^【主角】", text, re.MULTILINE):
+        return True, "无【主角】行（非 goldminer 项目），跳过企业现状核验"
+
+    m = re.search(r"^现状核验[：:](.+)$", text, re.MULTILINE)
+    if not m:
+        return False, (
+            "content_ready.txt 缺「现状核验：」行（goldminer 主角企业必须搜索核实确实倒闭/停运后留痕）。"
+            "修复：web 搜索主角企业现状，在【主角】行上方补一行："
+            "现状核验: <公司名>已确认<倒闭/停运/关停>（证据: <官网已关闭|停业公告|破产清算|权威媒体关停报道> <来源+日期>）。"
+            "若搜索发现企业仍在营，换主角（loot-drop 单源不得判死，2026-08-22 悟空租车事故）"
+        )
+    line = m.group(1)
+    evidence_words = ["官网已关闭", "官网关闭", "停业", "停运", "破产", "清算", "关停", "停止运营", "解散"]
+    source_words = ["官网", "公告", "报道", "新闻", "媒体"]
+    has_evidence = any(w in line for w in evidence_words)
+    has_source = any(w in line for w in source_words)
+    if not (has_evidence and has_source):
+        missing = []
+        if not has_evidence:
+            missing.append("证据词（官网已关闭/停业/停运/破产/清算/关停/停止运营/解散）")
+        if not has_source:
+            missing.append("来源词（官网/公告/报道/新闻/媒体）")
+        return False, (
+            f"「现状核验：」行留痕不完整，缺: {'; '.join(missing)}。"
+            "修复：写明倒闭/停运证据类型与来源（如「证据: 官网已关闭 2025-xx 媒体报道」）"
+        )
+    return True, f"主角企业现状核验已留痕: {line.strip()[:80]}"
+
+
+GATE_CHECKERS[GateType.company_status_verified] = check_company_status_verified
+
+
 def check_phase_timings_valid(project_dir: Path, params: dict) -> tuple[bool, str]:
     """检查 phase_timings.json 的完整性：phase 时间覆盖完整场景时长，无间隙/重叠。
     手工 GSAP 硬编码断点会导致旁白与画面不同步；phase_calibrator.py 自动校准后，本门禁确保产出完整无遗漏。

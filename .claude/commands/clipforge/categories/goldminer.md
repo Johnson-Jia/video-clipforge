@@ -73,8 +73,9 @@ python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 -
 **选取流程**：
 1. `fetch_lootdrop --region 中国 --limit 8` 抓 8 个候选（候选池扩大，避免前几个全做过）
 2. **跑 `scripts/goldminer_history.py --filter-candidates raw_failures.json`**（HARD 防重复）：过滤已做过企业，主角从未做过清单选
-3. 从未做过清单按钩子潜力 + 淘金价值选 1 个主角 + 2-3 个 related（相关失败）作对比
-4. 候选全部已做过 → 扩大 `--limit` 或换 `--region`（美国/印度/欧洲）重抓，直到有未做过的新企业
+3. **⛔ 企业现状核验（HARD，gate `company_status_verified` 拦截）**：对主角候选用 web 搜索核实**确实已倒闭/停运/关停**（证据标准：官网已关闭 / 停业公告 / 破产清算 / 权威媒体关停报道，含日期）。loot-drop.io 是 AI 辅助总结源，**单源不得作为"已死"依据**——把在营公司判死 = 商业诽谤 + 频道可信度事故（2026-08-22 悟空租车事故：loot-drop 判死，实为在营行业头部 483 城 3000 万用户，且业务描述整个张冠李戴）。核验结论写入 content_ready.txt 的「现状核验：」行；related 对比企业抽查存疑者同样核实
+4. 从未做过清单按钩子潜力 + 淘金价值选 1 个主角 + 2-3 个 related（相关失败）作对比
+5. 候选全部已做过 → 扩大 `--limit` 或换 `--region`（美国/印度/欧洲）重抓，直到有未做过的新企业
 
 **⛔ 跨期去重（HARD + SOFT）**：
 - **HARD 同企业零容忍**：主角企业不得与历史任何一期重复（中英文别名等同，`goldminer_history.py` 检测）。重复 = 停止重选，不可"换个角度讲同一公司"
@@ -89,6 +90,7 @@ python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 -
 |------|------|---------|
 | **来源标注** | 文案/评论区注明数据来自 loot-drop.io；片尾可加"数据来源：loot-drop.io 创业坟场" | HARD 失败 |
 | **客观转述** | 死因忠实 `failure_analysis` 字段，**禁杜撰/禁夸大/禁添油加醋** | HARD 失败 |
+| **现状核验** | 主角企业必须搜索确认**确实倒闭/停运**（官网关闭/停业公告/破产清算/权威关停报道），loot-drop 单源不得判死；「现状核验：」行为 content_ready 必填 | HARD 失败（gate `company_status_verified`） |
 | **不点名创始人个人** | 只讲公司+商业模式+宏观原因，**禁点名创始人姓名/个人攻击** | HARD 失败（诽谤） |
 | **教育目的** | 调性是"淘教训"非"吃瓜嘲讽"；rebuild pivot 是"可学的"非"抄它" | SOFT |
 
@@ -97,6 +99,7 @@ python scripts/fetch_lootdrop.py --output-dir "${PROJECT_DIR}" --region 中国 -
 ### preparation_rules — content_ready.txt 格式
 
 ```
+现状核验: <公司名>已确认<倒闭/停运/关停>（证据: <官网已关闭|停业公告|破产清算|权威媒体关停报道> <来源+日期>）
 【主角】公司名 | 地区 | 融资 | 行业 | 中文一句话死因（原: <failure_analysis 原文>）
 受众熟悉度: 高/中/低
 死因类型: 烧钱/监管/竞争/单位经济/产品/无市场
