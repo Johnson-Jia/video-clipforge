@@ -234,6 +234,10 @@ _CN_NUMERIC_ROW_RE = re.compile(f'([{_CN_NUM_CHARS}]+)行')
 # 定向正则而非全局 '调':{diao4:条}——全局会误伤「调查/调度」(正确 diào)；条为无歧义单音字(tiáo)
 # 2026-08-18 github-trending OpenLogi 段新增（pypinyin 对「调 DPI」推 diao4 错误，应 tiáo）
 _DIAO_AS_TIAO_RE = re.compile(r'调(?=\s*[A-Za-z])|(?<=全能)调')
+# 调(tiáo) 词组 — 「调校」tiáojiào、「调好」tiáohǎo，防 edge-tts 读 diào
+# 整词替换而非单字：pypinyin 对「调校」误推 diao4 xiao4（两字皆错），单字映射无法兜底；
+# 「校」jiào→较、「调」→条均为无歧义单音字；词组优先于 _DIAO_AS_TIAO_RE 执行
+_DIAO_WORD_RE = re.compile(r'调校|调好')
 # 长→常：仅限已知 edge-tts 会把长读成 zhǎng 的上下文
 # 长→常：仅限已知 edge-tts 会把长读成 zhǎng 的上下文
 # 2026-08-03 扩展：pypinyin 对「长答案/长度/长久/长城/长假/长效」误推 zhang3，
@@ -300,6 +304,7 @@ def fix(text: str) -> str:
     preprocessed = _LONG_AS_CHANG_RE.sub(r'常\1', preprocessed)
     preprocessed = _PERIOD_LONG_AS_CHANG_RE.sub(r'\1常', preprocessed)
     # 调→条（仅限 tiáo 上下文：调+英文/全能调）
+    preprocessed = _DIAO_WORD_RE.sub(lambda m: '条较' if m.group(0) == '调校' else '条好', preprocessed)
     preprocessed = _DIAO_AS_TIAO_RE.sub('条', preprocessed)
     if preprocessed != k_replaced:
         print(f'[polyphone_fix] 长→常/调→条 regex applied')
@@ -411,6 +416,8 @@ if __name__ == '__main__':
             ('你能干嘛呢', '你能干什么呢'),
             # 调(tiáo)→条 — 防读 diào；调查/调度(diào)不误伤
             ('改键、调 DPI、滚轮速度全能调', '改键、条 DPI、滚轮速度全能条'),
+            ('居然调校起 Linux 桌面', '居然条较起 Linux 桌面'),
+            ('配置全帮你调好', '配置全帮你条好'),
             ('调查结果', '调查结果'),
             ('调度中心', '调度中心'),
         ]
